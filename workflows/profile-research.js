@@ -178,6 +178,15 @@ const need = (stage, ...roles) => {
   return !missing
 }
 
+// A role named as a lens rather than the stage's writer is best-effort: absent is a note, not
+// a hand-back — the writer's prompt already tolerates an empty lens.
+const lens = (role) => {
+  const agentType = A.agents[role]
+  if (agentType && agentType !== '—') return agentType
+  result.notes.push(`No agent implements the "${role}" role on this platform; proceeding without it.`)
+  return null
+}
+
 const finish = (next, extra) => ({
   status: extra && extra.status ? extra.status : result.status,
   last_completed_stage: result.last_completed_stage,
