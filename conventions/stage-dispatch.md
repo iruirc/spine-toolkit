@@ -24,10 +24,15 @@ and the skill — and is not re-confirmed per stage.
 
 ## Declared deviation
 
-Delegation may be skipped — the host exposes no subagent mechanism, the user opted out, or a stage
+Delegation may be skipped — the host exposes no subagent mechanism, the user opted out, the
+platform's manifest declares no agent for the stage's role (an em dash in its `## Roles`), or a stage
 is small enough that the round trip costs more than it buys. In every such case the deviation is
 announced in the first message of the stage, naming what runs instead. An undeclared deviation is a
 defect even when the deviation itself is sound.
+
+On the em-dash cause a workflow script can do neither — no main context to run in, nobody to
+announce to — so it ends the range at that stage and hands it back for the orchestrator to run and
+announce (`skills/orchestrator/SKILL.md` → Dispatch).
 
 A panel stage (two agents on one stage) may run its agents in parallel or sequentially — that choice
 is the orchestrator's and needs no announcement.

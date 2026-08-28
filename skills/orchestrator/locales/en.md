@@ -6,6 +6,9 @@ Specify task number, e.g. `запусти 026` / `/task-run 026`.
 ## error_task_not_found
 Task `{task_id}` not found in `Tasks/`.
 
+## error_no_platform_manifest
+No platform manifest found. The project config names platform "{plugin}", but its manifest skill did not load. Install the platform plugin or fix ## Platform in the config.
+
 ## fallback_profile_question
 Which profile? (1) FEATURE (2) BUG (3) REFACTOR (4) TEST (5) REVIEW (6) EPIC (7) RESEARCH
 

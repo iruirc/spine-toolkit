@@ -33,12 +33,14 @@ init                    = —
 
 ## Axes
 
-`ecosystem` is the one axis every platform must declare — it is how spine-toolkit finds which
-plugin serves a project. Every other axis, and its allowed values, is the platform's own choice;
-`widget` here is the axis the `developer` fan-out above and the heuristics below key on. (Named
-`widget`, not `lang`: core's prompt-language skill (`swift-lang` today, `lang` after a later
-rename) resolves en/ru — an unrelated concept that would share the name, and this fixture should
-not teach a name that collides with it.)
+`ecosystem` is the one axis every platform must declare, and the one whose meaning spine-toolkit
+fixes: it names the ecosystem this platform serves. Declared and reserved, not yet consumed; a
+project names the plugin that serves it outright, in the `## Platform` block of its config.
+Every other axis, and its allowed values, is the platform's own choice; `widget` here is the axis
+the `developer` fan-out above and the heuristics below key on. (Named `widget`, not `lang`: core's
+prompt-language skill (`swift-lang` today, `lang` after a later rename) resolves en/ru — an
+unrelated concept that would share the name, and this fixture should not teach a name that collides
+with it.)
 
 ecosystem = fixture
 widget    = alpha, beta
