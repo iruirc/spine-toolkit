@@ -3,7 +3,7 @@ description: "Redo a single stage or phase of a task / Переделать од
 argument-hint: <id> <stage|phase>
 ---
 
-Activate `swift-toolkit:orchestrator` with action=redo, stage_scope=single.
+Activate `spine-toolkit:orchestrator` with action=redo, stage_scope=single.
 
 $ARGUMENTS parsing:
 - First token — task_id

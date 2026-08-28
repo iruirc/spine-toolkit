@@ -3,7 +3,7 @@ description: "Restart a task from a stage to the end (with archival) / Пере�
 argument-hint: <id> <stage> | --full
 ---
 
-Activate `swift-toolkit:orchestrator` with action=restart.
+Activate `spine-toolkit:orchestrator` with action=restart.
 
 $ARGUMENTS parsing:
 - `<id> <stage>` → start_stage = <stage>, stage_scope=forward (archives stage and all subsequent)

@@ -3,7 +3,7 @@ description: "Continue a task from the last stop point / Продолжить з
 argument-hint: <id>
 ---
 
-Activate `swift-toolkit:orchestrator` with action=continue.
+Activate `spine-toolkit:orchestrator` with action=continue.
 
 $ARGUMENTS — task_id (required).
 

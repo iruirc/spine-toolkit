@@ -3,6 +3,6 @@ description: "Create a new task in Tasks/ with a filled-in Task.md / Созда�
 argument-hint: <task description> [in STATUS]
 ---
 
-Activate skill `swift-toolkit:task-new` with arguments: $ARGUMENTS
+Activate skill `spine-toolkit:task-new` with arguments: $ARGUMENTS
 
 The skill creates a numbered task folder under `Tasks/<STATUS>/` (default `TODO`) and fills in `Task.md` based on the user's description.

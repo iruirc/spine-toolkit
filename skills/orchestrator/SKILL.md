@@ -8,7 +8,7 @@ description: |
 
 # Orchestrator
 
-Single entry point for routing tasks from `Tasks/<STATUS>/<task_id>-*/` into the corresponding profile workflow. The skill accepts a minimal input (only `task_id`), fills in the remaining parameters via a deterministic algorithm, and hands control to `swift-toolkit:workflow-*` via a structured contract.
+Single entry point for routing tasks from `Tasks/<STATUS>/<task_id>-*/` into the corresponding profile workflow. The skill accepts a minimal input (only `task_id`), fills in the remaining parameters via a deterministic algorithm, and hands control to `spine-toolkit:workflow-*` via a structured contract.
 
 The skill itself does not perform the work of stages — it only resolves parameters, validates the command, confirms with the user (in `manual` mode), and dispatches control to the profile workflow.
 
@@ -57,7 +57,7 @@ The minimum viable input is just `task_id`. All other fields are optional and re
 
 The orchestrator does not activate on every user request — light commands bypass it. Order of checks (first match wins):
 
-1. **Project initialization** — "create project" / "initialize" / no `.xcodeproj` and no `Package.swift` → remind about agent `swift-toolkit:swift-init` (invocation: `@swift-toolkit:swift-init` or slash command `/swift-init`). Orchestrator does not run.
+1. **Project initialization** — "create project" / "initialize" / no `.xcodeproj` and no `Package.swift` → answer with key `routing_project_init` and stop. Orchestrator does not run. Routing precedes Resolution, so there is no config, no manifest and no `agents` map yet — and possibly no platform installed at all: the string points at the platform's `init` entry point in general terms rather than naming an agent it cannot resolve.
 2. **Task management** — "create task" / "new task" / "ft" / "create sub-task for N" → skill `task-new`. "Move task" / "to DONE" / "step N of epic M to <STATUS>" → skill `task-move`. Orchestrator does not run.
 3. **Micro-edit** — "fix" / "rename" / "change" + ≤2 files with no interface changes → execute directly with a quick check via XcodeBuildMCP. Orchestrator does not run.
 4. **Otherwise** — this is task work. The orchestrator runs:
@@ -224,7 +224,7 @@ Algorithm:
    Example: `run 026` — confirmation required (neither profile nor mode is explicit).
 ```
 
-**Stack resolution (step 4) delegates to `swift-toolkit:stack-detect`.** The
+**Stack resolution (step 4) delegates to `spine-toolkit:stack-detect`.** The
 orchestrator passes `{task_files, envelope, task_id}` and receives
 `{needed, resolved, unresolved}`. `stack-detect` performs no AUQ and writes no
 files — the orchestrator owns the per-axis AUQ (locale keys
@@ -273,8 +273,9 @@ platform plugin updates. Three details the step's precedence list leans on:
   manifest's rows for that role — bare and axis-qualified alike — are not consulted at all. The
   block is optional, and its absence is the normal case, not an unfinished config.
 - **`—` is an answer, not a failure.** A role no platform agent implements is a declared absence,
-  and the stage that owns it still runs — announced as a deviation in the stage's first message,
-  under the "Declared deviation" rule of `conventions/stage-dispatch.md`. Method B runs it inline;
+  and the stage that owns it still runs — announced as a deviation in the stage's first message with
+  key `deviation_role_absent` (placeholders `{role}`, `{stage}`), under the "Declared deviation"
+  rule of `conventions/stage-dispatch.md`. Method B runs it inline;
   a Method A script can neither announce nor run it and hands the stage back instead (**Dispatch**
   → "Method A — a stage whose role resolved to `—`"). Only an unreadable manifest is an error.
 
@@ -353,18 +354,18 @@ Semantics of `stage_scope`:
 
 **Invariant:** workflow-* never receives empty fields. If a field arrives empty — workflow-* returns an error to the orchestrator and does not try to recover.
 
-**RESEARCH-only optional field — `research_agent`.** When `profile=research`, the orchestrator MAY include `research_agent=swift-architect|swift-diagnostics|swift-security` in the args. The field carries a BARE agent name (without the `swift-toolkit:` prefix); workflow-research resolves it to the prefixed form at dispatch time, mirroring how `[TASK_TYPE]` carries `FEATURE` rather than `swift-toolkit:workflow-feature`. Resolution:
+**RESEARCH-only optional field — `research_agent`.** When `profile=research`, the orchestrator MAY include `research_agent=architect|diagnostics|security` in the args. The field carries a bare **role**, which workflow-research resolves through the `agents` map at dispatch like every other stage owner, mirroring how `[TASK_TYPE]` carries `FEATURE` rather than `spine-toolkit:workflow-feature`. Which of the three the role means on this platform is the platform's business, not the profile's. Resolution:
 
 1. If `[RESEARCH_AGENT] = <value>` is present in `Task.md` (between `[NEED_REVIEW]` and section `## 1. [Files]`) → use that value.
 2. Else, scan Task.md `## 2. [Description]` and `## 3. [Task]` for keywords:
-   - keywords from locale key `research_agent_diagnostics_keywords` → suggest `swift-diagnostics`
-   - keywords from locale key `research_agent_security_keywords` → suggest `swift-security`
-   - none / ambiguous → suggest `swift-architect`
-3. In `manual` mode: AUQ using key `auq_research_agent_question`, listing the suggested agent first with the locale-key suffix `auq_stage_recovery_recommended_suffix` appended to its label — same pattern used by the stage-picker (Resolution Algorithm § 5.5 / § 6). The remaining catalog options (`swift-architect`, `swift-diagnostics`, `swift-security` minus the suggestion) follow in catalog order, plus a Cancel option using key `confirm_dispatch_cancel`. The user's pick is written back to `Task.md` under `[RESEARCH_AGENT] = [<value>]` so subsequent runs don't re-ask.
+   - keywords from locale key `research_agent_diagnostics_keywords` → suggest `diagnostics`
+   - keywords from locale key `research_agent_security_keywords` → suggest `security`
+   - none / ambiguous → suggest `architect`
+3. In `manual` mode: AUQ using key `auq_research_agent_question`, listing the suggested role first with the locale-key suffix `auq_stage_recovery_recommended_suffix` appended to its label — same pattern used by the stage-picker (Resolution Algorithm § 5.5 / § 6). The remaining catalog options (`architect`, `diagnostics`, `security` minus the suggestion) follow in catalog order, plus a Cancel option using key `confirm_dispatch_cancel`. The user's pick is written back to `Task.md` under `[RESEARCH_AGENT] = [<value>]` so subsequent runs don't re-ask.
 4. In `auto` mode: take the suggestion without asking.
 5. For all other profiles: `research_agent` is omitted from the args (workflow-* would ignore it anyway).
 
-**Validation.** The orchestrator does NOT validate the chosen agent name against the catalog `{swift-architect, swift-diagnostics, swift-security}` — that responsibility lies with workflow-research at dispatch entry (see `skills/workflow-research/SKILL.md` § 1, the `research_agent` bullet). An invalid value (e.g. a typo in `[RESEARCH_AGENT]`) propagates verbatim into the args; workflow-research rejects it with `{status: error, reason: <locale>}` rather than silently substituting a default.
+**Validation.** The orchestrator does NOT validate the chosen role against the catalog `{architect, diagnostics, security}` — that responsibility lies with workflow-research at dispatch entry (see `skills/workflow-research/SKILL.md` § 1, the `research_agent` bullet). An invalid value (e.g. a typo in `[RESEARCH_AGENT]`) propagates verbatim into the args; workflow-research rejects it with `{status: error, reason: <locale>}` rather than silently substituting a default.
 
 **EPIC-only optional fields — `plugin_root` and `epic_dispatch_mode`.** When `profile=epic` and the run takes Method A, include `plugin_root=${CLAUDE_PLUGIN_ROOT}` (expanded, absolute). The EPIC script runs each step as a nested workflow and has to build the step script's path; the sandbox cannot expand the variable itself, so without this field the epic falls back to handing the steps back rather than running them. `epic_dispatch_mode=push|pull` forces that choice — omit it and the script decides. Both fields are omitted for every other profile.
 
@@ -374,13 +375,13 @@ A profile has up to two executable forms. **Method A** is a workflow script the 
 
 | TASK_TYPE | Method A — workflow script | Method B — skill |
 |---|---|---|
-| FEATURE | `workflows/profile-feature.js` | `swift-toolkit:workflow-feature` |
-| BUG | `workflows/profile-bug.js` | `swift-toolkit:workflow-bug` |
-| REFACTOR | `workflows/profile-refactor.js` | `swift-toolkit:workflow-refactor` |
-| TEST | `workflows/profile-test.js` | `swift-toolkit:workflow-test` |
-| REVIEW | `workflows/profile-review.js` | `swift-toolkit:workflow-review` |
-| EPIC | `workflows/profile-epic.js` | `swift-toolkit:workflow-epic` |
-| RESEARCH | `workflows/profile-research.js` | `swift-toolkit:workflow-research` |
+| FEATURE | `workflows/profile-feature.js` | `spine-toolkit:workflow-feature` |
+| BUG | `workflows/profile-bug.js` | `spine-toolkit:workflow-bug` |
+| REFACTOR | `workflows/profile-refactor.js` | `spine-toolkit:workflow-refactor` |
+| TEST | `workflows/profile-test.js` | `spine-toolkit:workflow-test` |
+| REVIEW | `workflows/profile-review.js` | `spine-toolkit:workflow-review` |
+| EPIC | `workflows/profile-epic.js` | `spine-toolkit:workflow-epic` |
+| RESEARCH | `workflows/profile-research.js` | `spine-toolkit:workflow-research` |
 
 A `—` in the Method A column means that profile always takes Method B. Never construct a `scriptPath` for a profile this table does not list — a missing file fails the run after the user has already been told the task started.
 
@@ -406,7 +407,7 @@ Workflow({
 })
 ```
 
-`scriptPath` rather than `name`: the workflow registry is built at session start, so a plugin updated mid-session resolves by path but not yet by name. If `${CLAUDE_PLUGIN_ROOT}` does not expand, resolve the toolkit root the way `conventions/agent-tooling.md` describes and build the path from there.
+`scriptPath` rather than `name`: the workflow registry is built at session start, so a plugin updated mid-session resolves by path but not yet by name. If `${CLAUDE_PLUGIN_ROOT}` does not expand, resolve the core root the way `conventions/agent-tooling.md` describes and build the path from there.
 
 Pass `args` as a real JSON object. A JSON-encoded string arrives at the script as a string.
 
@@ -426,7 +427,7 @@ EPIC returns more: `branch`, `completed_steps`, `skipped_steps`, `failed_steps`,
 
 With `handback` non-empty the script returns `status: ok` — a role the platform declared absent is a legitimate platform shape, not a fault — `next_recommended_action: ask_user`, and `last_completed_stage` set to the last stage that actually finished, which is `null` when the handed-back stage was the first in the range. `ask_user` is not a default, it is the only correct value, and it is what closes the two ways this can go wrong: `stop` reads as an ordinary finished range, so a consumer that does not know about `handback` silently drops the handed-back stage and every stage after it — the silent skip this whole design exists to prevent, reachable by omission; `continue` invites a consumer computing "next = `last_completed_stage` + 1" to land on the same stage and hand back forever.
 
-On a non-empty `handback` the orchestrator runs that stage itself in the main context, announcing the deviation in the stage's first message (`conventions/stage-dispatch.md`), then re-dispatches the workflow from the following stage. The sandbox can report what it could not run; only the orchestrator can run it. Method B needs no hand-back — the skill runs the stage itself and makes the announcement.
+On a non-empty `handback` the orchestrator runs that stage itself in the main context, announcing the deviation in the stage's first message with key `deviation_role_absent` (`conventions/stage-dispatch.md`), then re-dispatches the workflow from the following stage. The sandbox can report what it could not run; only the orchestrator can run it. Method B needs no hand-back — the skill runs the stage itself and makes the announcement.
 
 `status: error` with `reason: no-args` means the contract never reached the script. Do not run the stage by hand and do not slide over to Method B as if nothing happened — say what happened, then re-dispatch with the contract filled.
 

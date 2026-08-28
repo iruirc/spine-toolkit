@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SessionStart hook: states the agent-dispatch contract for swift-toolkit projects.
+# SessionStart hook: states the agent-dispatch contract for spine-toolkit projects.
 #
 # Silent in projects that do not use the toolkit — the marker check below is what keeps this
 # from costing context in every unrelated repo the plugin is installed for.

@@ -8,7 +8,7 @@ export const meta = {
 const r = await agent('Reply with the single word: pong. Read nothing, write nothing.', {
   label: 'hook-probe',
   phase: 'Probe',
-  agentType: 'swift-toolkit:swift-architect',
+  agentType: 'swift-platform:swift-architect',
 })
 
 return { spawned: true, reply: r }

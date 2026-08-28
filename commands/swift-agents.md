@@ -3,6 +3,6 @@ description: "Show agent telemetry for this session / Показать теле�
 argument-hint: [--run <wf_id>|--all]
 ---
 
-Activate `swift-toolkit:agent-status`.
+Activate `spine-toolkit:agent-status`.
 
 $ARGUMENTS is passed through to the skill verbatim.
