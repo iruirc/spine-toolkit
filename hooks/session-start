@@ -17,7 +17,7 @@ project_dir="$(printf '%s' "$stdin_payload" | sed -n 's/.*"cwd"[[:space:]]*:[[:s
 [ -n "$project_dir" ] || project_dir="${CLAUDE_PROJECT_DIR:-$PWD}"
 
 uses_toolkit=0
-[ -f "${project_dir}/CLAUDE-swift-toolkit.md" ] && uses_toolkit=1
+[ -f "${project_dir}/CLAUDE-spine-toolkit.md" ] && uses_toolkit=1
 [ -d "${project_dir}/Tasks/ACTIVE" ] && uses_toolkit=1
 [ "$uses_toolkit" -eq 1 ] || exit 0
 

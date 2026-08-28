@@ -1,7 +1,7 @@
 # swift-lang — en
 
 ## error_no_toolkit_file
-No `CLAUDE-swift-toolkit.md` found in the current directory. Run `/swift-setup` first.
+No `CLAUDE-spine-toolkit.md` found in the current directory. Run `/setup` first.
 
 ## error_unsupported_language
 Unsupported language: `{lang}`. Supported: `en`, `ru`.

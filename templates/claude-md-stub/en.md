@@ -1,9 +1,9 @@
 # {project_name}
 
-@./CLAUDE-swift-toolkit.md
+@./CLAUDE-spine-toolkit.md
 
 <!--
 This is your project-level Claude instructions file.
-The line above imports the swift-toolkit configuration (managed by `/swift-setup`).
+The line above imports the spine-toolkit configuration (managed by `/setup`).
 You can freely add your own sections, conventions, build instructions, etc. below.
 -->

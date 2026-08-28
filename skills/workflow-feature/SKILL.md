@@ -17,14 +17,14 @@ The profile workflow for tasks with `[TASK_TYPE] = FEATURE`. Implements the sequ
 
 Before producing any user-facing string:
 
-1. Read `CLAUDE-swift-toolkit.md` from the project root.
+1. Read `CLAUDE-spine-toolkit.md` from the project root.
 2. Find the `## Language` section.
 3. Take the first non-empty line in that section, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
 
-Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-swift-toolkit.md per string.
+Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine-toolkit.md per string.
 
 ## 1. Input Contract
 
@@ -87,9 +87,9 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   If `start_phase=<phase_id>` was passed in args — `[developer]` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
-  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-swift-toolkit.md`, else `on`. Written by the same agent that writes `Done.md` — `[architect]`.
+  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else `on`. Written by the same agent that writes `Done.md` — `[architect]`.
 
-- **Validation** — `[validator]`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between the `validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the FEATURE profile, the validator runs XcodeBuildMCP `build_sim` + `test_sim` mandatorily, and mobile MCP mandatorily when there is a UI layer (SwiftUI/UIKit views, screens, navigation); mobile MCP is skipped for purely domain/infrastructure features. Detailed per-profile behavior (mandatory vs. optional MCP steps, log capture, return-digest format) lives with the `validator` agent. When `mobile_mcp` resolves to `off` (`Task.md [MOBILE_MCP]` first, then `CLAUDE-swift-toolkit.md ## Validation`), no mobile MCP runs at all: the validator writes the UI cases a human must run into a separate `ManualChecks.md`, marks the matching `OpsChecklist.md` items Pending, and returns the case titles in `manual_checks` — surface that list with the stage report. The `manual_checks` key of the same two sources decides when that artifact appears: `auto` only for deferred checks, `always` on every UI-bearing run, including one mobile MCP drove itself.
+- **Validation** — `[validator]`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between the `validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the FEATURE profile, the validator runs XcodeBuildMCP `build_sim` + `test_sim` mandatorily, and mobile MCP mandatorily when there is a UI layer (SwiftUI/UIKit views, screens, navigation); mobile MCP is skipped for purely domain/infrastructure features. Detailed per-profile behavior (mandatory vs. optional MCP steps, log capture, return-digest format) lives with the `validator` agent. When `mobile_mcp` resolves to `off` (`Task.md [MOBILE_MCP]` first, then `CLAUDE-spine-toolkit.md ## Validation`), no mobile MCP runs at all: the validator writes the UI cases a human must run into a separate `ManualChecks.md`, marks the matching `OpsChecklist.md` items Pending, and returns the case titles in `manual_checks` — surface that list with the stage report. The `manual_checks` key of the same two sources decides when that artifact appears: `auto` only for deferred checks, `always` on every UI-bearing run, including one mobile MCP drove itself.
 
   In addition to `Validation.md`, the validator MUST produce a separate `OpsChecklist.md` artifact in the task folder by applying the `mobile-ops-checklist` skill. Each checklist item is marked **Applicable** (with verification evidence: file path, test name, commit ref), **N/A** (with reason), or **Pending**. A single Pending item is NOT itself a FAILED verdict — Pending items are surfaced to the Review stage, which decides whether they block APPROVED.
 

@@ -30,7 +30,7 @@ Before writing code, draw the territory. The landscape is an entity graph plus a
 ## Inputs
 
 - `Research.md ## Requirements` (from `feature-requirements`) — Primary + Secondary + open questions
-- Project stack from `CLAUDE-swift-toolkit.md` — picks which arch / net / persistence skills are authoritative
+- Project stack from `CLAUDE-spine-toolkit.md` — picks which arch / net / persistence skills are authoritative
 - Existing code (if refactor) — identify what graph nodes already exist
 
 ## Steps

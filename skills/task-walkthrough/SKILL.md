@@ -1,6 +1,6 @@
 ---
 name: task-walkthrough
-description: "Use at the end of an implementing stage (Execute / Fix / Refactor / Write), and again at Done, to write or refresh `Walkthrough.md` — the human-facing account of what a task actually landed: summary, plan-vs-outcome divergences with their trigger, a commit-by-commit log, mermaid diagrams where prose is worse than a picture, and follow-ups. Governed by `[WALKTHROUGH]` in Task.md and `## Reporting` in CLAUDE-swift-toolkit.md."
+description: "Use at the end of an implementing stage (Execute / Fix / Refactor / Write), and again at Done, to write or refresh `Walkthrough.md` — the human-facing account of what a task actually landed: summary, plan-vs-outcome divergences with their trigger, a commit-by-commit log, mermaid diagrams where prose is worse than a picture, and follow-ups. Governed by `[WALKTHROUGH]` in Task.md and `## Reporting` in CLAUDE-spine-toolkit.md."
 ---
 
 # Task Walkthrough
@@ -25,7 +25,7 @@ Commit messages do not make this artifact redundant. `conventions/commit-message
 
 ## The switch
 
-`[WALKTHROUGH] = [on|off]` in `Task.md` → `## Reporting` → `walkthrough:` in `CLAUDE-swift-toolkit.md` → `on`. First hit wins; a missing section is not an error, it is the default.
+`[WALKTHROUGH] = [on|off]` in `Task.md` → `## Reporting` → `walkthrough:` in `CLAUDE-spine-toolkit.md` → `on`. First hit wins; a missing section is not an error, it is the default.
 
 ## Inputs
 

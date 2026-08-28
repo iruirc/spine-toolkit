@@ -40,9 +40,12 @@ step 3, where every other axis of the catalog is needed by default.
 ## Algorithm
 
 ```
-0. catalog := ## Axes of <platform>:manifest        # axis → allowed values
-   rules   := ## Heuristics of the same manifest
-   axes    := keys of catalog − ecosystem
+0. platform := first non-empty line of ## Platform in CLAUDE-spine-toolkit.md
+              # absent or empty → the orchestrator already stopped at Routing check 4
+              #                   or step 5.7; this skill is never reached without it
+   catalog  := ## Axes of <platform>:manifest       # axis → allowed values
+   rules    := ## Heuristics of the same manifest
+   axes     := keys of catalog − ecosystem
 
 1. if envelope.never == all:
        return {needed: [], resolved: {}, unresolved: []}

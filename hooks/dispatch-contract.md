@@ -8,7 +8,7 @@ is standing authorization for the whole task — every stage of it — and is no
 It is given by any of:
 
 - a spine-toolkit slash command (`/task-run`, `/task-continue`, `/task-redo`, `/task-restart`,
-  `/task-new`, `/swift-init`, `/swift-setup`, …);
+  `/task-new`, `/setup`, …);
 - a natural-language trigger routed to `spine-toolkit:orchestrator`, in any language ("run 042",
   "continue 042", "redo plan for 042", …);
 - an active `spine-toolkit:workflow-*` skill.

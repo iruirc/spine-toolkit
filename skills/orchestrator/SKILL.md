@@ -16,14 +16,14 @@ The skill itself does not perform the work of stages — it only resolves parame
 
 Before producing any user-facing string:
 
-1. Read `CLAUDE-swift-toolkit.md` from the project root.
+1. Read `CLAUDE-spine-toolkit.md` from the project root.
 2. Find the `## Language` section.
 3. Take the first non-empty line in that section, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
 
-Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-swift-toolkit.md per string.
+Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine-toolkit.md per string.
 
 ## Agent Tooling
 
@@ -48,7 +48,7 @@ The minimum viable input is just `task_id`. All other fields are optional and re
 | `task_id` | string | NL/$ARGUMENTS (e.g. `026`, `137`, `001-foo`) | **required** — error using key `error_no_task_id` |
 | `action` | enum: `run` / `continue` / `redo` / `restart` / `restart-full` | parsed from the command (see triggers table) | `run` for a bare "run/do/execute N", `continue` for "continue N" |
 | `stage_target` | string (profile stage name) | required for `redo` / `restart`, or for `--from` / `--to` modifiers under `run` | not needed for `run` / `continue` / `restart-full` without modifiers |
-| `mode_override` | enum: `manual` / `auto` | explicit "automatically" / "step-by-step" in the request | resolved from Task.md → CLAUDE-swift-toolkit.md → `manual` |
+| `mode_override` | enum: `manual` / `auto` | explicit "automatically" / "step-by-step" in the request | resolved from Task.md → CLAUDE-spine-toolkit.md → `manual` |
 | `stack_override` | string | stack explicitly named in the request | resolved per-axis via stack-detect (see Resolution Algorithm step 4); AUQ only for unresolved needed axes |
 
 **Invariant:** the orchestrator does NOT crash on missing optional fields. It resolves them in the Resolution Algorithm and only then hands the fully populated contract to workflow-*.
@@ -61,7 +61,7 @@ The orchestrator does not activate on every user request — light commands bypa
 2. **Task management** — "create task" / "new task" / "ft" / "create sub-task for N" → skill `task-new`. "Move task" / "to DONE" / "step N of epic M to <STATUS>" → skill `task-move`. Orchestrator does not run.
 3. **Micro-edit** — "fix" / "rename" / "change" + ≤2 files with no interface changes → execute directly with a quick check via XcodeBuildMCP. Orchestrator does not run.
 4. **Otherwise** — this is task work. The orchestrator runs:
-   - Is there a `CLAUDE-swift-toolkit.md`? No → answer with key `error_no_project_config` and stop. This precedes `task-new` and every question of the Resolution Algorithm on purpose: with no config there is no `## Platform`, so no manifest and no `agents` map, and nothing this branch resolves could be dispatched — scaffolding a task and asking about stack axes first would spend the user's answers on a dispatch that cannot happen. `error_no_platform_manifest` at step 5.7 is the neighbouring case, a config that exists but names no usable platform.
+   - Is there a `CLAUDE-spine-toolkit.md`? No → answer with key `error_no_project_config` and stop. This precedes `task-new` and every question of the Resolution Algorithm on purpose: with no config there is no `## Platform`, so no manifest and no `agents` map, and nothing this branch resolves could be dispatched — scaffolding a task and asking about stack axes first would spend the user's answers on a dispatch that cannot happen. `error_no_platform_manifest` at step 5.7 is the neighbouring case, a config that exists but names no usable platform.
    - Is there a `Task.md` for `task_id`? Yes → read `[TASK_TYPE]`, `[WORKFLOW_MODE]` (if present), `## 4. [Stack]` (if present), `[STATUS]` (for steps).
    - No → run `task-new`, then continue.
    - Determine the profile from `[TASK_TYPE]` (see Dispatch).
@@ -115,12 +115,12 @@ Algorithm:
 3. Resolve mode (priority high→low):
    mode_override (NL: "automatically" / "step-by-step")
    > Task.md [WORKFLOW_MODE]
-   > CLAUDE-swift-toolkit.md "## Mode"
+   > CLAUDE-spine-toolkit.md "## Mode"
    > "manual" (default)
 
 3.5 Resolve progress (priority high→low):
     progress_override (NL: "quietly" / "with live indication")
-    > CLAUDE-swift-toolkit.md "## Progress"
+    > CLAUDE-spine-toolkit.md "## Progress"
     > "normal" (default)
 
     An unrecognized value resolves to "normal" without an error: the resolved value is printed
@@ -133,7 +133,7 @@ Algorithm:
    4.1 envelope := workflow-<profile> frontmatter `stack_axes_envelope`
                    (absent → {may: all, never: []})
    4.2 if envelope.never == all:                       # review, epic
-          stack := raw read of CLAUDE-swift-toolkit.md ## Stack  # ambient info-only
+          stack := raw read of CLAUDE-spine-toolkit.md ## Stack  # ambient info-only
           # NO chain, NO AUQ, NO stack-detect; skip to step 5
           # 4.2 is load-bearing: stack-detect returns {} here, not the ambient text
    4.3 scope := task file scope
@@ -191,13 +191,16 @@ Algorithm:
                    notes: locale `error_stage_not_in_profile` with placeholders filled}
 
 5.7. Resolve agents (per-role) — the map every stage dispatches through:
-   • platform := first non-empty line of ## Platform in CLAUDE-swift-toolkit.md
+   • platform := first non-empty line of ## Platform in CLAUDE-spine-toolkit.md
    • invoke `<platform>:manifest`, read its ## Roles table
      ↓ if ## Platform is absent or empty, or the manifest skill does not load →
        error using key `error_no_platform_manifest` and stop
        (`{plugin}` := the ## Platform name, or `—` when the section is absent or empty)
-   • rows(role) := the ## Agents rows of CLAUDE-swift-toolkit.md for the roles that block names,
+   • rows(role) := the ## Agents rows of CLAUDE-spine-toolkit.md for the roles that block names,
                    the manifest's ## Roles rows for every other role     # the config overrides per role
+     # a ## Agents row is a line whose left-hand side is one of the nine role words, bare or
+     # axis-qualified. The block's shipped body is explanatory prose with angle-bracket
+     # placeholders; nothing in it is a row, so a fresh config overrides nothing.
    • for each of the nine core roles, looking ONLY at rows(role):
          an axis-qualified row `role[axis=value]` whose `value` equals this project's resolved
          value for `axis`                                      (first in file order if several)
@@ -235,7 +238,7 @@ files — the orchestrator owns the per-axis AUQ (locale keys
 `Task.md → ## 4. [Stack]` cache write, and concatenated serialization. Which
 axes exist, which values they take and which repo signals imply them are the
 manifest's `## Axes` and `## Heuristics` — core names no axis but `ecosystem`;
-projects override the global `## Stack` via `CLAUDE-swift-toolkit.md → ## Modules`.
+projects override the global `## Stack` via `CLAUDE-spine-toolkit.md → ## Modules`.
 The effective precedence is task-local `## 4. [Stack]` → module override →
 global `## Stack` → import scan. When
 `envelope.never == all` (review/epic), the project `## Stack` is read raw and
@@ -256,26 +259,30 @@ platform plugin updates. Three details the step's precedence list leans on:
   has its own source. On **4.0** — the user named the stack outright, the case where the axis is
   most certain — the values are those `## Axes` values that appear in the `stack_override` string
   **as whole words**, matched case-insensitively except for a catalog value that is also ordinary
-  English, one word or a phrase (`manual`, `Factory`, `Combine`, `Clean Architecture`), which is
-  matched case-sensitively so that "combine the two layers" and "done manually" pin nothing.
-  Classify a new platform's catalog by that test rather than by pattern-matching those four. An
-  axis for which two or more **distinct** values match is left unresolved rather than guessed —
-  "SwiftUI, not UIKit" names two `ui` values and means one, and an unresolved axis degrades safely
-  while a wrongly pinned one does not. So is an axis the override never names: 4.0 skips to step 5
+  English, one word or a phrase, which is matched case-sensitively so that the sentence's ordinary
+  use of the word pins nothing. Classify a new platform's catalog value by value against that one
+  test — would this value occur in an English sentence that is not about the stack? — because every
+  catalog has some: framework and pattern names are drawn from ordinary vocabulary. An axis for
+  which two or more **distinct** values match is left unresolved rather than guessed — naming two
+  values of one axis in a contrast ("X, not Y") means one of them, and an unresolved axis degrades
+  safely while a wrongly pinned one does not. So is an axis the override never names: 4.0 skips to step 5
   and reads no config, so there is nothing else to fall back to. On **4.2** (review/epic, no
   per-axis resolution) the values are the `axis: value` lines of the project `## Stack`, matched
   case-insensitively. An axis still without a value matches no axis-qualified row — such a role
   falls through to its bare row, or to `—`.
 
   One class of miss survives all of that and is deliberately not chased: a catalog value colliding
-  with ordinary prose in a way case cannot separate — lowercase `manual` in "manual layout", or an
-  ordinary word capitalized only because it opens a sentence ("Combine these three tickets"). They
-  all fail in the same direction, pinning an axis wrongly rather than leaving it unresolved, and
+  with ordinary prose in a way case cannot separate — a value the catalog itself spells in
+  lowercase, or a capitalized value at the head of a sentence, where the capital says "sentence"
+  and not "framework". They all fail in the same direction, pinning an axis wrongly rather than
+  leaving it unresolved, and
   telling them apart needs phrase-level analysis that would fail the same way more often.
-- **The `## Agents` override** in `CLAUDE-swift-toolkit.md` takes the same row grammar as the
+- **The `## Agents` override** in `CLAUDE-spine-toolkit.md` takes the same row grammar as the
   manifest's `## Roles`. It is a per-role replacement, not a merge: for a role it names, the
   manifest's rows for that role — bare and axis-qualified alike — are not consulted at all. The
-  block is optional, and its absence is the normal case, not an unfinished config.
+  block ships in every config and normally holds no row: a block whose only content is its own
+  explanatory prose names no role and overrides nothing, which is the state to expect, not an
+  unfinished config.
 - **`—` is an answer, not a failure.** A role no platform agent implements is a declared absence,
   and the stage that owns it still runs — announced as a deviation in the stage's first message with
   key `deviation_role_absent` (placeholders `{role}`, `{stage}`), under the "Declared deviation"
@@ -329,8 +336,8 @@ end_stage=null
 stage_scope=single|forward|all
 mode=manual|auto
 lang=ru|en
-stack=swiftui+combine+swinject
-agents={architect: swift-platform:swift-architect, developer: swift-platform:swift-developer, tester: swift-platform:swift-tester, reviewer: swift-platform:swift-reviewer, refactorer: swift-platform:swift-refactorer, validator: swift-platform:swift-validator, security: swift-platform:swift-security, diagnostics: swift-platform:swift-diagnostics, init: swift-platform:swift-init}
+stack=alpha
+agents={architect: fixture-platform:fixture-architect, developer: fixture-platform:fixture-developer, tester: fixture-platform:fixture-developer, reviewer: fixture-platform:fixture-architect, refactorer: fixture-platform:fixture-developer, validator: —, security: —, diagnostics: —, init: —}
 need_test=true|false
 need_review=true|false
 walkthrough=on|off
@@ -348,11 +355,11 @@ Semantics of `stage_scope`:
 
 `task_dir` — the resolved task folder, `Tasks/<STATUS>/<task_id>-*/`, without a trailing slash. The orchestrator already holds this path (it archives into it), and passing it explicitly is what keeps two agents from disagreeing about which folder they are working in. Required: a Method A script has no filesystem access and cannot glob for it, and refuses to start without it.
 
-`lang` — the `<lang>` resolved by the Language Resolution section (`ru` | `en`; default `en`). Always filled. The subagent uses it for artifact **prose** and its final report; artifact **structure** stays EN regardless (see `conventions/i18n.md` → "Artifact authoring rule"). Passing it explicitly means workflow-* / subagents never re-read `CLAUDE-swift-toolkit.md` for output language.
+`lang` — the `<lang>` resolved by the Language Resolution section (`ru` | `en`; default `en`). Always filled. The subagent uses it for artifact **prose** and its final report; artifact **structure** stays EN regardless (see `conventions/i18n.md` → "Artifact authoring rule"). Passing it explicitly means workflow-* / subagents never re-read `CLAUDE-spine-toolkit.md` for output language.
 
-`agents` — the role-to-agent map resolved in step 5.7. Always filled, always all nine roles, always in vocabulary order (`architect`, `developer`, `tester`, `reviewer`, `refactorer`, `validator`, `security`, `diagnostics`, `init`). Method B encodes it as the single line above; Method A passes the same object as real JSON, so a script reads `A.agents.architect` and gets `"swift-platform:swift-architect"`. Keys are bare role names: the manifest's `role[axis=value]` form is resolved away in step 5.7 and never reaches the contract. A role the platform declared absent arrives as the em dash `—` in both encodings — a value a consumer checks for before dispatching, not a missing key, and the reason this field is never partial and never omitted. This is what lets a stage name its owner by role: which agent that role means is a property of the platform, not of the profile.
+`agents` — the role-to-agent map resolved in step 5.7. Always filled, always all nine roles, always in vocabulary order (`architect`, `developer`, `tester`, `reviewer`, `refactorer`, `validator`, `security`, `diagnostics`, `init`). Method B encodes it as the single line above; Method A passes the same object as real JSON, so a script reads `A.agents.architect` and gets `"fixture-platform:fixture-architect"` for the reference platform above. Keys are bare role names: the manifest's `role[axis=value]` form is resolved away in step 5.7 and never reaches the contract. A role the platform declared absent arrives as the em dash `—` in both encodings — a value a consumer checks for before dispatching, not a missing key, and the reason this field is never partial and never omitted. This is what lets a stage name its owner by role: which agent that role means is a property of the platform, not of the profile.
 
-`walkthrough` — whether the run writes `Walkthrough.md`. Resolved `Task.md` `[WALKTHROUGH]` → `CLAUDE-swift-toolkit.md` `## Reporting` → `walkthrough` → `on`; a missing section is the default, not an error. Unlike `mobile_mcp`, this one travels in the contract because the script itself gates on it — a Method A run has no filesystem access and cannot read the value for itself. Always `off` for `profile=review` and `profile=research`, where the profile has no implementing stage and no diff of its own; if the task file sets it anyway, say once that it was not executed and why, rather than dropping it silently.
+`walkthrough` — whether the run writes `Walkthrough.md`. Resolved `Task.md` `[WALKTHROUGH]` → `CLAUDE-spine-toolkit.md` `## Reporting` → `walkthrough` → `on`; a missing section is the default, not an error. Unlike `mobile_mcp`, this one travels in the contract because the script itself gates on it — a Method A run has no filesystem access and cannot read the value for itself. Always `off` for `profile=review` and `profile=research`, where the profile has no implementing stage and no diff of its own; if the task file sets it anyway, say once that it was not executed and why, rather than dropping it silently.
 
 `archive_paths` — list of paths to backups already created in `_archive/` for stages that will be overwritten (filled before handing off control). Format: `[path1, path2, path3]`. Empty list = `[]`.
 
@@ -617,8 +624,8 @@ The workflow-* subagent receives:
    final report in `lang`; artifact **structure** (headings, field labels,
    status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring
    rule". Passing `lang` explicitly means the subagent never re-reads
-   `CLAUDE-swift-toolkit.md` to decide output language.
+   `CLAUDE-spine-toolkit.md` to decide output language.
 6. Agents: the `agents` map from the Outbound Contract — the role-to-agent
    binding each stage dispatches through.
 
-**The stack does not need to be re-sent in full text:** the skill does not read `CLAUDE-swift-toolkit.md` — stack, mode, and paths come from the context the active agent host typically loads at session start (when `CLAUDE.md` is present at the project root and imports `CLAUDE-swift-toolkit.md` via `@./`). The orchestrator parses this already-loaded context to resolve priorities.
+**The stack does not need to be re-sent in full text:** the skill does not read `CLAUDE-spine-toolkit.md` — stack, mode, and paths come from the context the active agent host typically loads at session start (when `CLAUDE.md` is present at the project root and imports `CLAUDE-spine-toolkit.md` via `@./`). The orchestrator parses this already-loaded context to resolve priorities.
