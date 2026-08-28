@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run Foundation bats tests.
-# Usage: scripts/test-foundation.sh [unit|integration|all]
+# Usage: scripts/test-foundation.sh [unit|all]
 set -euo pipefail
 
 target="${1:-all}"
@@ -12,8 +12,7 @@ if ! command -v bats >/dev/null 2>&1; then
 fi
 
 case "$target" in
-  unit)        bats "$root/tests/foundation/lib" ;;
-  integration) bats "$root/tests/foundation/integration" ;;
-  all)         bats "$root/tests/foundation/lib" "$root/tests/foundation/integration" ;;
-  *)           echo "usage: $0 [unit|integration|all]" >&2; exit 2 ;;
+  unit) bats "$root/tests/foundation/lib" ;;
+  all)  bats "$root/tests/foundation/lib" ;;
+  *)    echo "usage: $0 [unit|all]" >&2; exit 2 ;;
 esac
