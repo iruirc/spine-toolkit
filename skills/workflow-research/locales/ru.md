@@ -7,7 +7,7 @@
 пустое обязательное поле
 
 ## invalid_research_agent
-Некорректный research agent. Ожидалось одно из значений: swift-architect, swift-diagnostics, swift-security.
+Некорректный `research_agent`. Ожидалось одно из значений: architect, diagnostics, security.
 
 ## status_cancelled_user_no
 Пользователь отказался продолжать (выбрал `Нет` в AUQ оркестратора)

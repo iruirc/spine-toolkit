@@ -6,9 +6,9 @@ set -euo pipefail
 #
 #   - meta is a literal with name, description, phases
 #   - meta.name is profile-<x> and collides with no skill directory
-#   - stage parity: every SKILL.md stage that names a role has a meta.phases entry, no
-#     meta.phases entry invents a stage the profile does not have, and a stage both sides
-#     own is owned by the same role on both
+#   - stage parity: every SKILL.md stage that names a role has a meta.phases entry, every
+#     meta.phases entry names a stage that exists and owns it by the same role in the skill,
+#     and the stages exempt from that are named in a list rather than by omission
 #   - every phase names the agent that runs its stage, and that map agrees both with what the
 #     script dispatches, in both directions, and with the script's own AGENT_OF copy
 #   - every agentType is A.agents.<role>, never a string literal, and <role> is in the core
@@ -27,6 +27,16 @@ import os, re, sys
 # Mirrors scripts/lint-manifest.sh's ROLES — the vocabulary a platform's manifest and a
 # workflow script's dispatch both draw from.
 ROLES = 'architect developer tester reviewer refactorer validator security diagnostics init'.split()
+
+# (profile, stage) pairs the role-parity checks skip, because Method B runs them in the main
+# context: the script dispatches an agent only for want of a filesystem (REVIEW Auto-move, EPIC
+# Execute) or writes the final report inline (the six Done stages). Listing them is what makes a
+# stage bullet that LOST its `[role]` token a violation instead of a silent exemption.
+INLINE_UNDER_METHOD_B = {
+    ('bug', 'Done'), ('epic', 'Done'), ('feature', 'Done'),
+    ('refactor', 'Done'), ('research', 'Done'), ('test', 'Done'),
+    ('epic', 'Execute'), ('review', 'Auto-move'),
+}
 
 violations = []
 
@@ -174,14 +184,19 @@ for fname in files:
         violations.append(f'{path}: no mirroring skills/workflow-{profile}/SKILL.md with a "## 2. Stages" section')
     else:
         skill = f'skills/workflow-{profile}/SKILL.md'
+        exempt = {stage for prof, stage in INLINE_UNDER_METHOD_B if prof == profile}
+        for stale in sorted(s for s in exempt if s not in stages):
+            violations.append(f'{path}: INLINE_UNDER_METHOD_B exempts "{stale}", which is not a stage of {skill}')
         for missing in [s for s in roles_of if s not in titles]:
             violations.append(f'{path}: stage "{missing}" names a role in {skill} but has no meta.phases entry')
         for invented in [t for t in titles if t not in stages]:
             violations.append(f'{path}: meta.phases has "{invented}", which is not a stage of the {profile.upper()} profile')
+        # The anchor cannot be its own scope key: without this, deleting a stage's `[role]` token
+        # drops it out of every check below and the lint stays green.
+        for unowned in [t for t in titles if t in stages and t not in roles_of and t not in exempt]:
+            violations.append(f'{path}: stage "{unowned}" has a meta.phases entry but names no `[role]` in {skill} — restore the token, or add the stage to INLINE_UNDER_METHOD_B')
         # Stage-level parity, the direction the two lists above cannot see: a stage present on both
-        # sides whose owner was changed on one of them only. Scoped to stages the skill already
-        # marks as role-owned — a stage the skill runs inline (REVIEW's Auto-move: the script needs
-        # an agent only because its sandbox has no filesystem) names no role there by design.
+        # sides whose owner was changed on one of them only.
         for title in [t for t in titles if t in roles_of]:
             for role in sorted(roles_in(agents_by_phase.get(title, '')) - roles_of[title]):
                 violations.append(f'{path}: meta.phases["{title}"] is owned by role "{role}", which {skill} does not name for that stage')

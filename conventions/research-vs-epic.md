@@ -15,7 +15,7 @@ Both profiles can finish without writing application code. They are NOT redundan
 - Domain investigation: "how does ABC.Bank's new OpenBanking API differ from the old one"
 - Security audit: "OWASP audit of the new card-entry flow"
 
-**Shape:** `Research → [Review] → Done`. Single deliverable: `Research.md`. Agent: `swift-architect` (default) / `swift-diagnostics` (audits) / `swift-security` (security audits).
+**Shape:** `Research → [Review] → Done`. Single deliverable: `Research.md`. Role: `architect` (default) / `diagnostics` (audits) / `security` (security audits).
 
 **Status folder:** orthogonal — typically `ACTIVE/` while running, `DONE/` when finished. May live in `RESEARCH/` if the team uses that folder as a parking lot for long-running investigations.
 
