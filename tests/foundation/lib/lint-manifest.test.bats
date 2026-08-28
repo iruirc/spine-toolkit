@@ -4,7 +4,9 @@
 # roles stay inside the core vocabulary, every named agent has a file, every
 # fan-out row can match something, and an Entrypoints skill other than '—'
 # resolves. Topics content is deliberately not checked (see the script's header
-# comment).
+# comment). The reference fixture is the only manifest core's own suite runs
+# this against — a real platform runs it from its own suite, against its own
+# vendored copy, so nothing here reaches a tree core will not be extracted with.
 
 setup() {
   # BATS_TEST_FILENAME, not BASH_SOURCE[0]: bats sources a preprocessed copy of
@@ -19,11 +21,6 @@ teardown() { rm -rf "$TMP"; }
 
 @test "passes on the fixture platform" {
   run "$LINT" "$TMP/p"
-  [ "$status" -eq 0 ]
-}
-
-@test "passes on the real swift-platform manifest" {
-  run "$LINT" "$ROOT/../platform"
   [ "$status" -eq 0 ]
 }
 

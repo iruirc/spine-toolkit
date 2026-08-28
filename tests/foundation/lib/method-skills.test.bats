@@ -4,6 +4,10 @@
 # are the platform's, listed in its manifest `## Topics`, and a name written back
 # into core re-binds core to one ecosystem — silently, because it still reads
 # fine on an Apple project.
+#
+# That a given platform answers all nine topics is that platform's assertion, in
+# its own suite: core owns the vocabulary, not the coverage, and a core test that
+# opened the sibling tree to check it would not survive core being extracted.
 
 setup() {
   # BATS_TEST_FILENAME, not BASH_SOURCE[0]: bats sources a preprocessed copy of
@@ -66,23 +70,4 @@ setup() {
     grep -q 'conventions/platform-contract.md' "$ROOT/skills/$s/SKILL.md" \
       || { echo "$s does not point at the contract that resolves topics"; return 1; }
   done
-}
-
-@test "every topic core names has a row in the installed platform's manifest" {
-  # The sibling tree, the way lint-manifest.test.bats already reaches it: a bats
-  # path is not a backticked path in prose, so it is outside the cross-plugin
-  # path guard by design. This closes the half of the binding that is closable —
-  # core naming `deep links` while the platform spells the row `deeplinks`
-  # resolves to nothing, and reads fine on both sides. The other half is not
-  # closable: core inventing a tenth topic no platform answers passes every
-  # lexical check there is.
-  M="$ROOT/../platform/skills/manifest/SKILL.md"
-  [ -f "$M" ]
-  rows="$(sed -n '/^## Topics/,/^## Entrypoints/p' "$M")"
-  missing=""
-  IFS='|' read -r -a topics <<<"$TOPICS"
-  for t in "${topics[@]}"; do
-    grep -qE "^${t}[[:space:]]*→" <<<"$rows" || missing="$missing '$t'"
-  done
-  [ -z "$missing" ] || { echo "topic named by core with no row in swift-platform:$missing"; return 1; }
 }
