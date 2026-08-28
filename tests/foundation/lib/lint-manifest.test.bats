@@ -1,9 +1,10 @@
 #!/usr/bin/env bats
 # lint-manifest.sh validates a platform manifest against the spine-toolkit
 # contract: the five tables present, every core role mapped or declared absent,
-# roles stay inside the core vocabulary, every named agent has a file, and an
-# Entrypoints skill other than '—' resolves. Topics content is deliberately not
-# checked (see the script's header comment).
+# roles stay inside the core vocabulary, every named agent has a file, every
+# fan-out row can match something, and an Entrypoints skill other than '—'
+# resolves. Topics content is deliberately not checked (see the script's header
+# comment).
 
 setup() {
   # BATS_TEST_FILENAME, not BASH_SOURCE[0]: bats sources a preprocessed copy of
@@ -112,4 +113,49 @@ teardown() { rm -rf "$TMP"; }
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
   [[ "$output" == *"setup"* ]]
+}
+
+@test "fails when a role fans out on ecosystem" {
+  # The one axis stack-detect excludes from detection, so the row matches on no
+  # project ever: the role falls through to '—' forever and the only symptom is
+  # a stage announcing a deviation. Nothing at runtime distinguishes it from a
+  # platform that meant to declare the role absent.
+  perl -i -pe 's/^developer\[widget=alpha\]/developer[ecosystem=fixture]/' "$TMP/p/skills/manifest/SKILL.md"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"ecosystem"* ]]
+}
+
+@test "fails when a role fans out on an axis the manifest does not declare" {
+  perl -i -pe 's/^developer\[widget=alpha\]/developer[gadget=alpha]/' "$TMP/p/skills/manifest/SKILL.md"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"gadget"* ]]
+}
+
+@test "fails when a fan-out value is not one the axis lists" {
+  perl -i -pe 's/^developer\[widget=alpha\]/developer[widget=gamma]/' "$TMP/p/skills/manifest/SKILL.md"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"gamma"* ]]
+}
+
+@test "fails on two Roles rows with the same left-hand side" {
+  # Core reads the first and the rest are dead. Undecidable in general — two
+  # different qualifiers can still both match one stack — but an exact repeat is
+  # decidable, and it is the one an author actually writes.
+  perl -i -pe 's/^developer\[widget=beta\] /developer[widget=alpha] /' "$TMP/p/skills/manifest/SKILL.md"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"duplicate"* ]]
+}
+
+@test "a broken fan-out row is reported with its qualifier, not just its role" {
+  # Two fan-out rows, one of them empty: the bare role name appears in both, so
+  # without the qualifier the message does not say which row to fix.
+  perl -i -pe 's/^developer\[widget=beta\]  = fixture-platform:fixture-architect/developer[widget=beta]  = /' \
+    "$TMP/p/skills/manifest/SKILL.md"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"developer[widget=beta]"* ]]
 }

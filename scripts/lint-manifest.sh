@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Checks a platform plugin's manifest skill against the spine-toolkit contract.
 # Validates the five tables' presence, Roles content (vocabulary, named agents
-# exist) and Entrypoints content (a named skill exists). Topics content is NOT
+# exist, fan-out rows that core can actually match, no duplicate left-hand
+# sides) and Entrypoints content (a named skill exists). Topics content is NOT
 # checked here — a manifest may name topic skills that don't resolve within its
 # own plugin as a teaching device (see core/tests/fixtures/fixture-platform);
 # real platforms get their Topics checked by their own test suite. Entrypoints
@@ -49,13 +50,66 @@ while read -r ref; do
     || { echo "manifest names an agent with no file: $ref"; violations=$((violations+1)); }
 done < <(grep -oE '[a-z][a-z-]*:[a-z][a-z-]*' <<<"$assignments" | sort -u)
 
+# `## Axes` shares the `name = value` grammar, so the window is bounded the same way
+# the Roles one is. Its keys are what the fan-out checks below are decided against:
+# core resolves an axis-qualified row only for an axis stack-detect returns, which is
+# every declared axis except `ecosystem` (excluded from detection by construction).
+axes_block=$(sed -n '/^## Axes/,/^## /p' "$manifest")
+axes=$(grep -E '^[a-z][a-z-]*[[:space:]]*=' <<<"$axes_block" || true)
+
+trim() { local v="$1"; v="${v#"${v%%[![:space:]]*}"}"; printf '%s' "${v%"${v##*[![:space:]]}"}"; }
+
+# A fan-out row that can never match resolves the role to '—' on every task of every
+# project, and the only symptom is a stage announcing a deviation. Three ways to write
+# one, all decidable here. Duplicates are the fourth: core takes the first row and the
+# rest are dead, which no runtime signal distinguishes from a typo in the value.
+seen=""
+while IFS= read -r line; do
+  [ -n "$line" ] || continue
+  [[ "$line" =~ ^([a-z][a-z-]*)(\[[^]]*\])?[[:space:]]*= ]] || continue
+  lhs="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+  if grep -qxF "$lhs" <<<"$seen"; then
+    echo "duplicate Roles row (core reads the first; the rest are dead): $lhs"
+    violations=$((violations+1))
+  fi
+  seen="$seen$lhs"$'\n'
+
+  [[ "$line" =~ ^[a-z][a-z-]*\[([^]=]*)=([^]]*)\] ]] || continue
+  axis=$(trim "${BASH_REMATCH[1]}")
+  value=$(trim "${BASH_REMATCH[2]}")
+  if [ "$axis" = "ecosystem" ]; then
+    echo "fan-out on 'ecosystem', which core never resolves — the row can never match: $lhs"
+    violations=$((violations+1))
+    continue
+  fi
+  # `|| true`: an axis with no row makes grep exit 1, and under `pipefail` that would
+  # abort the whole script here — the very case this branch exists to report.
+  allowed=$(grep -E "^$axis[[:space:]]*=" <<<"$axes" | head -1 | sed 's/^[^=]*=//' || true)
+  if [ -z "$(trim "$allowed")" ]; then
+    echo "fan-out on an axis '## Axes' does not declare: $lhs"
+    violations=$((violations+1))
+    continue
+  fi
+  found=0
+  IFS=',' read -ra allowed_values <<<"$allowed"
+  for v in "${allowed_values[@]}"; do
+    [ "$(trim "$v")" = "$value" ] && found=1
+  done
+  [ "$found" -eq 1 ] || {
+    echo "fan-out on a value '## Axes' does not list for '$axis': $lhs"
+    violations=$((violations+1))
+  }
+done <<<"$assignments"
+
 # A role line's RHS must be an em-dash (declared absent) or a plugin:agent
 # reference — not empty. `role =` with nothing after it is neither a mapping
 # nor an explicit absence; the two are indistinguishable to core at runtime,
 # so this is the only place the difference can be caught.
 while IFS= read -r line; do
   [[ "$line" =~ ^([a-z][a-z-]*)(\[[^]]+\])?[[:space:]]*=[[:space:]]*(.*)$ ]] || continue
-  role_name="${BASH_REMATCH[1]}"
+  # The qualifier belongs in the message: a role with several fan-out rows reports the
+  # same name from each of them, and the bare name does not say which row is broken.
+  role_name="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
   rhs="${BASH_REMATCH[3]}"
   rhs="${rhs%"${rhs##*[![:space:]]}"}"  # trim trailing whitespace
   case "$rhs" in
