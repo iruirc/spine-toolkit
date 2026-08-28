@@ -4,10 +4,12 @@
 # ever has, so every consumer of it silently takes its absent branch — which is
 # how `## Platform` spent three tasks being read from a file nothing wrote it to.
 #
-# The last test closes the reference class the cross-plugin greps cannot see: a
-# bare relative path resolves under the naming plugin's own root, so a path that
-# belongs to the other plugin simply finds nothing and no `core/` or `platform/`
-# prefix ever appears for a grep to catch.
+# The last two close the reference classes a prose grep cannot see. A bare
+# relative path resolves under the naming plugin's own root, so a path belonging
+# to the other plugin simply finds nothing and carries no prefix to grep for. And
+# a path written from the monorepo root reaches the sibling tree without ever
+# spelling a trailing slash, which is how two bats files kept core's suite bound
+# to platform/ for twelve tasks.
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
@@ -52,10 +54,14 @@ catalog_words() {
   missing=""
   for p in $(grep -rhoE '`[A-Za-z_][A-Za-z0-9_.-]*/[^` ]*`' "$ROOT" \
                --include='*.md' --include='*.sh' --include='*.js' \
+               --include='*.bats' --include='*.zsh' \
                --exclude-dir=fixtures \
              | tr -d '`' | sort -u); do
     case "$p" in
       skills/*|agents/*|commands/*|conventions/*|templates/*|hooks/*|scripts/*|tests/*|workflows/*) ;;
+      # A monorepo-root prefix is a path this plugin does not have: it resolves
+      # nowhere once core is a repo of its own, and nowhere here either.
+      core/*) ;;
       *) continue ;;
     esac
     # bash 3.2's `compgen -G` succeeds on any pattern ending in `/`, existing or not,
@@ -65,4 +71,14 @@ catalog_words() {
       || missing="$missing $p"
   done
   [ -z "$missing" ] || { echo "path(s) that do not resolve under core:$missing"; return 1; }
+}
+
+@test "no file in core names the platform tree by a filesystem path" {
+  # `$ROOT/../platform` has no trailing slash, so the prescribed `platform/` grep
+  # walks straight past it — which is how two of these survived twelve reviews.
+  # `git filter-repo --path core` turns every one of them into a dangling path
+  # with no sibling tree left to restore.
+  offenders="$(grep -rnE '(\.\./platform([^A-Za-z0-9_-]|$)|(^|[^A-Za-z0-9_.-])platform/)' "$ROOT" \
+    | grep -vF 'project-config.test.bats' || true)"
+  [ -z "$offenders" ] || { echo "core reference(s) to the platform tree:"; echo "$offenders"; return 1; }
 }
