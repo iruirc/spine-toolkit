@@ -13,7 +13,7 @@
     {"type": "workflow_phase", "index": 3, "title": "Refactor"},
     {"type": "workflow_agent", "index": 1, "label": "analyze", "phaseIndex": 1,
      "phaseTitle": "Analyze", "agentId": "e0000000000000001",
-     "agentType": "swift-toolkit:swift-architect", "model": "claude-opus-5",
+     "agentType": "swift-platform:swift-architect", "model": "claude-opus-5",
      "state": "done", "startedAt": 1787220000062, "lastProgressAt": 1787220064000,
      "lastToolName": "Write", "tokens": 120000, "toolCalls": 18,
      "durationMs": 64000}

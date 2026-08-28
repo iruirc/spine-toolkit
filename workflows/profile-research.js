@@ -2,7 +2,7 @@ export const meta = {
   name: 'profile-research',
   description: 'RESEARCH profile pipeline: one investigation agent chosen per research_agent, an optional review of the research quality, Done',
   whenToUse:
-    'Dispatched by swift-toolkit:orchestrator for a task with [TASK_TYPE]=RESEARCH, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
+    'Dispatched by spine-toolkit:orchestrator for a task with [TASK_TYPE]=RESEARCH, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
     { title: 'Research', detail: 'architect, diagnostics or security, per research_agent; writes Research.md and changes no code', agent: 'per research_agent: architect, diagnostics or security' },
     { title: 'Review', detail: 'judges the research, not the codebase', agent: 'reviewer' },
@@ -44,7 +44,7 @@ if (!A || typeof A !== 'object' || !A.task_id || !A.task_dir) {
   return {
     status: 'error',
     reason: 'no-args',
-    next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through swift-toolkit:orchestrator, or fall back to the matching swift-toolkit:workflow-* skill. Do not execute the stages by hand.',
+    next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through spine-toolkit:orchestrator, or fall back to the matching spine-toolkit:workflow-* skill. Do not execute the stages by hand.',
   }
 }
 if (!A.agents || typeof A.agents !== 'object') {
@@ -291,7 +291,7 @@ const writeWalkthrough = async (stage, extra) => {
   const w = await agent(
     brief(
       stage,
-      `Write or refresh ${DIR}/Walkthrough.md by applying the swift-toolkit:task-walkthrough skill, which owns the section list, the per-section length budgets and the refresh rules. Read it first.
+      `Write or refresh ${DIR}/Walkthrough.md by applying the spine-toolkit:task-walkthrough skill, which owns the section list, the per-section length budgets and the refresh rules. Read it first.
 
 Derive the account from git — the task's own commits, git log over the range and git show for what each one carries — reconciled against ${DIR}/Plan.md. The plan is intent, the commits are fact, and the divergences between them, each labelled with its trigger, are what this artifact exists for. The second line is required to be exactly:
 
@@ -311,18 +311,19 @@ Change no production code and no tests.`,
 // ── end prelude ──────────────────────────────────────────────────────────────
 
 // ── Research ────────────────────────────────────────────────────────────────
-// research_agent carries a BARE agent name. An unknown value is rejected rather than quietly
+// research_agent carries a bare role name. An unknown value is rejected rather than quietly
 // replaced by the default: a research task pointed at the wrong specialist returns the wrong
-// kind of answer, and doing that silently is worse than refusing.
-const RESEARCH_AGENTS = ['swift-architect', 'swift-diagnostics', 'swift-security']
-const ROLE_OF = { 'swift-architect': 'architect', 'swift-diagnostics': 'diagnostics', 'swift-security': 'security' }
+// kind of answer, and doing that silently is worse than refusing. The table is an identity map on
+// purpose — it is the whitelist, and it is what tells scripts/lint-workflows.sh which roles this
+// profile can dispatch.
+const ROLE_OF = { architect: 'architect', diagnostics: 'diagnostics', security: 'security' }
 
 if (runs('Research')) {
-  const picked = A.research_agent || 'swift-architect'
-  if (!RESEARCH_AGENTS.includes(picked)) {
+  const picked = A.research_agent || 'architect'
+  if (!ROLE_OF[picked]) {
     return finish('stop', {
       status: 'error',
-      reason: `research_agent "${picked}" is not one of ${RESEARCH_AGENTS.join(', ')}`,
+      reason: `research_agent "${picked}" is not one of ${Object.keys(ROLE_OF).join(', ')}`,
     })
   }
   if (!need('Research', ROLE_OF[picked])) return finish('ask_user')

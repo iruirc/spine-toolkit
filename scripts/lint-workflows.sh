@@ -6,8 +6,9 @@ set -euo pipefail
 #
 #   - meta is a literal with name, description, phases
 #   - meta.name is profile-<x> and collides with no skill directory
-#   - stage parity: every SKILL.md stage that names an agent has a meta.phases entry,
-#     and no meta.phases entry invents a stage the profile does not have
+#   - stage parity: every SKILL.md stage that names a role has a meta.phases entry, no
+#     meta.phases entry invents a stage the profile does not have, and a stage both sides
+#     own is owned by the same role on both
 #   - every phase names the agent that runs its stage, and that map agrees both with what the
 #     script dispatches, in both directions, and with the script's own AGENT_OF copy
 #   - every agentType is A.agents.<role>, never a string literal, and <role> is in the core
@@ -33,8 +34,17 @@ def strip_comments(src):
     src = re.sub(r'/\*.*?\*/', '', src, flags=re.S)
     return re.sub(r'(?m)^\s*//.*$', '', src)
 
+def roles_in(text):
+    """The core roles a piece of prose names, matched whole-word."""
+    return {role for role in ROLES if re.search(rf'\b{role}\b', text)}
+
 def skill_stages(profile):
-    """Stage bullets under '## 2. Stages' in the mirroring skill, and which name an agent."""
+    """Stage bullets under '## 2. Stages' in the mirroring skill, and the roles each one owns.
+
+    A stage names its owner as a bracketed role, `[architect]`. That token is the anchor: it
+    separates a stage that owns work from one that mentions a role in passing, and dropping it
+    turns the parity checks below into a silent no-op.
+    """
     path = f'skills/workflow-{profile}/SKILL.md'
     if not os.path.exists(path):
         return None, None
@@ -42,13 +52,14 @@ def skill_stages(profile):
     m = re.search(r'^## 2\. Stages\s*$(.*?)(?=^## )', text, flags=re.M | re.S)
     if not m:
         return None, None
-    stages, with_agent = [], []
+    stages, roles_of = [], {}
     for bullet in re.finditer(r'^- \*\*([^*]+)\*\*(.*?)(?=^- \*\*|\Z)', m.group(1), flags=re.M | re.S):
         name, body = bullet.group(1).strip(), bullet.group(2)
         stages.append(name)
-        if 'swift-toolkit:swift-' in body:
-            with_agent.append(name)
-    return stages, with_agent
+        named = {role for role in ROLES if re.search(rf'\[{role}\]', body)}
+        if named:
+            roles_of[name] = named
+    return stages, roles_of
 
 preludes = {}
 files = sorted(f for f in os.listdir('workflows') if f.endswith('.js'))
@@ -115,7 +126,7 @@ for fname in files:
     # word-boundary match against the vocabulary rather than by a naming pattern.
     named = set()
     for spec in agents_by_phase.values():
-        named.update(role for role in ROLES if re.search(rf'\b{role}\b', spec))
+        named.update(roles_in(spec))
 
     # Every A.agents.<role> in the script, wherever it appears — a per-phase agent reaches
     # runPhases inside a { code, test } map, and that is the copy most likely to be forgotten.
@@ -158,14 +169,22 @@ for fname in files:
         if drift:
             violations.append(f'{path}: AGENT_OF and meta.phases[].agent disagree on: {", ".join(drift)}')
 
-    stages, with_agent = skill_stages(profile)
+    stages, roles_of = skill_stages(profile)
     if stages is None:
         violations.append(f'{path}: no mirroring skills/workflow-{profile}/SKILL.md with a "## 2. Stages" section')
     else:
-        for missing in [s for s in with_agent if s not in titles]:
-            violations.append(f'{path}: stage "{missing}" names an agent in the skill but has no meta.phases entry')
+        skill = f'skills/workflow-{profile}/SKILL.md'
+        for missing in [s for s in roles_of if s not in titles]:
+            violations.append(f'{path}: stage "{missing}" names a role in {skill} but has no meta.phases entry')
         for invented in [t for t in titles if t not in stages]:
             violations.append(f'{path}: meta.phases has "{invented}", which is not a stage of the {profile.upper()} profile')
+        # Stage-level parity, the direction the two lists above cannot see: a stage present on both
+        # sides whose owner was changed on one of them only. Scoped to stages the skill already
+        # marks as role-owned — a stage the skill runs inline (REVIEW's Auto-move: the script needs
+        # an agent only because its sandbox has no filesystem) names no role there by design.
+        for title in [t for t in titles if t in roles_of]:
+            for role in sorted(roles_in(agents_by_phase.get(title, '')) - roles_of[title]):
+                violations.append(f'{path}: meta.phases["{title}"] is owned by role "{role}", which {skill} does not name for that stage')
 
     for token, why in (
         ('Date.now(', 'rejected by the workflow validator'),

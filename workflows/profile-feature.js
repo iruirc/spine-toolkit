@@ -2,7 +2,7 @@ export const meta = {
   name: 'profile-feature',
   description: 'FEATURE profile pipeline: Research, Plan behind an estimation gate, per-phase Execute, Validation, Review, Done',
   whenToUse:
-    'Dispatched by swift-toolkit:orchestrator for a task with [TASK_TYPE]=FEATURE, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
+    'Dispatched by spine-toolkit:orchestrator for a task with [TASK_TYPE]=FEATURE, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
     { title: 'Research', detail: 'security lens, then the architect writes Requirements and Landscape', agent: 'security lens, then architect' },
     { title: 'Plan', detail: 'phase table, per-phase checkboxes, and the estimation gate', agent: 'architect' },
@@ -50,7 +50,7 @@ if (!A || typeof A !== 'object' || !A.task_id || !A.task_dir) {
   return {
     status: 'error',
     reason: 'no-args',
-    next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through swift-toolkit:orchestrator, or fall back to the matching swift-toolkit:workflow-* skill. Do not execute the stages by hand.',
+    next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through spine-toolkit:orchestrator, or fall back to the matching spine-toolkit:workflow-* skill. Do not execute the stages by hand.',
   }
 }
 if (!A.agents || typeof A.agents !== 'object') {
@@ -297,7 +297,7 @@ const writeWalkthrough = async (stage, extra) => {
   const w = await agent(
     brief(
       stage,
-      `Write or refresh ${DIR}/Walkthrough.md by applying the swift-toolkit:task-walkthrough skill, which owns the section list, the per-section length budgets and the refresh rules. Read it first.
+      `Write or refresh ${DIR}/Walkthrough.md by applying the spine-toolkit:task-walkthrough skill, which owns the section list, the per-section length budgets and the refresh rules. Read it first.
 
 Derive the account from git — the task's own commits, git log over the range and git show for what each one carries — reconciled against ${DIR}/Plan.md. The plan is intent, the commits are fact, and the divergences between them, each labelled with its trigger, are what this artifact exists for. The second line is required to be exactly:
 

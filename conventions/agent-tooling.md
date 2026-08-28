@@ -19,11 +19,12 @@ one or more bounded questions with options.
 ## Subagent Dispatch
 
 `subagent dispatch` means the active host's mechanism for running a unit of work in a separate
-agent context — the Task tool with `subagent_type=swift-toolkit:<name>` in Claude Code.
+agent context — the Task tool with `subagent_type=<plugin>:<agent>` in Claude Code.
 
-- Every `workflow-*` stage that names an agent is dispatched this way. The contract, including
-  what to do when the host offers no such mechanism, is `conventions/stage-dispatch.md`.
-- Some hosts carry a standing instruction not to spawn subagents unasked. A swift-toolkit command
+- Every `workflow-*` stage that names a role is dispatched this way, to the agent that role
+  resolved to. The contract, including what to do when the host offers no such mechanism, is
+  `conventions/stage-dispatch.md`.
+- Some hosts carry a standing instruction not to spawn subagents unasked. A spine-toolkit command
   is the user asking; that skill's own text says so.
 
 ## File Access
@@ -37,14 +38,18 @@ active host's approved way to read, create, or patch files.
 - For Markdown artifacts parsed by the toolkit, preserve structural anchors from
   `conventions/i18n.md`.
 
-## Toolkit Root And Templates
+## Plugin Roots And Templates
 
-`toolkit root` means the directory that contains this repository's `skills/`,
-`templates/`, and `conventions/` directories.
+Two plugins ship `skills/` and `templates/`, so "the toolkit's directory" names nothing on its
+own. Each root is identified by what only it carries:
 
-When a skill needs a bundled template, search in this order:
+- `core root` — the directory that contains `workflows/` and `skills/orchestrator/`.
+- `platform root` — the directory that contains `agents/` and `skills/manifest/`.
 
-1. `<toolkit-root>/templates/...`
+A template belongs to exactly one plugin. Resolve it against that plugin's root, in this order:
+
+1. `<root>/templates/...`, where `<root>` is the core root for a core template and the platform
+   root for a platform one.
 2. Installed plugin/cache paths exposed by the active host.
 3. Claude Code compatibility paths such as `~/.claude/plugins/...`.
 

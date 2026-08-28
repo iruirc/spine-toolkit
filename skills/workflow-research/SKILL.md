@@ -1,7 +1,7 @@
 ---
 name: workflow-research
 description: |
-  RESEARCH profile workflow: Research → [Review] → Done. Pure-investigation profile for audits, feasibility studies, comparative analyses, and domain investigations. NO code changes. Activated by swift-toolkit:orchestrator; not invoked by the user directly.
+  RESEARCH profile workflow: Research → [Review] → Done. Pure-investigation profile for audits, feasibility studies, comparative analyses, and domain investigations. NO code changes. Activated by spine-toolkit:orchestrator; not invoked by the user directly.
   Use when (en): orchestrator dispatches a task with [TASK_TYPE]=RESEARCH
   Use when (ru): оркестратор диспетчеризует задачу с [TASK_TYPE]=RESEARCH
 stack_axes_envelope: { may: [], never: all }
@@ -9,7 +9,7 @@ stack_axes_envelope: { may: [], never: all }
 
 # Workflow Research
 
-This skill is **Method B** for the RESEARCH profile: it runs the stages when the host has no Workflow tool. `workflows/profile-research.js` is Method A and runs the same stages as code. The orchestrator picks between them (see `swift-toolkit:orchestrator` → **Dispatch**), and `scripts/lint-workflows.sh` fails if the two stage lists drift apart. Edit a stage here and the script needs the same edit.
+This skill is **Method B** for the RESEARCH profile: it runs the stages when the host has no Workflow tool. `workflows/profile-research.js` is Method A and runs the same stages as code. The orchestrator picks between them (see `spine-toolkit:orchestrator` → **Dispatch**), and `scripts/lint-workflows.sh` fails if the two stage lists drift apart. Edit a stage here and the script needs the same edit.
 
 The profile workflow for tasks with `[TASK_TYPE] = RESEARCH`. Pure investigation: produces `Research.md` (the final artifact), optionally goes through `Review`, then `Done`. NO implementation, NO tests, NO Plan stage — the research IS the deliverable. The skill receives an already-resolved contract from the orchestrator and does not try to re-resolve any parameter on its own.
 
@@ -30,9 +30,9 @@ Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-swift
 
 ## 1. Input Contract
 
-The skill is invoked by `swift-toolkit:orchestrator` via the `Skill` tool with structured `args` in `key=value` form, separated only by newlines.
+The skill is invoked by `spine-toolkit:orchestrator` via the `Skill` tool with structured `args` in `key=value` form, separated only by newlines.
 
-The field structure is documented in `swift-toolkit:orchestrator` (section **Outbound Contract**). Workflow-research accepts every field already filled — invariant.
+The field structure is documented in `spine-toolkit:orchestrator` (section **Outbound Contract**). Workflow-research accepts every field already filled — invariant.
 
 If a required field arrives empty — workflow-research does not try to recover. It returns `{status: error, reason: status_error_empty_required_field}` (the `reason` value is taken from a locale key) back to the orchestrator.
 
@@ -42,13 +42,13 @@ RESEARCH-profile specifics:
 - `stage_scope` — `single` / `forward` / `all` (same semantics as other workflows).
 - `start_phase` — not used (Research has no phases in this profile).
 - `need_test` — ignored: research profile produces no code → no tests applicable. Workflow-research treats it as `false` regardless of the contract value.
-- `need_review` — gates the inclusion of `swift-toolkit:swift-reviewer` over `Research.md`. Default `true` (set by the orchestrator from `[NEED_REVIEW]` in `Task.md`).
+- `need_review` — gates the inclusion of `[reviewer]` over `Research.md`. Default `true` (set by the orchestrator from `[NEED_REVIEW]` in `Task.md`).
 - `task_dir` — the resolved task folder; every artifact this profile writes lands there.
 - `mode` — `manual` / `auto` (see sections 3 and 4).
 - `stack` — see envelope (`never: all`) below.
 - `lang` — project language for `Research.md` / `Review.md` / `Done.md` prose + the final report; artifact structure stays EN. See `conventions/i18n.md` → "Artifact authoring rule".
 - `archive_paths` — paths to backups already created by the orchestrator.
-- `research_agent` — **RESEARCH-specific optional field** (added in the orchestrator's Outbound Contract for this profile only). Values are BARE agent names: `swift-architect` (default) | `swift-diagnostics` | `swift-security`. Workflow-research resolves the bare name to the prefixed form `swift-toolkit:<name>` at dispatch time, mirroring how `[TASK_TYPE]` carries `FEATURE` rather than `swift-toolkit:workflow-feature`. If unset or empty → fall back to `swift-architect`. If set to any other value → return `{status: error, reason: invalid_research_agent}` before dispatching a subagent.
+- `research_agent` — **RESEARCH-specific optional field** (added in the orchestrator's Outbound Contract for this profile only). Values are BARE role names: `architect` (default) | `diagnostics` | `security`. Workflow-research resolves the role through the contract's `agents` map at dispatch time, mirroring how `[TASK_TYPE]` carries `FEATURE` rather than `spine-toolkit:workflow-feature`. If unset or empty → fall back to `architect`. If set to any other value → return `{status: error, reason: invalid_research_agent}` before dispatching a subagent.
 
 **Stack envelope.** `stack_axes_envelope: { may: [], never: all }` — same as REVIEW and EPIC. The project `## Stack` from `CLAUDE-swift-toolkit.md` is read raw as ambient context; no per-axis chain, no AUQ.
 
@@ -61,9 +61,9 @@ RESEARCH-profile specifics:
 
 ## 2. Stages
 
-A stage that names an agent is executed by that agent. Dispatch it per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage that skips its agent says so before it starts.
+A stage names its owner as a role in brackets — `[architect]`, `[developer]`. Which agent a role means arrives in the contract's `agents` map; dispatch that agent per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage whose role resolved to `—` says so before it starts.
 
-- **Research** — agent selected per `research_agent` (default `swift-toolkit:swift-architect`; alternatives `swift-toolkit:swift-diagnostics` for code-audit / inventory tasks; `swift-toolkit:swift-security` for security-audit tasks). Artifact: `Research.md` in the task folder. Goal: investigation, inventory, classification, comparative analysis, or feasibility verdict — depending on the Task.md description.
+- **Research** — agent selected per `research_agent` (default `[architect]`; alternatives `[diagnostics]` for code-audit / inventory tasks; `[security]` for security-audit tasks). Artifact: `Research.md` in the task folder. Goal: investigation, inventory, classification, comparative analysis, or feasibility verdict — depending on the Task.md description.
 
   **Output shape (mandatory headings):**
   - `## Goal` — what the research must answer (one paragraph).
@@ -71,9 +71,9 @@ A stage that names an agent is executed by that agent. Dispatch it per `conventi
   - `## Findings` — the bulk of the artifact (free-form: tables, inventories, classifications, trade-off matrices — whatever the kind requires).
   - `## Follow-up` — list of concrete follow-up tasks (each as a one-liner the user can paste into `task-new`). For an audit-style RESEARCH this section often produces N BUG / REFACTOR tasks. **CRITICAL — DO NOT TRANSLATE THE HEADING.** The heading is the byte-for-byte literal `## Follow-up`. The bullet items below it follow the user's natural language.
 
-  Research-only invariant: the agent MUST NOT modify any source code or write any non-artifact files. If `swift-architect`/`swift-diagnostics`/`swift-security` is tempted to propose a fix inline, it should instead enumerate the proposed fix as a follow-up task under `## Follow-up`.
+  Research-only invariant: the agent MUST NOT modify any source code or write any non-artifact files. If the research agent is tempted to propose a fix inline, it should instead enumerate the proposed fix as a follow-up task under `## Follow-up`.
 
-- **Review** — `swift-toolkit:swift-reviewer` (only if `need_review=true`). Artifact: `Review.md`, **mandatory first line** `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (shared contract). The reviewer evaluates `Research.md` for: coverage of the stated goal, soundness of method, internal consistency of the findings, actionability of the follow-up list. **Critically — the reviewer does NOT validate the technical accuracy of the findings against the codebase**; that is the Research agent's domain. The reviewer judges only research quality.
+- **Review** — `[reviewer]` (only if `need_review=true`). Artifact: `Review.md`, **mandatory first line** `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (shared contract). The reviewer evaluates `Research.md` for: coverage of the stated goal, soundness of method, internal consistency of the findings, actionability of the follow-up list. **Critically — the reviewer does NOT validate the technical accuracy of the findings against the codebase**; that is the Research agent's domain. The reviewer judges only research quality.
 
 - **Done** — final report `Done.md`: what was investigated, the verdict / key finding (one paragraph), pointer to `Research.md`, count and brief list of follow-up tasks (with `task-new` invocation hints).
 

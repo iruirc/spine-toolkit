@@ -1,7 +1,7 @@
 export const meta = {
   name: 'probe',
-  description: 'Smoke test for the runtime facts a swift-toolkit profile workflow depends on: args delivery, the budget global, and plugin-namespaced agentType resolution',
-  whenToUse: 'Manual smoke test only, run by a maintainer via Workflow({scriptPath}). It lives under tests/ rather than workflows/ so it is never registered as /swift-toolkit:probe in a user session.',
+  description: 'Smoke test for the runtime facts a spine-toolkit profile workflow depends on: args delivery, the budget global, and plugin-namespaced agentType resolution',
+  whenToUse: 'Manual smoke test only, run by a maintainer via Workflow({scriptPath}). It lives under tests/ rather than workflows/ so it is never registered as /spine-toolkit:probe in a user session.',
   phases: [
     { title: 'Echo', detail: 'one bounded agent; proves agentType resolves and a schema is enforced' },
   ],
@@ -37,7 +37,7 @@ const echo = await agent(
   {
     label: 'echo',
     phase: 'Echo',
-    agentType: 'swift-toolkit:swift-architect',
+    agentType: 'swift-platform:swift-architect',
     schema: {
       type: 'object',
       additionalProperties: false,

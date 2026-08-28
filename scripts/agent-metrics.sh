@@ -415,7 +415,7 @@ def first_prompt(path):
 
 
 def recover_from_prompt(run_dir, run):
-    # A run still in flight has no state file. But swift-toolkit writes its agents'
+    # A run still in flight has no state file. But spine-toolkit writes its agents.
     # prompts itself (workflows/profile-*.js), so parsing its own text back out is safe.
     for agent in run["agents"]:
         text = first_prompt(os.path.join(run_dir, "agent-%s.jsonl" % agent["agentId"]))

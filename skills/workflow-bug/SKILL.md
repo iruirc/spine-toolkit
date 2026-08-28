@@ -1,7 +1,7 @@
 ---
 name: workflow-bug
 description: |
-  BUG profile workflow: Reproduce → Diagnose → Plan → Fix → Validation → Review → Done. Activated by swift-toolkit:orchestrator; not invoked by the user directly.
+  BUG profile workflow: Reproduce → Diagnose → Plan → Fix → Validation → Review → Done. Activated by spine-toolkit:orchestrator; not invoked by the user directly.
   Use when (en): orchestrator dispatches a task with [TASK_TYPE]=BUG
   Use when (ru): оркестратор диспетчеризует задачу с [TASK_TYPE]=BUG
 stack_axes_envelope: { may: [ui, async, di, architecture, platform, tests], never: [] }
@@ -9,7 +9,7 @@ stack_axes_envelope: { may: [ui, async, di, architecture, platform, tests], neve
 
 # Workflow Bug
 
-This skill is **Method B** for the BUG profile: it runs the stages when the host has no Workflow tool. `workflows/profile-bug.js` is Method A and runs the same stages as code. The orchestrator picks between them (see `swift-toolkit:orchestrator` → **Dispatch**), and `scripts/lint-workflows.sh` fails if the two stage lists drift apart. Edit a stage here and the script needs the same edit.
+This skill is **Method B** for the BUG profile: it runs the stages when the host has no Workflow tool. `workflows/profile-bug.js` is Method A and runs the same stages as code. The orchestrator picks between them (see `spine-toolkit:orchestrator` → **Dispatch**), and `scripts/lint-workflows.sh` fails if the two stage lists drift apart. Edit a stage here and the script needs the same edit.
 
 The profile workflow for tasks with `[TASK_TYPE] = BUG`. Implements the sequence of stages; the result of each stage is an artifact file inside the task folder. The skill receives an already-resolved contract from the orchestrator and does not try to re-resolve any parameter on its own.
 
@@ -28,9 +28,9 @@ Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-swift
 
 ## 1. Input Contract
 
-The skill is invoked by `swift-toolkit:orchestrator` via the `Skill` tool with structured `args` in `key=value` form, separated only by newlines.
+The skill is invoked by `spine-toolkit:orchestrator` via the `Skill` tool with structured `args` in `key=value` form, separated only by newlines.
 
-The field structure is documented in `swift-toolkit:orchestrator` (section **Outbound Contract**). Workflow-bug accepts every field already filled — invariant.
+The field structure is documented in `spine-toolkit:orchestrator` (section **Outbound Contract**). Workflow-bug accepts every field already filled — invariant.
 
 If a required field arrives empty — workflow-bug does not try to recover. It returns `{status: error, reason: status_error_empty_required_field}` (the `reason` value is taken from the locale key in `locales/<lang>.md`) back to the orchestrator.
 
@@ -41,7 +41,7 @@ The fields that directly drive this workflow's behavior:
 - `mode` — `manual` / `auto` (see sections 3 and 4).
 - `stack` — passed to subagents as context.
 - `lang` — project language for artifact prose + the final report; artifact structure (headings, field labels, status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed through to every subagent.
-- `need_test`, `need_review` — gate the inclusion of `swift-toolkit:swift-tester` and `swift-toolkit:swift-reviewer`.
+- `need_test`, `need_review` — gate the inclusion of `[tester]` and `[reviewer]`.
 - `archive_paths` — paths to backups already created (the orchestrator made them BEFORE the call; workflow-bug does not create them).
 
 **Execution range.** Stages run in the order Reproduce → Diagnose → Plan → Fix → Validation → Review → Done, starting at `start_stage` and continuing through `end_stage` inclusive. If `end_stage=null` — through the end of the profile. If `end_stage` is set but precedes `start_stage` in order, that is a contract error: return `{status: error, reason: "end_stage before start_stage"}`.
@@ -53,21 +53,21 @@ The fields that directly drive this workflow's behavior:
 
 ## 2. Stages
 
-A stage that names an agent is executed by that agent. Dispatch it per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage that skips its agent says so before it starts.
+A stage names its owner as a role in brackets — `[architect]`, `[developer]`. Which agent a role means arrives in the contract's `agents` map; dispatch that agent per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage whose role resolved to `—` says so before it starts.
 
-- **Reproduce** — `swift-toolkit:swift-diagnostics`. Artifact: `Reproduce.md` (or a section in `Research.md`) with reproduction steps, a minimal reproducer, and the manifestation frequency (always / sometimes / under condition X). Goal: pin down a deterministic scenario that Validation can later rely on.
+- **Reproduce** — `[diagnostics]`. Artifact: `Reproduce.md` (or a section in `Research.md`) with reproduction steps, a minimal reproducer, and the manifestation frequency (always / sometimes / under condition X). Goal: pin down a deterministic scenario that Validation can later rely on.
 
   Apply the `feature-requirements` skill (Secondary checklist only) to enumerate which Secondary states the bug touches — error / loading / empty / offline / a11y / deeplink / push / i18n / analytics / lifecycle / cancellation. A bug often hides not in the happy path but in one of these states; explicit enumeration prevents "fixed the happy path, broke offline" regressions.
 
-- **Diagnose** — a panel: `swift-toolkit:swift-diagnostics` + `swift-toolkit:swift-architect` (via the Task tool, in parallel or sequentially as the orchestrator decides). Artifact: `Research.md` with root cause analysis, a map of affected components, an estimate of fix scope, and the related risks.
+- **Diagnose** — a panel: `[diagnostics]` + `[architect]` (via the Task tool, in parallel or sequentially as the orchestrator decides). Artifact: `Research.md` with root cause analysis, a map of affected components, an estimate of fix scope, and the related risks.
 
-- **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with **two layers of progress tracking**:
+- **Plan** — `[architect]`. Artifact: `Plan.md` with **two layers of progress tracking**:
   1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase, coarse-grained completion.
   2. **Per-phase detail section** for each phase — actionable items rendered as **markdown checkboxes** `- [ ] <item>`. Granularity: one checkbox per file to edit, per acceptance criterion, per regression-test case, per verification step. Granular enough to be ticked individually as the Fix stage progresses. Static prose (root-cause analysis, decisions) stays as plain bullets — only **action items** become checkboxes.
 
   The plan covers: the focused fix, a regression test (if `need_test=true`), and migration / compatibility steps if needed.
 
-- **Fix** — `swift-toolkit:swift-developer` + `swift-toolkit:swift-tester` (if `need_test=true` — for a bug, a regression test is mandatory: it locks in the scenario from `Reproduce.md` and prevents recurrence). Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without a user prompt.
+- **Fix** — `[developer]` + `[tester]` (if `need_test=true` — for a bug, a regression test is mandatory: it locks in the scenario from `Reproduce.md` and prevents recurrence). Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without a user prompt.
 
   Per-item flow inside a phase: complete one actionable item → tick its checkbox `- [ ]` → `- [x]` in the per-phase detail section of Plan.md. Per-phase flow: when all the phase's checkboxes are `- [x]` → build → run tests for the touched scope → flip the phase's row in the top-level progress table ⬜→✅ → `git add` the phase's files (including the Plan.md updates — both checkboxes and table) → `git commit`. Commit message format: **Conventional Commits** — `<type>(<scope>): <imperative subject>` followed by an optional body explaining WHY. For Fix-stage commits the type is usually `fix` (use `test` for the regression-test phase, `chore` for build/config-only). **NEVER include the task ID, step ID, phase number, or ticket number** — provenance lives in `Plan.md`, the branch name, and the PR description. Full spec + anti-examples in `conventions/commit-messages.md`. Example:
 
@@ -83,17 +83,17 @@ A stage that names an agent is executed by that agent. Dispatch it per `conventi
 
   **A phase is not "done" (✅ in the top table) until ALL its granular checkboxes are `- [x]` AND the phase is committed.** Partial completion stays at 🔄 in the top table with the un-ticked checkboxes still `- [ ]`. Artifacts: source code in the project + a regression test + the resulting commit history.
 
-  **Comment hygiene (hard rule, enforced by `swift-developer`):** NEVER embed task/phase/EPIC/bug references in production code comments (`// Bug123 fix`, `// EPIC X §Y Phase Z — …`, `// Fixes #042`). Bug provenance lives in the per-phase git commit message + `Reproduce.md` + the regression test name itself — duplicating it inline rots and crowds out the evergreen invariant the fix encodes. See `agents/swift-developer.md → ## Comment Policy`.
+  **Comment hygiene (hard rule, enforced by the `developer` agent):** NEVER embed task/phase/EPIC/bug references in production code comments (`// Bug123 fix`, `// EPIC X §Y Phase Z — …`, `// Fixes #042`). Bug provenance lives in the per-phase git commit message + `Reproduce.md` + the regression test name itself — duplicating it inline rots and crowds out the evergreen invariant the fix encodes. See the `developer` agent's `## Comment Policy`.
 
-  If `start_phase=<phase_id>` was passed in args — `swift-toolkit:swift-developer` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
+  If `start_phase=<phase_id>` was passed in args — `[developer]` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
-  When the stage's phases are done, apply `swift-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-swift-toolkit.md`, else `on`. Written by `swift-toolkit:swift-developer`.
+  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-swift-toolkit.md`, else `on`. Written by `[developer]`.
 
-- **Validation** — `swift-toolkit:swift-validator`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between `swift-validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the BUG profile, the validator runs XcodeBuildMCP `build_sim` + `test_sim` mandatorily AND mobile MCP mandatorily (regardless of layer) to replay the reproduction scenario from `Reproduce.md`. Validation is not considered PASSED without an explicit agent-composed statement that the bug no longer reproduces — surfaced in the return digest as `reproduction_status: fixed`. Detailed behavior (replay procedure, return-digest format) lives in `agents/swift-validator.md`. When `mobile_mcp` resolves to `off` (`Task.md [MOBILE_MCP]` first, then `CLAUDE-swift-toolkit.md ## Validation`), the replay is handed to the user like any other deferred check: `reproduction_status` comes back `deferred-manual`, the replay steps land in `ManualChecks.md` and its case titles in `manual_checks`, and the run continues with nothing claimed about the bug being fixed.
+- **Validation** — `[validator]`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between the `validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the BUG profile, the validator runs XcodeBuildMCP `build_sim` + `test_sim` mandatorily AND mobile MCP mandatorily (regardless of layer) to replay the reproduction scenario from `Reproduce.md`. Validation is not considered PASSED without an explicit agent-composed statement that the bug no longer reproduces — surfaced in the return digest as `reproduction_status: fixed`. Detailed behavior (replay procedure, return-digest format) lives with the `validator` agent. When `mobile_mcp` resolves to `off` (`Task.md [MOBILE_MCP]` first, then `CLAUDE-swift-toolkit.md ## Validation`), the replay is handed to the user like any other deferred check: `reproduction_status` comes back `deferred-manual`, the replay steps land in `ManualChecks.md` and its case titles in `manual_checks`, and the run continues with nothing claimed about the bug being fixed.
 
   The validator MUST apply the `mobile-ops-checklist` skill, scoped to the categories the bug touched (per `Reproduce.md`'s Secondary enumeration). Output: `OpsChecklist.md` in the task folder, marking only the touched categories — full-checklist coverage is not required for BUG. Goal: catch regressions in adjacent ops behaviors (e.g. a fix for a network bug must not break the offline / cancellation behavior).
 
-- **Review** — `swift-toolkit:swift-reviewer` (if `need_review=true` in args). Artifact: `Review.md`, **first line is required** to be `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (this field is the shared contract between workflow-* and the orchestrator; it is also used by `swift-toolkit:workflow-review` for auto-move into DONE/). On a redo after `CHANGES_REQUESTED`, the reviewer finds its own prior `Review.md` in the task folder and narrows scope to the commits landed since its `[REVIEWED_COMMIT]` line instead of re-reviewing the whole task from scratch — see `agents/swift-reviewer.md` → "1. Identify Scope".
+- **Review** — `[reviewer]` (if `need_review=true` in args). Artifact: `Review.md`, **first line is required** to be `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (this field is the shared contract between workflow-* and the orchestrator; it is also used by `spine-toolkit:workflow-review` for auto-move into DONE/). On a redo after `CHANGES_REQUESTED`, the reviewer finds its own prior `Review.md` in the task folder and narrows scope to the commits landed since its `[REVIEWED_COMMIT]` line instead of re-reviewing the whole task from scratch — see the `reviewer` agent → "1. Identify Scope".
 
 - **Done** — final report `Done.md`: what was fixed, which regression test was added, validation status (build/test result + outcome of the reproduction replay), and objections (if the user insisted on a contested decision).
 

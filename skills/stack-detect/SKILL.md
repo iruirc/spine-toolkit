@@ -1,14 +1,14 @@
 ---
 name: stack-detect
 description: |
-  Pure side-effect-free per-axis Stack resolver. Computes needed axes (workflow envelope ∩ task scope) and runs the per-axis resolution chain, returning {needed, resolved, unresolved}. Activated by swift-toolkit:orchestrator; not invoked by the user directly.
+  Pure side-effect-free per-axis Stack resolver. Computes needed axes (workflow envelope ∩ task scope) and runs the per-axis resolution chain, returning {needed, resolved, unresolved}. Activated by spine-toolkit:orchestrator; not invoked by the user directly.
   Use when (en): orchestrator resolves the Stack for a dispatched task
   Use when (ru): оркестратор резолвит Stack для диспетчеризуемой задачи
 ---
 
 # Stack Detect
 
-Pure resolver invoked by `swift-toolkit:orchestrator` during Resolution. It
+Pure resolver invoked by `spine-toolkit:orchestrator` during Resolution. It
 performs **no** user questions, writes **no** files, and mutates **no**
 `Task.md`. It returns structured data; the orchestrator owns all user-facing
 interaction and caching.

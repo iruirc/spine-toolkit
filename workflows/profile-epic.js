@@ -2,7 +2,7 @@ export const meta = {
   name: 'profile-epic',
   description: 'EPIC profile pipeline: wide research, a decomposition-or-pure-research branch, a sequential walk of the .step/ subfolders, Done',
   whenToUse:
-    'Dispatched by swift-toolkit:orchestrator for a task with [TASK_TYPE]=EPIC, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
+    'Dispatched by spine-toolkit:orchestrator for a task with [TASK_TYPE]=EPIC, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
     { title: 'Research', detail: 'architect; writes Research.md and the decomposition verdict', agent: 'architect' },
     { title: 'Plan', detail: 'architect; either the step table plus the .step/ folders, or a research roadmap', agent: 'architect' },
@@ -46,7 +46,7 @@ if (!A || typeof A !== 'object' || !A.task_id || !A.task_dir) {
   return {
     status: 'error',
     reason: 'no-args',
-    next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through swift-toolkit:orchestrator, or fall back to the matching swift-toolkit:workflow-* skill. Do not execute the stages by hand.',
+    next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through spine-toolkit:orchestrator, or fall back to the matching spine-toolkit:workflow-* skill. Do not execute the stages by hand.',
   }
 }
 if (!A.agents || typeof A.agents !== 'object') {
@@ -293,7 +293,7 @@ const writeWalkthrough = async (stage, extra) => {
   const w = await agent(
     brief(
       stage,
-      `Write or refresh ${DIR}/Walkthrough.md by applying the swift-toolkit:task-walkthrough skill, which owns the section list, the per-section length budgets and the refresh rules. Read it first.
+      `Write or refresh ${DIR}/Walkthrough.md by applying the spine-toolkit:task-walkthrough skill, which owns the section list, the per-section length budgets and the refresh rules. Read it first.
 
 Derive the account from git — the task's own commits, git log over the range and git show for what each one carries — reconciled against ${DIR}/Plan.md. The plan is intent, the commits are fact, and the divergences between them, each labelled with its trigger, are what this artifact exists for. The second line is required to be exactly:
 
@@ -408,7 +408,7 @@ if (runs('Plan')) {
 If the verdict is DECOMPOSITION:
 Write ${DIR}/Plan.md with a progress table of the steps, in execution order, with the columns: Done? | step_id | TASK_TYPE | [STATUS] | short description | artifact. The Done? column renders as a markdown checkbox, "- [ ]" for every step that is not yet DONE.
 Seed the steps from Research.md ### Work items, grouped along layer or feature boundaries — typically one step per major layer (Domain / Repository / Networking / UI) or per self-contained sub-feature.
-Then create the step folders physically by invoking swift-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE], [STATUS] = TODO, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
+Then create the step folders physically by invoking spine-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE], [STATUS] = TODO, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
 Apply feature-estimation at epic level and write ## Estimation into Plan.md: the aggregate is the SUM of the per-step ranges, reported as a named best/worst epic range, and it carries both the human and the AI-assisted range when the project is AI-assisted. Per-step ranges are written later by each step's own Plan stage; this roll-up is informational, it does NOT gate Execute, but it has to be present before the first step runs.
 Return every step you created in the steps array, in execution order.
 
@@ -567,7 +567,7 @@ if (runs('Execute')) {
       await agent(
         brief(
           'Execute',
-          `Step ${st.step_id} finished. In ${DIR}/Plan.md tick that step's row in the progress table — "- [ ]" becomes "- [x]" — and set its [STATUS] column to match its Task.md, which swift-toolkit:task-move has just updated. Touch nothing else in the file and no other file.`,
+          `Step ${st.step_id} finished. In ${DIR}/Plan.md tick that step's row in the progress table — "- [ ]" becomes "- [x]" — and set its [STATUS] column to match its Task.md, which spine-toolkit:task-move has just updated. Touch nothing else in the file and no other file.`,
         ),
         { label: `execute:tick:${st.step_id}`, phase: 'Execute', agentType: A.agents.architect, schema: ARTIFACT, effort: 'low' },
       )
