@@ -125,10 +125,20 @@ state management → `arch-mvvm`, `arch-tca`
 persistence      → —
 ```
 
-Core's `feature-landscape` and `feature-requirements` consume this table; the topic vocabulary is
-open, and a platform names the topics it actually has. Every row is a topic and nothing else: a
-skill core invokes by name belongs in `## Entrypoints`, not here, so a consumer may iterate these
-rows generically without special-casing one of them.
+The topic vocabulary is open, and a platform names the topics it actually has. Every row is a topic
+and nothing else: a skill core invokes by name belongs in `## Entrypoints`, not here, so a consumer
+may iterate these rows generically without special-casing one of them.
+
+**What a consumer does with it.** Core's methodology skills name topics in bold and resolve them
+here rather than naming a skill — an enumeration of which ones belongs in no file but their own,
+since that is the sentence this paragraph replaced. To resolve a topic: invoke `<platform>:manifest`,
+`<platform>` being the first non-empty line of the `## Platform` block of `CLAUDE-spine-toolkit.md`,
+and read the row whose left-hand side matches the topic. A row that is `—`, and a topic with no row
+at all, mean the same thing — this platform covers that topic with no skill of its own. Both are a
+declared absence, handled like the em dash in `## Roles`: the consumer proceeds on its own
+knowledge and says so, and neither is an error. Core matches topic names literally and never invents
+one, so a platform that spells a topic differently simply has no row for the one core asked for —
+which is why the table is worth reading before writing a platform, not after.
 
 ## `## Entrypoints`
 

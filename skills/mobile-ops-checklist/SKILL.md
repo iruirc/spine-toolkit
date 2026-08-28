@@ -1,20 +1,21 @@
 ---
 name: mobile-ops-checklist
-description: "Use during validation or review of any mobile / app feature to verify operational concerns are handled — feature flags, crash reporting, deep links, push, offline, accessibility, analytics, App Store constraints, performance, privacy, migrations, testing, third-party SDKs, CI/CD. Each item is marked Applicable / N/A (with reason) / Pending. Output is a separate `OpsChecklist.md` artifact in the task folder."
+description: "Use during validation or review of any mobile / app feature to verify operational concerns are handled — feature flags, crash reporting, deep links, push, offline, accessibility, analytics, store-review constraints, performance, privacy, migrations, testing, third-party SDKs, CI/CD. Each item is marked Applicable / N/A (with reason) / Pending. Output is a separate `OpsChecklist.md` artifact in the task folder."
 ---
 
 # Mobile Ops Checklist
 
-A cross-cutting checklist distilled from production mobile engineering challenges (Orosz, Building Mobile Apps at Scale). It is *not* a design tool — design happens in `feature-landscape`. It is the late-stage verification that nothing operational was forgotten: feature flag, analytics, deep link, push, offline, privacy, App Store readiness.
+A cross-cutting checklist distilled from production mobile engineering challenges (Orosz, Building Mobile Apps at Scale). It is *not* a design tool — design happens in `feature-landscape`. It is the late-stage verification that nothing operational was forgotten: feature flag, analytics, deep link, push, offline, privacy, store readiness.
 
 > **Related skills:**
 > - `feature-requirements` — Secondary list maps onto a subset of this checklist; this skill is the validation-time counterpart
 > - `feature-landscape` — graph layers determine which items apply (no networking layer → most networking items become N/A)
-> - `error-architecture` — error-handling items reference its taxonomy
-> - `persistence-migrations` — schema-migration items expand here
-> - `concurrency-architecture` — background work / cancellation items
-> - `net-architecture` — retry / pagination / cache items
-> - the agent behind the `security` role — privacy / Keychain / pinning items
+> - the agent behind the `security` role — privacy / secret-storage / pinning items
+>
+> Bold **topics** below are rows of the installed platform's manifest `## Topics`; resolve each to
+> that platform's own skills per `conventions/platform-contract.md`. Items here lean on **errors**
+> (the taxonomy behind the error rows), **persistence** (schema migrations), **concurrency**
+> (background work and cancellation), **networking** (retry / pagination / cache) and **deep links**.
 
 ## When to use
 
@@ -71,20 +72,20 @@ Default an item to **Applicable** unless you have a concrete reason to mark it N
 - [ ] Local source of truth chosen (memory, disk, network-only)
 - [ ] Conflict resolution defined (LWW / server-authoritative / merge / CRDT)
 - [ ] Optimistic updates have a rollback path
-- [ ] Background sync trigger defined (foreground, push, BGTask, none)
+- [ ] Background sync trigger defined (foreground, push, scheduled background task, none)
 
 ### Crash & stability
 
 - [ ] Crash reporting wired (Crashlytics / Bugsnag / Sentry)
 - [ ] Symbolication setup verified for new binaries
 - [ ] OOM tracking strategy if memory-intensive
-- [ ] Fatal vs recoverable errors distinguished per `error-architecture`
+- [ ] Fatal vs recoverable errors distinguished (taxonomy from topic **errors**)
 
 ### Performance
 
 - [ ] Cold-launch impact measured (< 2s target)
-- [ ] 60fps on critical screens (Instruments / Time Profiler check)
-- [ ] No retain cycles (Allocations / leaks)
+- [ ] 60fps on critical screens (time-profiler check)
+- [ ] No reference cycles / leaked object graphs (allocations profiler)
 - [ ] Battery: no background polling, no high-frequency timers without justification
 - [ ] Network payloads compressed where applicable
 
@@ -94,11 +95,11 @@ Default an item to **Applicable** unless you have a concrete reason to mark it N
 - [ ] Token rotation handled
 - [ ] Silent push for server-side state changes (if applicable)
 - [ ] Opt-out flow gracefully degraded
-- [ ] Background fetch / BGTask scheduled correctly
+- [ ] Background fetch / scheduled background task registered correctly
 
 ### Deep links & navigation
 
-<!-- Design-time mechanics (parser, AASA, entry points, cold-start, auth gate): `nav-deeplinks`. This is verification-time only. -->
+<!-- Design-time mechanics (parser, association file, entry points, cold-start, auth gate): topic **deep links**. This is verification-time only. -->
 
 - [ ] Deep link path defined and registered
 - [ ] Backward compatibility of pre-existing links preserved
@@ -134,7 +135,7 @@ Default an item to **Applicable** unless you have a concrete reason to mark it N
 - [ ] No PII in logs, analytics, or crash reports
 - [ ] Secrets in Keychain (iOS) / Keystore (Android) — never UserDefaults / SharedPreferences
 - [ ] Certificate pinning if handling sensitive data
-- [ ] ATS (iOS) compliance verified
+- [ ] Transport security enforced (ATS on iOS / network-security-config on Android) — no cleartext exceptions
 - [ ] GDPR / CCPA: consent flow + data-erasure path
 - [ ] App Privacy report (iOS) / Data Safety form (Android) updated
 
@@ -181,13 +182,13 @@ Structure:
 > Generated by `mobile-ops-checklist`. Mark each item Applicable / N/A (reason) / Pending.
 
 ## Release & rollout
-- [x] Feature flag wraps the feature — `Features.cartV2` in `FeatureFlags.swift:42`
+- [x] Feature flag wraps the feature — `Features.cartV2` in the flag registry
 - [x] Gradual rollout plan — `docs/cart-v2-rollout.md`
 - [ ] Pending: minimum-OS check
 - N/A: Forced-upgrade — internal beta only, no public release
 
 ## State & lifecycle
-- [x] All four UI states covered — `CartView` previews `CartView_Previews.swift`
+- [x] All four UI states covered — `CartScreen` preview/snapshot set
 - [x] Single source of truth — `CartViewModel.state`
 - N/A: Background sync — feature is online-only
 
@@ -196,12 +197,12 @@ Structure:
 
 **Idempotency:** if `OpsChecklist.md` already exists, prompt the user — overwrite / merge / skip. Re-checking a list mid-feature is normal; preserve prior entries with timestamps if merging.
 
-## Platform-specific N/A semantics
+## N/A semantics by delivery form
 
-- **SPM library** — Most categories N/A: deep links, push, App Store, accessibility (no UI), analytics (library should not emit), localization (consumer's job). Applicable: error handling, performance, testing, third-party SDKs, CI/CD, security (if handling secrets).
+- **Library / package** — Most categories N/A: deep links, push, store review, accessibility (no UI), analytics (library should not emit), localization (consumer's job). Applicable: error handling, performance, testing, third-party SDKs, CI/CD, security (if handling secrets).
 - **CLI tool** — Push / deep links / accessibility / localization N/A. Crash reporting may be N/A (stderr is the report). Privacy still applies if reading user files.
-- **macOS app (Developer ID distribution)** — App Store review N/A; notarization still applies.
-- **iOS app** — All categories typically Applicable.
+- **Desktop app distributed outside a store** — store-review items N/A; the OS's notarization / signing requirements still apply.
+- **Mobile app** — All categories typically Applicable.
 
 ## Anti-patterns to avoid
 

@@ -5,7 +5,7 @@ description: "Use when estimating mobile / app feature work — after `feature-l
 
 # Feature Estimation
 
-Estimates fail because they ignore the cost of what nobody wrote down: error states, the App Store review window, the engineer's unfamiliarity with the module, the API contract changing mid-sprint. This skill adds mobile-specific **scope-aware risk deltas** on top of a decomposed baseline, uses PERT only where item-level variance dominates, labels confidence/maturity, and produces a calibrated *range* anchored to named scenarios — never a single number. Ceremony scales to risk: a small, familiar feature collapses to Feature type + Baseline + Range + Confidence, while a cross-platform, deadline-bound migration earns the full artifact. When the project is AI-assisted, it additionally derives a second, AI-assisted range from the same baseline — Low-confidence until the team has calibrated it.
+Estimates fail because they ignore the cost of what nobody wrote down: error states, the store review window, the engineer's unfamiliarity with the module, the API contract changing mid-sprint. This skill adds mobile-specific **scope-aware risk deltas** on top of a decomposed baseline, uses PERT only where item-level variance dominates, labels confidence/maturity, and produces a calibrated *range* anchored to named scenarios — never a single number. Ceremony scales to risk: a small, familiar feature collapses to Feature type + Baseline + Range + Confidence, while a cross-platform, deadline-bound migration earns the full artifact. When the project is AI-assisted, it additionally derives a second, AI-assisted range from the same baseline — Low-confidence until the team has calibrated it.
 
 > **Related skills:**
 > - `feature-landscape` — produces the work-items list this skill consumes
@@ -134,7 +134,7 @@ Recommended override format:
 | Unknown unknowns | +20%–35% | Familiar module + stable tests | Team has shipped 5+ similar features within range |
 | Secondary not scoped | +30%–50% | Design-system states exist | Error/loading/empty components are reusable |
 | Binary distribution risk | +10% | Feature flag + kill switch | Rollback does not require a new binary for most users |
-| App / Play Store review | +1–3 calendar days | Enterprise/TestFlight only | No public App Store approval needed |
+| App / Play Store review | +1–3 calendar days | Internal / enterprise distribution only | No public store approval needed |
 ```
 
 Overrides replace only the named key's default values. They do not remove the requirement to justify each applied delta in the scenario table.
@@ -190,7 +190,7 @@ For every applicable delta below, choose an **affected baseline** and calculate 
 | Unknown unknowns | **+30%–50%** | Always (the one delta never skipped). Familiarity sets where the band sits — anchor near +30% for well-known territory, near +50% for greenfield. Unlike binary distribution, this delta *may* vary across scenarios: best case = fewer hidden surprises (lower end), worst case = more (upper end). |
 | Secondary requirements not yet scoped | **+40%–70%** | When `feature-requirements ### Secondary` still has Pending rows |
 | API in parallel | **+30%–40%** | API being built same sprint — contract may shift |
-| Binary distribution risk | **0% / +10% / +20%** | 0% for SPM/CLI/no user-facing binary. +10% when feature flag / kill switch / remote rollback covers most failures. +20% for user-facing iOS/macOS binary with no instant rollback. |
+| Binary distribution risk | **0% / +10% / +20%** | 0% for a library / CLI / no user-facing binary. +10% when feature flag / kill switch / remote rollback covers most failures. +20% for a user-facing app binary with no instant rollback. |
 | OS / device fragmentation | **+20%–30%** | Android only — Custom UI, Camera, Media. iOS-only project: skip. |
 | AI verification / rework | **+15%–40%** (AI-assisted mode only) | Scoped to AI-generated slices — cost of reviewing output, catching plausible-but-wrong code, prompt iteration. Higher share AI-generated / more novel → upper end. |
 
@@ -211,7 +211,7 @@ Under AI-assisted mode, the Unknown-unknowns delta may sit *higher* on a novel d
 | App / Play Store review | **+2–7 calendar days** | Any hard deadline that requires a store-submitted build |
 
 **Rules:**
-- Deltas **add as risk days**. App Store buffer is reported on its own line as calendar time.
+- Deltas **add as risk days**. The store-review buffer is reported on its own line as calendar time.
 - Always name the affected baseline for each delta. Do not apply API or Secondary deltas to the whole feature when the risk only touches one layer.
 - Don't double-count: if Secondary is fully scoped (no Pending rows), don't apply the Secondary delta — those days are already in the baseline.
 - Don't push Unknown Unknowns above +50% — beyond that you're guessing, not buffering. Decompose the landscape further instead.
@@ -238,7 +238,7 @@ Example:
 
 > "**10.7 days** — *best case*: API contract finalized this week, existing `CartRepository` reused, Secondary mockups already delivered, feature flag and kill switch available. Cache item takes its PERT-optimistic 0.5d (baseline 7.5d), Unknown-unknowns apply to the 8.0d expected baseline (+30% = 2.4d), binary-distribution applies at the mitigated +10% level (= 0.8d).
 > **16.6 days** — *worst case*: building against a mock, contract deltas surface at integration, Secondary left for last. Cache item takes its PERT-pessimistic 1.5d (baseline 8.5d), Unknowns apply to the 8.0d expected baseline (+50% = 4.0d), Secondary applies to the 3.0d UI/state/test slice (+70% = 2.1d), API-parallel applies to the 3.0d networking/repository slice (+40% = 1.2d). Binary distribution stays at its fixed +10% (= 0.8d) — the flag/kill-switch path doesn't change between scenarios.
-> **+2–7 calendar days** App Store review buffer on top, when a hard deadline applies — this is wall-clock waiting, not engineering days."
+> **+2–7 calendar days** store review buffer on top, when a hard deadline applies — this is wall-clock waiting, not engineering days."
 
 If an assumption breaks, the estimate moves toward the high end — and that's expected.
 
@@ -335,7 +335,7 @@ API-driven UI feature. Default posture: API and Secondary risks are likely scope
 | Define CartItem / Order / PaymentStatus | Domain | Fixed | novel-domain ÷1.2 | 0.5 |
 | `CartRepository` add/remove/clear | Repository | Fixed | mechanical ÷5 | 1.0 |
 | Cart API client + DTO mapping | Networking | Fixed | mechanical ÷6 | 1.0 |
-| Local cache (Core Data) | Repository | PERT 0.5 / 1.0 / 1.5 | novel-domain ÷1.2 | 1.0 |
+| Local cache (on-device store) | Repository | PERT 0.5 / 1.0 / 1.5 | novel-domain ÷1.2 | 1.0 |
 | `CartViewModel` state transitions | State | Fixed | glue ÷1.8 | 1.0 |
 | Cart screen + cell UI | UI | Fixed | pattern-test ÷4 | 1.0 |
 | Unit tests (ViewModel + repository) | Tests | Fixed | pattern-test ÷4 | 1.0 |
@@ -346,7 +346,7 @@ API-driven UI feature. Default posture: API and Secondary risks are likely scope
 ### Risky item PERT
 | Item | Optimistic | Most likely | Pessimistic | PERT days | Why PERT applies |
 |---|---:|---:|---:|---:|---|
-| Local cache (Core Data) | 0.5 | 1.0 | 1.5 | 1.0 | Cache model shape may change with backend contract |
+| Local cache (on-device store) | 0.5 | 1.0 | 1.5 | 1.0 | Cache model shape may change with backend contract |
 
 > **Affected-baseline slices** below are summed from the Layer column above:
 > networking/repository slice = Repository 1.0 + Networking 1.0 + Repository (cache) 1.0 = **3.0d**;
@@ -526,11 +526,11 @@ Column semantics: `type` ∈ {FEATURE, EPIC, BUG, REFACTOR, TEST, RESEARCH}; `po
 
 When the log holds **≥3–5 finished features of the same posture**, the skill (or the architect at the next Plan stage) computes the mean observed value per knob — Secondary delta, Unknown-unknowns band, or AI leverage divisor — and **proposes** an update to `CLAUDE-spine-toolkit.md ## EstimationDeltas` / `## AILeverage`. The proposal is surfaced to the user, never written silently: calibration changes the numbers every future estimate depends on. Keep overrides sparse — encode repeatable evidence from multiple features, never a one-off surprise. Until an AI-leverage class is calibrated this way, its range stays `Low (uncalibrated)`.
 
-## Platform-specific notes
+## Notes by delivery form
 
-- **SPM library / CLI** — Skip App Store buffer; skip OS fragmentation; binary-distribution delta is 0% unless the library is shipped as a binary artifact (e.g. xcframework).
-- **macOS app distributed via Mac App Store** — App Store buffer applies; via Developer ID / direct distribution → skip the buffer but add notarization time (~1 hour, not days).
-- **iOS app** — Unknown-unknowns and binary-distribution are usually in scope; choose binary risk from the rollback path (0% / +10% / +20%). Skip OS fragmentation unless the project is cross-platform Android.
+- **Library / CLI** — Skip the store-review buffer; skip OS fragmentation; binary-distribution delta is 0% unless the library ships as a prebuilt binary artifact.
+- **Desktop app** — Store-review buffer applies when it ships through a store; direct distribution skips the buffer but adds notarization / signing time (~1 hour, not days).
+- **Mobile app** — Unknown-unknowns and binary-distribution are usually in scope; choose binary risk from the rollback path (0% / +10% / +20%). Skip OS fragmentation unless the project is cross-platform Android.
 
 ## What this skill does NOT do
 
