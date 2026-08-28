@@ -4,10 +4,10 @@ export const meta = {
   whenToUse:
     'Dispatched by swift-toolkit:orchestrator for a task with [TASK_TYPE]=EPIC, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
-    { title: 'Research', detail: 'architect; writes Research.md and the decomposition verdict', agent: 'swift-architect' },
-    { title: 'Plan', detail: 'architect; either the step table plus the .step/ folders, or a research roadmap', agent: 'swift-architect' },
-    { title: 'Execute', detail: 'one nested workflow run per step, strictly sequential', agent: 'nested profile workflow per step; swift-architect ticks the checkboxes' },
-    { title: 'Done', detail: 'epic report: steps done, skipped, blocked, and the estimate retrospective', agent: 'swift-architect' },
+    { title: 'Research', detail: 'architect; writes Research.md and the decomposition verdict', agent: 'architect' },
+    { title: 'Plan', detail: 'architect; either the step table plus the .step/ folders, or a research roadmap', agent: 'architect' },
+    { title: 'Execute', detail: 'one nested workflow run per step, strictly sequential', agent: 'nested profile workflow per step; architect ticks the checkboxes' },
+    { title: 'Done', detail: 'epic report: steps done, skipped, blocked, and the estimate retrospective', agent: 'architect' },
   ],
 }
 
@@ -17,15 +17,15 @@ const ORDER = ['Research', 'Plan', 'Execute', 'Done']
 // Mirrors meta.phases[].agent, which the sandbox does not expose to the script body;
 // scripts/lint-workflows.sh fails on any drift between the two.
 const AGENT_OF = {
-  Research: 'swift-architect',
-  Plan: 'swift-architect',
-  Execute: 'nested profile workflow per step; swift-architect ticks the checkboxes',
-  Done: 'swift-architect',
+  Research: 'architect',
+  Plan: 'architect',
+  Execute: 'nested profile workflow per step; architect ticks the checkboxes',
+  Done: 'architect',
 }
 
 // Writes Walkthrough.md — the same agent that writes this profile's final report, so the two
 // speak with one voice.
-const WALKTHROUGH_AGENT = 'swift-toolkit:swift-architect'
+const WALKTHROUGH_AGENT = 'architect'
 
 // ── prelude ──────────────────────────────────────────────────────────────────
 // Byte-identical in every profile script; scripts/lint-workflows.sh enforces that. A workflow
@@ -47,6 +47,13 @@ if (!A || typeof A !== 'object' || !A.task_id || !A.task_dir) {
     status: 'error',
     reason: 'no-args',
     next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through swift-toolkit:orchestrator, or fall back to the matching swift-toolkit:workflow-* skill. Do not execute the stages by hand.',
+  }
+}
+if (!A.agents || typeof A.agents !== 'object') {
+  return {
+    status: 'error',
+    reason: 'no-agents',
+    next: 'This workflow was started without the resolved agent map. Re-dispatch it through spine-toolkit:orchestrator.',
   }
 }
 
@@ -161,6 +168,18 @@ const REVIEW = {
 }
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
+
+// A role the platform declares absent (`—`) blocks the stage that names it: the script neither
+// dispatches nor skips it, it ends the range here and lets the orchestrator run the stage itself
+// and announce the deviation (orchestrator SKILL.md § Dispatch, "Method A — a stage whose role
+// resolved to `—`"). handback stays null until that fires.
+let handback = null
+const need = (stage, ...roles) => {
+  const missing = roles.find((role) => !A.agents[role] || A.agents[role] === '—')
+  if (missing) handback = { stage, role: missing }
+  return !missing
+}
+
 const finish = (next, extra) => ({
   status: extra && extra.status ? extra.status : result.status,
   last_completed_stage: result.last_completed_stage,
@@ -168,6 +187,7 @@ const finish = (next, extra) => ({
   next_recommended_action: next,
   notes: result.notes.join(' '),
   stages: result.stages,
+  handback,
   ...(extra || {}),
 })
 // stages[] is the per-stage report auto has no other source for: there one return covers the whole
@@ -256,6 +276,11 @@ The phase is not done until every checkbox is ticked AND it is committed. If you
 // and never stops the run.
 const writeWalkthrough = async (stage, extra) => {
   if (!WALKTHROUGH_AGENT || A.walkthrough === 'off' || A.walkthrough === false) return
+  const agentType = A.agents[WALKTHROUGH_AGENT]
+  if (!agentType || agentType === '—') {
+    result.notes.push(`No agent implements the "${WALKTHROUGH_AGENT}" role on this platform, so Walkthrough.md was not written.`)
+    return
+  }
   const w = await agent(
     brief(
       stage,
@@ -271,7 +296,7 @@ ${extra}` : ''}
 
 Change no production code and no tests.`,
     ),
-    { label: 'walkthrough', phase: stage, agentType: WALKTHROUGH_AGENT, schema: ARTIFACT },
+    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT },
   )
   if (w && w.artifact_path) log(`Walkthrough.md: ${w.summary || 'written'}`)
   else result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
@@ -326,6 +351,7 @@ const STEPS = {
 let branch = null
 
 if (runs('Research')) {
+  if (!need('Research', 'architect')) return finish('ask_user')
   const research = await agent(
     brief(
       'Research',
@@ -346,7 +372,7 @@ You write no code. Research.md is the only file you create.`,
     {
       label: 'research',
       phase: 'Research',
-      agentType: 'swift-toolkit:swift-architect',
+      agentType: A.agents.architect,
       schema: {
         ...ARTIFACT,
         required: [...ARTIFACT.required, 'decision'],
@@ -364,6 +390,7 @@ You write no code. Research.md is the only file you create.`,
 let steps = null
 
 if (runs('Plan')) {
+  if (!need('Plan', 'architect')) return finish('ask_user')
   const plan = await agent(
     brief(
       'Plan',
@@ -379,7 +406,7 @@ Return every step you created in the steps array, in execution order.
 If the verdict is PURE_RESEARCH:
 Finalize ${DIR}/Research.md. Plan.md is optional here and, if you write one, it is a research roadmap — what else needs investigating — with no executable steps. Return branch pure_research and an empty steps array. Create no step folders.`,
     ),
-    { label: 'plan', phase: 'Plan', agentType: 'swift-toolkit:swift-architect', schema: EPIC_PLAN },
+    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: EPIC_PLAN },
   )
   if (!plan) return finish('stop', { status: 'error', reason: 'the Plan agent returned nothing' })
   record('Plan', plan)
@@ -418,13 +445,14 @@ const toPending = (st) => ({
 })
 
 if (runs('Execute')) {
+  if (!need('Execute', 'architect')) return finish('ask_user')
   if (steps === null && branch !== 'pure_research') {
     const read = await agent(
       brief(
         'Execute',
         `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE] and [STATUS] from its own Task.md, plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
-      { label: 'execute:read-steps', phase: 'Execute', agentType: 'swift-toolkit:swift-architect', schema: STEPS, effort: 'low' },
+      { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, effort: 'low' },
     )
     if (!read) return finish('stop', { status: 'error', reason: 'the step reader returned nothing' })
     branch = read.branch
@@ -465,6 +493,7 @@ if (runs('Execute')) {
       mode: 'auto',
       stack: st.stack || STACK,
       lang: LANG,
+      agents: A.agents,
       need_test: st.need_test === undefined ? A.need_test : st.need_test,
       need_review: st.need_review === undefined ? A.need_review : st.need_review,
       archive_paths: [],
@@ -503,11 +532,20 @@ if (runs('Execute')) {
         for (const rest of walk.slice(i)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
         break
       }
-      if (!r || r.status !== 'ok') {
+      // A step's own handback (its platform declares no agent for one of its roles) is not a
+      // failure, but this loop has no main context to run the stage in and announce it either —
+      // that needs the orchestrator, so the step is escalated the same way a real failure is.
+      if (!r || r.status !== 'ok' || r.handback) {
         failed_steps.push({
           step_id: st.step_id,
           task_id: st.task_id,
-          error_reason: launchError || (r ? `${r.status}: ${r.reason || r.notes || 'no reason given'}` : 'the step workflow returned nothing'),
+          error_reason: launchError
+            ? launchError
+            : r && r.handback
+              ? `stage ${r.handback.stage} needs role "${r.handback.role}", which this platform does not implement`
+              : r
+                ? `${r.status}: ${r.reason || r.notes || 'no reason given'}`
+                : 'the step workflow returned nothing',
         })
         for (const rest of walk.slice(i + 1)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
         break
@@ -522,7 +560,7 @@ if (runs('Execute')) {
           'Execute',
           `Step ${st.step_id} finished. In ${DIR}/Plan.md tick that step's row in the progress table — "- [ ]" becomes "- [x]" — and set its [STATUS] column to match its Task.md, which swift-toolkit:task-move has just updated. Touch nothing else in the file and no other file.`,
         ),
-        { label: `execute:tick:${st.step_id}`, phase: 'Execute', agentType: 'swift-toolkit:swift-architect', schema: ARTIFACT, effort: 'low' },
+        { label: `execute:tick:${st.step_id}`, phase: 'Execute', agentType: A.agents.architect, schema: ARTIFACT, effort: 'low' },
       )
     }
 
@@ -537,13 +575,15 @@ if (runs('Execute')) {
 // the report can be the right shape. Left unresolved it defaults to decomposition, which is the
 // safer of the two: a decomposition report for a pure-research epic is wrong, an empty steps
 // section is merely empty.
+if (runs('Done') && !need('Done', 'architect')) return finish('ask_user')
+
 if (runs('Done') && branch === null) {
   const verdict = await agent(
     brief('Done', `Read ${DIR}/Research.md and return the verdict recorded under the literal heading "## Decomposition decision" — decomposition or pure_research. Change nothing on disk.`),
     {
       label: 'done:read-branch',
       phase: 'Done',
-      agentType: 'swift-toolkit:swift-architect',
+      agentType: A.agents.architect,
       effort: 'low',
       schema: {
         type: 'object',
@@ -581,7 +621,7 @@ if (runs('Done') && !failed_steps.length && !cancelled && !pending_steps.length)
 - A ## Estimate retrospective section that rolls up every completed step's own retrospective: the aggregate estimated epic range against the summed actual effort, an in-range verdict, and the reason for any variance. Take actual effort per feature-estimation ## Estimate retrospective — the user's own figure when there is one, otherwise the git proxy, labelled as a proxy, otherwise unknown. Sum step rows only in matching units; never add human-days to proxy values in one total. Append or refresh this epic's data point in the calibration log.
 - Objections, aggregated from the steps' Done.md files where the user insisted on a contested decision.`,
     ),
-    { label: 'done', phase: 'Done', agentType: 'swift-toolkit:swift-architect', schema: ARTIFACT, effort: 'low' },
+    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, effort: 'low' },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
