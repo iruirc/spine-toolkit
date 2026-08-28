@@ -10,9 +10,10 @@ A project says which platform serves it in one place: the `## Platform` block of
 `CLAUDE-spine-toolkit.md` holds the plugin's name, and that name is the whole selection mechanism.
 Nothing is inferred from the repository and nothing is auto-discovered while a task runs.
 
-A working example is `core/tests/fixtures/fixture-platform/` — the fixture core's own tests bind
-against, and the thing to copy when writing a new platform. `core/scripts/lint-manifest.sh
-<plugin-dir>` checks a manifest against everything below that a script can check.
+A working example is `tests/fixtures/fixture-platform/` — the fixture core's own tests bind
+against, and the thing to copy when writing a new platform. `scripts/lint-manifest.sh
+<plugin-dir>` checks a manifest against everything below that a script can check. Paths in this
+document are relative to this plugin's own root, as everywhere else in it.
 
 ## The manifest skill
 
@@ -42,7 +43,7 @@ validator = —
 ```
 
 That is a **declared absence**, not a hole to fill in later: core dispatches around it through the
-"Declared deviation" rule in `core/conventions/stage-dispatch.md` — the stage runs in the main
+"Declared deviation" rule in `conventions/stage-dispatch.md` — the stage runs in the main
 context and says so in its first message. A row with an empty right-hand side is neither, and the
 lint rejects it.
 
@@ -171,7 +172,7 @@ reserved magic string inside another table.
 ## Conformance
 
 ```bash
-core/scripts/lint-manifest.sh <plugin-dir>
+scripts/lint-manifest.sh <plugin-dir>
 ```
 
 checks that all five tables are present, that the Roles rows cover the nine-role vocabulary and no
