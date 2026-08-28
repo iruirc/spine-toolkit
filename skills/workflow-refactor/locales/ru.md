@@ -10,4 +10,4 @@ empty required field
 Пользователь отказался продолжать (нажал `No` в AUQ оркестратора)
 
 ## notes_test_failed_example
-test_sim failed: regression in FooViewModelTests.testBar
+tests failed: regression in CheckoutViewModelTests.testTotal

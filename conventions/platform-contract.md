@@ -72,6 +72,11 @@ The right-hand side is always namespaced (`plugin:agent`), because the map it fe
 subagent dispatch verbatim, and the agent it names must exist as `<plugin>/agents/<name>.md` —
 `<name>` being the part after the colon.
 
+Core's stage briefs say what a role must accomplish and never how: "a build and a full test run are
+mandatory", never the name of a build tool. Only the agent behind the role knows how this ecosystem's
+projects get built, tested and driven, and it brings that knowledge itself — which is why nothing
+here asks a platform to declare its tooling.
+
 What core makes of the table: it resolves one agent per role before any stage starts, and hands the
 finished map to every executor. An em dash survives that resolution as itself, not as a missing key:
 

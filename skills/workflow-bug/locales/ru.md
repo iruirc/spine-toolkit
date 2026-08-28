@@ -10,4 +10,4 @@ empty required field
 Пользователь отказался продолжать (нажал `No` в AUQ оркестратора)
 
 ## notes_build_failed_example
-build_sim failed: SwiftCompile error in FooView.swift:42
+build failed: compile error in CheckoutView, line 42
