@@ -19,14 +19,14 @@ The profile workflow for tasks with `[TASK_TYPE] = RESEARCH`. Pure investigation
 
 Before producing any user-facing string:
 
-1. Read `CLAUDE-swift-toolkit.md` from the project root.
+1. Read `CLAUDE-spine-toolkit.md` from the project root.
 2. Find the `## Language` section.
 3. Take the first non-empty line in that section, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
 
-Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-swift-toolkit.md per string.
+Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine-toolkit.md per string.
 
 ## 1. Input Contract
 
@@ -50,7 +50,7 @@ RESEARCH-profile specifics:
 - `archive_paths` — paths to backups already created by the orchestrator.
 - `research_agent` — **RESEARCH-specific optional field** (added in the orchestrator's Outbound Contract for this profile only). Values are BARE role names: `architect` (default) | `diagnostics` | `security`. Workflow-research resolves the role through the contract's `agents` map at dispatch time, mirroring how `[TASK_TYPE]` carries `FEATURE` rather than `spine-toolkit:workflow-feature`. If unset or empty → fall back to `architect`. If set to any other value → return `{status: error, reason: invalid_research_agent}` before dispatching a subagent.
 
-**Stack envelope.** `stack_axes_envelope: { may: [], never: all }` — same as REVIEW and EPIC. The project `## Stack` from `CLAUDE-swift-toolkit.md` is read raw as ambient context; no per-axis chain, no AUQ.
+**Stack envelope.** `stack_axes_envelope: { may: [], never: all }` — same as REVIEW and EPIC. The project `## Stack` from `CLAUDE-spine-toolkit.md` is read raw as ambient context; no per-axis chain, no AUQ.
 
 **Execution range.** Stages run in the order Research → Review → Done, starting at `start_stage` and continuing through `end_stage` inclusive. If `end_stage=null` — through the end of the profile. If `end_stage` precedes `start_stage` in order, that is a contract error: return `{status: error, reason: "end_stage before start_stage"}`. If `need_review=false` and the natural flow reaches Review — skip it and go straight to Done.
 

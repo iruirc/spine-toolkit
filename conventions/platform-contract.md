@@ -1,12 +1,13 @@
 # Platform Contract
 
 A platform plugin teaches spine-toolkit one ecosystem: which agent owns each role, which stack axes
-exist, how to read them off a repository, and which of its skills cover which topic. All of that is
-declared in a single skill — `skills/manifest/SKILL.md` in the platform plugin, invoked as
+exist, how to read them off a repository, which of its skills cover which topic, and which skill core
+calls to configure a project. All of that is
+declared in a single skill — `<plugin>/skills/manifest/SKILL.md`, invoked as
 `<plugin>:manifest`. Nothing else in the plugin is part of the contract.
 
 A project says which platform serves it in one place: the `## Platform` block of its
-`CLAUDE-swift-toolkit.md` holds the plugin's name, and that name is the whole selection mechanism.
+`CLAUDE-spine-toolkit.md` holds the plugin's name, and that name is the whole selection mechanism.
 Nothing is inferred from the repository and nothing is auto-discovered while a task runs.
 
 A working example is `core/tests/fixtures/fixture-platform/` — the fixture core's own tests bind
@@ -21,7 +22,7 @@ never reads the host's plugin cache from disk (host internals, not a public cont
 `plugin.json`'s `metadata` field is not an alternative: the host preserves it but does not hand it
 back.
 
-The body is **data**: four H2 tables and no procedure. It says so in its own first lines, so the
+The body is **data**: five H2 tables and no procedure. It says so in its own first lines, so the
 agent that invokes it reads the tables instead of executing them. Prose between tables is for
 humans; only the rows are parsed.
 
@@ -59,8 +60,8 @@ the first in file order and the manifest is simply ambiguous. A fanned-out role 
 bare row as the fallback for a project where that axis never resolved.
 
 The right-hand side is always namespaced (`plugin:agent`), because the map it feeds travels into
-subagent dispatch verbatim, and the agent it names must exist as `agents/<name>.md` in the platform
-plugin — `<name>` being the part after the colon.
+subagent dispatch verbatim, and the agent it names must exist as `<plugin>/agents/<name>.md` —
+`<name>` being the part after the colon.
 
 What core makes of the table: it resolves one agent per role before any stage starts, and hands the
 finished map to every executor. An em dash survives that resolution as itself, not as a missing key:
@@ -125,7 +126,32 @@ persistence      → —
 ```
 
 Core's `feature-landscape` and `feature-requirements` consume this table; the topic vocabulary is
-open, and a platform names the topics it actually has.
+open, and a platform names the topics it actually has. Every row is a topic and nothing else: a
+skill core invokes by name belongs in `## Entrypoints`, not here, so a consumer may iterate these
+rows generically without special-casing one of them.
+
+## `## Entrypoints`
+
+The skills core invokes by name, `entrypoint = ` a backtick-quoted **bare** skill name of this
+plugin, or an em dash for one it does not provide:
+
+```
+setup = `swift-setup`
+```
+
+One entrypoint is defined today. **`setup`** names the platform half of installation: core's `setup`
+writes the config and every block that is core's, then hands this skill the two that are not —
+`## Stack` and `## Modules`, whose content is the platform's `## Axes` and nothing core can know.
+
+`—`, or no `setup` row, is a supported shape, not an error: core writes the core blocks, leaves
+`## Stack` unset, and the orchestrator's per-axis question fills it one task at a time.
+
+The table is separate from `## Roles` because an entrypoint is a **skill**, invoked once at install
+time by core itself, where a role is an **agent** dispatched per stage on the user's behalf; and
+separate from `## Topics` because a topic is a reading list a consumer iterates, where an entrypoint
+is a single name core calls. It exists so the binding needs neither a naming convention (a skill
+named `setup` in the platform would collide with core's own in every natural-language trigger) nor a
+reserved magic string inside another table.
 
 ## Conformance
 
@@ -133,7 +159,11 @@ open, and a platform names the topics it actually has.
 core/scripts/lint-manifest.sh <plugin-dir>
 ```
 
-checks that all four tables are present, that the Roles rows cover the nine-role vocabulary and no
-more, that every named agent has a file in the plugin, and that no role is mapped to nothing. What
-it deliberately does not check: whether the skills named under `## Topics` exist — the reference
-fixture names placeholders on purpose, so that check belongs to each real platform's own test suite.
+checks that all five tables are present, that the Roles rows cover the nine-role vocabulary and no
+more, that every named agent has a file in the plugin, that no role is mapped to nothing, and that a
+`## Entrypoints` skill other than `—` exists in the plugin. What it deliberately does not check:
+whether the skills named under `## Topics` exist — the reference fixture names placeholders on
+purpose, so that check belongs to each real platform's own test suite. `## Entrypoints` is checked
+and `## Topics` is not because core calls the one by name and merely lists the other: a typo in an
+entrypoint is discovered at install time, after the config is already on disk, and is
+indistinguishable there from the legitimate `—`.

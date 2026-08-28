@@ -19,14 +19,14 @@ The profile workflow for tasks with `[TASK_TYPE] = EPIC`. Unlike the other workf
 
 Before producing any user-facing string:
 
-1. Read `CLAUDE-swift-toolkit.md` from the project root.
+1. Read `CLAUDE-spine-toolkit.md` from the project root.
 2. Find the `## Language` section.
 3. Take the first non-empty line in that section, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
 
-Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-swift-toolkit.md per string.
+Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine-toolkit.md per string.
 
 ## 1. Input Contract
 
@@ -117,7 +117,7 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
   - Objections (aggregated from each step's `Done.md` if the user insisted on a contested decision in any of them).
   - For branch B (pure_research) — Done.md is short, points at `Research.md` as the final artifact; the steps section is empty; no estimate retrospective is required.
 
-  On branch A, and only for a walk with no failed, cancelled or pending steps, also apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-swift-toolkit.md`, else `on`. An epic has no commits of its own: the file sits a layer above the steps, linking to each step's own walkthrough rather than restating it. Branch B gets none — there is no implementation to walk through.
+  On branch A, and only for a walk with no failed, cancelled or pending steps, also apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else `on`. An epic has no commits of its own: the file sits a layer above the steps, linking to each step's own walkthrough rather than restating it. Branch B gets none — there is no implementation to walk through.
 
 ## 3. Manual mode
 

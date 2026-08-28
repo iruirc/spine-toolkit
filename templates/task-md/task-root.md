@@ -5,7 +5,7 @@
 [NEED_TEST] = [{{NEED_TEST}}]
 [NEED_REVIEW] = [{{NEED_REVIEW}}]
 
-# Optional (only if overriding project default from CLAUDE-swift-toolkit.md):
+# Optional (only if overriding project default from CLAUDE-spine-toolkit.md):
 # [WORKFLOW_MODE] = [auto]    # manual | auto
 # [MOBILE_MCP] = [off]        # auto | off
 # [MANUAL_CHECKS] = [always]  # auto | always
