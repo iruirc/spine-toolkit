@@ -85,11 +85,14 @@
 ## auq_axis_architecture_question
 Какую архитектуру использует эта задача?
 
-## auq_axis_platform_question
-Какую целевую платформу использует эта задача?
+## auq_axis_baseline_question
+Какой baseline платформы у этой задачи?
 
 ## auq_axis_tests_question
 Какой тестовый фреймворк использует эта задача?
+
+## auq_axis_generic_question
+Какое значение оси `{axis}` использует эта задача?
 
 ## auq_research_agent_question
 Какой агент должен выполнить стадию Research?
