@@ -77,7 +77,9 @@ itself — an absent role degrades loudly by construction.
 
 The catalog of stack axes and their allowed values, `axis = v1, v2, v3`. This is the source of truth
 for both `stack-detect` and the option list the orchestrator offers the user when an axis cannot be
-resolved from the repository.
+resolved from the repository. Values are proper nouns and are **never localized**: that option list
+is rendered in the user's language, and an ordinary-word value like `manual` or `Factory`, translated
+into it, matches no catalog entry when the answer comes back.
 
 `ecosystem` is the one axis core requires every platform to declare, and the only axis whose meaning
 core fixes: it names the ecosystem this platform serves (`apple`, `android`, `jvm`). Declare it —
@@ -93,7 +95,10 @@ Every other axis and every value is the platform's own choice; core recommends b
 ## `## Heuristics`
 
 How axis values are read off a repository. A `path:` row flags one or more axes as relevant to the
-files in scope; an `import:`, `token:` or `file:` row pins one specific value:
+files in scope; an `import:`, `token:` or `file:` row pins one specific value — and what it pins must
+be a value the axis lists under `## Axes`, since that is what `stack-detect` returns. A signal whose
+value has to be computed (a deployment target read out of a build file) pins nothing: write it as a
+flagging row and let the chain or the user supply the catalog value.
 
 ```
 import: `SwiftUI` only (no UIKit/AppKit) → ui=SwiftUI

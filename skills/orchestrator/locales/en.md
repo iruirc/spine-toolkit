@@ -6,6 +6,9 @@ Specify task number, e.g. `запусти 026` / `/task-run 026`.
 ## error_task_not_found
 Task `{task_id}` not found in `Tasks/`.
 
+## error_no_project_config
+This project has no `CLAUDE-swift-toolkit.md`, so nothing says which platform serves it — and without a platform there is no agent to dispatch a stage to. Run the platform plugin's project-init entry point (the agent it maps to the `init` role, usually behind its own slash command), then run the task again.
+
 ## error_no_platform_manifest
 No platform manifest found. The project config names platform "{plugin}", but its manifest skill did not load. Install the platform plugin or fix ## Platform in the config.
 
