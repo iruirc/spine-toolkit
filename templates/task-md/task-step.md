@@ -6,7 +6,7 @@
 [NEED_REVIEW] = [{{NEED_REVIEW}}]
 [STATUS] = [{{STATUS}}]             # PENDING | IN_PROGRESS | DONE | DEFERRED | BLOCKED | SKIPPED
 
-# Optional (only if overriding project default from CLAUDE-swift-toolkit.md):
+# Optional (only if overriding project default from CLAUDE-spine-toolkit.md):
 # [WORKFLOW_MODE] = [auto]    # manual | auto
 # [MOBILE_MCP] = [off]        # auto | off
 # [MANUAL_CHECKS] = [always]  # auto | always

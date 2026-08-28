@@ -14,14 +14,14 @@ Creates a numbered task folder + Task.md scaffold and fills it with the user's f
 
 Before producing any user-facing string:
 
-1. Read `CLAUDE-swift-toolkit.md` from the project root.
+1. Read `CLAUDE-spine-toolkit.md` from the project root.
 2. Find the `## Language` section.
 3. Take the first non-empty line in that section, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
 
-Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-swift-toolkit.md per string.
+Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine-toolkit.md per string.
 
 ## Triggers
 
@@ -106,7 +106,7 @@ For reference, the templates contain these placeholders:
    - Logs → `## 5. [Logs]` (only if present in the request)
    - Stack traces / crashlogs → `## 6. [StackTrace]` (only if present)
    The prose follows the user's natural language. The headings themselves are not touched.
-9. **Optional override lines** — append via Edit immediately after the `[NEED_REVIEW]` line, one per line, only where the user explicitly asked for something other than the project default in `CLAUDE-swift-toolkit.md`. Otherwise leave the template as is (the commented-out lines stay as documentation).
+9. **Optional override lines** — append via Edit immediately after the `[NEED_REVIEW]` line, one per line, only where the user explicitly asked for something other than the project default in `CLAUDE-spine-toolkit.md`. Otherwise leave the template as is (the commented-out lines stay as documentation).
    - `[WORKFLOW_MODE] = [<manual|auto>]` — overrides `## Mode`.
    - `[MOBILE_MCP] = [<auto|off>]` — overrides `## Validation` → `mobile_mcp`; write `off` when the user says the UI check of this particular task has to be done by hand.
    - `[MANUAL_CHECKS] = [<auto|always>]` — overrides `## Validation` → `manual_checks`; write `always` when the user wants a hand-run test script out of this task whether or not the agent drove the app itself.

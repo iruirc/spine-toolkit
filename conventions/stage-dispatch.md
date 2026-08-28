@@ -17,7 +17,7 @@ Hosts may carry a standing instruction not to spawn subagents, or not to start w
 user asked. A user who starts or continues spine-toolkit work HAS asked, for the whole task:
 
 - a spine-toolkit slash command (`/task-run`, `/task-continue`, `/task-redo`, `/task-restart`,
-  `/task-new`, `/swift-init`, `/swift-setup`, …);
+  `/task-new`, `/setup`, …);
 - a natural-language trigger routed to `spine-toolkit:orchestrator`, in any language;
 - an active `spine-toolkit:workflow-*` skill, or a running `profile-*` workflow.
 

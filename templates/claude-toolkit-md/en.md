@@ -1,8 +1,8 @@
-# CLAUDE-swift-toolkit.md — Swift Toolkit Configuration
+# CLAUDE-spine-toolkit.md — Toolkit Configuration
 
-> Toolkit-owned configuration for a Swift/Apple project. Created and updated by `swift-setup`.
-> **Do not edit by hand unless you know what you're doing** — running `swift-setup` again may overwrite your changes (after backup).
-> User-owned project instructions live in `CLAUDE.md`. This file is auto-imported into Claude's context via `@./CLAUDE-swift-toolkit.md`.
+> Toolkit-owned configuration. Created and updated by `spine-toolkit:setup`.
+> **Do not edit by hand unless you know what you're doing** — running `/setup` again may overwrite your changes (after backup).
+> User-owned project instructions live in `CLAUDE.md`. This file is auto-imported into Claude's context via `@./CLAUDE-spine-toolkit.md`.
 > Task-orchestration logic is in the `spine-toolkit:*` skills (see "Orchestration" below).
 
 ## Language
@@ -34,14 +34,28 @@ en
 - `git log` / `git blame` / `Tasks/<status>/<task_id>/` folder carry the timeline.
 - Production code carries the *current* invariants and constraints — not the journey that led to them.
 
+## Platform
+
+<platform-plugin>
+
+(the platform plugin that serves this project. spine-toolkit invokes it as `<name>:manifest` to
+learn which agent owns each role, which stack axes exist and how to read them off the repository.
+Exactly one name, on its own line — nothing is inferred from the repository.)
+
+## Agents
+
+(optional: per-role overrides of the platform manifest's `## Roles`, same row grammar —
+`<role> = <plugin>:<agent>`, or `<role>[<axis>=<value>] = <plugin>:<agent>` to override only one
+axis value. A role named here replaces the manifest's rows for that role entirely. This block
+normally holds no row at all: the platform's manifest is the source of truth, and an override is
+the exception. Placeholders in angle brackets are not rows — only a line that names a real role is.)
+
 ## Stack
 
-- UI: <SwiftUI | UIKit | AppKit>
-- Async: <async/await | Combine | RxSwift>
-- DI: <Swinject | Factory pattern (see skill di-module-assembly) | manual>
-- Architecture: <MVVM+Coordinator | VIPER | Clean Architecture | MVC>
-- Baseline: <iOS 16+ | macOS 13+ | iOS+macOS>
-- Tests: <XCTest | Quick+Nimble>
+<one `- <Axis>: <value>` line per axis the platform's manifest declares under `## Axes`>
+
+(axis names and values are proper nouns from that catalog — never translated, since they are matched
+back against it.)
 
 ## Mode
 
@@ -90,7 +104,7 @@ artifact itself. A single task overrides with `[WALKTHROUGH] = [on|off]` in its 
 
 ## Modules
 
-(optional: list of modules with per-module stack, e.g.: "- Core: /Packages/Core — Combine, manual DI")
+(optional: list of modules with a per-module stack overriding `## Stack` for the paths it names, e.g.: "- Core: /Packages/Core — <axis>: <value>, <axis>: <value>")
 
 ## EstimationDeltas
 
@@ -112,21 +126,21 @@ manual
 
 ## Orchestration
 
-The full skill map and dependencies between skill groups — see the swift-toolkit README ("Skills as a system").
+The full skill map and dependencies between skill groups — see the spine-toolkit README ("Skills as a system").
 
 Task routing, profile, and stage logic lives in skills:
 
 - `spine-toolkit:orchestrator` — picks the profile by `TASK_TYPE`, determines the start point, dispatches stages
 - `spine-toolkit:workflow-feature|bug|refactor|test|review|research|epic` — profile procedures
 - `spine-toolkit:task-new|task-move|task-status` — task management
-- `swift-platform:swift-setup` — configures swift-toolkit in an existing project (creates `CLAUDE-swift-toolkit.md` from template, inserts `@./CLAUDE-swift-toolkit.md` import into `CLAUDE.md`, creates `Tasks/`)
+- `spine-toolkit:setup` — configures spine-toolkit in an existing project (creates `CLAUDE-spine-toolkit.md` from template, inserts the `@./CLAUDE-spine-toolkit.md` import into `CLAUDE.md`, creates `Tasks/`)
 - `spine-toolkit:swift-lang` — switches the project's prompt language
 
 Each profile also has a workflow script (`workflows/profile-*.js`) running the same stages as code; the orchestrator uses it where the host has the `Workflow` tool and falls back to the skill where it does not. Two consequences worth knowing: agents inside a workflow run in `acceptEdits`, so their file edits apply without a prompt whatever permission mode the session is in, and on the Pro plan workflows stay off until enabled in `/config`.
 
 Slash commands:
 - task management: `/task-new`, `/task-run`, `/task-continue`, `/task-redo`, `/task-restart`, `/task-move`, `/task-status`
-- toolkit setup: `/swift-init` (new project from scratch), `/swift-setup` (attach toolkit to existing project)
+- toolkit setup: `/setup` (attach the toolkit to an existing project); a project from scratch is the platform plugin's own command
 - language: `/swift-lang <code>` (switch between `en` and `ru`)
 
-NL phrases continue to work: `create task: ...`, `run 001`, `continue 001`, `move 001 to DONE`, `status 001`, `redo plan for 001`, `set up swift-toolkit`, etc. — the matching skill activates via triggers in its `description`.
+NL phrases continue to work: `create task: ...`, `run 001`, `continue 001`, `move 001 to DONE`, `status 001`, `redo plan for 001`, `set up spine-toolkit`, etc. — the matching skill activates via triggers in its `description`.

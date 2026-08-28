@@ -1,9 +1,9 @@
 #!/usr/bin/env bats
 # lint-manifest.sh validates a platform manifest against the spine-toolkit
-# contract: Roles/Axes/Heuristics/Topics tables present, every core role
-# mapped or declared absent, roles stay inside the core vocabulary, and every
-# named agent has a file. Topics content is deliberately not checked (see the
-# script's header comment).
+# contract: the five tables present, every core role mapped or declared absent,
+# roles stay inside the core vocabulary, every named agent has a file, and an
+# Entrypoints skill other than '—' resolves. Topics content is deliberately not
+# checked (see the script's header comment).
 
 setup() {
   # BATS_TEST_FILENAME, not BASH_SOURCE[0]: bats sources a preprocessed copy of
@@ -93,4 +93,23 @@ teardown() { rm -rf "$TMP"; }
   perl -i -pe 's/^architect\s+=/architect\t=\t/' "$TMP/p/skills/manifest/SKILL.md"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 0 ]
+}
+
+@test "fails when an entrypoint names a skill with no SKILL.md" {
+  # Core calls this one by name at install time, after the config is on disk:
+  # a typo there is indistinguishable from the legitimate '—' at runtime, so
+  # conformance is the only place it can be caught.
+  sed -i.bak 's|^setup = —|setup = `fixture-setpu`|' "$TMP/p/skills/manifest/SKILL.md" \
+    && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"fixture-setpu"* ]]
+}
+
+@test "fails when an entrypoint is mapped to an empty value" {
+  sed -i.bak 's|^setup = —|setup = |' "$TMP/p/skills/manifest/SKILL.md" \
+    && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"setup"* ]]
 }

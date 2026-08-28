@@ -27,7 +27,7 @@ A briefing describes the business goal. The engineering task is to discover what
 ## Inputs
 
 - The briefing / PRD / user-typed task description
-- The project stack (from `CLAUDE-swift-toolkit.md`) — informs which Secondary items are applicable
+- The project stack (from `CLAUDE-spine-toolkit.md`) — informs which Secondary items are applicable
 - The target platform (iOS app / macOS app / SPM library / CLI) — affects N/A semantics
 
 ## Steps

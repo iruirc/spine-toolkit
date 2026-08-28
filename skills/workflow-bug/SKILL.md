@@ -17,14 +17,14 @@ The profile workflow for tasks with `[TASK_TYPE] = BUG`. Implements the sequence
 
 Before producing any user-facing string:
 
-1. Read `CLAUDE-swift-toolkit.md` from the project root.
+1. Read `CLAUDE-spine-toolkit.md` from the project root.
 2. Find the `## Language` section.
 3. Take the first non-empty line in that section, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
 
-Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-swift-toolkit.md per string.
+Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine-toolkit.md per string.
 
 ## 1. Input Contract
 
@@ -87,9 +87,9 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   If `start_phase=<phase_id>` was passed in args — `[developer]` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
-  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-swift-toolkit.md`, else `on`. Written by `[developer]`.
+  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else `on`. Written by `[developer]`.
 
-- **Validation** — `[validator]`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between the `validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the BUG profile, the validator runs XcodeBuildMCP `build_sim` + `test_sim` mandatorily AND mobile MCP mandatorily (regardless of layer) to replay the reproduction scenario from `Reproduce.md`. Validation is not considered PASSED without an explicit agent-composed statement that the bug no longer reproduces — surfaced in the return digest as `reproduction_status: fixed`. Detailed behavior (replay procedure, return-digest format) lives with the `validator` agent. When `mobile_mcp` resolves to `off` (`Task.md [MOBILE_MCP]` first, then `CLAUDE-swift-toolkit.md ## Validation`), the replay is handed to the user like any other deferred check: `reproduction_status` comes back `deferred-manual`, the replay steps land in `ManualChecks.md` and its case titles in `manual_checks`, and the run continues with nothing claimed about the bug being fixed.
+- **Validation** — `[validator]`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between the `validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the BUG profile, the validator runs XcodeBuildMCP `build_sim` + `test_sim` mandatorily AND mobile MCP mandatorily (regardless of layer) to replay the reproduction scenario from `Reproduce.md`. Validation is not considered PASSED without an explicit agent-composed statement that the bug no longer reproduces — surfaced in the return digest as `reproduction_status: fixed`. Detailed behavior (replay procedure, return-digest format) lives with the `validator` agent. When `mobile_mcp` resolves to `off` (`Task.md [MOBILE_MCP]` first, then `CLAUDE-spine-toolkit.md ## Validation`), the replay is handed to the user like any other deferred check: `reproduction_status` comes back `deferred-manual`, the replay steps land in `ManualChecks.md` and its case titles in `manual_checks`, and the run continues with nothing claimed about the bug being fixed.
 
   The validator MUST apply the `mobile-ops-checklist` skill, scoped to the categories the bug touched (per `Reproduce.md`'s Secondary enumeration). Output: `OpsChecklist.md` in the task folder, marking only the touched categories — full-checklist coverage is not required for BUG. Goal: catch regressions in adjacent ops behaviors (e.g. a fix for a network bug must not break the offline / cancellation behavior).
 

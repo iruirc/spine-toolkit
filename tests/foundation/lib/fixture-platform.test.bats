@@ -10,10 +10,18 @@ setup() {
   FIX="$ROOT/tests/fixtures/fixture-platform"
 }
 
-@test "fixture platform declares all four manifest tables" {
-  for section in Roles Axes Heuristics Topics; do
+@test "fixture platform declares all five manifest tables" {
+  for section in Roles Axes Heuristics Topics Entrypoints; do
     grep -q "^## $section\$" "$FIX/skills/manifest/SKILL.md"
   done
+}
+
+@test "fixture platform declares the setup entrypoint absent" {
+  # Core resolves the platform half of installation through this row. The
+  # fixture ships no setup skill, so its em dash is what exercises core's
+  # `## Stack` left unset -> per-axis AUQ fallback; a row that silently went
+  # missing would leave that branch untested and unspecified.
+  grep -qE '^setup[[:space:]]*=[[:space:]]*—$' "$FIX/skills/manifest/SKILL.md"
 }
 
 @test "fixture platform maps every core role or declares it absent" {

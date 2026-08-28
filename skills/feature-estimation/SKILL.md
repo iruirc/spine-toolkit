@@ -1,6 +1,6 @@
 ---
 name: feature-estimation
-description: "Use when estimating mobile / app feature work — after `feature-landscape` produced work-items. Converts an ideal-day baseline into a calibrated day range using feature-type defaults, PERT for high-risk items, scope-aware additive risk deltas (unknowns, unscoped secondary requirements, parallel API, binary distribution, OS fragmentation), optional project overrides from `CLAUDE-swift-toolkit.md ## EstimationDeltas`, optional AI-assisted range derived per-item, confidence/maturity labels, delivery-calendar conversion, at most one dominant multiplier for unfamiliar tech, and a separate App/Play Store review calendar buffer. Ceremony scales to risk — small familiar features collapse to feature type + baseline + range + confidence. Output is a range anchored to named scenarios, never a point estimate."
+description: "Use when estimating mobile / app feature work — after `feature-landscape` produced work-items. Converts an ideal-day baseline into a calibrated day range using feature-type defaults, PERT for high-risk items, scope-aware additive risk deltas (unknowns, unscoped secondary requirements, parallel API, binary distribution, OS fragmentation), optional project overrides from `CLAUDE-spine-toolkit.md ## EstimationDeltas`, optional AI-assisted range derived per-item, confidence/maturity labels, delivery-calendar conversion, at most one dominant multiplier for unfamiliar tech, and a separate App/Play Store review calendar buffer. Ceremony scales to risk — small familiar features collapse to feature type + baseline + range + confidence. Output is a range anchored to named scenarios, never a point estimate."
 ---
 
 # Feature Estimation
@@ -24,13 +24,13 @@ Estimates fail because they ignore the cost of what nobody wrote down: error sta
 
 - `Research.md ## Landscape ### Work items` — decomposed list with each item ≤ 2 days
 - `Research.md ## Requirements` — Secondary table + Known Unknowns
-- Project stack from `CLAUDE-swift-toolkit.md` — for stack-specific deltas (e.g. Android fragmentation only applies if cross-platform)
-- Optional project calibration from `CLAUDE-swift-toolkit.md ## EstimationDeltas`
+- Project stack from `CLAUDE-spine-toolkit.md` — for stack-specific deltas (e.g. Android fragmentation only applies if cross-platform)
+- Optional project calibration from `CLAUDE-spine-toolkit.md ## EstimationDeltas`
 - API readiness state — built / in-parallel / not started
 - Engineer familiarity with the module — first time / occasional / fluent
 - Release and rollback path — feature flag / kill switch / remote config / hotfix path / binary-only
 - Feature type — UI-only / API-driven / SDK integration / persistence or migration / refactor / cross-platform / release-ops-heavy
-- Delivery mode — `manual` (default) or `ai-assisted`; from the first non-empty line under `CLAUDE-swift-toolkit.md ## DeliveryMode` or a per-estimate opt-in. Drives the optional AI-assisted range.
+- Delivery mode — `manual` (default) or `ai-assisted`; from the first non-empty line under `CLAUDE-spine-toolkit.md ## DeliveryMode` or a per-estimate opt-in. Drives the optional AI-assisted range.
 - Team calendar assumptions — focus factor or effective capacity, planned external waits, store/release windows
 - Hard deadline presence (yes / no)
 
@@ -70,7 +70,7 @@ store_buffer      = +2–7 calendar days            ← reported separately from
 
 The full artifact below is the *ceiling*, not the floor. A small, familiar, low-risk feature must not carry the same paperwork as a cross-platform migration with a hard deadline. Produce only the sections that earn their place.
 
-**AI-assisted mode (optional, off by default).** When the first non-empty line under `CLAUDE-swift-toolkit.md ## DeliveryMode` is exactly `ai-assisted`, or the estimator opts in for one estimate, the artifact additionally derives an **AI-assisted range** from the same baseline (see *AI-assisted range* below). Any other value, a blank section, or a template placeholder means `manual`. When the mode is off, ignore every AI-assisted instruction in this skill — the estimate is human-only, exactly as the rest of this document describes.
+**AI-assisted mode (optional, off by default).** When the first non-empty line under `CLAUDE-spine-toolkit.md ## DeliveryMode` is exactly `ai-assisted`, or the estimator opts in for one estimate, the artifact additionally derives an **AI-assisted range** from the same baseline (see *AI-assisted range* below). Any other value, a blank section, or a template placeholder means `manual`. When the mode is off, ignore every AI-assisted instruction in this skill — the estimate is human-only, exactly as the rest of this document describes.
 
 **Minimum viable estimate (always required):**
 
@@ -123,7 +123,7 @@ High — familiar module, flag-gated, no open unknown, no parallel API.
 
 ### Step 0 — Project calibration overrides
 
-Before estimating, read `CLAUDE-swift-toolkit.md`. If it contains `## EstimationDeltas` with a markdown table, use those project-specific values instead of the defaults below. If the section is absent, blank, or only contains the template placeholder, use the defaults. If a table row is malformed or lacks a reason, ignore that override and note it under Assumptions.
+Before estimating, read `CLAUDE-spine-toolkit.md`. If it contains `## EstimationDeltas` with a markdown table, use those project-specific values instead of the defaults below. If the section is absent, blank, or only contains the template placeholder, use the defaults. If a table row is malformed or lacks a reason, ignore that override and note it under Assumptions.
 
 Recommended override format:
 
@@ -179,7 +179,7 @@ If planning-time ops review or the release plan reveals applicable ops work that
 | `novel-domain` | business logic, tricky algorithms, concurrency, migration correctness | ÷1–1.3 |
 | `spec-bound` | work where the spec or the review *is* the cost | ÷1 (no leverage) |
 
-Project overrides live in `CLAUDE-swift-toolkit.md ## AILeverage`, using the same table format and discipline as `## EstimationDeltas`: malformed or placeholder rows are ignored and fall back to these defaults, and an override never removes the requirement to justify the class chosen for each item.
+Project overrides live in `CLAUDE-spine-toolkit.md ## AILeverage`, using the same table format and discipline as `## EstimationDeltas`: malformed or placeholder rows are ignored and fall back to these defaults, and an override never removes the requirement to justify the class chosen for each item.
 
 ### Step 3 — Apply risk deltas
 
@@ -470,9 +470,9 @@ Static deltas are a starting point, not a prescription. After each shipped featu
 - Deltas consistently too low → the team is under-decomposing the landscape; push for finer work items.
 - Deltas consistently too high → the team has built up tooling/library that reduces the Secondary cost; lower the Secondary delta for this codebase.
 
-Project-specific overrides live in `CLAUDE-swift-toolkit.md ## EstimationDeltas` using the table format from Step 0. Keep overrides sparse: only encode repeatable evidence from multiple finished features, not one-off surprises.
+Project-specific overrides live in `CLAUDE-spine-toolkit.md ## EstimationDeltas` using the table format from Step 0. Keep overrides sparse: only encode repeatable evidence from multiple finished features, not one-off surprises.
 
-Under AI-assisted mode, the retrospective also compares the AI-assisted estimate against actual AI-assisted effort **per leverage class**, and narrows the class divisors over time via `CLAUDE-swift-toolkit.md ## AILeverage`. Until enough finished AI-assisted features exist to do this, keep AI-assisted ranges at Low confidence.
+Under AI-assisted mode, the retrospective also compares the AI-assisted estimate against actual AI-assisted effort **per leverage class**, and narrows the class divisors over time via `CLAUDE-spine-toolkit.md ## AILeverage`. Until enough finished AI-assisted features exist to do this, keep AI-assisted ranges at Low confidence.
 
 At Done / Review time, MUST add an estimate retrospective when an estimate exists. Actual engineering effort is active implementation/review/test work, not wall-clock waiting.
 
@@ -524,7 +524,7 @@ The log is a single Markdown table with a **fixed, parseable column order** so t
 
 Column semantics: `type` ∈ {FEATURE, EPIC, BUG, REFACTOR, TEST, RESEARCH}; `posture` ∈ {human, ai-assisted}; `estimated_range` is the named best–worst range as reported; `source` ∈ {human, proxy, unknown} and fixes the unit of `actual`; `in_range` is the verdict computed from `human ?? proxy` (use `n/a (proxy unit)` when only a proxy exists); `observed_divisors` is a `;`-separated `class=÷N` list in AI-assisted mode, else `—`. Epics append one rolled-up row (summed step actuals in matching units) in addition to each step's own row.
 
-When the log holds **≥3–5 finished features of the same posture**, the skill (or the architect at the next Plan stage) computes the mean observed value per knob — Secondary delta, Unknown-unknowns band, or AI leverage divisor — and **proposes** an update to `CLAUDE-swift-toolkit.md ## EstimationDeltas` / `## AILeverage`. The proposal is surfaced to the user, never written silently: calibration changes the numbers every future estimate depends on. Keep overrides sparse — encode repeatable evidence from multiple features, never a one-off surprise. Until an AI-leverage class is calibrated this way, its range stays `Low (uncalibrated)`.
+When the log holds **≥3–5 finished features of the same posture**, the skill (or the architect at the next Plan stage) computes the mean observed value per knob — Secondary delta, Unknown-unknowns band, or AI leverage divisor — and **proposes** an update to `CLAUDE-spine-toolkit.md ## EstimationDeltas` / `## AILeverage`. The proposal is surfaced to the user, never written silently: calibration changes the numbers every future estimate depends on. Keep overrides sparse — encode repeatable evidence from multiple features, never a one-off surprise. Until an AI-leverage class is calibrated this way, its range stays `Low (uncalibrated)`.
 
 ## Platform-specific notes
 

@@ -1,11 +1,11 @@
 ---
 name: manifest
-description: Platform manifest for the fixture platform. Data, not instructions — the four tables spine-toolkit reads to bind roles, axes, heuristics and topics.
+description: Platform manifest for the fixture platform. Data, not instructions — the five tables spine-toolkit reads to bind roles, axes, heuristics, topics and entrypoints.
 ---
 
 # Fixture Platform Manifest
 
-> This skill is **data**, not instructions. spine-toolkit reads the four tables below by
+> This skill is **data**, not instructions. spine-toolkit reads the five tables below by
 > invoking this skill; there is no procedure here to follow.
 
 This is the minimal manifest a `*-platform` plugin declares to spine-toolkit, kept as a fixture:
@@ -58,7 +58,16 @@ import: `beta`  → widget=beta
 
 Topic → comma-separated, backtick-quoted, bare skill names that cover it (no `plugin:` prefix —
 a manifest is read one platform at a time, so its own skills need no namespacing), or `—` if this
-platform has none. Consumed by `feature-landscape` and `feature-requirements`.
+platform has none. Consumed by `feature-landscape` and `feature-requirements`. Every row here is a
+topic; a skill spine-toolkit calls by name lives in `## Entrypoints` instead.
 
 state management → `store-flux`, `store-atoms`
 persistence      → —
+
+## Entrypoints
+
+Skills spine-toolkit invokes by name, or `—` for one this platform does not provide. This fixture
+ships no setup skill, and the em dash is the point: spine-toolkit writes the config's core blocks,
+leaves `## Stack` unset, and the orchestrator asks per axis on the first task that needs one.
+
+setup = —
