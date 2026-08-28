@@ -119,7 +119,9 @@ for fname in files:
 
     # Every A.agents.<role> in the script, wherever it appears — a per-phase agent reaches
     # runPhases inside a { code, test } map, and that is the copy most likely to be forgotten.
-    dispatched = set(re.findall(r'A\.agents\.(\w+)', src))
+    # lens('<role>') is the other dispatch site: a named-but-non-writing role resolved through
+    # the prelude's best-effort helper instead of a direct A.agents.<role> read.
+    dispatched = set(re.findall(r'A\.agents\.(\w+)', src)) | set(re.findall(r"lens\('([a-z]+)'\)", src))
 
     # A.agents[<ident>] form: <ident> is either a bare-role constant (WALKTHROUGH_AGENT) or an
     # object literal mapping a catalog name to a role (profile-research.js's ROLE_OF). Either

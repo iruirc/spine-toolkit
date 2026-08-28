@@ -177,6 +177,15 @@ const need = (stage, ...roles) => {
   return !missing
 }
 
+// A role named as a lens rather than the stage's writer is best-effort: absent is a note, not
+// a hand-back — the writer's prompt already tolerates an empty lens.
+const lens = (role) => {
+  const agentType = A.agents[role]
+  if (agentType && agentType !== '—') return agentType
+  result.notes.push(`No agent implements the "${role}" role on this platform; proceeding without it.`)
+  return null
+}
+
 const finish = (next, extra) => ({
   status: extra && extra.status ? extra.status : result.status,
   last_completed_stage: result.last_completed_stage,
@@ -311,7 +320,7 @@ if (runs('Review')) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-The body: what was done well, what needs changing grouped by severity, and the open questions. The detailed output format is in agents/swift-reviewer.md.
+The body: what was done well, what needs changing grouped by severity, and the open questions.
 
 The first line is machine-parsed and the next stage acts on it — a task folder moves or does not move because of it. Modify nothing else. Return the same status you wrote on that line.`,
     ),
