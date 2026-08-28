@@ -180,6 +180,15 @@ const need = (stage, ...roles) => {
   return !missing
 }
 
+// A role named as a lens rather than the stage's writer is best-effort: absent is a note, not
+// a hand-back — the writer's prompt already tolerates an empty lens.
+const lens = (role) => {
+  const agentType = A.agents[role]
+  if (agentType && agentType !== '—') return agentType
+  result.notes.push(`No agent implements the "${role}" role on this platform; proceeding without it.`)
+  return null
+}
+
 const finish = (next, extra) => ({
   status: extra && extra.status ? extra.status : result.status,
   last_completed_stage: result.last_completed_stage,
@@ -532,20 +541,20 @@ if (runs('Execute')) {
         for (const rest of walk.slice(i)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
         break
       }
-      // A step's own handback (its platform declares no agent for one of its roles) is not a
-      // failure, but this loop has no main context to run the stage in and announce it either —
-      // that needs the orchestrator, so the step is escalated the same way a real failure is.
-      if (!r || r.status !== 'ok' || r.handback) {
+      // A step's own hand-back (its platform declares no agent for one of its roles) is a
+      // legitimate platform shape, not a failure — but this loop has no main context to run the
+      // stage in and announce it either, so the step (and everything after it) goes back as
+      // pending for the orchestrator, same as a step this loop cannot push at all.
+      if (r && r.handback) {
+        result.notes.push(`Step ${st.step_id} hands back stage ${r.handback.stage}: no agent implements role "${r.handback.role}" on this platform.`)
+        for (const rest of walk.slice(i)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
+        break
+      }
+      if (!r || r.status !== 'ok') {
         failed_steps.push({
           step_id: st.step_id,
           task_id: st.task_id,
-          error_reason: launchError
-            ? launchError
-            : r && r.handback
-              ? `stage ${r.handback.stage} needs role "${r.handback.role}", which this platform does not implement`
-              : r
-                ? `${r.status}: ${r.reason || r.notes || 'no reason given'}`
-                : 'the step workflow returned nothing',
+          error_reason: launchError || (r ? `${r.status}: ${r.reason || r.notes || 'no reason given'}` : 'the step workflow returned nothing'),
         })
         for (const rest of walk.slice(i + 1)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
         break

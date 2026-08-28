@@ -184,6 +184,15 @@ const need = (stage, ...roles) => {
   return !missing
 }
 
+// A role named as a lens rather than the stage's writer is best-effort: absent is a note, not
+// a hand-back — the writer's prompt already tolerates an empty lens.
+const lens = (role) => {
+  const agentType = A.agents[role]
+  if (agentType && agentType !== '—') return agentType
+  result.notes.push(`No agent implements the "${role}" role on this platform; proceeding without it.`)
+  return null
+}
+
 const finish = (next, extra) => ({
   status: extra && extra.status ? extra.status : result.status,
   last_completed_stage: result.last_completed_stage,
@@ -311,28 +320,31 @@ Change no production code and no tests.`,
 // Sequential rather than a parallel panel: both lenses feed one artifact, and the tester —
 // who also owns Plan and Write — is the one who writes it.
 if (runs('Analyze')) {
-  if (!need('Analyze', 'architect', 'tester')) return finish('ask_user')
-  const testability = await agent(
-    brief(
-      'Analyze',
-      `Assess how testable the code in scope actually is: where dependency injection is missing, what needs a protocol to be abstracted, which external dependencies need mocks or fakes, and which seams have to exist before a test can be written at all. Write no artifact — return your findings; the tester folds them into Research.md.`,
-    ),
-    {
-      label: 'analyze:testability',
-      phase: 'Analyze',
-      agentType: A.agents.architect,
-      schema: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['blockers'],
-        properties: {
-          blockers: { type: 'array', items: { type: 'string' }, description: 'what has to change before the code can be tested' },
-          notes: { type: 'string' },
+  if (!need('Analyze', 'tester')) return finish('ask_user')
+  const testabilityAgentType = lens('architect')
+  const testability = testabilityAgentType
+    ? await agent(
+        brief(
+          'Analyze',
+          `Assess how testable the code in scope actually is: where dependency injection is missing, what needs a protocol to be abstracted, which external dependencies need mocks or fakes, and which seams have to exist before a test can be written at all. Write no artifact — return your findings; the tester folds them into Research.md.`,
+        ),
+        {
+          label: 'analyze:testability',
+          phase: 'Analyze',
+          agentType: testabilityAgentType,
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['blockers'],
+            properties: {
+              blockers: { type: 'array', items: { type: 'string' }, description: 'what has to change before the code can be tested' },
+              notes: { type: 'string' },
+            },
+          },
         },
-      },
-    },
-  )
-  if (!testability) result.notes.push('The testability lens returned nothing; Research.md carries the tester view only.')
+      )
+    : null
+  if (testabilityAgentType && !testability) result.notes.push('The testability lens returned nothing; Research.md carries the tester view only.')
 
   const analyze = await agent(
     brief(

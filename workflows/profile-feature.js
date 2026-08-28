@@ -184,6 +184,15 @@ const need = (stage, ...roles) => {
   return !missing
 }
 
+// A role named as a lens rather than the stage's writer is best-effort: absent is a note, not
+// a hand-back — the writer's prompt already tolerates an empty lens.
+const lens = (role) => {
+  const agentType = A.agents[role]
+  if (agentType && agentType !== '—') return agentType
+  result.notes.push(`No agent implements the "${role}" role on this platform; proceeding without it.`)
+  return null
+}
+
 const finish = (next, extra) => ({
   status: extra && extra.status ? extra.status : result.status,
   last_completed_stage: result.last_completed_stage,
@@ -311,28 +320,31 @@ Change no production code and no tests.`,
 // Sequential rather than a parallel panel: both lenses feed one artifact, and only the
 // architect writes it. Two agents racing on Research.md would cost more than the wait saves.
 if (runs('Research')) {
-  if (!need('Research', 'security', 'architect')) return finish('ask_user')
-  const security = await agent(
-    brief(
-      'Research',
-      `Read ${DIR}/Task.md and assess the security surface this feature would add: credential and token handling, data at rest, transport and ATS, deeplink entry points, permissions, third-party SDKs, and anything touching PII. Write no artifact — return your findings; the architect folds them into Research.md.`,
-    ),
-    {
-      label: 'research:security',
-      phase: 'Research',
-      agentType: A.agents.security,
-      schema: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['risks'],
-        properties: {
-          risks: { type: 'array', items: { type: 'string' } },
-          notes: { type: 'string' },
+  if (!need('Research', 'architect')) return finish('ask_user')
+  const securityAgentType = lens('security')
+  const security = securityAgentType
+    ? await agent(
+        brief(
+          'Research',
+          `Read ${DIR}/Task.md and assess the security surface this feature would add: credential and token handling, data at rest, transport and ATS, deeplink entry points, permissions, third-party SDKs, and anything touching PII. Write no artifact — return your findings; the architect folds them into Research.md.`,
+        ),
+        {
+          label: 'research:security',
+          phase: 'Research',
+          agentType: securityAgentType,
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['risks'],
+            properties: {
+              risks: { type: 'array', items: { type: 'string' } },
+              notes: { type: 'string' },
+            },
+          },
         },
-      },
-    },
-  )
-  if (!security) result.notes.push('The security lens returned nothing; Research.md carries the architect view only.')
+      )
+    : null
+  if (securityAgentType && !security) result.notes.push('The security lens returned nothing; Research.md carries the architect view only.')
 
   const research = await agent(
     brief(
