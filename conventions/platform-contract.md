@@ -50,9 +50,17 @@ lint rejects it.
 A role may fan out across an axis with `role[axis=value]`, once per value:
 
 ```
-developer[ecosystem=jvm]     = kotlin-platform:kotlin-backend-developer
-developer[ecosystem=android] = kotlin-platform:kotlin-mobile-developer
+developer[ui=Compose] = kotlin-platform:kotlin-compose-developer
+developer[ui=Views]   = kotlin-platform:kotlin-views-developer
+developer             = kotlin-platform:kotlin-developer
 ```
+
+The axis has to be one core resolves: an axis of `## Axes` other than `ecosystem`, and the value one
+that axis lists. `ecosystem` is excluded from detection (see below), so a row qualified on it matches
+nothing on any project, ever — and a role fanned out that way with no bare row falls through to the
+em dash on every task, whose only symptom is a stage quietly announcing a deviation. So does a value
+the catalog does not list. `lint-manifest.sh` rejects both, and rejects two rows with the same
+left-hand side, where every row but the first is dead.
 
 Core picks one row per role: an axis-qualified row whose value matches the project's resolved value
 for that axis, else the bare `role =` row, else the em dash. Write the rows so that **at most one
@@ -89,7 +97,7 @@ but know that **nothing in core reads its value today**. A project names its pla
 the config's `## Platform` block; `ecosystem` is there for the parts that will have to reason about
 ecosystems rather than plugin names, such as installation-time discovery or a repository holding two
 of them. Reserved, not load-bearing: `stack-detect` excludes it from detection, so no `## Heuristics`
-row should try to pin it.
+row may pin it and no `## Roles` row may fan out on it.
 
 Every other axis and every value is the platform's own choice; core recommends but does not impose
 `ui`, `async`, `di`, `architecture`, `baseline`, `tests`.
@@ -103,8 +111,8 @@ value has to be computed (a deployment target read out of a build file) pins not
 flagging row and let the chain or the user supply the catalog value.
 
 ```
-import: `SwiftUI` only (no UIKit/AppKit) → ui=SwiftUI
-path:   `Views/`, `*View.swift`          → ui, architecture
+import: `androidx.compose` only (no android.view) → ui=Compose
+path:   `ui/`, `*Screen.kt`                       → ui, architecture
 ```
 
 Write the rows so that a repository signal matches **exactly one** of them — self-contained
@@ -122,7 +130,7 @@ names (a manifest is read one platform at a time, so its own skills need no `plu
 em dash for a topic this platform does not cover:
 
 ```
-state management → `arch-mvvm`, `arch-tca`
+state management → `arch-viewmodel`, `arch-mvi`
 persistence      → —
 ```
 
@@ -147,7 +155,7 @@ The skills core invokes by name, `entrypoint = ` a backtick-quoted **bare** skil
 plugin, or an em dash for one it does not provide:
 
 ```
-setup = `swift-setup`
+setup = `kotlin-setup`
 ```
 
 One entrypoint is defined today. **`setup`** names the platform half of installation: core's `setup`
@@ -176,8 +184,9 @@ scripts/lint-manifest.sh <plugin-dir>
 ```
 
 checks that all five tables are present, that the Roles rows cover the nine-role vocabulary and no
-more, that every named agent has a file in the plugin, that no role is mapped to nothing, and that a
-`## Entrypoints` skill other than `—` exists in the plugin. What it deliberately does not check:
+more, that every named agent has a file in the plugin, that no role is mapped to nothing, that every
+fan-out row keys on an axis core resolves and a value `## Axes` lists, that no two Roles rows share a
+left-hand side, and that a `## Entrypoints` skill other than `—` exists in the plugin. What it deliberately does not check:
 whether the skills named under `## Topics` exist — the reference fixture names placeholders on
 purpose, so that check belongs to each real platform's own test suite. `## Entrypoints` is checked
 and `## Topics` is not because core calls the one by name and merely lists the other: a typo in an
