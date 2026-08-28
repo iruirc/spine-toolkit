@@ -4,12 +4,12 @@ export const meta = {
   whenToUse:
     'Dispatched by swift-toolkit:orchestrator for a task with [TASK_TYPE]=REFACTOR, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
-    { title: 'Analyze', detail: 'current and target landscapes; their diff is the scope', agent: 'swift-architect' },
-    { title: 'Plan', detail: 'phase table plus per-phase checkboxes, derived from that diff', agent: 'swift-architect' },
-    { title: 'Refactor', detail: 'one agent per plan phase, sequential, a commit per green phase', agent: 'swift-refactorer / swift-tester' },
-    { title: 'Validation', detail: 'the pre-existing tests must pass unmodified', agent: 'swift-validator' },
-    { title: 'Review', detail: 'independent read of the diff', agent: 'swift-reviewer' },
-    { title: 'Done', detail: 'final report', agent: 'swift-refactorer' },
+    { title: 'Analyze', detail: 'current and target landscapes; their diff is the scope', agent: 'architect' },
+    { title: 'Plan', detail: 'phase table plus per-phase checkboxes, derived from that diff', agent: 'architect' },
+    { title: 'Refactor', detail: 'one agent per plan phase, sequential, a commit per green phase', agent: 'refactorer / tester' },
+    { title: 'Validation', detail: 'the pre-existing tests must pass unmodified', agent: 'validator' },
+    { title: 'Review', detail: 'independent read of the diff', agent: 'reviewer' },
+    { title: 'Done', detail: 'final report', agent: 'refactorer' },
   ],
 }
 
@@ -19,17 +19,17 @@ const ORDER = ['Analyze', 'Plan', 'Refactor', 'Validation', 'Review', 'Done']
 // Mirrors meta.phases[].agent, which the sandbox does not expose to the script body;
 // scripts/lint-workflows.sh fails on any drift between the two.
 const AGENT_OF = {
-  Analyze: 'swift-architect',
-  Plan: 'swift-architect',
-  Refactor: 'swift-refactorer / swift-tester',
-  Validation: 'swift-validator',
-  Review: 'swift-reviewer',
-  Done: 'swift-refactorer',
+  Analyze: 'architect',
+  Plan: 'architect',
+  Refactor: 'refactorer / tester',
+  Validation: 'validator',
+  Review: 'reviewer',
+  Done: 'refactorer',
 }
 
 // Writes Walkthrough.md — the same agent that writes this profile's final report, so the two
 // speak with one voice.
-const WALKTHROUGH_AGENT = 'swift-toolkit:swift-refactorer'
+const WALKTHROUGH_AGENT = 'refactorer'
 
 // ── prelude ──────────────────────────────────────────────────────────────────
 // Byte-identical in every profile script; scripts/lint-workflows.sh enforces that. A workflow
@@ -51,6 +51,13 @@ if (!A || typeof A !== 'object' || !A.task_id || !A.task_dir) {
     status: 'error',
     reason: 'no-args',
     next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through swift-toolkit:orchestrator, or fall back to the matching swift-toolkit:workflow-* skill. Do not execute the stages by hand.',
+  }
+}
+if (!A.agents || typeof A.agents !== 'object') {
+  return {
+    status: 'error',
+    reason: 'no-agents',
+    next: 'This workflow was started without the resolved agent map. Re-dispatch it through spine-toolkit:orchestrator.',
   }
 }
 
@@ -165,6 +172,18 @@ const REVIEW = {
 }
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
+
+// A role the platform declares absent (`—`) blocks the stage that names it: the script neither
+// dispatches nor skips it, it ends the range here and lets the orchestrator run the stage itself
+// and announce the deviation (orchestrator SKILL.md § Dispatch, "Method A — a stage whose role
+// resolved to `—`"). handback stays null until that fires.
+let handback = null
+const need = (stage, ...roles) => {
+  const missing = roles.find((role) => !A.agents[role] || A.agents[role] === '—')
+  if (missing) handback = { stage, role: missing }
+  return !missing
+}
+
 const finish = (next, extra) => ({
   status: extra && extra.status ? extra.status : result.status,
   last_completed_stage: result.last_completed_stage,
@@ -172,6 +191,7 @@ const finish = (next, extra) => ({
   next_recommended_action: next,
   notes: result.notes.join(' '),
   stages: result.stages,
+  handback,
   ...(extra || {}),
 })
 // stages[] is the per-stage report auto has no other source for: there one return covers the whole
@@ -260,6 +280,11 @@ The phase is not done until every checkbox is ticked AND it is committed. If you
 // and never stops the run.
 const writeWalkthrough = async (stage, extra) => {
   if (!WALKTHROUGH_AGENT || A.walkthrough === 'off' || A.walkthrough === false) return
+  const agentType = A.agents[WALKTHROUGH_AGENT]
+  if (!agentType || agentType === '—') {
+    result.notes.push(`No agent implements the "${WALKTHROUGH_AGENT}" role on this platform, so Walkthrough.md was not written.`)
+    return
+  }
   const w = await agent(
     brief(
       stage,
@@ -275,7 +300,7 @@ ${extra}` : ''}
 
 Change no production code and no tests.`,
     ),
-    { label: 'walkthrough', phase: stage, agentType: WALKTHROUGH_AGENT, schema: ARTIFACT },
+    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT },
   )
   if (w && w.artifact_path) log(`Walkthrough.md: ${w.summary || 'written'}`)
   else result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
@@ -284,6 +309,7 @@ Change no production code and no tests.`,
 
 // ── Analyze ─────────────────────────────────────────────────────────────────
 if (runs('Analyze')) {
+  if (!need('Analyze', 'architect')) return finish('ask_user')
   const analyze = await agent(
     brief(
       'Analyze',
@@ -293,7 +319,7 @@ Apply the feature-landscape skill TWICE and give the artifact two sections: ## L
 
 The invariant: external behaviour does not change. Only structure, readability, maintainability, type and module boundaries, naming, and dependency isolation do. The public API and behaviour contract is preserved.`,
     ),
-    { label: 'analyze', phase: 'Analyze', agentType: 'swift-toolkit:swift-architect', schema: ARTIFACT },
+    { label: 'analyze', phase: 'Analyze', agentType: A.agents.architect, schema: ARTIFACT },
   )
   if (!analyze) return finish('stop', { status: 'error', reason: 'the Analyze agent returned nothing' })
   record('Analyze', analyze)
@@ -302,6 +328,7 @@ The invariant: external behaviour does not change. Only structure, readability, 
 // ── Plan ────────────────────────────────────────────────────────────────────
 let plan = null
 if (runs('Plan')) {
+  if (!need('Plan', 'architect')) return finish('ask_user')
   plan = await agent(
     brief(
       'Plan',
@@ -312,7 +339,7 @@ if (runs('Plan')) {
 
 Every phase must be independently buildable, test-passing, AND committable on its own — that is the requirement of incremental refactoring, and commit-ready is not enough, because an interrupt destroys uncommitted work.`,
     ),
-    { label: 'plan', phase: 'Plan', agentType: 'swift-toolkit:swift-architect', schema: PLAN },
+    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: PLAN },
   )
   if (!plan) return finish('stop', { status: 'error', reason: 'the Plan agent returned nothing' })
   record('Plan', plan)
@@ -320,12 +347,13 @@ Every phase must be independently buildable, test-passing, AND committable on it
 
 // ── Refactor ────────────────────────────────────────────────────────────────
 if (runs('Refactor')) {
-  if (!plan) plan = await readPlan('Refactor', 'swift-toolkit:swift-refactorer')
+  if (!need('Refactor', 'refactorer', 'tester')) return finish('ask_user')
+  if (!plan) plan = await readPlan('Refactor', A.agents.refactorer)
   if (!plan) return finish('stop', { status: 'error', reason: 'could not read the phase list from Plan.md' })
 
   const phasesDone = await runPhases(
     'Refactor',
-    { code: 'swift-toolkit:swift-refactorer', test: 'swift-toolkit:swift-tester' },
+    { code: A.agents.refactorer, test: A.agents.tester },
     fromStartPhase(plan.phases || []),
     'Commit type: refactor for a structural phase, test for a test-only phase, chore for build or config only. Run the targeted tests after each phase. External behaviour does not change — if a pre-existing test needs editing to pass, that is a signal you changed behaviour, so stop and say so rather than editing the test.',
   )
@@ -337,6 +365,7 @@ if (runs('Refactor')) {
 // ── Validation ──────────────────────────────────────────────────────────────
 let validation = null
 if (runs('Validation')) {
+  if (!need('Validation', 'validator')) return finish('ask_user')
   validation = await agent(
     brief(
       'Validation',
@@ -350,7 +379,7 @@ Apply the mobile-ops-checklist skill in regression mode: re-check only the items
 
 Change no production code and no tests. Return the same status you wrote on the first line.`,
     ),
-    { label: 'validation', phase: 'Validation', agentType: 'swift-toolkit:swift-validator', schema: VALIDATION },
+    { label: 'validation', phase: 'Validation', agentType: A.agents.validator, schema: VALIDATION },
   )
   if (!validation) return finish('stop', { status: 'error', reason: 'the Validation agent returned nothing' })
   record('Validation', validation)
@@ -368,6 +397,7 @@ Change no production code and no tests. Return the same status you wrote on the 
 // ── Review ──────────────────────────────────────────────────────────────────
 let review = null
 if (runs('Review') && A.need_review !== false) {
+  if (!need('Review', 'reviewer')) return finish('ask_user')
   review = await agent(
     brief(
       'Review',
@@ -377,7 +407,7 @@ if (runs('Review') && A.need_review !== false) {
 
 Judge it against the refactor invariant first: did external behaviour stay put. Then against the target landscape in Research.md: is the structure actually where the plan said it would be, or did the phases stop halfway. Modify nothing. Return the same status you wrote on the first line.`,
     ),
-    { label: 'review', phase: 'Review', agentType: 'swift-toolkit:swift-reviewer', schema: REVIEW },
+    { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
   )
   if (!review) return finish('stop', { status: 'error', reason: 'the Review agent returned nothing' })
   record('Review', review)
@@ -395,12 +425,13 @@ Judge it against the refactor invariant first: did external behaviour stay put. 
 if (runs('Done') && !runs('Refactor')) await writeWalkthrough('Done')
 
 if (runs('Done')) {
+  if (!need('Done', 'refactorer')) return finish('ask_user')
   const done = await agent(
     brief(
       'Done',
       `Write the final report ${DIR}/Done.md: what was refactored, why the result is better (readability, separation of concerns, reduced coupling), whatever measurable metrics you have (file size, cyclomatic complexity of the key functions, dependency count), the validation status, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries.`,
     ),
-    { label: 'done', phase: 'Done', agentType: 'swift-toolkit:swift-refactorer', schema: ARTIFACT, effort: 'low' },
+    { label: 'done', phase: 'Done', agentType: A.agents.refactorer, schema: ARTIFACT, effort: 'low' },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)

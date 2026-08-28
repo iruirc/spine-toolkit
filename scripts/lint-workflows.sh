@@ -10,7 +10,8 @@ set -euo pipefail
 #     and no meta.phases entry invents a stage the profile does not have
 #   - every phase names the agent that runs its stage, and that map agrees both with what the
 #     script dispatches, in both directions, and with the script's own AGENT_OF copy
-#   - every agentType resolves to a file in agents/
+#   - every agentType is A.agents.<role>, never a string literal, and <role> is in the core
+#     role vocabulary (core has no agents/ dir — a script names roles, not agents)
 #   - the prelude block is byte-identical in every script (a script cannot import,
 #     so the shared skeleton is copied; this is what keeps the copies one thing)
 #   - none of the sandbox-forbidden globals, and no worktree isolation (decision D5)
@@ -21,6 +22,10 @@ cd "$(dirname "$0")/.."
 
 python3 - <<'PY'
 import os, re, sys
+
+# Mirrors scripts/lint-manifest.sh's ROLES — the vocabulary a platform's manifest and a
+# workflow script's dispatch both draw from.
+ROLES = 'architect developer tester reviewer refactorer validator security diagnostics init'.split()
 
 violations = []
 
@@ -105,21 +110,40 @@ for fname in files:
         if title not in agents_by_phase:
             violations.append(f'{path}: meta.phases entry "{title}" has no agent field')
 
+    # meta.phases[].agent is now free prose over role words ("security lens, then architect",
+    # "developer / tester") rather than swift-<agent> tokens, so a role is recognized by
+    # word-boundary match against the vocabulary rather than by a naming pattern.
     named = set()
     for spec in agents_by_phase.values():
-        named.update(re.findall(r'swift-[a-z]+', spec))
+        named.update(role for role in ROLES if re.search(rf'\b{role}\b', spec))
 
-    for bare in sorted(named):
-        if not os.path.exists(f'agents/{bare}.md'):
-            violations.append(f'{path}: meta.phases names agent "{bare}", which has no agents/{bare}.md')
-        if bare not in src:
-            violations.append(f'{path}: meta.phases names agent "{bare}", which the script never dispatches')
-
-    # Every namespaced literal, not just the agentType: ones — a per-phase agent reaches
+    # Every A.agents.<role> in the script, wherever it appears — a per-phase agent reaches
     # runPhases inside a { code, test } map, and that is the copy most likely to be forgotten.
-    dispatched = set(re.findall(r"'swift-toolkit:(swift-[a-z]+)'", src))
-    for bare in sorted(dispatched - named):
-        violations.append(f'{path}: dispatches "{bare}" but no meta.phases entry mentions it')
+    dispatched = set(re.findall(r'A\.agents\.(\w+)', src))
+
+    # A.agents[<ident>] form: <ident> is either a bare-role constant (WALKTHROUGH_AGENT) or an
+    # object literal mapping a catalog name to a role (profile-research.js's ROLE_OF). Either
+    # way its declared value(s) are roles the script dispatches, same as the dot form.
+    for ident in set(re.findall(r'A\.agents\[(\w+)', src)):
+        m = re.search(rf"^const {ident} = '([a-z]+)'", raw, flags=re.M)
+        if m:
+            dispatched.add(m.group(1))
+            continue
+        m = re.search(rf'^const {ident} = \{{([^}}]*)\}}', raw, flags=re.M)
+        if m:
+            dispatched.update(re.findall(r":\s*'([a-z]+)'", m.group(1)))
+
+    for role in sorted(dispatched):
+        if role not in ROLES:
+            violations.append(f'{path}: A.agents.{role} — "{role}" is not a core role ({", ".join(ROLES)})')
+
+    for role in sorted(named - dispatched):
+        violations.append(f'{path}: meta.phases names role "{role}", which the script never dispatches')
+    for role in sorted(dispatched - named):
+        violations.append(f'{path}: dispatches role "{role}" but no meta.phases entry mentions it')
+
+    for literal in re.findall(r"agentType:\s*'([^']*)'", src):
+        violations.append(f'{path}: agentType is the string literal \'{literal}\' — must resolve through A.agents.<role>')
 
     # meta is parsed before the run and is not a binding inside the sandbox, so the prelude reads a
     # per-file AGENT_OF copy instead. Two copies only stay one map if something compares them.
@@ -140,13 +164,6 @@ for fname in files:
             violations.append(f'{path}: stage "{missing}" names an agent in the skill but has no meta.phases entry')
         for invented in [t for t in titles if t not in stages]:
             violations.append(f'{path}: meta.phases has "{invented}", which is not a stage of the {profile.upper()} profile')
-
-    for agent_type in sorted(set(re.findall(r"agentType:\s*'([^']+)'", src))):
-        bare = agent_type.split(':', 1)[1] if ':' in agent_type else agent_type
-        if not os.path.exists(f'agents/{bare}.md'):
-            violations.append(f'{path}: agentType "{agent_type}" has no agents/{bare}.md')
-        if not agent_type.startswith('swift-toolkit:'):
-            violations.append(f'{path}: agentType "{agent_type}" is missing the swift-toolkit: prefix')
 
     for token, why in (
         ('Date.now(', 'rejected by the workflow validator'),

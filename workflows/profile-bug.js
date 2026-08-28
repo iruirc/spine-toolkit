@@ -4,13 +4,13 @@ export const meta = {
   whenToUse:
     'Dispatched by swift-toolkit:orchestrator for a task with [TASK_TYPE]=BUG, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
-    { title: 'Reproduce', detail: 'pin a deterministic scenario Validation can replay', agent: 'swift-diagnostics' },
-    { title: 'Diagnose', detail: 'panel: diagnostics and architect in parallel, then one synthesis', agent: 'swift-diagnostics + swift-architect panel, swift-architect synthesis' },
-    { title: 'Plan', detail: 'phase table plus per-phase checkboxes', agent: 'swift-architect' },
-    { title: 'Fix', detail: 'one agent per plan phase, sequential, a commit per green phase', agent: 'swift-developer / swift-tester' },
-    { title: 'Validation', detail: 'build, tests, and a replay of the reproduction scenario', agent: 'swift-validator' },
-    { title: 'Review', detail: 'independent read of the diff', agent: 'swift-reviewer' },
-    { title: 'Done', detail: 'final report', agent: 'swift-developer' },
+    { title: 'Reproduce', detail: 'pin a deterministic scenario Validation can replay', agent: 'diagnostics' },
+    { title: 'Diagnose', detail: 'panel: diagnostics and architect in parallel, then one synthesis', agent: 'diagnostics + architect panel, architect synthesis' },
+    { title: 'Plan', detail: 'phase table plus per-phase checkboxes', agent: 'architect' },
+    { title: 'Fix', detail: 'one agent per plan phase, sequential, a commit per green phase', agent: 'developer / tester' },
+    { title: 'Validation', detail: 'build, tests, and a replay of the reproduction scenario', agent: 'validator' },
+    { title: 'Review', detail: 'independent read of the diff', agent: 'reviewer' },
+    { title: 'Done', detail: 'final report', agent: 'developer' },
   ],
 }
 
@@ -20,18 +20,18 @@ const ORDER = ['Reproduce', 'Diagnose', 'Plan', 'Fix', 'Validation', 'Review', '
 // Mirrors meta.phases[].agent, which the sandbox does not expose to the script body;
 // scripts/lint-workflows.sh fails on any drift between the two.
 const AGENT_OF = {
-  Reproduce: 'swift-diagnostics',
-  Diagnose: 'swift-diagnostics + swift-architect panel, swift-architect synthesis',
-  Plan: 'swift-architect',
-  Fix: 'swift-developer / swift-tester',
-  Validation: 'swift-validator',
-  Review: 'swift-reviewer',
-  Done: 'swift-developer',
+  Reproduce: 'diagnostics',
+  Diagnose: 'diagnostics + architect panel, architect synthesis',
+  Plan: 'architect',
+  Fix: 'developer / tester',
+  Validation: 'validator',
+  Review: 'reviewer',
+  Done: 'developer',
 }
 
 // Writes Walkthrough.md — the same agent that writes this profile's final report, so the two
 // speak with one voice.
-const WALKTHROUGH_AGENT = 'swift-toolkit:swift-developer'
+const WALKTHROUGH_AGENT = 'developer'
 
 // ── prelude ──────────────────────────────────────────────────────────────────
 // Byte-identical in every profile script; scripts/lint-workflows.sh enforces that. A workflow
@@ -53,6 +53,13 @@ if (!A || typeof A !== 'object' || !A.task_id || !A.task_dir) {
     status: 'error',
     reason: 'no-args',
     next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through swift-toolkit:orchestrator, or fall back to the matching swift-toolkit:workflow-* skill. Do not execute the stages by hand.',
+  }
+}
+if (!A.agents || typeof A.agents !== 'object') {
+  return {
+    status: 'error',
+    reason: 'no-agents',
+    next: 'This workflow was started without the resolved agent map. Re-dispatch it through spine-toolkit:orchestrator.',
   }
 }
 
@@ -167,6 +174,18 @@ const REVIEW = {
 }
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
+
+// A role the platform declares absent (`—`) blocks the stage that names it: the script neither
+// dispatches nor skips it, it ends the range here and lets the orchestrator run the stage itself
+// and announce the deviation (orchestrator SKILL.md § Dispatch, "Method A — a stage whose role
+// resolved to `—`"). handback stays null until that fires.
+let handback = null
+const need = (stage, ...roles) => {
+  const missing = roles.find((role) => !A.agents[role] || A.agents[role] === '—')
+  if (missing) handback = { stage, role: missing }
+  return !missing
+}
+
 const finish = (next, extra) => ({
   status: extra && extra.status ? extra.status : result.status,
   last_completed_stage: result.last_completed_stage,
@@ -174,6 +193,7 @@ const finish = (next, extra) => ({
   next_recommended_action: next,
   notes: result.notes.join(' '),
   stages: result.stages,
+  handback,
   ...(extra || {}),
 })
 // stages[] is the per-stage report auto has no other source for: there one return covers the whole
@@ -262,6 +282,11 @@ The phase is not done until every checkbox is ticked AND it is committed. If you
 // and never stops the run.
 const writeWalkthrough = async (stage, extra) => {
   if (!WALKTHROUGH_AGENT || A.walkthrough === 'off' || A.walkthrough === false) return
+  const agentType = A.agents[WALKTHROUGH_AGENT]
+  if (!agentType || agentType === '—') {
+    result.notes.push(`No agent implements the "${WALKTHROUGH_AGENT}" role on this platform, so Walkthrough.md was not written.`)
+    return
+  }
   const w = await agent(
     brief(
       stage,
@@ -277,7 +302,7 @@ ${extra}` : ''}
 
 Change no production code and no tests.`,
     ),
-    { label: 'walkthrough', phase: stage, agentType: WALKTHROUGH_AGENT, schema: ARTIFACT },
+    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT },
   )
   if (w && w.artifact_path) log(`Walkthrough.md: ${w.summary || 'written'}`)
   else result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
@@ -286,6 +311,7 @@ Change no production code and no tests.`,
 
 // ── Reproduce ───────────────────────────────────────────────────────────────
 if (runs('Reproduce')) {
+  if (!need('Reproduce', 'diagnostics')) return finish('ask_user')
   const repro = await agent(
     brief(
       'Reproduce',
@@ -298,7 +324,7 @@ Set reproducible to no only when you could not make it happen at all, and record
     {
       label: 'reproduce',
       phase: 'Reproduce',
-      agentType: 'swift-toolkit:swift-diagnostics',
+      agentType: A.agents.diagnostics,
       schema: {
         ...ARTIFACT,
         required: [...ARTIFACT.required, 'reproducible'],
@@ -319,6 +345,7 @@ Set reproducible to no only when you could not make it happen at all, and record
 // A genuine barrier: the synthesis reads both lenses. Two agents, so the parallel call is the
 // whole fan-out and there is nothing for a pipeline to overlap.
 if (runs('Diagnose')) {
+  if (!need('Diagnose', 'diagnostics', 'architect')) return finish('ask_user')
   const LENS = {
     type: 'object',
     additionalProperties: false,
@@ -332,12 +359,12 @@ if (runs('Diagnose')) {
   const lenses = [
     {
       role: 'diagnostics',
-      agentType: 'swift-toolkit:swift-diagnostics',
+      agentType: A.agents.diagnostics,
       ask: 'Trace the failure to its root cause: what actually goes wrong, in which call path, under which state. Instrument if you need to.',
     },
     {
       role: 'architect',
-      agentType: 'swift-toolkit:swift-architect',
+      agentType: A.agents.architect,
       ask: 'Read the same failure structurally: which components and layers a fix will touch, how wide it has to be, and what it risks breaking.',
     },
   ]
@@ -366,7 +393,7 @@ if (runs('Diagnose')) {
 PANEL FINDINGS (data):
 ${JSON.stringify(views, null, 2)}`,
     ),
-    { label: 'diagnose:synthesis', phase: 'Diagnose', agentType: 'swift-toolkit:swift-architect', schema: ARTIFACT },
+    { label: 'diagnose:synthesis', phase: 'Diagnose', agentType: A.agents.architect, schema: ARTIFACT },
   )
   if (!diagnosis) return finish('stop', { status: 'error', reason: 'the Diagnose synthesis returned nothing' })
   record('Diagnose', diagnosis)
@@ -375,6 +402,7 @@ ${JSON.stringify(views, null, 2)}`,
 // ── Plan ────────────────────────────────────────────────────────────────────
 let plan = null
 if (runs('Plan')) {
+  if (!need('Plan', 'architect')) return finish('ask_user')
   plan = await agent(
     brief(
       'Plan',
@@ -385,7 +413,7 @@ if (runs('Plan')) {
 
 Cover the focused fix${A.need_test === false ? '' : ', a regression test that locks in the scenario from Reproduce.md'}, and any migration or compatibility step the change forces. Every phase has to end independently buildable, green, and committable on its own.`,
     ),
-    { label: 'plan', phase: 'Plan', agentType: 'swift-toolkit:swift-architect', schema: PLAN },
+    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: PLAN },
   )
   if (!plan) return finish('stop', { status: 'error', reason: 'the Plan agent returned nothing' })
   record('Plan', plan)
@@ -393,12 +421,13 @@ Cover the focused fix${A.need_test === false ? '' : ', a regression test that lo
 
 // ── Fix ─────────────────────────────────────────────────────────────────────
 if (runs('Fix')) {
-  if (!plan) plan = await readPlan('Fix', 'swift-toolkit:swift-developer')
+  if (!need('Fix', 'developer', 'tester')) return finish('ask_user')
+  if (!plan) plan = await readPlan('Fix', A.agents.developer)
   if (!plan) return finish('stop', { status: 'error', reason: 'could not read the phase list from Plan.md' })
 
   const phasesDone = await runPhases(
     'Fix',
-    { code: 'swift-toolkit:swift-developer', test: 'swift-toolkit:swift-tester' },
+    { code: A.agents.developer, test: A.agents.tester },
     fromStartPhase(plan.phases || []),
     'Commit type: fix for the repair itself, test for the regression-test phase, chore for build or config only. A regression test is mandatory for this profile unless the contract disabled it — it is what stops the bug coming back.',
   )
@@ -410,6 +439,7 @@ if (runs('Fix')) {
 // ── Validation ──────────────────────────────────────────────────────────────
 let validation = null
 if (runs('Validation')) {
+  if (!need('Validation', 'validator')) return finish('ask_user')
   validation = await agent(
     brief(
       'Validation',
@@ -426,7 +456,7 @@ Change no production code and no tests. Return the same status you wrote on the 
     {
       label: 'validation',
       phase: 'Validation',
-      agentType: 'swift-toolkit:swift-validator',
+      agentType: A.agents.validator,
       schema: { ...VALIDATION, required: [...VALIDATION.required, 'reproduction_status'] },
     },
   )
@@ -449,6 +479,7 @@ Change no production code and no tests. Return the same status you wrote on the 
 // ── Review ──────────────────────────────────────────────────────────────────
 let review = null
 if (runs('Review') && A.need_review !== false) {
+  if (!need('Review', 'reviewer')) return finish('ask_user')
   review = await agent(
     brief(
       'Review',
@@ -458,7 +489,7 @@ if (runs('Review') && A.need_review !== false) {
 
 Judge the fix against Reproduce.md and Plan.md: does it address the root cause rather than the symptom, does the regression test lock in the real scenario, does it carry the risks Research.md named. Modify nothing. Return the same status you wrote on the first line.`,
     ),
-    { label: 'review', phase: 'Review', agentType: 'swift-toolkit:swift-reviewer', schema: REVIEW },
+    { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
   )
   if (!review) return finish('stop', { status: 'error', reason: 'the Review agent returned nothing' })
   record('Review', review)
@@ -476,12 +507,13 @@ Judge the fix against Reproduce.md and Plan.md: does it address the root cause r
 if (runs('Done') && !runs('Fix')) await writeWalkthrough('Done')
 
 if (runs('Done')) {
+  if (!need('Done', 'developer')) return finish('ask_user')
   const done = await agent(
     brief(
       'Done',
       `Write the final report ${DIR}/Done.md: what was fixed, which regression test was added, the validation status including the outcome of the reproduction replay, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries. Keep it short enough to be read.`,
     ),
-    { label: 'done', phase: 'Done', agentType: 'swift-toolkit:swift-developer', schema: ARTIFACT, effort: 'low' },
+    { label: 'done', phase: 'Done', agentType: A.agents.developer, schema: ARTIFACT, effort: 'low' },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)

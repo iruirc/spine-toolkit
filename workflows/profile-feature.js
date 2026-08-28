@@ -4,12 +4,12 @@ export const meta = {
   whenToUse:
     'Dispatched by swift-toolkit:orchestrator for a task with [TASK_TYPE]=FEATURE, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
-    { title: 'Research', detail: 'security lens, then the architect writes Requirements and Landscape', agent: 'swift-security lens, then swift-architect' },
-    { title: 'Plan', detail: 'phase table, per-phase checkboxes, and the estimation gate', agent: 'swift-architect' },
-    { title: 'Execute', detail: 'one agent per plan phase, sequential, a commit per green phase', agent: 'swift-developer / swift-tester' },
-    { title: 'Validation', detail: 'build, tests, and the ops checklist', agent: 'swift-validator' },
-    { title: 'Review', detail: 'independent read of the diff, cross-checked against the ops checklist', agent: 'swift-reviewer' },
-    { title: 'Done', detail: 'final report with the estimate retrospective', agent: 'swift-architect' },
+    { title: 'Research', detail: 'security lens, then the architect writes Requirements and Landscape', agent: 'security lens, then architect' },
+    { title: 'Plan', detail: 'phase table, per-phase checkboxes, and the estimation gate', agent: 'architect' },
+    { title: 'Execute', detail: 'one agent per plan phase, sequential, a commit per green phase', agent: 'developer / tester' },
+    { title: 'Validation', detail: 'build, tests, and the ops checklist', agent: 'validator' },
+    { title: 'Review', detail: 'independent read of the diff, cross-checked against the ops checklist', agent: 'reviewer' },
+    { title: 'Done', detail: 'final report with the estimate retrospective', agent: 'architect' },
   ],
 }
 
@@ -19,17 +19,17 @@ const ORDER = ['Research', 'Plan', 'Execute', 'Validation', 'Review', 'Done']
 // Mirrors meta.phases[].agent, which the sandbox does not expose to the script body;
 // scripts/lint-workflows.sh fails on any drift between the two.
 const AGENT_OF = {
-  Research: 'swift-security lens, then swift-architect',
-  Plan: 'swift-architect',
-  Execute: 'swift-developer / swift-tester',
-  Validation: 'swift-validator',
-  Review: 'swift-reviewer',
-  Done: 'swift-architect',
+  Research: 'security lens, then architect',
+  Plan: 'architect',
+  Execute: 'developer / tester',
+  Validation: 'validator',
+  Review: 'reviewer',
+  Done: 'architect',
 }
 
 // Writes Walkthrough.md — the same agent that writes this profile's final report, so the two
 // speak with one voice.
-const WALKTHROUGH_AGENT = 'swift-toolkit:swift-architect'
+const WALKTHROUGH_AGENT = 'architect'
 
 // ── prelude ──────────────────────────────────────────────────────────────────
 // Byte-identical in every profile script; scripts/lint-workflows.sh enforces that. A workflow
@@ -51,6 +51,13 @@ if (!A || typeof A !== 'object' || !A.task_id || !A.task_dir) {
     status: 'error',
     reason: 'no-args',
     next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through swift-toolkit:orchestrator, or fall back to the matching swift-toolkit:workflow-* skill. Do not execute the stages by hand.',
+  }
+}
+if (!A.agents || typeof A.agents !== 'object') {
+  return {
+    status: 'error',
+    reason: 'no-agents',
+    next: 'This workflow was started without the resolved agent map. Re-dispatch it through spine-toolkit:orchestrator.',
   }
 }
 
@@ -165,6 +172,18 @@ const REVIEW = {
 }
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
+
+// A role the platform declares absent (`—`) blocks the stage that names it: the script neither
+// dispatches nor skips it, it ends the range here and lets the orchestrator run the stage itself
+// and announce the deviation (orchestrator SKILL.md § Dispatch, "Method A — a stage whose role
+// resolved to `—`"). handback stays null until that fires.
+let handback = null
+const need = (stage, ...roles) => {
+  const missing = roles.find((role) => !A.agents[role] || A.agents[role] === '—')
+  if (missing) handback = { stage, role: missing }
+  return !missing
+}
+
 const finish = (next, extra) => ({
   status: extra && extra.status ? extra.status : result.status,
   last_completed_stage: result.last_completed_stage,
@@ -172,6 +191,7 @@ const finish = (next, extra) => ({
   next_recommended_action: next,
   notes: result.notes.join(' '),
   stages: result.stages,
+  handback,
   ...(extra || {}),
 })
 // stages[] is the per-stage report auto has no other source for: there one return covers the whole
@@ -260,6 +280,11 @@ The phase is not done until every checkbox is ticked AND it is committed. If you
 // and never stops the run.
 const writeWalkthrough = async (stage, extra) => {
   if (!WALKTHROUGH_AGENT || A.walkthrough === 'off' || A.walkthrough === false) return
+  const agentType = A.agents[WALKTHROUGH_AGENT]
+  if (!agentType || agentType === '—') {
+    result.notes.push(`No agent implements the "${WALKTHROUGH_AGENT}" role on this platform, so Walkthrough.md was not written.`)
+    return
+  }
   const w = await agent(
     brief(
       stage,
@@ -275,7 +300,7 @@ ${extra}` : ''}
 
 Change no production code and no tests.`,
     ),
-    { label: 'walkthrough', phase: stage, agentType: WALKTHROUGH_AGENT, schema: ARTIFACT },
+    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT },
   )
   if (w && w.artifact_path) log(`Walkthrough.md: ${w.summary || 'written'}`)
   else result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
@@ -286,6 +311,7 @@ Change no production code and no tests.`,
 // Sequential rather than a parallel panel: both lenses feed one artifact, and only the
 // architect writes it. Two agents racing on Research.md would cost more than the wait saves.
 if (runs('Research')) {
+  if (!need('Research', 'security', 'architect')) return finish('ask_user')
   const security = await agent(
     brief(
       'Research',
@@ -294,7 +320,7 @@ if (runs('Research')) {
     {
       label: 'research:security',
       phase: 'Research',
-      agentType: 'swift-toolkit:swift-security',
+      agentType: A.agents.security,
       schema: {
         type: 'object',
         additionalProperties: false,
@@ -322,7 +348,7 @@ Fold the security findings below into the risk discussion; do not drop one silen
 SECURITY FINDINGS (data):
 ${JSON.stringify(security || { risks: [] }, null, 2)}`,
     ),
-    { label: 'research:architect', phase: 'Research', agentType: 'swift-toolkit:swift-architect', schema: ARTIFACT },
+    { label: 'research:architect', phase: 'Research', agentType: A.agents.architect, schema: ARTIFACT },
   )
   if (!research) return finish('stop', { status: 'error', reason: 'the Research agent returned nothing' })
   record('Research', research)
@@ -333,6 +359,7 @@ ${JSON.stringify(security || { risks: [] }, null, 2)}`,
 // entering Execute without a usable range is what the gate exists to prevent.
 let plan = null
 if (runs('Plan')) {
+  if (!need('Plan', 'architect')) return finish('ask_user')
   plan = await agent(
     brief(
       'Plan',
@@ -350,7 +377,7 @@ Report estimation_gate as blocked, with the reason, when any of these hold: ## E
     {
       label: 'plan',
       phase: 'Plan',
-      agentType: 'swift-toolkit:swift-architect',
+      agentType: A.agents.architect,
       schema: {
         ...PLAN,
         required: [...PLAN.required, 'estimation_gate'],
@@ -380,12 +407,13 @@ Report estimation_gate as blocked, with the reason, when any of these hold: ## E
 
 // ── Execute ─────────────────────────────────────────────────────────────────
 if (runs('Execute')) {
-  if (!plan) plan = await readPlan('Execute', 'swift-toolkit:swift-developer')
+  if (!need('Execute', 'developer', 'tester')) return finish('ask_user')
+  if (!plan) plan = await readPlan('Execute', A.agents.developer)
   if (!plan) return finish('stop', { status: 'error', reason: 'could not read the phase list from Plan.md' })
 
   const phasesDone = await runPhases(
     'Execute',
-    { code: 'swift-toolkit:swift-developer', test: 'swift-toolkit:swift-tester' },
+    { code: A.agents.developer, test: A.agents.tester },
     fromStartPhase(plan.phases || []),
     'Commit type: feat for a phase that adds behaviour, fix for one that repairs it, test for a test-only phase, chore for build or config only.',
   )
@@ -397,6 +425,7 @@ if (runs('Execute')) {
 // ── Validation ──────────────────────────────────────────────────────────────
 let validation = null
 if (runs('Validation')) {
+  if (!need('Validation', 'validator')) return finish('ask_user')
   validation = await agent(
     brief(
       'Validation',
@@ -410,7 +439,7 @@ Also apply the mobile-ops-checklist skill and write ${DIR}/OpsChecklist.md, mark
 
 Change no production code and no tests. Return the same status you wrote on the first line.`,
     ),
-    { label: 'validation', phase: 'Validation', agentType: 'swift-toolkit:swift-validator', schema: VALIDATION },
+    { label: 'validation', phase: 'Validation', agentType: A.agents.validator, schema: VALIDATION },
   )
   if (!validation) return finish('stop', { status: 'error', reason: 'the Validation agent returned nothing' })
   record('Validation', validation)
@@ -428,6 +457,7 @@ Change no production code and no tests. Return the same status you wrote on the 
 // ── Review ──────────────────────────────────────────────────────────────────
 let review = null
 if (runs('Review') && A.need_review !== false) {
+  if (!need('Review', 'reviewer')) return finish('ask_user')
   review = await agent(
     brief(
       'Review',
@@ -439,7 +469,7 @@ Cross-check ${DIR}/OpsChecklist.md: every item marked Applicable must have imple
 
 Modify nothing. Return the same status you wrote on the first line.`,
     ),
-    { label: 'review', phase: 'Review', agentType: 'swift-toolkit:swift-reviewer', schema: REVIEW },
+    { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
   )
   if (!review) return finish('stop', { status: 'error', reason: 'the Review agent returned nothing' })
   record('Review', review)
@@ -457,6 +487,7 @@ Modify nothing. Return the same status you wrote on the first line.`,
 if (runs('Done') && !runs('Execute')) await writeWalkthrough('Done')
 
 if (runs('Done')) {
+  if (!need('Done', 'architect')) return finish('ask_user')
   const done = await agent(
     brief(
       'Done',
@@ -464,7 +495,7 @@ if (runs('Done')) {
 
 When ${DIR}/Plan.md has a ## Estimation section, a ## Estimate retrospective section is mandatory, following the hybrid model in the feature-estimation skill. Always record the automatic git proxy — the commit span of this task's phase commits plus the phase and rework counts, labelled proxy and never presented as human-days — and add the user-provided human effort when it was offered. The in-range verdict uses human effort when it exists and the proxy otherwise; only when neither exists write unknown and name the missing signal. In AI-assisted mode break the actual down per leverage class. Append this feature's data point to the calibration log.`,
     ),
-    { label: 'done', phase: 'Done', agentType: 'swift-toolkit:swift-architect', schema: ARTIFACT, effort: 'low' },
+    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, effort: 'low' },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
