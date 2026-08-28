@@ -119,14 +119,14 @@ Prose in the project's language, structure in English — headings, the `[COVERS
 ## Anti-patterns to avoid
 
 - **Restating the diff.** The diff is readable and does not rot; prose about it does. Write the reason, not the change.
-- **Feeding it to the Review stage.** `swift-reviewer` exists to read the diff independently; the author's narrative anchors it. `OpsChecklist.md` is fine as its input — that is evidence, not story. The reader of this file is a person.
+- **Feeding it to the Review stage.** The `reviewer` agent exists to read the diff independently; the author's narrative anchors it. `OpsChecklist.md` is fine as its input — that is evidence, not story. The reader of this file is a person.
 - **Copying the validation verdict in.** It lives in `Validation.md` and `Done.md`. Link, do not duplicate.
 - **A diagram per commit.** Two diagrams is the ceiling and most tasks want zero or one.
 - **Rewriting `## Commits` on refresh.** That erases the rework, which is the part worth having.
 
 ## What this skill does NOT do
 
-- Does NOT judge the work — that is `swift-reviewer`, and the verdict is `Review.md`.
+- Does NOT judge the work — that is the `reviewer` agent, and the verdict is `Review.md`.
 - Does NOT account for effort — that is `Done.md ## Estimate retrospective` via `feature-estimation`.
 - Does NOT replace `Done.md`. The two are written by the same agent at Done and answer different questions.
 - Does NOT participate in State Detection. Its presence or absence never moves a `start_stage`.

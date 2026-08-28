@@ -7,7 +7,7 @@ Stage `{stage}` complete. Continue to next? [Yes / Edit / No]
 empty required field
 
 ## invalid_research_agent
-Invalid research agent. Expected one of: swift-architect, swift-diagnostics, swift-security.
+Invalid `research_agent`. Expected one of: architect, diagnostics, security.
 
 ## status_cancelled_user_no
 User declined to continue (pressed `No` in orchestrator AUQ)
