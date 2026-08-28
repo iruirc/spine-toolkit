@@ -4,9 +4,9 @@ export const meta = {
   whenToUse:
     'Dispatched by swift-toolkit:orchestrator for a task with [TASK_TYPE]=RESEARCH, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
-    { title: 'Research', detail: 'architect, diagnostics or security, per research_agent; writes Research.md and changes no code', agent: 'per research_agent: swift-architect, swift-diagnostics or swift-security' },
-    { title: 'Review', detail: 'judges the research, not the codebase', agent: 'swift-reviewer' },
-    { title: 'Done', detail: 'final report with the follow-up count', agent: 'swift-architect' },
+    { title: 'Research', detail: 'architect, diagnostics or security, per research_agent; writes Research.md and changes no code', agent: 'per research_agent: architect, diagnostics or security' },
+    { title: 'Review', detail: 'judges the research, not the codebase', agent: 'reviewer' },
+    { title: 'Done', detail: 'final report with the follow-up count', agent: 'architect' },
   ],
 }
 
@@ -16,9 +16,9 @@ const ORDER = ['Research', 'Review', 'Done']
 // Mirrors meta.phases[].agent, which the sandbox does not expose to the script body;
 // scripts/lint-workflows.sh fails on any drift between the two.
 const AGENT_OF = {
-  Research: 'per research_agent: swift-architect, swift-diagnostics or swift-security',
-  Review: 'swift-reviewer',
-  Done: 'swift-architect',
+  Research: 'per research_agent: architect, diagnostics or security',
+  Review: 'reviewer',
+  Done: 'architect',
 }
 
 // No implementing stage and no diff of its own: Research.md is already the account of what was
@@ -45,6 +45,13 @@ if (!A || typeof A !== 'object' || !A.task_id || !A.task_dir) {
     status: 'error',
     reason: 'no-args',
     next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through swift-toolkit:orchestrator, or fall back to the matching swift-toolkit:workflow-* skill. Do not execute the stages by hand.',
+  }
+}
+if (!A.agents || typeof A.agents !== 'object') {
+  return {
+    status: 'error',
+    reason: 'no-agents',
+    next: 'This workflow was started without the resolved agent map. Re-dispatch it through spine-toolkit:orchestrator.',
   }
 }
 
@@ -159,6 +166,18 @@ const REVIEW = {
 }
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
+
+// A role the platform declares absent (`—`) blocks the stage that names it: the script neither
+// dispatches nor skips it, it ends the range here and lets the orchestrator run the stage itself
+// and announce the deviation (orchestrator SKILL.md § Dispatch, "Method A — a stage whose role
+// resolved to `—`"). handback stays null until that fires.
+let handback = null
+const need = (stage, ...roles) => {
+  const missing = roles.find((role) => !A.agents[role] || A.agents[role] === '—')
+  if (missing) handback = { stage, role: missing }
+  return !missing
+}
+
 const finish = (next, extra) => ({
   status: extra && extra.status ? extra.status : result.status,
   last_completed_stage: result.last_completed_stage,
@@ -166,6 +185,7 @@ const finish = (next, extra) => ({
   next_recommended_action: next,
   notes: result.notes.join(' '),
   stages: result.stages,
+  handback,
   ...(extra || {}),
 })
 // stages[] is the per-stage report auto has no other source for: there one return covers the whole
@@ -254,6 +274,11 @@ The phase is not done until every checkbox is ticked AND it is committed. If you
 // and never stops the run.
 const writeWalkthrough = async (stage, extra) => {
   if (!WALKTHROUGH_AGENT || A.walkthrough === 'off' || A.walkthrough === false) return
+  const agentType = A.agents[WALKTHROUGH_AGENT]
+  if (!agentType || agentType === '—') {
+    result.notes.push(`No agent implements the "${WALKTHROUGH_AGENT}" role on this platform, so Walkthrough.md was not written.`)
+    return
+  }
   const w = await agent(
     brief(
       stage,
@@ -269,7 +294,7 @@ ${extra}` : ''}
 
 Change no production code and no tests.`,
     ),
-    { label: 'walkthrough', phase: stage, agentType: WALKTHROUGH_AGENT, schema: ARTIFACT },
+    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT },
   )
   if (w && w.artifact_path) log(`Walkthrough.md: ${w.summary || 'written'}`)
   else result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
@@ -281,6 +306,7 @@ Change no production code and no tests.`,
 // replaced by the default: a research task pointed at the wrong specialist returns the wrong
 // kind of answer, and doing that silently is worse than refusing.
 const RESEARCH_AGENTS = ['swift-architect', 'swift-diagnostics', 'swift-security']
+const ROLE_OF = { 'swift-architect': 'architect', 'swift-diagnostics': 'diagnostics', 'swift-security': 'security' }
 
 if (runs('Research')) {
   const picked = A.research_agent || 'swift-architect'
@@ -290,6 +316,7 @@ if (runs('Research')) {
       reason: `research_agent "${picked}" is not one of ${RESEARCH_AGENTS.join(', ')}`,
     })
   }
+  if (!need('Research', ROLE_OF[picked])) return finish('ask_user')
 
   const research = await agent(
     brief(
@@ -308,7 +335,7 @@ The invariant of this profile: you modify NO source code and write no file other
     {
       label: `research:${picked}`,
       phase: 'Research',
-      agentType: `swift-toolkit:${picked}`,
+      agentType: A.agents[ROLE_OF[picked]],
       schema: {
         ...ARTIFACT,
         required: [...ARTIFACT.required, 'follow_up_count'],
@@ -327,6 +354,7 @@ The invariant of this profile: you modify NO source code and write no file other
 // ── Review ──────────────────────────────────────────────────────────────────
 let review = null
 if (runs('Review') && A.need_review !== false) {
+  if (!need('Review', 'reviewer')) return finish('ask_user')
   review = await agent(
     brief(
       'Review',
@@ -338,7 +366,7 @@ Judge the research and only the research: does it cover the goal it set itself, 
 
 You are explicitly NOT verifying the findings against the codebase — the technical accuracy of a finding belongs to the research agent, and second-guessing it here duplicates that work at full cost while adding no gate. Modify nothing. Return the same status you wrote on the first line.`,
     ),
-    { label: 'review', phase: 'Review', agentType: 'swift-toolkit:swift-reviewer', schema: REVIEW },
+    { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
   )
   if (!review) return finish('stop', { status: 'error', reason: 'the Review agent returned nothing' })
   record('Review', review)
@@ -351,12 +379,13 @@ You are explicitly NOT verifying the findings against the codebase — the techn
 
 // ── Done ────────────────────────────────────────────────────────────────────
 if (runs('Done')) {
+  if (!need('Done', 'architect')) return finish('ask_user')
   const done = await agent(
     brief(
       'Done',
       `Write the final report ${DIR}/Done.md: what was investigated, the verdict or key finding in one paragraph, a pointer to Research.md, and the follow-up tasks — how many, briefly what they are, and the task-new invocation hint for each. Nothing was built here, so keep the report about what is now known and what should happen next.`,
     ),
-    { label: 'done', phase: 'Done', agentType: 'swift-toolkit:swift-architect', schema: ARTIFACT, effort: 'low' },
+    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, effort: 'low' },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
