@@ -96,7 +96,8 @@ unresolved = [axis, ...]            # subset of needed with no chain hit
 
 - Never asks the user. Never writes files.
 - `resolved` values are always members of the manifest's `## Axes` values for
-  that axis.
+  that axis: a heuristic hit outside them is discarded, leaving the axis
+  unresolved rather than returning something the catalog does not list.
 - `resolved.keys ∪ unresolved == needed` (every needed axis is accounted for).
 - `task_files` empty ⇒ `needed == may`, resolution still attempted from
   `Task.md`/project config; AUQ deferral is the orchestrator's responsibility.

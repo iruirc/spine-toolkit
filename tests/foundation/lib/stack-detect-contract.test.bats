@@ -15,7 +15,9 @@ setup() {
 }
 
 @test "stack-detect carries no platform vocabulary" {
-  run grep -icE 'swift|swiftui|uikit|appkit|combine|rxswift|swinject|xctest|ios|macos|xcdatamodeld' "$SD"
+  # word-anchored: bare `ios` also matches "scenarios", reddening the suite for
+  # a word that has nothing to do with the catalog.
+  run grep -icE '\b(swift|swiftui|uikit|appkit|combine|rxswift|swinject|xctest|ios|macos|xcdatamodeld)\b' "$SD"
   [ "$output" = "0" ]
 }
 
