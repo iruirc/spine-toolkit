@@ -11,10 +11,12 @@ A briefing describes the business goal. The engineering task is to discover what
 > - `feature-landscape` — consumes Primary + Secondary to build the entity graph and layer map
 > - `feature-estimation` — uses Pending Secondary rows and Known Unknowns to choose scope-aware risk deltas and assumptions
 > - `mobile-ops-checklist` — Secondary items overlap with cross-cutting ops concerns; this skill is the *design-time* checkpoint, `mobile-ops-checklist` is the *validation-time* one
-> - `error-architecture` — when designing how Secondary error states surface to the UI
-> - `nav-deeplinks` — deep-link / universal-link entry-side design (parser, entry points, cold-start, auth gate)
-> - `arch-swiftui-navigation` / `arch-coordinator` — how a parsed deep-link Route reaches a screen
-> - `concurrency-architecture` — offline/sync Secondary behaviors
+>
+> Bold **topics** below are rows of the installed platform's manifest `## Topics`; resolve each to
+> that platform's own skills per `conventions/platform-contract.md`. Secondary design draws on
+> **errors** (how error states surface to the UI), **deep links** (entry-side design: parser, entry
+> points, cold-start, auth gate), **navigation** (how a parsed deep-link route reaches a screen) and
+> **concurrency** (offline/sync behaviors).
 
 ## When to use
 
@@ -28,7 +30,7 @@ A briefing describes the business goal. The engineering task is to discover what
 
 - The briefing / PRD / user-typed task description
 - The project stack (from `CLAUDE-spine-toolkit.md`) — informs which Secondary items are applicable
-- The target platform (iOS app / macOS app / SPM library / CLI) — affects N/A semantics
+- The delivery form (mobile app / desktop app / library / CLI) — affects N/A semantics
 
 ## Steps
 
@@ -48,7 +50,7 @@ For each row below, ask: *what does this feature do in this scenario?* Mark **Ap
 | Loading state | Skeleton, spinner, or instant? Threshold for showing? |
 | Empty state | First launch, no results, cleared data — what does the screen say? |
 | Offline mode | Hidden, read-only, optimistic + queue, full-block? |
-| Accessibility | VoiceOver/TalkBack labels, Dynamic Type, contrast, touch targets ≥44pt |
+| Accessibility | VoiceOver/TalkBack labels, system text scaling, contrast, touch targets ≥44pt (iOS) / 48dp (Android) |
 | Deep link entry | Can a deep link land directly on this screen mid-flow? State reset or preserve? |
 | Push notification | Does a push lead here? Foreground vs background behavior? |
 | Analytics events | Which user actions need to be logged? Funnel events? |
@@ -68,9 +70,9 @@ Generate a numbered list addressed to the designer. Cover at minimum:
 3. Which components already exist in the design system? Reuse vs new?
 4. Deep link entry points into this feature — defined?
 5. Animation spec — finalized or open?
-6. iPad / landscape / split-screen support required?
+6. Tablet / landscape / split-screen support required?
 7. Dark mode mockups present?
-8. Dynamic Type behavior — what scales, what is fixed?
+8. System-text-scaling behavior — what scales, what is fixed?
 
 Add feature-specific questions as needed; **do not drop the generic ones** unless explicitly N/A.
 
@@ -147,11 +149,11 @@ Acceptance criteria from briefing:
 - **Folding unknown unknowns into Known unknowns.** They're different: Known = list, Unknown = buffer. Mixing them undercounts both.
 - **Generating questions that the briefing already answered.** Re-read first. Only ask what's truly open.
 
-## Platform-specific N/A semantics
+## N/A semantics by delivery form
 
-- **SPM library / CLI** — Deep links, push notifications, Dynamic Type, RTL layout are typically N/A; mark them with explicit reason ("CLI tool, no UI"). Error/loading/empty/concurrency/cancellation still apply.
-- **macOS app** — Deep links → URL scheme handling still applies; touch targets are mouse targets; Dynamic Type → preferred-fonts equivalent.
-- **iOS app** — All categories typically Applicable until proven otherwise.
+- **Library / CLI** — Deep links, push notifications, text scaling, RTL layout are typically N/A; mark them with explicit reason ("CLI tool, no UI"). Error/loading/empty/concurrency/cancellation still apply.
+- **Desktop app** — Deep links → URL scheme handling still applies; touch targets are mouse targets; text scaling → the platform's preferred-fonts equivalent.
+- **Mobile app** — All categories typically Applicable until proven otherwise.
 
 ## What this skill does NOT do
 
