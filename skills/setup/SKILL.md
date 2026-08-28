@@ -17,6 +17,25 @@ This skill owns the config **format** and every block that is core's: `## Langua
 
 The skill creates no source files, modifies no code, and starts no workflow. Generating a project from scratch belongs to the platform plugin's `init` agent.
 
+## Input
+
+Normally invoked by the user with nothing. It also accepts answers a caller has already collected —
+a platform's `init` agent, which asks the same stack questions before scaffolding a project, is the
+case this exists for:
+
+```
+lang     = en | ru                    # skips q0
+mode     = manual | auto              # skips qM
+progress = quiet | normal | live      # skips qP
+platform = plugin name                # skips Platform Discovery
+stack    = {axis: value, …}           # forwarded to the platform half in step 5
+```
+
+Every field is optional; an absent one means the question is asked as usual, so an empty input is
+the ordinary `/setup` run. `stack` values must be spelled as the platform's `## Axes` catalog spells
+them — the platform half matches them against that catalog and asks for whatever it cannot place, so
+a value in the caller's own vocabulary costs one re-asked question, never a wrong config.
+
 ## Language Resolution
 
 Special case for `setup`: `CLAUDE-spine-toolkit.md` does not yet exist on first install (we are creating it). The skill therefore asks for the language as the very first question (q0) using keys `auq_lang_label` and `auq_lang_options`. Until that answer arrives, the q0 prompt is shown bilingually (English label / Russian label). From q0 onward, `<lang>` is the chosen value (`en` or `ru`), and every subsequent AUQ / error / report uses `locales/<lang>.md`. If q0 is skipped (text fallback, harness limitation), default to `en`.
@@ -79,8 +98,11 @@ The skill's behavior is determined by the project state, computed from four chec
    AUQ using key `auq_lang_label` with options from `auq_lang_options` (`en` / `ru`).
    Store answer as <lang>; subsequent prompts/reports use locales/<lang>.md.
    Q0 is shown bilingually. If skipped, default <lang> = `en`.
+   ↓ `lang` in the input → use it, ask nothing.
 
 1. Resolve the platform (see Platform Discovery).
+   ↓ `platform` in the input → use it, skip discovery: the caller that named one is the
+     platform itself.
    ↓ none installed → render `error_no_platform_installed`. Stop.
 
 2. Compute state (see State Detection table).
@@ -101,7 +123,8 @@ The skill's behavior is determined by the project state, computed from four chec
 4. Branch by state:
 
    STATE A (new_install):
-     a. Ask qM (mode) using `auq_mode_label` and qP (progress) using `auq_progress_label`.
+     a. Ask qM (mode) using `auq_mode_label` and qP (progress) using `auq_progress_label` —
+        each only if the input did not already answer it (same rule in states B and C).
      b. Render `templates/claude-toolkit-md/en.md` with the Placeholder Replacements below.
         Write to <project>/CLAUDE-spine-toolkit.md.
      c. **If CLAUDE.md does NOT exist**: render `templates/claude-md-stub/<lang>.md` with
@@ -176,8 +199,11 @@ The skill's behavior is determined by the project state, computed from four chec
 
 5. Hand the platform its own blocks:
    The `setup` row of the platform manifest's ## Entrypoints names the skill that owns them.
-   Invoke `<platform>:<that skill>` with {lang, state, config_path}. It asks its own stack
-   questions, writes ## Stack and ## Modules into the config, and returns
+   Invoke `<platform>:<that skill>` with {lang, state, config_path, stack} — `stack` being the
+   input's, empty when there was none. Forwarding it is what keeps a caller that already asked
+   the stack questions from having them asked again; core never reads a value in it. It asks its
+   own stack questions for the axes still without a value, writes ## Stack and ## Modules into
+   the config, and returns
    {stack_lines, notes} — the axis lines, and any already-rendered notes about what it
    reconciled in a migrated ## Stack.
    ↓ the row is `—`, or absent → leave ## Stack and ## Modules as the template's placeholders and
@@ -288,7 +314,8 @@ Empty `user_sections` → the file ends at the `@import` line (with a trailing n
 
 ## Core Questions
 
-Labels from locale keys. Core asks three; every stack question belongs to the platform half.
+Labels from locale keys. Core asks three — minus any the input already answered; every stack
+question belongs to the platform half.
 
 - q0 — Language: `en` / `ru` (`auq_lang_label`, `auq_lang_options`)
 - qM — Mode: `manual` (default) / `auto` (`auq_mode_label`)
