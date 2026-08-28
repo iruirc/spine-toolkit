@@ -193,6 +193,25 @@ is a single name core calls. It exists so the binding needs neither a naming con
 named `setup` in the platform would collide with core's own in every natural-language trigger) nor a
 reserved magic string inside another table.
 
+## The plugin around it
+
+Only the manifest skill is contract, but the plugin carrying it has to be installable alongside
+core, and that is one line of its `plugin.json`:
+
+```json
+{ "name": "kotlin-platform", "dependencies": ["spine-toolkit"] }
+```
+
+Without it a user can install the platform alone, and every task then dies at the orchestrator's
+first step with no core to run it.
+
+Read this before publishing from your own marketplace: a marketplace declares
+`allowCrossMarketplaceDependenciesOn` — "Marketplace names whose plugins may be auto-installed as
+dependencies. Only the root marketplace's allowlist applies — no transitive trust". So the
+dependency above does **not** always pull core in: it does where the user's root marketplace
+allowlists the marketplace core is published from, and nowhere else. Ship both plugins from one
+marketplace, or say in your README that `spine-toolkit` is installed first.
+
 ## Conformance
 
 ```bash
