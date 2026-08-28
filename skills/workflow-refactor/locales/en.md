@@ -10,4 +10,4 @@ empty required field
 User declined to continue (pressed `No` in orchestrator AUQ)
 
 ## notes_test_failed_example
-test_sim failed: regression in FooViewModelTests.testBar
+tests failed: regression in CheckoutViewModelTests.testTotal
