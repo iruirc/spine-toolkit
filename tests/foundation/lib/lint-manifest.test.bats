@@ -65,3 +65,32 @@ teardown() { rm -rf "$TMP"; }
   [ "$status" -eq 1 ]
   [[ "$output" == *"no manifest skill"* ]]
 }
+
+@test "fails when a role is mapped to an empty value" {
+  # "role =" with nothing after it is neither a mapping nor an explicit '—':
+  # core can't tell it apart from either at runtime, so the lint must.
+  sed -i.bak 's|^validator               = —|validator               = |' "$TMP/p/skills/manifest/SKILL.md" \
+    && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"validator"* ]]
+}
+
+@test "fails per role, not silently, when the Roles table has no assignment lines" {
+  # Emptying the table (heading and prose intact, every role line gone) must
+  # not abort the script before it reports anything — each missing role
+  # should still surface as its own violation.
+  sed -i.bak '/^architect /,/^init /d' "$TMP/p/skills/manifest/SKILL.md" \
+    && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [ -n "$output" ]
+  [[ "$output" == *"architect"* ]]
+  [[ "$output" == *"init"* ]]
+}
+
+@test "passes when the Roles table is tab-aligned instead of space-aligned" {
+  perl -i -pe 's/^architect\s+=/architect\t=\t/' "$TMP/p/skills/manifest/SKILL.md"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 0 ]
+}
