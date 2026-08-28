@@ -44,7 +44,7 @@ Two plugins ship `skills/` and `templates/`, so "the toolkit's directory" names 
 own. Each root is identified by what only it carries:
 
 - `core root` — the directory that contains `workflows/` and `skills/orchestrator/`.
-- `platform root` — the directory that contains `agents/` and `skills/manifest/`.
+- `platform root` — the directory that contains an `agents` folder and a `manifest` skill.
 
 A template belongs to exactly one plugin. Resolve it against that plugin's root, in this order:
 

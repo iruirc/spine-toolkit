@@ -1,7 +1,7 @@
 # orchestrator — ru
 
 ## error_no_task_id
-Укажи номер задачи, например `запусти 026` / `/task-run 026`.
+Укажи номер задачи, например `запусти 026` / `/spine-toolkit:task-run 026`.
 
 ## error_task_not_found
 Задача `{task_id}` не найдена в `Tasks/`.

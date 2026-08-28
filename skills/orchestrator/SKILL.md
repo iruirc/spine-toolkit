@@ -163,6 +163,8 @@ Algorithm:
               (AUQ becomes a one-time event per task)
    4.7 stack := concatenated string of resolved values "v1+v2+v3"
               (axes not in `needed` / still absent are omitted)
+              # a catalog value may itself contain "+", so this string is display and
+              # agent context only — never split it back into axes
 
 5. Resolve start_stage (depends on action):
    action=run, stage_target=null  → state-detection: first unfinished stage
