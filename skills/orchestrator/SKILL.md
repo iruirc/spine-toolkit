@@ -57,7 +57,7 @@ The minimum viable input is just `task_id`. All other fields are optional and re
 
 The orchestrator does not activate on every user request — light commands bypass it. Order of checks (first match wins):
 
-1. **Project initialization** — "create project" / "initialize" / no `.xcodeproj` and no `Package.swift` → answer with key `routing_project_init` and stop. Orchestrator does not run. Routing precedes Resolution, so there is no config, no manifest and no `agents` map yet — and possibly no platform installed at all: the string points at the platform's `init` entry point in general terms rather than naming an agent it cannot resolve.
+1. **Project initialization** — "create project" / "initialize" → answer with key `routing_project_init` and stop. Orchestrator does not run. The trigger is what the user asked for, never the shape of the repository: which files make a project is a platform's knowledge, and routing precedes Resolution — no config, no manifest and no `agents` map yet, possibly no platform installed at all. That is also why the string points at the platform's `init` entry point in general terms rather than naming an agent it cannot resolve. An unconfigured project that reaches task work instead is caught at step 5.7.
 2. **Task management** — "create task" / "new task" / "ft" / "create sub-task for N" → skill `task-new`. "Move task" / "to DONE" / "step N of epic M to <STATUS>" → skill `task-move`. Orchestrator does not run.
 3. **Micro-edit** — "fix" / "rename" / "change" + ≤2 files with no interface changes → execute directly with a quick check via XcodeBuildMCP. Orchestrator does not run.
 4. **Otherwise** — this is task work. The orchestrator runs:
@@ -139,8 +139,8 @@ Algorithm:
                (Task.md ## 1. [Files] | fallback: plan's affected paths)
    4.4 {needed, resolved, unresolved} :=
           Skill stack-detect (task_files=scope, envelope=envelope, task_id=task_id)
-       # stack-detect owns path-mapping (conventions/stack-axis-mapping.md)
-       # + import-scan + per-axis chain; scan runs once
+       # stack-detect owns the manifest's ## Heuristics (path + import scan)
+       # + the per-axis chain; the scan runs once
    4.4a if scope is empty (## 1. [Files] absent, blank, or comment-only
         AND no fallback affected paths):
           # defer: do NOT AUQ even for partially-unresolved axes — files
@@ -153,7 +153,9 @@ Algorithm:
           # Plan populates [Files] or the plan's affected paths exist
    4.5 for axis in unresolved:
           AUQ using locale key `auq_axis_<axis>_question`
-              options := stack-detect Axis Catalog[axis]
+              ↓ no such key (an axis beyond the six core names) →
+                `auq_axis_generic_question`, placeholder `{axis}`
+              options := the manifest's ## Axes values for axis
           resolved[axis] := user choice
        (multiple unresolved → group into one multi-question AUQ form)
    4.6 cache: upsert Task.md → ## 4. [Stack] with resolved values
@@ -228,9 +230,10 @@ Algorithm:
 orchestrator passes `{task_files, envelope, task_id}` and receives
 `{needed, resolved, unresolved}`. `stack-detect` performs no AUQ and writes no
 files — the orchestrator owns the per-axis AUQ (locale keys
-`auq_axis_<axis>_question`, options from the stack-detect Axis Catalog), the
-`Task.md → ## 4. [Stack]` cache write, and concatenated serialization. The
-default path-to-axis mapping lives in `conventions/stack-axis-mapping.md`;
+`auq_axis_<axis>_question`, options from the manifest's `## Axes`), the
+`Task.md → ## 4. [Stack]` cache write, and concatenated serialization. Which
+axes exist, which values they take and which repo signals imply them are the
+manifest's `## Axes` and `## Heuristics` — core names no axis but `ecosystem`;
 projects override the global `## Stack` via `CLAUDE-swift-toolkit.md → ## Modules`.
 The effective precedence is task-local `## 4. [Stack]` → module override →
 global `## Stack` → import scan. When
