@@ -117,7 +117,7 @@ Field semantics:
 
 - Does NOT route — profile selection happens in the orchestrator before the call.
 - Does NOT modify source code — pure-investigation invariant.
-- Does NOT run tests, build the project, or invoke XcodeBuildMCP — no executable artifact produced.
+- Does NOT run tests and does NOT build the project — no executable artifact produced.
 - Does NOT trigger `task-new` for the follow-up items — that is the user's choice (the `## Follow-up` list provides paste-ready descriptions).
 - Does NOT call `mobile-ops-checklist` — there is nothing implemented to validate.
 - Does NOT decide between Research / Review / Done order — the orchestrator passes `start_stage`, `end_stage`, `stage_scope`.

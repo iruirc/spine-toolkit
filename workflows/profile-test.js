@@ -349,7 +349,7 @@ if (runs('Analyze')) {
   const analyze = await agent(
     brief(
       'Analyze',
-      `Write ${DIR}/Research.md: what to test (uncovered code, critical paths, regression scenarios), at what level (unit, integration, UI, snapshot), and with which frameworks (XCTest, Quick and Nimble, ViewInspector, SnapshotTesting). Fold the testability findings below into it — a blocker that is not written down becomes a phase that cannot be finished.
+      `Write ${DIR}/Research.md: what to test (uncovered code, critical paths, regression scenarios), at what level (unit, integration, UI, snapshot), and and with which of this platform's test frameworks and helpers. Fold the testability findings below into it — a blocker that is not written down becomes a phase that cannot be finished.
 
 TESTABILITY FINDINGS (data):
 ${JSON.stringify(testability || { blockers: [] }, null, 2)}`,
@@ -408,7 +408,7 @@ if (runs('Validation')) {
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
-For TEST the XcodeBuildMCP test_sim run is mandatory: every newly added test has to pass on its first run. When one fails on the first run, re-run that test up to three times; if the results flap, return FLAKY and record the test name, the failure rate, and your hypothesis for the cause in Validation.md. mobile MCP is optional and only for UI tests that need visual verification, and mobile_mcp resolving to off — Task.md [MOBILE_MCP] first, then CLAUDE-spine-toolkit.md ## Validation — removes even that option. manual_checks: always in the same two sources still asks you for a ${DIR}/ManualChecks.md covering what the automated suite cannot reach.
+For TEST a full test run is mandatory, through this platform's own test tooling: every newly added test has to pass on its first run. When one fails on the first run, re-run that test up to three times; if the results flap, return FLAKY and record the test name, the failure rate, and your hypothesis for the cause in Validation.md. mobile MCP is optional and only for UI tests that need visual verification, and mobile_mcp resolving to off — Task.md [MOBILE_MCP] first, then CLAUDE-spine-toolkit.md ## Validation — removes even that option. manual_checks: always in the same two sources still asks you for a ${DIR}/ManualChecks.md covering what the automated suite cannot reach.
 
 Change no production code and no tests — a flaky test that you quietly stabilise is a finding you have hidden. Return the same status you wrote on the first line.`,
     ),
