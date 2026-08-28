@@ -22,9 +22,11 @@ Then, in a project:
 ```
 
 `setup` writes `CLAUDE-spine-toolkit.md` in the project root, inserts an
-`@./CLAUDE-spine-toolkit.md` import into your `CLAUDE.md`, and creates `Tasks/`. The one block you
-must fill in is `## Platform` — the name of the platform plugin that serves this project. Nothing is
-inferred from the repository.
+`@./CLAUDE-spine-toolkit.md` import into your `CLAUDE.md`, and creates `Tasks/`. It asks which
+platform plugin serves this project — the candidates are the installed plugins that expose a
+`manifest` skill, and with one installed it asks you to confirm that one — and writes the answer
+into `## Platform`. Nothing is inferred from the repository, and no block is left for you to fill
+in by hand.
 
 From there, tasks are managed with `/spine-toolkit:task-new`, `:task-run`, `:task-continue`,
 `:task-redo`, `:task-restart`, `:task-move`, `:task-status`, or the equivalent natural-language
