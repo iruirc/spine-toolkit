@@ -26,9 +26,14 @@ Then, in a project:
 must fill in is `## Platform` — the name of the platform plugin that serves this project. Nothing is
 inferred from the repository.
 
-From there, tasks are managed with `/task-new`, `/task-run`, `/task-continue`, `/task-redo`,
-`/task-restart`, `/task-move`, `/task-status`, or the equivalent natural-language phrases
-("create task: …", "run 001", "status 001").
+From there, tasks are managed with `/spine-toolkit:task-new`, `:task-run`, `:task-continue`,
+`:task-redo`, `:task-restart`, `:task-move`, `:task-status`, or the equivalent natural-language
+phrases ("create task: …", "run 001", "status 001").
+
+Write the `spine-toolkit:` prefix and you are always right. The short `/task-new`, `/task-move`,
+`/task-status` and `/setup` also work, because each has a skill of the same name to catch them;
+`/task-run`, `/task-continue`, `/task-redo` and `/task-restart` are commands with no matching skill,
+and bare they resolve to nothing — verified in both an interactive and a headless session.
 
 ## How a task runs
 
@@ -37,12 +42,13 @@ of seven profiles:
 
 | Profile | Stages |
 |---|---|
-| FEATURE / EPIC | Research → Plan → Execute → Validation → Review → Done |
+| FEATURE | Research → Plan → Execute → Validation → Review → Done |
 | BUG | Reproduce → Diagnose → Plan → Fix → Validation → Review → Done |
 | REFACTOR | Analyze → Plan → Refactor → Validation → Review → Done |
 | TEST | Analyze → Plan → Write → Validation → Review → Done |
+| EPIC | Research → Plan → Execute → Done — Execute is one nested profile run per `.step/`, and each step carries its own Validation and Review |
 | RESEARCH | Research → Review → Done |
-| REVIEW | Review (single stage, then an auto-move driven by `[REVIEW_STATUS]`) |
+| REVIEW | Review — single stage, then an auto-move driven by `[REVIEW_STATUS]` |
 
 `skills/orchestrator/SKILL.md` resolves everything a profile needs — profile, mode, progress
 verbosity, per-axis stack, start stage, and the role→agent map — then hands a filled contract to the

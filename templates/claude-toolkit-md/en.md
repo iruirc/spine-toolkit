@@ -139,7 +139,7 @@ Task routing, profile, and stage logic lives in skills:
 Each profile also has a workflow script (`workflows/profile-*.js`) running the same stages as code; the orchestrator uses it where the host has the `Workflow` tool and falls back to the skill where it does not. Two consequences worth knowing: agents inside a workflow run in `acceptEdits`, so their file edits apply without a prompt whatever permission mode the session is in, and on the Pro plan workflows stay off until enabled in `/config`.
 
 Slash commands:
-- task management: `/task-new`, `/task-run`, `/task-continue`, `/task-redo`, `/task-restart`, `/task-move`, `/task-status`
+- task management: `/spine-toolkit:task-new`, `:task-run`, `:task-continue`, `:task-redo`, `:task-restart`, `:task-move`, `:task-status` (keep the prefix — four of the seven have no same-named skill, so the bare form resolves to nothing)
 - toolkit setup: `/setup` (attach the toolkit to an existing project); a project from scratch is the platform plugin's own command
 - language: `/swift-lang <code>` (switch between `en` and `ru`)
 

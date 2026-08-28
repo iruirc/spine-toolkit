@@ -1,6 +1,6 @@
 {
   "name": "fixture-platform",
-  "description": "Test double platform plugin for spine-toolkit. Declares the four manifest tables and two stub agents.",
+  "description": "Test double platform plugin for spine-toolkit. Declares the five manifest tables and two stub agents.",
   "version": "0.1.0",
   "author": { "name": "Dmitry Nuzhin" },
   "dependencies": ["spine-toolkit"]
