@@ -85,11 +85,14 @@ Which Dependency Injection approach does this task use?
 ## auq_axis_architecture_question
 Which architecture does this task use?
 
-## auq_axis_platform_question
-Which target platform does this task use?
+## auq_axis_baseline_question
+Which platform baseline does this task target?
 
 ## auq_axis_tests_question
 Which test framework does this task use?
+
+## auq_axis_generic_question
+Which value of `{axis}` does this task use?
 
 ## auq_research_agent_question
 Which agent should run the Research stage?

@@ -40,7 +40,7 @@ en
 - Async: <async/await | Combine | RxSwift>
 - DI: <Swinject | Factory pattern (see skill di-module-assembly) | manual>
 - Architecture: <MVVM+Coordinator | VIPER | Clean Architecture | MVC>
-- Platform: <iOS 16+ | macOS 13+ | iOS+macOS>
+- Baseline: <iOS 16+ | macOS 13+ | iOS+macOS>
 - Tests: <XCTest | Quick+Nimble>
 
 ## Mode

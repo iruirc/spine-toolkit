@@ -81,10 +81,11 @@ resolved from the repository.
 
 `ecosystem` is the one axis core requires every platform to declare, and the only axis whose meaning
 core fixes: it names the ecosystem this platform serves (`apple`, `android`, `jvm`). Declare it —
-but know that **nothing in core reads it today**. A project names its platform outright in the
-config's `## Platform` block; `ecosystem` is there for the parts that will have to reason about
+but know that **nothing in core reads its value today**. A project names its platform outright in
+the config's `## Platform` block; `ecosystem` is there for the parts that will have to reason about
 ecosystems rather than plugin names, such as installation-time discovery or a repository holding two
-of them. Reserved, not load-bearing.
+of them. Reserved, not load-bearing: `stack-detect` excludes it from detection, so no `## Heuristics`
+row should try to pin it.
 
 Every other axis and every value is the platform's own choice; core recommends but does not impose
 `ui`, `async`, `di`, `architecture`, `baseline`, `tests`.
@@ -102,6 +103,10 @@ path:   `Views/`, `*View.swift`          → ui, architecture
 Write the rows so that a repository signal matches **exactly one** of them — self-contained
 conditions, not a list that only behaves if it is read top-down. Nothing in the contract states an
 evaluation order, and a reader who assumes one will be wrong half the time.
+
+A `path:` row may qualify one of its axes — `architecture (+ ui if a view binding is present)`. The
+add-on flags its axis only for a file the same scan shows satisfies the condition, so write a
+condition that scan can see: `stack-detect` corroborates it rather than taking it on trust.
 
 ## `## Topics`
 
