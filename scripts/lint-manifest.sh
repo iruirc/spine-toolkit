@@ -25,10 +25,14 @@ roles_block=$(sed -n '/^## Roles/,/^## /p' "$manifest")
 # paragraph above the table — a wrapped continuation line can start with a
 # lowercase word (e.g. "demonstrated below...") and a backticked example like
 # `plugin:agent` in prose would otherwise be mistaken for a real reference.
-assignments=$(grep -E '^[a-z][a-z-]*(\[[^]]+\])? *=' <<<"$roles_block")
+# `[[:space:]]*`, not literal spaces, so tab-aligned tables parse too.
+# `|| true`: grep exits 1 on zero matches (an emptied Roles table), which
+# would otherwise abort the whole script here under `set -e`, before a
+# single role gets reported missing.
+assignments=$(grep -E '^[a-z][a-z-]*(\[[^]]+\])?[[:space:]]*=' <<<"$roles_block" || true)
 
 for role in $ROLES; do
-  grep -qE "^${role}(\[[^]]+\])? *=" <<<"$assignments" \
+  grep -qE "^${role}(\[[^]]+\])?[[:space:]]*=" <<<"$assignments" \
     || { echo "role not declared (map it or write '—'): $role"; violations=$((violations+1)); }
 done
 
@@ -41,6 +45,31 @@ while read -r ref; do
   [ -f "$plugin/agents/${ref#*:}.md" ] \
     || { echo "manifest names an agent with no file: $ref"; violations=$((violations+1)); }
 done < <(grep -oE '[a-z][a-z-]*:[a-z][a-z-]*' <<<"$assignments" | sort -u)
+
+# A role line's RHS must be an em-dash (declared absent) or a plugin:agent
+# reference — not empty. `role =` with nothing after it is neither a mapping
+# nor an explicit absence; the two are indistinguishable to core at runtime,
+# so this is the only place the difference can be caught.
+while IFS= read -r line; do
+  [[ "$line" =~ ^([a-z][a-z-]*)(\[[^]]+\])?[[:space:]]*=[[:space:]]*(.*)$ ]] || continue
+  role_name="${BASH_REMATCH[1]}"
+  rhs="${BASH_REMATCH[3]}"
+  rhs="${rhs%"${rhs##*[![:space:]]}"}"  # trim trailing whitespace
+  case "$rhs" in
+    "—") ;;
+    *)
+      if [[ "$rhs" =~ ^[a-z][a-z-]*:[a-z][a-z-]*$ ]]; then
+        :
+      elif [ -z "$rhs" ]; then
+        echo "role mapped to an empty value (write a plugin:agent reference or '—'): $role_name"
+        violations=$((violations+1))
+      else
+        echo "role mapped to a malformed value '$rhs' (expected plugin:agent or '—'): $role_name"
+        violations=$((violations+1))
+      fi
+      ;;
+  esac
+done <<<"$assignments"
 
 [ "$violations" -eq 0 ] || exit 1
 echo "manifest OK: $plugin"
