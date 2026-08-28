@@ -3,7 +3,7 @@
 > Toolkit-owned configuration for a Swift/Apple project. Created and updated by `swift-setup`.
 > **Do not edit by hand unless you know what you're doing** — running `swift-setup` again may overwrite your changes (after backup).
 > User-owned project instructions live in `CLAUDE.md`. This file is auto-imported into Claude's context via `@./CLAUDE-swift-toolkit.md`.
-> Task-orchestration logic is in the `swift-toolkit:*` skills (see "Orchestration" below).
+> Task-orchestration logic is in the `spine-toolkit:*` skills (see "Orchestration" below).
 
 ## Language
 
@@ -116,11 +116,11 @@ The full skill map and dependencies between skill groups — see the swift-toolk
 
 Task routing, profile, and stage logic lives in skills:
 
-- `swift-toolkit:orchestrator` — picks the profile by `TASK_TYPE`, determines the start point, dispatches stages
-- `swift-toolkit:workflow-feature|bug|refactor|test|review|research|epic` — profile procedures
-- `swift-toolkit:task-new|task-move|task-status` — task management
-- `swift-toolkit:swift-setup` — configures swift-toolkit in an existing project (creates `CLAUDE-swift-toolkit.md` from template, inserts `@./CLAUDE-swift-toolkit.md` import into `CLAUDE.md`, creates `Tasks/`)
-- `swift-toolkit:swift-lang` — switches the project's prompt language
+- `spine-toolkit:orchestrator` — picks the profile by `TASK_TYPE`, determines the start point, dispatches stages
+- `spine-toolkit:workflow-feature|bug|refactor|test|review|research|epic` — profile procedures
+- `spine-toolkit:task-new|task-move|task-status` — task management
+- `swift-platform:swift-setup` — configures swift-toolkit in an existing project (creates `CLAUDE-swift-toolkit.md` from template, inserts `@./CLAUDE-swift-toolkit.md` import into `CLAUDE.md`, creates `Tasks/`)
+- `spine-toolkit:swift-lang` — switches the project's prompt language
 
 Each profile also has a workflow script (`workflows/profile-*.js`) running the same stages as code; the orchestrator uses it where the host has the `Workflow` tool and falls back to the skill where it does not. Two consequences worth knowing: agents inside a workflow run in `acceptEdits`, so their file edits apply without a prompt whatever permission mode the session is in, and on the Pro plan workflows stay off until enabled in `/config`.
 

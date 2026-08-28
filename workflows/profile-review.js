@@ -2,7 +2,7 @@ export const meta = {
   name: 'profile-review',
   description: 'REVIEW profile pipeline: one review pass, then the status-driven auto-move',
   whenToUse:
-    'Dispatched by swift-toolkit:orchestrator for a task with [TASK_TYPE]=REVIEW, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
+    'Dispatched by spine-toolkit:orchestrator for a task with [TASK_TYPE]=REVIEW, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
     { title: 'Review', detail: 'one pass over the diff, status on the first line of Review.md', agent: 'reviewer' },
     { title: 'Auto-move', detail: 're-reads that first line and acts on it: move to DONE, or record what is awaited', agent: 'reviewer' },
@@ -43,7 +43,7 @@ if (!A || typeof A !== 'object' || !A.task_id || !A.task_dir) {
   return {
     status: 'error',
     reason: 'no-args',
-    next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through swift-toolkit:orchestrator, or fall back to the matching swift-toolkit:workflow-* skill. Do not execute the stages by hand.',
+    next: 'This workflow was started without the Outbound Contract it needs (task_id and task_dir at minimum). Nothing ran and nothing was written. Re-dispatch it through spine-toolkit:orchestrator, or fall back to the matching spine-toolkit:workflow-* skill. Do not execute the stages by hand.',
   }
 }
 if (!A.agents || typeof A.agents !== 'object') {
@@ -290,7 +290,7 @@ const writeWalkthrough = async (stage, extra) => {
   const w = await agent(
     brief(
       stage,
-      `Write or refresh ${DIR}/Walkthrough.md by applying the swift-toolkit:task-walkthrough skill, which owns the section list, the per-section length budgets and the refresh rules. Read it first.
+      `Write or refresh ${DIR}/Walkthrough.md by applying the spine-toolkit:task-walkthrough skill, which owns the section list, the per-section length budgets and the refresh rules. Read it first.
 
 Derive the account from git — the task's own commits, git log over the range and git show for what each one carries — reconciled against ${DIR}/Plan.md. The plan is intent, the commits are fact, and the divergences between them, each labelled with its trigger, are what this artifact exists for. The second line is required to be exactly:
 
@@ -344,7 +344,7 @@ if (review) {
 
 Then do exactly one of these, and nothing else:
 
-- APPROVED — move the task folder into Tasks/DONE/ using the swift-toolkit:task-move skill. If it is already in Tasks/DONE/, leave it and still report it as moved: this step is idempotent.
+- APPROVED — move the task folder into Tasks/DONE/ using the spine-toolkit:task-move skill. If it is already in Tasks/DONE/, leave it and still report it as moved: this step is idempotent.
 - CHANGES_REQUESTED — leave the task where it is. Append a section to ${DIR}/Done.md listing the concrete Critical and Major points from Review.md, or create ChangesRequested.md beside Review.md when Done.md does not exist. The heading is the byte-for-byte literal \`## Awaiting changes\` — never translated, localized, or adapted, because it is a machine-parsed anchor. The bullets beneath it are prose and follow the output language.
 - DISCUSSION — leave the task where it is. Create or extend ${DIR}/Questions.md with a section headed \`## <ISO date> — Discussion from Review\`, quoting or linking the disputed points. Get the date from the system rather than guessing it.
 - anything else, or a first line that does not match the format — change nothing at all, and report status_line_valid as false along with what you actually read.

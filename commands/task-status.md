@@ -3,7 +3,7 @@ description: "Show task progress (or all ACTIVE) / Показать прогре
 argument-hint: [id]
 ---
 
-Activate `swift-toolkit:task-status`.
+Activate `spine-toolkit:task-status`.
 
 $ARGUMENTS parsing:
 - Non-empty — show progress for a specific task (task_id = $ARGUMENTS)

@@ -3,7 +3,7 @@ description: "Run a task from the first unfinished stage / Запустить з
 argument-hint: <id> [--from <stage>] [--to <stage>]
 ---
 
-Activate `swift-toolkit:orchestrator` with action=run.
+Activate `spine-toolkit:orchestrator` with action=run.
 
 $ARGUMENTS parsing:
 - First token — task_id (required)

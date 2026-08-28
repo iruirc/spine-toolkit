@@ -165,3 +165,9 @@ Run through the workflow (Method A)
 
 ## dispatch_blocked_option_b
 Run through the skill (Method B)
+
+## deviation_role_absent
+No agent implements the `{role}` role on this platform, so stage {stage} runs here, in the main context.
+
+## routing_project_init
+Creating a project from scratch belongs to the platform plugin — run its project-init entry point (the agent it maps to the `init` role, usually behind its own slash command). The orchestrator drives tasks under `Tasks/`, not bootstrapping.

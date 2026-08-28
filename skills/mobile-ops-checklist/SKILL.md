@@ -14,7 +14,7 @@ A cross-cutting checklist distilled from production mobile engineering challenge
 > - `persistence-migrations` — schema-migration items expand here
 > - `concurrency-architecture` — background work / cancellation items
 > - `net-architecture` — retry / pagination / cache items
-> - `swift-toolkit:swift-security` — privacy / Keychain / pinning items
+> - the agent behind the `security` role — privacy / Keychain / pinning items
 
 ## When to use
 
@@ -216,4 +216,4 @@ Structure:
 - Does NOT design the feature — that's `feature-landscape`.
 - Does NOT estimate effort of completing items — combine with `feature-estimation` if needed.
 - Does NOT auto-fix Pending items — it surfaces them; humans / agents handle resolution.
-- Does NOT replace `swift-toolkit:swift-security` — security audit is a deeper pass, this checklist's privacy/security section is the surface scan.
+- Does NOT replace a `security`-role audit — that pass is deeper; this checklist's privacy/security section is the surface scan.

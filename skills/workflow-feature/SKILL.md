@@ -1,7 +1,7 @@
 ---
 name: workflow-feature
 description: |
-  FEATURE profile workflow: Research → Plan → Execute → Validation → Review → Done. Activated by swift-toolkit:orchestrator; not invoked by the user directly.
+  FEATURE profile workflow: Research → Plan → Execute → Validation → Review → Done. Activated by spine-toolkit:orchestrator; not invoked by the user directly.
   Use when (en): orchestrator dispatches a task with [TASK_TYPE]=FEATURE
   Use when (ru): оркестратор диспетчеризует задачу с [TASK_TYPE]=FEATURE
 stack_axes_envelope: { may: [ui, async, di, architecture, platform, tests], never: [] }
@@ -9,7 +9,7 @@ stack_axes_envelope: { may: [ui, async, di, architecture, platform, tests], neve
 
 # Workflow Feature
 
-This skill is **Method B** for the FEATURE profile: it runs the stages when the host has no Workflow tool. `workflows/profile-feature.js` is Method A and runs the same stages as code. The orchestrator picks between them (see `swift-toolkit:orchestrator` → **Dispatch**), and `scripts/lint-workflows.sh` fails if the two stage lists drift apart. Edit a stage here and the script needs the same edit.
+This skill is **Method B** for the FEATURE profile: it runs the stages when the host has no Workflow tool. `workflows/profile-feature.js` is Method A and runs the same stages as code. The orchestrator picks between them (see `spine-toolkit:orchestrator` → **Dispatch**), and `scripts/lint-workflows.sh` fails if the two stage lists drift apart. Edit a stage here and the script needs the same edit.
 
 The profile workflow for tasks with `[TASK_TYPE] = FEATURE`. Implements the sequence of stages; the result of each stage is an artifact file inside the task folder. The skill receives an already-resolved contract from the orchestrator and does not try to re-resolve any parameter on its own.
 
@@ -28,9 +28,9 @@ Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-swift
 
 ## 1. Input Contract
 
-The skill is invoked by `swift-toolkit:orchestrator` via the `Skill` tool with structured `args` in `key=value` form, separated only by newlines.
+The skill is invoked by `spine-toolkit:orchestrator` via the `Skill` tool with structured `args` in `key=value` form, separated only by newlines.
 
-The field structure is documented in `swift-toolkit:orchestrator` (section **Outbound Contract**). Workflow-feature accepts every field already filled — invariant.
+The field structure is documented in `spine-toolkit:orchestrator` (section **Outbound Contract**). Workflow-feature accepts every field already filled — invariant.
 
 If a required field arrives empty — workflow-feature does not try to recover. It returns `{status: error, reason: status_error_empty_required_field}` (the `reason` value is taken from the locale key in `locales/<lang>.md`) back to the orchestrator.
 
@@ -41,7 +41,7 @@ The fields that directly drive this workflow's behavior:
 - `mode` — `manual` / `auto` (see sections 3 and 4).
 - `stack` — passed to subagents as context.
 - `lang` — project language for artifact prose + the final report; artifact structure (headings, field labels, status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed through to every subagent.
-- `need_test`, `need_review` — gate the inclusion of `swift-toolkit:swift-tester` and `swift-toolkit:swift-reviewer`.
+- `need_test`, `need_review` — gate the inclusion of `[tester]` and `[reviewer]`.
 - `archive_paths` — paths to backups already created (the orchestrator made them BEFORE the call; workflow-feature does not create them).
 
 **Execution range.** Stages run in the order Research → Plan → Execute → Validation → Review → Done, starting at `start_stage` and continuing through `end_stage` inclusive. If `end_stage=null` — through the end of the profile. If `end_stage` is set but precedes `start_stage` in order, that is a contract error: return `{status: error, reason: "end_stage before start_stage"}`.
@@ -53,13 +53,13 @@ The fields that directly drive this workflow's behavior:
 
 ## 2. Stages
 
-A stage that names an agent is executed by that agent. Dispatch it per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage that skips its agent says so before it starts.
+A stage names its owner as a role in brackets — `[architect]`, `[developer]`. Which agent a role means arrives in the contract's `agents` map; dispatch that agent per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage whose role resolved to `—` says so before it starts.
 
-- **Research** — a panel: `swift-toolkit:swift-architect` + `swift-toolkit:swift-security` (via the Task tool, in parallel or sequentially as the orchestrator decides). Artifact: `Research.md` in the task folder. Goal: investigate the domain, surface risks, propose architectural options.
+- **Research** — a panel: `[architect]` + `[security]` (via the Task tool, in parallel or sequentially as the orchestrator decides). Artifact: `Research.md` in the task folder. Goal: investigate the domain, surface risks, propose architectural options.
 
   The architect MUST apply the `feature-requirements` skill and then the `feature-landscape` skill, producing two H2 sections inside `Research.md`: `## Requirements` (Primary / Secondary / Designer questions / Backend questions / Known unknowns) and `## Landscape` (Entity graph / Layer map / Integration points / Work items / Implementation sequence). The `## Architectural Analysis` and other architect-output sections are appended after these two.
 
-- **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with **two layers of progress tracking**:
+- **Plan** — `[architect]`. Artifact: `Plan.md` with **two layers of progress tracking**:
   1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase, coarse-grained completion.
   2. **Per-phase detail section** for each phase — actionable items rendered as **markdown checkboxes** `- [ ] <item>`. Granularity: one checkbox per file to edit, per acceptance criterion, per test to add, per verification step. Granular enough to be ticked individually as the Execute stage progresses. Static prose (rationale, decisions, design notes) stays as plain bullets — only **action items** become checkboxes.
 
@@ -67,7 +67,7 @@ A stage that names an agent is executed by that agent. Dispatch it per `conventi
 
   The architect MUST apply the `feature-estimation` skill to produce an additional `## Estimation` section in `Plan.md`. Scale the depth to the feature's risk per the skill's *Estimation depth* table: the minimum viable estimate is feature type (one line) + baseline table + engineering range + confidence; PERT, scope-aware risk deltas, estimate maturity, estimation conditions, delivery-calendar, store buffer, known unknowns, and self-check are added only when their triggers fire. The estimation range is a hard-prerequisite for entering Execute. If `## Estimation` is missing/malformed, a triggered section is absent, `### Estimate maturity` is `Draft`, the maturity is `Conditional` and `### Estimation conditions` is missing or contains any `pending_user` row, or a Known Unknown trips the skill's load-bearing-unknown rule without a required spike/resolution, Plan stays open and the workflow returns `ask_user`. When the project is AI-assisted, `## Estimation` also carries the AI-assisted range; it is informational and does not change the gate — the gate evaluates the human estimate.
 
-- **Execute** — `swift-toolkit:swift-developer` + `swift-toolkit:swift-tester` (if `need_test=true` in args). Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without a user prompt.
+- **Execute** — `[developer]` + `[tester]` (if `need_test=true` in args). Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without a user prompt.
 
   Per-item flow inside a phase: complete one actionable item → tick its checkbox `- [ ]` → `- [x]` in the per-phase detail section of Plan.md. Per-phase flow: when all the phase's checkboxes are `- [x]` → build → run tests for the touched scope → flip the phase's row in the top-level progress table ⬜→✅ → `git add` the phase's files (including the Plan.md updates — both checkboxes and table) → `git commit`. Commit message format: **Conventional Commits** — `<type>(<scope>): <imperative subject>` followed by an optional body explaining WHY. For Execute-stage commits the type is usually `feat` (use `test` for a test-only phase, `chore` for build/config-only, `refactor` for an interim structural step). **NEVER include the task ID, step ID, or phase number** — provenance lives in `Plan.md`, the branch name, and the PR description. Full spec + anti-examples in `conventions/commit-messages.md`. Example:
 
@@ -83,19 +83,19 @@ A stage that names an agent is executed by that agent. Dispatch it per `conventi
 
   **A phase is not "done" (✅ in the top table) until ALL its granular checkboxes are `- [x]` AND the phase is committed.** Partial completion stays at 🔄 in the top table with the un-ticked checkboxes still `- [ ]`. Artifacts: source code in the project + tests + the resulting commit history.
 
-  **Comment hygiene (hard rule, enforced by `swift-developer`):** NEVER embed task/phase/EPIC references in production code comments (`// EPIC X §Y Phase Z — …`, `// Task N phase M — …`, `// Bug123 fix`, `// Created for EPIC X`). Phase provenance lives in (a) the Plan.md per-phase checkbox + table row and (b) the per-phase git commit message — duplicating it inline rots and crowds out the evergreen WHY. See `agents/swift-developer.md → ## Comment Policy`.
+  **Comment hygiene (hard rule, enforced by the `developer` agent):** NEVER embed task/phase/EPIC references in production code comments (`// EPIC X §Y Phase Z — …`, `// Task N phase M — …`, `// Bug123 fix`, `// Created for EPIC X`). Phase provenance lives in (a) the Plan.md per-phase checkbox + table row and (b) the per-phase git commit message — duplicating it inline rots and crowds out the evergreen WHY. See the `developer` agent's `## Comment Policy`.
 
-  If `start_phase=<phase_id>` was passed in args — `swift-toolkit:swift-developer` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
+  If `start_phase=<phase_id>` was passed in args — `[developer]` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
-  When the stage's phases are done, apply `swift-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-swift-toolkit.md`, else `on`. Written by the same agent that writes `Done.md` — `swift-toolkit:swift-architect`.
+  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-swift-toolkit.md`, else `on`. Written by the same agent that writes `Done.md` — `[architect]`.
 
-- **Validation** — `swift-toolkit:swift-validator`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between `swift-validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the FEATURE profile, the validator runs XcodeBuildMCP `build_sim` + `test_sim` mandatorily, and mobile MCP mandatorily when there is a UI layer (SwiftUI/UIKit views, screens, navigation); mobile MCP is skipped for purely domain/infrastructure features. Detailed per-profile behavior (mandatory vs. optional MCP steps, log capture, return-digest format) lives in `agents/swift-validator.md`. When `mobile_mcp` resolves to `off` (`Task.md [MOBILE_MCP]` first, then `CLAUDE-swift-toolkit.md ## Validation`), no mobile MCP runs at all: the validator writes the UI cases a human must run into a separate `ManualChecks.md`, marks the matching `OpsChecklist.md` items Pending, and returns the case titles in `manual_checks` — surface that list with the stage report. The `manual_checks` key of the same two sources decides when that artifact appears: `auto` only for deferred checks, `always` on every UI-bearing run, including one mobile MCP drove itself.
+- **Validation** — `[validator]`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between the `validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the FEATURE profile, the validator runs XcodeBuildMCP `build_sim` + `test_sim` mandatorily, and mobile MCP mandatorily when there is a UI layer (SwiftUI/UIKit views, screens, navigation); mobile MCP is skipped for purely domain/infrastructure features. Detailed per-profile behavior (mandatory vs. optional MCP steps, log capture, return-digest format) lives with the `validator` agent. When `mobile_mcp` resolves to `off` (`Task.md [MOBILE_MCP]` first, then `CLAUDE-swift-toolkit.md ## Validation`), no mobile MCP runs at all: the validator writes the UI cases a human must run into a separate `ManualChecks.md`, marks the matching `OpsChecklist.md` items Pending, and returns the case titles in `manual_checks` — surface that list with the stage report. The `manual_checks` key of the same two sources decides when that artifact appears: `auto` only for deferred checks, `always` on every UI-bearing run, including one mobile MCP drove itself.
 
   In addition to `Validation.md`, the validator MUST produce a separate `OpsChecklist.md` artifact in the task folder by applying the `mobile-ops-checklist` skill. Each checklist item is marked **Applicable** (with verification evidence: file path, test name, commit ref), **N/A** (with reason), or **Pending**. A single Pending item is NOT itself a FAILED verdict — Pending items are surfaced to the Review stage, which decides whether they block APPROVED.
 
-- **Review** — `swift-toolkit:swift-reviewer` (if `need_review=true` in args). Artifact: `Review.md`, **first line is required** to be `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (this field is the shared contract between workflow-* and the orchestrator; it is also used by `swift-toolkit:workflow-review` for auto-move into DONE/). On a redo after `CHANGES_REQUESTED`, the reviewer finds its own prior `Review.md` in the task folder and narrows scope to the commits landed since its `[REVIEWED_COMMIT]` line instead of re-reviewing the whole task from scratch — see `agents/swift-reviewer.md` → "1. Identify Scope".
+- **Review** — `[reviewer]` (if `need_review=true` in args). Artifact: `Review.md`, **first line is required** to be `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (this field is the shared contract between workflow-* and the orchestrator; it is also used by `spine-toolkit:workflow-review` for auto-move into DONE/). On a redo after `CHANGES_REQUESTED`, the reviewer finds its own prior `Review.md` in the task folder and narrows scope to the commits landed since its `[REVIEWED_COMMIT]` line instead of re-reviewing the whole task from scratch — see the `reviewer` agent → "1. Identify Scope".
 
-  The reviewer cross-checks `OpsChecklist.md` from the Validation stage: every item marked **Applicable** must have implementation evidence visible in the diff or in test results. Applicable items without evidence are findings (severity per `swift-reviewer.md`) and typically yield `CHANGES_REQUESTED`. Pending items in `OpsChecklist.md` are surfaced as a `## Outstanding ops items` section in `Review.md` for explicit user-side accept/defer.
+  The reviewer cross-checks `OpsChecklist.md` from the Validation stage: every item marked **Applicable** must have implementation evidence visible in the diff or in test results. Applicable items without evidence are findings (severity per the `reviewer` agent) and typically yield `CHANGES_REQUESTED`. Pending items in `OpsChecklist.md` are surfaced as a `## Outstanding ops items` section in `Review.md` for explicit user-side accept/defer.
 
 - **Done** — final report `Done.md`: what was done, which artifacts were produced, validation status (build/test result), a mandatory `## Estimate retrospective` section when `Plan.md ## Estimation` exists, and objections (if the user insisted on a contested decision). The retrospective MUST capture actual effort via the hybrid model defined in `feature-estimation` (`## Estimate retrospective`): record the auto git proxy (commit-span of the task's phase commits + phase/rework count, labelled `proxy` — never presented as human-days) **always**, plus the user-provided human effort when offered, and use `human ?? proxy` for the in-range verdict; only when neither is available write `unknown` with the missing signal named. In AI-assisted mode, break actual down per leverage class so the calibration loop can narrow the divisors. The same section appends the feature's data point to the calibration log (`feature-estimation` Calibration over time).
 

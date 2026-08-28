@@ -94,7 +94,7 @@ setup_file() {
 @test "method A agents carry stage, model, ctx and tool count" {
   run tm_metrics home-a --session 11111111-1111-1111-1111-111111111111
   [ "$(tm_field "$output" runs.0.agents.0.phase)" = "Analyze" ]
-  [ "$(tm_field "$output" runs.0.agents.0.agentType)" = "swift-toolkit:swift-architect" ]
+  [ "$(tm_field "$output" runs.0.agents.0.agentType)" = "swift-platform:swift-architect" ]
   [ "$(tm_field "$output" runs.0.agents.0.model)" = "claude-opus-5" ]
   [ "$(tm_field "$output" runs.0.agents.0.ctx)" = "312000" ]
   [ "$(tm_field "$output" runs.0.agents.0.tools)" = "24" ]
@@ -169,7 +169,7 @@ setup_file() {
     {"type": "workflow_phase", "index": 1, "title": "Analyze"},
     {"type": "workflow_agent", "index": 1, "label": "analyze", "phaseIndex": 1,
      "phaseTitle": "Analyze", "agentId": "f0000000000000001",
-     "agentType": "swift-toolkit:swift-architect", "model": "claude-opus-5",
+     "agentType": "swift-platform:swift-architect", "model": "claude-opus-5",
      "state": "done", "durationMs": 3661000}
   ]
 }
@@ -191,7 +191,7 @@ JSON
 @test "started without result means running, and type comes from meta" {
   run tm_metrics home-a --session 11111111-1111-1111-1111-111111111111 --run wf_bbb2222-222
   [ "$(tm_field "$output" runs.0.agents.0.state)" = "running" ]
-  [ "$(tm_field "$output" runs.0.agents.0.agentType)" = "swift-toolkit:swift-developer" ]
+  [ "$(tm_field "$output" runs.0.agents.0.agentType)" = "swift-platform:swift-developer" ]
 }
 
 @test "a workflowProgress state of progress normalizes to running" {
@@ -255,7 +255,7 @@ JSON
   run tm_metrics home-a --session 22222222-2222-2222-2222-222222222222
   [ "$status" -eq 0 ]
   [ "$(tm_field "$output" runs.0.runId)" = "" ]
-  [ "$(tm_field "$output" runs.0.agents.0.agentType)" = "swift-toolkit:swift-reviewer" ]
+  [ "$(tm_field "$output" runs.0.agents.0.agentType)" = "swift-platform:swift-reviewer" ]
   [ "$(tm_field "$output" runs.0.agents.0.out)" = "512" ]
 }
 
@@ -277,7 +277,7 @@ JSON
   run tm_metrics home-a --session 11111111-1111-1111-1111-111111111111 --all
   [ "$status" -eq 0 ]
   [ "$(tm_field "$output" runs.3.agents.0.phase)" = "Write regression tests" ]
-  [ "$(tm_field "$output" runs.3.agents.0.agentType)" = "swift-toolkit:swift-tester" ]
+  [ "$(tm_field "$output" runs.3.agents.0.agentType)" = "swift-platform:swift-tester" ]
 }
 
 @test "totals sum across multiple workflow runs of a session, not just the first" {
@@ -295,14 +295,14 @@ JSON
   sess="$cfg/projects/-tmp-proj/77777777-7777-7777-7777-777777777777"
   mkdir -p "$sess/subagents"
   cat > "$cfg/projects/-tmp-proj/77777777-7777-7777-7777-777777777777.jsonl" <<'JSON'
-{"type":"assistant","timestamp":"2026-08-24T10:00:00.000Z","message":{"model":"claude-opus-5","usage":{"output_tokens":10},"content":[{"type":"tool_use","id":"tu1","name":"Agent","input":{"subagent_type":"swift-toolkit:swift-developer","description":"Patch the bug"}}]}}
+{"type":"assistant","timestamp":"2026-08-24T10:00:00.000Z","message":{"model":"claude-opus-5","usage":{"output_tokens":10},"content":[{"type":"tool_use","id":"tu1","name":"Agent","input":{"subagent_type":"swift-platform:swift-developer","description":"Patch the bug"}}]}}
 {"type":"user","timestamp":"2026-08-24T10:00:01.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu1","content":[{"type":"text","text":"agentId: e0000000000000001"}]}]}}
 JSON
   cat > "$sess/subagents/agent-e0000000000000001.jsonl" <<'JSON'
 {"type":"assistant","agentId":"e0000000000000001","timestamp":"2026-08-24T10:00:10.000Z","message":{"model":"claude-opus-5","usage":{"input_tokens":1,"output_tokens":50},"content":[{"type":"tool_use","id":"tu2","name":"Edit","input":{}}]}}
 JSON
   cat > "$sess/subagents/agent-e0000000000000001.meta.json" <<'JSON'
-{"agentType": "swift-toolkit:swift-developer", "spawnDepth": 1}
+{"agentType": "swift-platform:swift-developer", "spawnDepth": 1}
 JSON
   touch "$sess/subagents/agent-e0000000000000001.jsonl"
   run env CLAUDE_CONFIG_DIR="$cfg" CLAUDE_CODE_SESSION_ID="" \
@@ -327,7 +327,7 @@ JSON
 @test "a run in flight reports its running agent from the meta file and transcript" {
   run tm_metrics home-a --session 44444444-4444-4444-4444-444444444444
   [ "$(tm_field "$output" runs.0.agents.0.state)" = "running" ]
-  [ "$(tm_field "$output" runs.0.agents.0.agentType)" = "swift-toolkit:swift-architect" ]
+  [ "$(tm_field "$output" runs.0.agents.0.agentType)" = "swift-platform:swift-architect" ]
   [ "$(tm_field "$output" runs.0.agents.0.out)" = "469" ]
 }
 
@@ -503,7 +503,7 @@ JSON
 
 # ── recovering task/profile/stage from the agent's own prompt ───────────────
 # Session 44444444 is a real in-flight run (task 395, stage Analyze) with no
-# state file yet — the first line of its agent's prompt is swift-toolkit's own.
+# state file yet — the first line of its agent's prompt is spine-toolkit's own.
 
 @test "an in-flight run recovers task_id, workflow and stage from its own prompt" {
   run tm_metrics home-a --session 44444444-4444-4444-4444-444444444444

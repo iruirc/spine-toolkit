@@ -113,4 +113,4 @@ These are **forbidden**:
 
 ## Comment hygiene parity
 
-The same provenance rule applies to **code comments**: never embed task/phase/EPIC/ticket references in production code or test code. See per-workflow Comment hygiene sections and `agents/swift-developer.md → ## Comment Policy`. Commit messages and PR descriptions carry the WHY of the change; code comments stay evergreen.
+The same provenance rule applies to **code comments**: never embed task/phase/EPIC/ticket references in production code or test code. See per-workflow Comment hygiene sections and the `developer` agent's `## Comment Policy`. Commit messages and PR descriptions carry the WHY of the change; code comments stay evergreen.

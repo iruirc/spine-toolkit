@@ -1,7 +1,7 @@
 ---
 name: workflow-epic
 description: |
-  EPIC profile workflow: Research → Plan → Execute (decomposition or pure-research) → Done. Activated by swift-toolkit:orchestrator; not invoked by the user directly.
+  EPIC profile workflow: Research → Plan → Execute (decomposition or pure-research) → Done. Activated by spine-toolkit:orchestrator; not invoked by the user directly.
   Use when (en): orchestrator dispatches a task with [TASK_TYPE]=EPIC
   Use when (ru): оркестратор диспетчеризует задачу с [TASK_TYPE]=EPIC
 stack_axes_envelope: { may: [], never: all }
@@ -9,11 +9,11 @@ stack_axes_envelope: { may: [], never: all }
 
 # Workflow Epic
 
-This skill is **Method B** for the EPIC profile: it runs the stages when the host has no Workflow tool. `workflows/profile-epic.js` is Method A and runs the same stages as code. The orchestrator picks between them (see `swift-toolkit:orchestrator` → **Dispatch**), and `scripts/lint-workflows.sh` fails if the two stage lists drift apart. Edit a stage here and the script needs the same edit.
+This skill is **Method B** for the EPIC profile: it runs the stages when the host has no Workflow tool. `workflows/profile-epic.js` is Method A and runs the same stages as code. The orchestrator picks between them (see `spine-toolkit:orchestrator` → **Dispatch**), and `scripts/lint-workflows.sh` fails if the two stage lists drift apart. Edit a stage here and the script needs the same edit.
 
 The profile workflow for tasks with `[TASK_TYPE] = EPIC`. Unlike the other workflow-* skills, EPIC has a branch on the Plan stage: **decomposition** (split into `.step/` subfolders and run them sequentially) or **pure_research** (Research.md is the final artifact; no implementation follows). The skill receives an already-resolved contract from the orchestrator and does not try to re-resolve any parameter on its own.
 
-**Relationship to RESEARCH profile.** `pure_research` here is a *downgrade path*: a task started as an EPIC, the Research stage discovered no decomposition / implementation is needed. For tasks known up-front to be investigation-only (audits, feasibility studies), use `[TASK_TYPE] = RESEARCH` and the `swift-toolkit:workflow-research` profile directly — it has a simpler shape (`Research → [Review] → Done`), no decomposition logic, and an explicit single-agent choice. See `conventions/research-vs-epic.md`.
+**Relationship to RESEARCH profile.** `pure_research` here is a *downgrade path*: a task started as an EPIC, the Research stage discovered no decomposition / implementation is needed. For tasks known up-front to be investigation-only (audits, feasibility studies), use `[TASK_TYPE] = RESEARCH` and the `spine-toolkit:workflow-research` profile directly — it has a simpler shape (`Research → [Review] → Done`), no decomposition logic, and an explicit single-agent choice. See `conventions/research-vs-epic.md`.
 
 ## Language Resolution
 
@@ -30,9 +30,9 @@ Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-swift
 
 ## 1. Input Contract
 
-The skill is invoked by `swift-toolkit:orchestrator` via the `Skill` tool with structured `args` in `key=value` form, separated only by newlines.
+The skill is invoked by `spine-toolkit:orchestrator` via the `Skill` tool with structured `args` in `key=value` form, separated only by newlines.
 
-The field structure is documented in `swift-toolkit:orchestrator` (section **Outbound Contract**). Workflow-epic accepts every field already filled — invariant.
+The field structure is documented in `spine-toolkit:orchestrator` (section **Outbound Contract**). Workflow-epic accepts every field already filled — invariant.
 
 If a required field arrives empty — workflow-epic does not try to recover. It returns `{status: error, reason: status_error_empty_required_field}` (the `reason` value is taken from the locale key in `locales/<lang>.md`) back to the orchestrator.
 
@@ -58,22 +58,22 @@ Key fields and their EPIC-specific semantics:
 
 ## 2. Stages
 
-A stage that names an agent is executed by that agent. Dispatch it per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage that skips its agent says so before it starts.
+A stage names its owner as a role in brackets — `[architect]`, `[developer]`. Which agent a role means arrives in the contract's `agents` map; dispatch that agent per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage whose role resolved to `—` says so before it starts.
 
-- **Research** — `swift-toolkit:swift-architect`. Artifact: `Research.md` in the epic's folder. Goal: a wide investigation of the topic (context, actors, constraints, technology options, related modules). The Research output must answer: **is decomposition required** (a large initiative needs to be split into executable chunks) **or is pure research enough** (Research.md is itself the final artifact; no implementation will follow).
+- **Research** — `[architect]`. Artifact: `Research.md` in the epic's folder. Goal: a wide investigation of the topic (context, actors, constraints, technology options, related modules). The Research output must answer: **is decomposition required** (a large initiative needs to be split into executable chunks) **or is pure research enough** (Research.md is itself the final artifact; no implementation will follow).
 
   For the **decomposition** branch, the architect MUST apply `feature-requirements` (epic-level Primary / Secondary / Designer / Backend / Known Unknowns) and `feature-landscape` (epic-level entity graph + layer map + integration points). `Research.md` gets `## Requirements` and `## Landscape` sections. The landscape's work-items list seeds the step decomposition in the next stage.
 
   For the **pure_research** branch, these sections are optional but recommended where applicable (e.g. a pure-research task investigating a feasibility question still benefits from a Requirements section to scope the inquiry).
 
-- **Plan** — `swift-toolkit:swift-architect`. **Two branches:**
+- **Plan** — `[architect]`. **Two branches:**
 
   **Branch A — Decomposition.**
   - Artifact: `Plan.md` with a progress table of **`.step/` subfolders** (not phases inside a single profile).
   - The step decomposition is seeded from `Research.md ## Landscape ### Work items`. Steps group related work items along layer or feature boundaries — typically one step per major layer (Domain / Repository / Networking / UI) or per self-contained sub-feature.
   - The architect MUST apply `feature-estimation` at the epic level and write an aggregate `## Estimation` into the epic's `Plan.md`. The epic estimate is the **sum of the per-step ranges** (each step gets its own baseline + scope-aware deltas, exactly like a cross-platform estimate sums per-platform totals — see `feature-estimation` Step 3), reported as a named best/worst epic range. Per-step ranges live in each `<step>/Plan.md ## Estimation` (written by the step's own inner workflow at its Plan stage); the epic `Plan.md ## Estimation` rolls them up and is refreshed if a step is re-scoped. Unlike a single FEATURE, the epic estimate is **not** an Execute gate — it is informational planning roll-up — but it MUST be present before the first step runs. When the project is AI-assisted, the aggregate carries both the human and the AI-assisted epic range.
   - Each step is described as a separate task: it has its own `[TASK_TYPE]` (FEATURE/BUG/REFACTOR/TEST/EPIC/RESEARCH — yes, recursive EPIC and RESEARCH are allowed), its own `[STATUS]` ∈ {TODO, ACTIVE, DONE, DEFERRED, BLOCKED, SKIPPED}, an optional `[WORKFLOW_MODE]`, and its own `## 4. [Stack]` (or inherits from the epic).
-  - Step folders are created physically: `Tasks/<STATUS>/<epic-id>-<slug>/1.step/`, `2.step/`, …, `composition-model.step/` (any name with the `.step` suffix). Each contains its own `Task.md`. Creating the physical folders is the responsibility of `swift-toolkit:task-new` (see section 6).
+  - Step folders are created physically: `Tasks/<STATUS>/<epic-id>-<slug>/1.step/`, `2.step/`, …, `composition-model.step/` (any name with the `.step` suffix). Each contains its own `Task.md`. Creating the physical folders is the responsibility of `spine-toolkit:task-new` (see section 6).
   - The progress table in Plan.md lists steps in execution order with columns: `Done? | step_id | TASK_TYPE | [STATUS] | short description | artifact`. The **`Done?` column renders as a markdown checkbox** `- [ ]` / `- [x]` mirroring the step's `[STATUS]`: `[x]` when `[STATUS]=DONE`, `[ ]` otherwise. Workflow-epic ticks the checkbox at the moment a step's inner workflow completes (i.e. when `task-move` relocates the step to `DONE/`).
 
   **Branch B — Pure research.**
@@ -95,7 +95,7 @@ A stage that names an agent is executed by that agent. Dispatch it per `conventi
 
   **Push vs Pull dispatch models.**
 
-  - **Push (the recommended default):** the epic runs the step itself and awaits its result before moving on. Method B invokes the `Skill` tool with `name=swift-toolkit:orchestrator` and args describing the step (effectively as a new task: `task_id=<step_id>`, the epic context inherited via args). Method A launches the step's own profile script as a nested workflow run, building its path from `plugin_root`. Either way the outcome is recorded and the walk moves on.
+  - **Push (the recommended default):** the epic runs the step itself and awaits its result before moving on. Method B invokes the `Skill` tool with `name=spine-toolkit:orchestrator` and args describing the step (effectively as a new task: `task_id=<step_id>`, the epic context inherited via args). Method A launches the step's own profile script as a nested workflow run, building its path from `plugin_root`. Either way the outcome is recorded and the walk moves on.
 
   - **Pull (fallback):** workflow-epic **does NOT run the step**. Instead it walks every `.step/` folder, builds an ordered list of `[{step_id, task_id, profile, mode, …}]`, and returns it to the orchestrator via the `Output Contract` in the `pending_steps` field. The orchestrator then sequentially dispatches each step itself as ordinary tasks.
 
@@ -117,7 +117,7 @@ A stage that names an agent is executed by that agent. Dispatch it per `conventi
   - Objections (aggregated from each step's `Done.md` if the user insisted on a contested decision in any of them).
   - For branch B (pure_research) — Done.md is short, points at `Research.md` as the final artifact; the steps section is empty; no estimate retrospective is required.
 
-  On branch A, and only for a walk with no failed, cancelled or pending steps, also apply `swift-toolkit:task-walkthrough` and write `Walkthrough.md` — governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-swift-toolkit.md`, else `on`. An epic has no commits of its own: the file sits a layer above the steps, linking to each step's own walkthrough rather than restating it. Branch B gets none — there is no implementation to walk through.
+  On branch A, and only for a walk with no failed, cancelled or pending steps, also apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-swift-toolkit.md`, else `on`. An epic has no commits of its own: the file sits a layer above the steps, linking to each step's own walkthrough rather than restating it. Branch B gets none — there is no implementation to walk through.
 
 ## 3. Manual mode
 
@@ -173,8 +173,8 @@ Based on this, the orchestrator decides: continue, abort, ask the user, or dispa
 
 - Does NOT route — profile selection happens in the orchestrator before the call.
 - Does NOT read the epic's `Task.md` to determine stack/mode — everything arrives in `args`.
-- Does NOT create `.step/` subfolders itself — that is the responsibility of `swift-toolkit:task-new` (invoked by the orchestrator or the user before EPIC starts, or by the Plan stage instructing the architect to create step folders via task-new).
-- Does NOT modify step `[STATUS]` values — that is the job of `swift-toolkit:task-move` (invoked by the subagent inside each step at completion).
+- Does NOT create `.step/` subfolders itself — that is the responsibility of `spine-toolkit:task-new` (invoked by the orchestrator or the user before EPIC starts, or by the Plan stage instructing the architect to create step folders via task-new).
+- Does NOT modify step `[STATUS]` values — that is the job of `spine-toolkit:task-move` (invoked by the subagent inside each step at completion).
 - Does NOT decide between pure_research vs decomposition — that decision is recorded inside `Research.md` under the `## Decomposition decision` heading during the Research stage; workflow-epic just reads it and acts.
 - Does NOT dispatch steps in parallel — only sequentially (for predictability and clean resume).
 - Does NOT create backups in `_archive/` — the orchestrator did so before handing off control; the paths are already in `archive_paths`.
