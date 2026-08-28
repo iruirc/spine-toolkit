@@ -152,6 +152,11 @@ setup = `swift-setup`
 One entrypoint is defined today. **`setup`** names the platform half of installation: core's `setup`
 writes the config and every block that is core's, then hands this skill the two that are not —
 `## Stack` and `## Modules`, whose content is the platform's `## Axes` and nothing core can know.
+The handoff carries `{lang, state, config_path, stack}`. `stack` holds axis values core's own caller
+had already collected — a platform's `init` agent asks the stack questions before it scaffolds — and
+core forwards them unread, because only the platform can tell a catalog value from the caller's
+private spelling of one. A setup skill that ignores `stack` asks every axis again, which is the bug
+this field exists to close.
 
 `—`, or no `setup` row, is a supported shape, not an error: core writes the core blocks, leaves
 `## Stack` unset, and the orchestrator's per-axis question fills it one task at a time.
