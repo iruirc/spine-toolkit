@@ -66,7 +66,7 @@ Docs/ структура: {docs_status}
 {notes}
 Следующие шаги:
   - создать первую задачу: /task-new <описание>
-  - запустить задачу: /task-run <id>
+  - запустить задачу: /spine-toolkit:task-run <id>
   - посмотреть статус: /task-status
 
 ## report_migration_success

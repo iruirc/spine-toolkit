@@ -66,7 +66,7 @@ Docs/ structure: {docs_status}
 {notes}
 Next steps:
   - create your first task: /task-new <description>
-  - run a task: /task-run <id>
+  - run a task: /spine-toolkit:task-run <id>
   - check status: /task-status
 
 ## report_migration_success
