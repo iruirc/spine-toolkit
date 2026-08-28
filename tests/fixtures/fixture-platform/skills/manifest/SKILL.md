@@ -58,8 +58,9 @@ import: `beta`  → widget=beta
 
 Topic → comma-separated, backtick-quoted, bare skill names that cover it (no `plugin:` prefix —
 a manifest is read one platform at a time, so its own skills need no namespacing), or `—` if this
-platform has none. Consumed by `feature-landscape` and `feature-requirements`. Every row here is a
-topic; a skill spine-toolkit calls by name lives in `## Entrypoints` instead.
+platform has none. Consumed by spine-toolkit's methodology skills, which name a topic and resolve
+it here. Every row here is a topic; a skill spine-toolkit calls by name lives in `## Entrypoints`
+instead.
 
 state management → `store-flux`, `store-atoms`
 persistence      → —

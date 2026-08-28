@@ -10,15 +10,14 @@ Before writing code, draw the territory. The landscape is an entity graph plus a
 > **Related skills:**
 > - `feature-requirements` — produces Primary/Secondary inputs this skill consumes
 > - `feature-estimation` — converts the work-items list into a calibrated range with scope-aware risk deltas
-> - `arch-mvvm` / `arch-mvi` / `arch-clean` / `arch-viper` / `arch-tca` — chosen UI architecture refines the Presentation layer; pick via `architecture-choice` if open
-> - `arch-coordinator` / `arch-swiftui-navigation` — navigation layer of the landscape
-> - `net-architecture` — Networking layer specifics (HTTPClient, interceptors, retry, pagination)
-> - `net-openapi` — when API has an OpenAPI spec
-> - `persistence-architecture` — Repository / local-storage layer specifics
-> - `error-architecture` — error mapping between layers shown on the graph
-> - `concurrency-architecture` — where `@MainActor` lives, Task ownership across the layers
-> - `pkg-spm-design` — when a layer crosses a package boundary
-> - `di-composition-root` / `di-module-assembly` — how the graph is wired at runtime
+>
+> Bold **topics** below are rows of the installed platform's manifest `## Topics`; resolve each to
+> that platform's own skills per `conventions/platform-contract.md`. The landscape draws on
+> **state management** (refines the Presentation layer, and where an open architecture choice is
+> made), **navigation**, **networking**, **persistence**, **concurrency** (main-thread confinement
+> and task ownership across the layers), **errors** (mapping between the layers on the graph),
+> **dependency graph** (how the graph is wired at runtime) and **packaging** (a layer that crosses
+> a package boundary).
 
 ## When to use
 
@@ -30,7 +29,7 @@ Before writing code, draw the territory. The landscape is an entity graph plus a
 ## Inputs
 
 - `Research.md ## Requirements` (from `feature-requirements`) — Primary + Secondary + open questions
-- Project stack from `CLAUDE-spine-toolkit.md` — picks which arch / net / persistence skills are authoritative
+- Project stack from `CLAUDE-spine-toolkit.md` — picks which of a topic's skills are authoritative
 - Existing code (if refactor) — identify what graph nodes already exist
 
 ## Steps
@@ -56,19 +55,19 @@ flowchart LR
   Order -- has --> Payment
 ```
 
-**Sanity check:** can you describe the feature in 30 seconds using only the graph, without saying *button*, *screen*, or *ViewController*? If no — the graph is incomplete or the description leaked UI.
+**Sanity check:** can you describe the feature in 30 seconds using only the graph, without saying *button*, *screen*, or *view class*? If no — the graph is incomplete or the description leaked UI.
 
 ### Step 2 — Layer mapping
 
 Map graph nodes onto a stack of layers. The layer stack is universal; the **content** of each layer is project-specific.
 
-| Layer | What lives here | Refer to |
+| Layer | What lives here | Topic |
 |---|---|---|
 | Domain models | Structs, enums, value types, business invariants | (no framework dep) |
-| Repository / Service | Fetch / cache / write / sync orchestration | `persistence-architecture` |
-| Networking | API client, interceptors, retry, pagination | `net-architecture`, `net-openapi` |
-| State management | ViewModel / Store / Presenter / Reducer | `arch-mvvm` / `arch-mvi` / `arch-tca` / `arch-viper` / `arch-clean` |
-| UI components | Views, cells, navigation | `arch-swiftui-navigation` / `arch-coordinator` |
+| Repository / Service | Fetch / cache / write / sync orchestration | **persistence** |
+| Networking | API client, interceptors, retry, pagination; a spec-driven client where the API has an OpenAPI spec | **networking** |
+| State management | ViewModel / Store / Presenter / Reducer | **state management** |
+| UI components | Views, cells, navigation | **navigation** |
 
 For each layer, list which graph nodes it touches and which are new vs reused.
 
@@ -79,8 +78,8 @@ For every layer boundary, write down:
 - **Interface** — protocol / type signature crossing the boundary
 - **Data type** — DTO or domain model? Mapping function?
 - **Source of truth** — which side owns the canonical value?
-- **Concurrency contract** — sync / async / `@MainActor` / actor-isolated? (see `concurrency-architecture`)
-- **Error type** — what errors can cross, how are they mapped? (see `error-architecture`)
+- **Concurrency contract** — sync / async / main-thread-confined / isolated? (topic **concurrency**)
+- **Error type** — what errors can cross, how are they mapped? (topic **errors**)
 
 Integration points are where bugs live. Write them down before coding.
 
@@ -89,7 +88,7 @@ Integration points are where bugs live. Write them down before coding.
 Convert the layer map into a checkbox list. Each item:
 
 - Belongs to exactly one layer
-- Has a clear done-state ("unit tests pass", "renders on iPhone SE and 14 Pro")
+- Has a clear done-state ("unit tests pass", "renders on the smallest and largest supported screen")
 - Is completable in **≤ 2 ideal developer-days** — if not, decompose further
 - Has no hidden cross-layer dependencies
 
@@ -106,7 +105,7 @@ Convert the layer map into a checkbox list. Each item:
 
 #### Repository
 - [ ] `CartRepository`: add / remove / clear
-- [ ] Local cache (Core Data / SwiftData / GRDB — see `persistence-architecture`)
+- [ ] Local cache (pick the store from topic **persistence**)
 
 #### State
 - [ ] `CartViewModel`: empty → loading → success → error transitions
@@ -114,7 +113,7 @@ Convert the layer map into a checkbox list. Each item:
 #### UI
 - [ ] `CartItemCell` (snapshot tested)
 - [ ] `TotalView`, `EmptyCartView`
-- [ ] `CartView` / `CartViewController` — wire to ViewModel
+- [ ] `CartScreen` — wire to ViewModel
 
 #### Secondary requirements
 - [ ] Accessibility labels on cart actions
@@ -150,7 +149,7 @@ Order of implementation matters. Wrong order = blocked UI work, integration surp
 
 **Why not start with UI?** UI designs change as the data shape solidifies. Building UI against a non-existent or wrong domain leads to rework at the most expensive time.
 
-**Why not start with networking?** Without a domain model, you end up with anemic objects and fat view controllers — networking knows everything, domain knows nothing.
+**Why not start with networking?** Without a domain model, you end up with anemic objects and fat UI classes — networking knows everything, domain knows nothing.
 
 **Spike over speculation.** If a key constraint is unclear ("can we achieve 60fps with this animation?"), build a throwaway prototype to resolve it before estimating around it.
 
@@ -193,11 +192,11 @@ Write into the active task's `Research.md` under heading `## Landscape`. Structu
 - **Work items >2 days.** They hide unknowns. Decompose until each item fits the budget — if a node won't decompose, that's a known unknown to surface.
 - **Starting UI before the stub repository exists.** UI built against imaginary data gets rebuilt when the data lands.
 - **Premature interfaces.** Don't extract a protocol until at least two concrete implementations exist (real + mock counts as two). Premature protocols freeze a wrong shape.
-- **Single-platform graph for cross-platform features.** If the same feature ships iOS + macOS, the graph is shared; the divergence appears only in the UI layer.
+- **Single-platform graph for cross-platform features.** If the same feature ships on two platforms, the graph is shared; the divergence appears only in the UI layer.
 
 ## What this skill does NOT do
 
-- Does NOT prescribe a UI architecture — that's `arch-*` skills. The landscape is architecture-agnostic.
-- Does NOT pick a DI framework — that's `di-*`.
+- Does NOT prescribe a UI architecture — that's the topic **state management**. The landscape is architecture-agnostic.
+- Does NOT pick a DI framework — that's the topic **dependency graph**.
 - Does NOT estimate effort — that's `feature-estimation` (consumes this skill's work-items list).
 - Does NOT verify the resulting code matches the landscape — that's the `reviewer` agent + `mobile-ops-checklist`.
