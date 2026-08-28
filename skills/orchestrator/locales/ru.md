@@ -6,6 +6,9 @@
 ## error_task_not_found
 Задача `{task_id}` не найдена в `Tasks/`.
 
+## error_no_platform_manifest
+Манифест платформы не найден. В конфиге проекта указана платформа «{plugin}», но её скилл-манифест не загрузился. Установите платформенный плагин или поправьте ## Platform в конфиге.
+
 ## fallback_profile_question
 Какой профиль? (1) FEATURE (2) BUG (3) REFACTOR (4) TEST (5) REVIEW (6) EPIC (7) RESEARCH
 

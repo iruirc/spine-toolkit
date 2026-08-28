@@ -187,6 +187,22 @@ Algorithm:
            return {status: error, reason: error_stage_not_in_profile,
                    notes: locale `error_stage_not_in_profile` with placeholders filled}
 
+5.7. Resolve agents (per-role) — the map every stage dispatches through:
+   • platform := first non-empty line of ## Platform in CLAUDE-swift-toolkit.md
+   • invoke `<platform>:manifest`, read its ## Roles table
+     ↓ if ## Platform is absent or empty, or the manifest skill does not load →
+       error using key `error_no_platform_manifest` and stop
+       (`{plugin}` := the ## Platform name, or `—` when the section is absent or empty)
+   • rows(role) := the ## Agents rows of CLAUDE-swift-toolkit.md for the roles that block names,
+                   the manifest's ## Roles rows for every other role     # the config overrides per role
+   • for each of the nine core roles, looking ONLY at rows(role):
+         an axis-qualified row `role[axis=value]` whose `value` equals this project's resolved
+         value for `axis`                                      (first in file order if several)
+         > the bare `role =` row
+         > `—`                                                             (declared absent)
+   • agents := {role: chosen value} — all nine roles, in vocabulary order:
+     architect, developer, tester, reviewer, refactorer, validator, security, diagnostics, init
+
 6. Confirmation in manual mode:
    if mode == manual:
        AUQ using key `confirm_dispatch` with placeholders `{profile}`, `{mode}`, `{stack}`, `{start_stage}`
@@ -221,6 +237,47 @@ global `## Stack` → import scan. When
 `envelope.never == all` (review/epic), the project `## Stack` is read raw and
 passed as ambient informational context only — no chain, no AUQ.
 
+**Agent resolution (step 5.7) reads the platform's manifest.** The orchestrator is the only
+place that can: a workflow script's sandbox has no filesystem, which is why the finished map
+travels in the contract exactly as `stack` and `lang` do. It is read by **invoking**
+`<platform>:manifest`, never by opening a file under the host's plugin cache — the table format
+and everything a platform must declare live in `conventions/platform-contract.md`.
+
+The resolution is redone on every orchestrator invocation and written to no project file: the
+manifest is the source of truth, and a copy cached in a config would go stale the moment the
+platform plugin updates. Three details the step's precedence list leans on:
+
+- **Axis values** for an axis-qualified row come from the per-axis `resolved` map of step 4,
+  before it is flattened into `stack`. Two paths through step 4 never build that map, and each
+  has its own source. On **4.0** — the user named the stack outright, the case where the axis is
+  most certain — the values are those `## Axes` values that appear in the `stack_override` string
+  **as whole words**, matched case-insensitively except for a catalog value that is also ordinary
+  English, one word or a phrase (`manual`, `Factory`, `Combine`, `Clean Architecture`), which is
+  matched case-sensitively so that "combine the two layers" and "done manually" pin nothing.
+  Classify a new platform's catalog by that test rather than by pattern-matching those four. An
+  axis for which two or more **distinct** values match is left unresolved rather than guessed —
+  "SwiftUI, not UIKit" names two `ui` values and means one, and an unresolved axis degrades safely
+  while a wrongly pinned one does not. So is an axis the override never names: 4.0 skips to step 5
+  and reads no config, so there is nothing else to fall back to. On **4.2** (review/epic, no
+  per-axis resolution) the values are the `axis: value` lines of the project `## Stack`, matched
+  case-insensitively. An axis still without a value matches no axis-qualified row — such a role
+  falls through to its bare row, or to `—`.
+
+  One class of miss survives all of that and is deliberately not chased: a catalog value colliding
+  with ordinary prose in a way case cannot separate — lowercase `manual` in "manual layout", or an
+  ordinary word capitalized only because it opens a sentence ("Combine these three tickets"). They
+  all fail in the same direction, pinning an axis wrongly rather than leaving it unresolved, and
+  telling them apart needs phrase-level analysis that would fail the same way more often.
+- **The `## Agents` override** in `CLAUDE-swift-toolkit.md` takes the same row grammar as the
+  manifest's `## Roles`. It is a per-role replacement, not a merge: for a role it names, the
+  manifest's rows for that role — bare and axis-qualified alike — are not consulted at all. The
+  block is optional, and its absence is the normal case, not an unfinished config.
+- **`—` is an answer, not a failure.** A role no platform agent implements is a declared absence,
+  and the stage that owns it still runs — announced as a deviation in the stage's first message,
+  under the "Declared deviation" rule of `conventions/stage-dispatch.md`. Method B runs it inline;
+  a Method A script can neither announce nor run it and hands the stage back instead (**Dispatch**
+  → "Method A — a stage whose role resolved to `—`"). Only an unreadable manifest is an error.
+
 **Helper: `stage_picker_options(recommended, profile_stages)`** — deterministic picker, hard cap 4 total options (structured question option-count limit, observed empirically; exceeding it causes some hosts to silently truncate).
 
 ```
@@ -254,7 +311,7 @@ See also the "Stage Management" section — it details the semantics of `run --f
 
 After Resolution, the orchestrator hands these fields to the dispatch path chosen in **Dispatch**. The fields are identical either way; only the encoding differs. Method B takes `key=value` form, **separated only by newlines** (a comma is NOT used as a field separator). Method A takes the same fields as a JSON object. **All fields are filled** — neither workflow-* nor a workflow script tries to recover anything.
 
-Multi-valued fields (e.g. `archive_paths`) are encoded in **list syntax**: square brackets, commas inside.
+Multi-valued fields (e.g. `archive_paths`) are encoded in **list syntax**: square brackets, commas inside. The one map-valued field (`agents`) is encoded in **brace syntax**: `{key: value, key: value}`.
 
 ```
 task_id=001
@@ -268,6 +325,7 @@ stage_scope=single|forward|all
 mode=manual|auto
 lang=ru|en
 stack=swiftui+combine+swinject
+agents={architect: swift-platform:swift-architect, developer: swift-platform:swift-developer, tester: swift-platform:swift-tester, reviewer: swift-platform:swift-reviewer, refactorer: swift-platform:swift-refactorer, validator: swift-platform:swift-validator, security: swift-platform:swift-security, diagnostics: swift-platform:swift-diagnostics, init: swift-platform:swift-init}
 need_test=true|false
 need_review=true|false
 walkthrough=on|off
@@ -286,6 +344,8 @@ Semantics of `stage_scope`:
 `task_dir` — the resolved task folder, `Tasks/<STATUS>/<task_id>-*/`, without a trailing slash. The orchestrator already holds this path (it archives into it), and passing it explicitly is what keeps two agents from disagreeing about which folder they are working in. Required: a Method A script has no filesystem access and cannot glob for it, and refuses to start without it.
 
 `lang` — the `<lang>` resolved by the Language Resolution section (`ru` | `en`; default `en`). Always filled. The subagent uses it for artifact **prose** and its final report; artifact **structure** stays EN regardless (see `conventions/i18n.md` → "Artifact authoring rule"). Passing it explicitly means workflow-* / subagents never re-read `CLAUDE-swift-toolkit.md` for output language.
+
+`agents` — the role-to-agent map resolved in step 5.7. Always filled, always all nine roles, always in vocabulary order (`architect`, `developer`, `tester`, `reviewer`, `refactorer`, `validator`, `security`, `diagnostics`, `init`). Method B encodes it as the single line above; Method A passes the same object as real JSON, so a script reads `A.agents.architect` and gets `"swift-platform:swift-architect"`. Keys are bare role names: the manifest's `role[axis=value]` form is resolved away in step 5.7 and never reaches the contract. A role the platform declared absent arrives as the em dash `—` in both encodings — a value a consumer checks for before dispatching, not a missing key, and the reason this field is never partial and never omitted. This is what lets a stage name its owner by role: which agent that role means is a property of the platform, not of the profile.
 
 `walkthrough` — whether the run writes `Walkthrough.md`. Resolved `Task.md` `[WALKTHROUGH]` → `CLAUDE-swift-toolkit.md` `## Reporting` → `walkthrough` → `on`; a missing section is the default, not an error. Unlike `mobile_mcp`, this one travels in the contract because the script itself gates on it — a Method A run has no filesystem access and cannot read the value for itself. Always `off` for `profile=review` and `profile=research`, where the profile has no implementing stage and no diff of its own; if the task file sets it anyway, say once that it was not executed and why, rather than dropping it silently.
 
@@ -361,6 +421,12 @@ return it and are not expected to: there the orchestrator drives each stage itse
 has every field.
 
 EPIC returns more: `branch`, `completed_steps`, `skipped_steps`, `failed_steps`, and `pending_steps`. A non-empty `pending_steps` is not a failure — it is the epic handing back the steps it could not run itself, in order. Dispatch each one as an ordinary task, then re-dispatch the epic at `start_stage=Done`.
+
+**Method A — a stage whose role resolved to `—`.** The script neither dispatches nor skips it: it ends the range at that stage and hands it back. `handback` is **always present** in the return, `null` when nothing was handed back and `{stage: <stage>, role: <role>}` when something was — the same always-present shape as EPIC's `pending_steps`, so a consumer tests one field rather than distinguishing absent from empty.
+
+With `handback` non-empty the script returns `status: ok` — a role the platform declared absent is a legitimate platform shape, not a fault — `next_recommended_action: ask_user`, and `last_completed_stage` set to the last stage that actually finished, which is `null` when the handed-back stage was the first in the range. `ask_user` is not a default, it is the only correct value, and it is what closes the two ways this can go wrong: `stop` reads as an ordinary finished range, so a consumer that does not know about `handback` silently drops the handed-back stage and every stage after it — the silent skip this whole design exists to prevent, reachable by omission; `continue` invites a consumer computing "next = `last_completed_stage` + 1" to land on the same stage and hand back forever.
+
+On a non-empty `handback` the orchestrator runs that stage itself in the main context, announcing the deviation in the stage's first message (`conventions/stage-dispatch.md`), then re-dispatches the workflow from the following stage. The sandbox can report what it could not run; only the orchestrator can run it. Method B needs no hand-back — the skill runs the stage itself and makes the announcement.
 
 `status: error` with `reason: no-args` means the contract never reached the script. Do not run the stage by hand and do not slide over to Method B as if nothing happened — say what happened, then re-dispatch with the contract filled.
 
@@ -547,5 +613,7 @@ The workflow-* subagent receives:
    status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring
    rule". Passing `lang` explicitly means the subagent never re-reads
    `CLAUDE-swift-toolkit.md` to decide output language.
+6. Agents: the `agents` map from the Outbound Contract — the role-to-agent
+   binding each stage dispatches through.
 
 **The stack does not need to be re-sent in full text:** the skill does not read `CLAUDE-swift-toolkit.md` — stack, mode, and paths come from the context the active agent host typically loads at session start (when `CLAUDE.md` is present at the project root and imports `CLAUDE-swift-toolkit.md` via `@./`). The orchestrator parses this already-loaded context to resolve priorities.
