@@ -13,6 +13,9 @@ set -euo pipefail
 #     script dispatches, in both directions, and with the script's own AGENT_OF copy
 #   - every agentType is A.agents.<role>, never a string literal, and <role> is in the core
 #     role vocabulary (core has no agents/ dir — a script names roles, not agents)
+#   - every A.agents.<role> read inside a stage is gated by that stage's need() or lens():
+#     the gate is what keeps an em dash out of subagent_type, and deleting one is invisible
+#     to every other check here
 #   - the prelude block is byte-identical in every script (a script cannot import,
 #     so the shared skeleton is copied; this is what keeps the copies one thing)
 #   - none of the sandbox-forbidden globals, and no worktree isolation (decision D5)
@@ -165,6 +168,29 @@ for fname in files:
     for role in sorted(dispatched - named):
         violations.append(f'{path}: dispatches role "{role}" but no meta.phases entry mentions it')
 
+    # Deleting a stage's need() call leaves every other check above green and ships a
+    # stage that dispatches subagent_type='—' the moment a platform declares that role
+    # absent. The gate is the only thing between the two, so it is checked where it is
+    # used: inside the stage block, before the read.
+    body = raw.split('// ── end prelude')[-1]
+    gated, stage = {}, None
+    for line in body.split('\n'):
+        if line.lstrip().startswith('//'):
+            continue
+        m = re.search(r"runs\('([A-Za-z-]+)'\)", line)
+        if m and re.match(r'\s*(\}\s*else\s*)?if\s*\(', line):
+            stage = m.group(1)
+        for nm in re.finditer(r"need\('([A-Za-z-]+)'((?:\s*,\s*'[a-z]+')+)\)", line):
+            gated.setdefault(nm.group(1), set()).update(re.findall(r"'([a-z]+)'", nm.group(2)))
+        for lm in re.finditer(r"lens\('([a-z]+)'\)", line):
+            gated.setdefault(stage, set()).add(lm.group(1))
+        for role in re.findall(r'A\.agents\.(\w+)', line):
+            if role not in gated.get(stage, ()):
+                violations.append(
+                    f'{path}: A.agents.{role} in stage "{stage}" is not gated — '
+                    f"the stage's need() or lens() has to name that role"
+                )
+
     for literal in re.findall(r"agentType:\s*'([^']*)'", src):
         violations.append(f'{path}: agentType is the string literal \'{literal}\' — must resolve through A.agents.<role>')
 
@@ -229,5 +255,5 @@ if violations:
     print(f'workflow lint failed: {len(violations)} violation(s)')
     sys.exit(1)
 
-print(f'workflow lint passed: {len(files)} script(s), stages in sync with their skills, preludes identical')
+print(f'workflow lint passed: {len(files)} script(s), stages in sync with their skills, every dispatch gated, preludes identical')
 PY
