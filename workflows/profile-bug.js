@@ -391,7 +391,7 @@ if (runs('Diagnose')) {
     )
   ).filter(Boolean)
 
-  if (!views.length) return finish('stop', { status: 'error', reason: 'both Diagnose lenses returned nothing' })
+  if (!views.length) return finish('stop', { status: 'error', reason: lenses.length > 1 ? 'both Diagnose lenses returned nothing' : 'the Diagnose lens returned nothing' })
   if (views.length < lenses.length) result.notes.push('One Diagnose lens returned nothing; the synthesis used the other.')
 
   const diagnosis = await agent(
