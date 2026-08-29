@@ -94,7 +94,7 @@ For reference, the templates contain these placeholders:
    b. host-installed plugin/cache template path
    c. Claude Code compatibility paths:
       `~/.claude/plugins/cache/spine-toolkit/spine-toolkit/<version>/templates/task-md/task-root.md`
-      or `~/.claude/plugins/marketplaces/spine-toolkit/core/templates/task-md/task-root.md`
+      or the marketplace checkout under `~/.claude/plugins/marketplaces/spine-toolkit/`
 7. **Read the template, substitute placeholders, write the result** as a single mechanical pass:
    - Read the template via the file-read mechanism. Do NOT retype it. Do NOT paraphrase it. Do NOT translate any character of it.
    - Substitute `{{DATE}}`, `{{NNN_SLUG}}`, `{{TASK_TYPE}}`, `{{NEED_TEST}}`, `{{NEED_REVIEW}}` with the values determined above. Touch ONLY the `{{...}}` tokens; every other character is preserved exactly.
@@ -147,7 +147,7 @@ For reference, the templates contain these placeholders:
    b. host-installed plugin/cache template path
    c. Claude Code compatibility paths:
       `~/.claude/plugins/cache/spine-toolkit/spine-toolkit/<version>/templates/task-md/task-step.md`
-      or `~/.claude/plugins/marketplaces/spine-toolkit/core/templates/task-md/task-step.md`
+      or the marketplace checkout under `~/.claude/plugins/marketplaces/spine-toolkit/`
 7. **Read the template, substitute placeholders, write the result** to `parent/<name>.step/Task.md` — exactly the same Read+substitute+Write pass as for root tasks, plus the `{{STATUS}}` placeholder. Touch ONLY `{{...}}` tokens.
 8. **Fill section bodies** via the file-edit mechanism, like for root tasks. Step tasks do NOT have their own STATUS-subfolder — they inherit their parent's folder.
 9. **Report** the created path.
