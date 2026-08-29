@@ -1,7 +1,7 @@
 ---
 name: swift-lang
 description: |
-  Change the project language for swift-toolkit user-facing prompts. Updates `## Language` in CLAUDE-spine-toolkit.md. Currently supported: en, ru.
+  Change the project language for spine-toolkit user-facing prompts. Updates `## Language` in CLAUDE-spine-toolkit.md. Currently supported: en, ru.
   Use when (en): "switch language to en", "switch language to ru", "change toolkit language", "/swift-lang"
   Use when (ru): "переключи язык на en", "смени язык на русский", "поменяй язык toolkit", "/swift-lang"
 ---
