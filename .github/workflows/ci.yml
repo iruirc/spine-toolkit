@@ -9,7 +9,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - run: brew install bats-core yq
+      - run: brew install bats-core
       - name: bats
         run: bats tests/foundation/lib
       - name: lints
