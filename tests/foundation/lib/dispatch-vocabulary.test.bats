@@ -54,7 +54,6 @@ offenders_in() {
 
 @test "core names no external driving tool anywhere in a brief or a config it writes" {
   files=("$ROOT"/workflows/profile-*.js "$ROOT"/skills/*/SKILL.md "$ROOT"/skills/*/locales/*.md \
-         "$ROOT"/skills/*/agents/*.yaml \
          "$ROOT"/templates/claude-toolkit-md/*.md "$ROOT"/templates/task-md/*.md)
   # A glob that matched nothing would leave this test green over an empty list.
   [ "${#files[@]}" -ge 30 ] || { echo "scanned ${#files[@]} file(s); a glob went vacuous"; return 1; }
@@ -73,4 +72,13 @@ offenders_in() {
     [ -z "$hits" ] || offenders="$offenders${f#"$ROOT/"}: $hits"$'\n'
   done
   [ -z "$offenders" ] || { echo "core names an ecosystem-specific tool:"; echo "$offenders"; return 1; }
+}
+
+@test "no skill's agent manifest names one ecosystem" {
+  # These ship a skill's display name and prompt. No guard read them until an
+  # ecosystem name survived a rename here, in a plugin that must know none.
+  files=("$ROOT"/skills/*/agents/*.yaml)
+  [ "${#files[@]}" -ge 15 ] || { echo "scanned ${#files[@]} file(s); the glob went vacuous"; return 1; }
+  offenders="$(offenders_in "${files[@]}")"
+  [ -z "$offenders" ] || { echo "single-ecosystem vocabulary in an agent manifest:"; echo "$offenders"; return 1; }
 }
