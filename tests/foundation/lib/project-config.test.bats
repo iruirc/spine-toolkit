@@ -75,7 +75,7 @@ catalog_words() {
   # walks straight past it — which is how two of these survived twelve reviews.
   # `git filter-repo --path core` turns every one of them into a dangling path
   # with no sibling tree left to restore.
-  offenders="$(grep -rnE '(\.\./platform([^A-Za-z0-9_-]|$)|(^|[^A-Za-z0-9_.-])platform/)' "$ROOT" \
+  offenders="$(grep -rnE --exclude-dir=.git '(\.\./platform([^A-Za-z0-9_-]|$)|(^|[^A-Za-z0-9_.-])platform/)' "$ROOT" \
     | grep -vF 'project-config.test.bats' || true)"
   [ -z "$offenders" ] || { echo "core reference(s) to the platform tree:"; echo "$offenders"; return 1; }
 }
