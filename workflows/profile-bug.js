@@ -458,7 +458,7 @@ if (runs('Validation')) {
 
 For BUG a build and a full test run are both mandatory, through this platform's own build and test tooling, and so is a replay regardless of which layer changed — you drive a running instance of the app with whatever tooling this platform has for that, and walk the reproduction scenario from Reproduce.md against it. Validation is not PASSED without your own explicit statement that the bug no longer reproduces. Two things suspend the replay and both produce the same result rather than a failure: drive_app resolving to off — Task.md [DRIVE_APP] first, then CLAUDE-spine-toolkit.md ## Validation — and this platform having no way to drive a running instance at all, which you announce as a declared deviation in your first message. Either way return reproduction_status deferred-manual, put the replay steps into ${DIR}/ManualChecks.md and their titles into manual_checks, and claim nothing about whether the bug is fixed. Reserve not-replayed for a replay that was expected of you and stayed inconclusive.
 
-Also apply the mobile-ops-checklist skill, scoped to the categories the bug touched per the Secondary enumeration in Reproduce.md, and write ${DIR}/OpsChecklist.md. Full-checklist coverage is not required for BUG; the point is catching a regression in an adjacent behaviour.
+Also apply the ops-checklist skill, scoped to the categories the bug touched per the Secondary enumeration in Reproduce.md, and write ${DIR}/OpsChecklist.md. Full-checklist coverage is not required for BUG; the point is catching a regression in an adjacent behaviour.
 
 Change no production code and no tests. Return the same status you wrote on the first line.`,
     ),

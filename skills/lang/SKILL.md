@@ -1,12 +1,12 @@
 ---
-name: swift-lang
+name: lang
 description: |
   Change the project language for spine-toolkit user-facing prompts. Updates `## Language` in CLAUDE-spine-toolkit.md. Currently supported: en, ru.
-  Use when (en): "switch language to en", "switch language to ru", "change toolkit language", "/swift-lang"
-  Use when (ru): "переключи язык на en", "смени язык на русский", "поменяй язык toolkit", "/swift-lang"
+  Use when (en): "switch language to en", "switch language to ru", "change toolkit language", "/lang"
+  Use when (ru): "переключи язык на en", "смени язык на русский", "поменяй язык toolkit", "/lang"
 ---
 
-# Swift Lang
+# Lang
 
 Updates the `## Language` section of the project's `CLAUDE-spine-toolkit.md`. Pure configuration skill: no project state mutated besides this one section.
 

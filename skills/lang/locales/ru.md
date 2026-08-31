@@ -1,4 +1,4 @@
-# swift-lang — ru
+# lang — ru
 
 ## error_no_toolkit_file
 В текущей директории нет `CLAUDE-spine-toolkit.md`. Сначала запусти `/setup`.
@@ -10,7 +10,7 @@
 Текущий язык: `{current}`.
 
 ## report_supported_languages
-Поддерживаются: `en`, `ru`. Использование: `/swift-lang <code>`.
+Поддерживаются: `en`, `ru`. Использование: `/lang <code>`.
 
 ## report_language_changed
 Язык изменён: `{old}` → `{new}`. Все последующие вызовы скиллов будут использовать `{new}`.

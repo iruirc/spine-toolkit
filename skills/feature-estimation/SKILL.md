@@ -10,7 +10,7 @@ Estimates fail because they ignore the cost of what nobody wrote down: error sta
 > **Related skills:**
 > - `feature-landscape` — produces the work-items list this skill consumes
 > - `feature-requirements` — Secondary list and Known Unknowns directly drive the deltas
-> - `mobile-ops-checklist` — Applicable ops items either become baseline work items or add concrete days (feature flag wiring, analytics dashboards, on-call runbook)
+> - `ops-checklist` — Applicable ops items either become baseline work items or add concrete days (feature flag wiring, analytics dashboards, on-call runbook)
 
 ## When to use
 
