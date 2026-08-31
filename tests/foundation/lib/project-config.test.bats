@@ -22,10 +22,10 @@ setup() {
   done
 }
 
-# `swift-lang` is a core skill's own name, not a catalog value; it loses the
+# `lang` is a core skill's own name, not a catalog value; it loses the
 # `swift-` prefix in a later rename and is filtered out until then.
 catalog_words() {
-  grep -vF 'swift-lang' "$1" \
+  grep -vF 'lang' "$1" \
     | grep -icE '\b(swift|swiftui|uikit|appkit|combine|rxswift|swinject|xctest|ios|macos|viper|mvvm)\b'
 }
 

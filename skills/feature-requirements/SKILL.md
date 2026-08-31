@@ -10,7 +10,7 @@ A briefing describes the business goal. The engineering task is to discover what
 > **Related skills:**
 > - `feature-landscape` — consumes Primary + Secondary to build the entity graph and layer map
 > - `feature-estimation` — uses Pending Secondary rows and Known Unknowns to choose scope-aware risk deltas and assumptions
-> - `mobile-ops-checklist` — Secondary items overlap with cross-cutting ops concerns; this skill is the *design-time* checkpoint, `mobile-ops-checklist` is the *validation-time* one
+> - `ops-checklist` — Secondary items overlap with cross-cutting ops concerns; this skill is the *design-time* checkpoint, `ops-checklist` is the *validation-time* one
 >
 > Bold **topics** below are rows of the installed platform's manifest `## Topics`; resolve each to
 > that platform's own skills per `conventions/platform-contract.md`. Secondary design draws on
@@ -159,5 +159,5 @@ Acceptance criteria from briefing:
 
 - Does NOT design components, modules, or architecture — that's `feature-landscape`.
 - Does NOT produce time estimates — that's `feature-estimation`.
-- Does NOT verify implementation against the checklist — that's `mobile-ops-checklist` (validation-time).
+- Does NOT verify implementation against the checklist — that's `ops-checklist` (validation-time).
 - Does NOT contact designers or backend itself — it produces a question list the human (or orchestrator) routes to the right people.

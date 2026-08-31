@@ -14,7 +14,7 @@ Commit messages do not make this artifact redundant. `conventions/commit-message
 > **Related skills:**
 > - `feature-landscape` — the design-time picture of the same feature; this is the after-the-fact one
 > - `feature-estimation` — `Done.md ## Estimate retrospective` accounts for effort; this accounts for substance
-> - `mobile-ops-checklist` — verification evidence with proof; this is narrative
+> - `ops-checklist` — verification evidence with proof; this is narrative
 
 ## When to use
 

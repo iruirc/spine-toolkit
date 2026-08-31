@@ -1,4 +1,4 @@
-# swift-lang — en
+# lang — en
 
 ## error_no_toolkit_file
 No `CLAUDE-spine-toolkit.md` found in the current directory. Run `/setup` first.
@@ -10,7 +10,7 @@ Unsupported language: `{lang}`. Supported: `en`, `ru`.
 Current language: `{current}`.
 
 ## report_supported_languages
-Supported: `en`, `ru`. Usage: `/swift-lang <code>`.
+Supported: `en`, `ru`. Usage: `/lang <code>`.
 
 ## report_language_changed
 Language changed: `{old}` → `{new}`. Subsequent skill invocations will use `{new}`.

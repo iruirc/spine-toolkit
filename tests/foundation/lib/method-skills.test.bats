@@ -13,7 +13,7 @@ setup() {
   # BATS_TEST_FILENAME, not BASH_SOURCE[0]: bats sources a preprocessed copy of
   # the test file from a tmp dir, so BASH_SOURCE[0] there resolves to the copy.
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  METHOD_SKILLS="feature-landscape feature-requirements feature-estimation mobile-ops-checklist"
+  METHOD_SKILLS="feature-landscape feature-requirements feature-estimation ops-checklist"
   CONTRACT="$ROOT/conventions/platform-contract.md"
   # The topic names core asks a platform for, read from the one file that publishes
   # them. Not derived from the method skills themselves: `**bold**` is overloaded

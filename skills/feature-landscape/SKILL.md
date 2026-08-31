@@ -199,4 +199,4 @@ Write into the active task's `Research.md` under heading `## Landscape`. Structu
 - Does NOT prescribe a UI architecture — that's the topic **state management**. The landscape is architecture-agnostic.
 - Does NOT pick a DI framework — that's the topic **dependency graph**.
 - Does NOT estimate effort — that's `feature-estimation` (consumes this skill's work-items list).
-- Does NOT verify the resulting code matches the landscape — that's the `reviewer` agent + `mobile-ops-checklist`.
+- Does NOT verify the resulting code matches the landscape — that's the `reviewer` agent + `ops-checklist`.
