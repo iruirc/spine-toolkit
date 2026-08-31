@@ -1,0 +1,27 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install bats-core yq
+      - name: bats
+        run: bats tests/foundation/lib
+      - name: lints
+        run: |
+          scripts/lint-i18n.sh
+          scripts/lint-locales.sh
+          scripts/lint-workflows.sh
+      - name: manifest contract, against the fixture platform
+        run: scripts/lint-manifest.sh tests/fixtures/fixture-platform
+      - name: no path into a sibling plugin
+        run: |
+          # The guard test names the pattern in its own source; nothing else may.
+          offenders=$(grep -rnE '(\.\./platform([^A-Za-z0-9_-]|$)|(^|[^A-Za-z0-9_.-])platform/)' . \
+            --exclude-dir=.git --exclude=project-config.test.bats || true)
+          [ -z "$offenders" ] || { echo "$offenders"; exit 1; }
