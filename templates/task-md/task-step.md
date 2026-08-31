@@ -8,7 +8,7 @@
 
 # Optional (only if overriding project default from CLAUDE-spine-toolkit.md):
 # [WORKFLOW_MODE] = [auto]    # manual | auto
-# [MOBILE_MCP] = [off]        # auto | off
+# [DRIVE_APP] = [off]         # auto | off
 # [MANUAL_CHECKS] = [always]  # auto | always
 # [WALKTHROUGH] = [off]       # on | off
 
