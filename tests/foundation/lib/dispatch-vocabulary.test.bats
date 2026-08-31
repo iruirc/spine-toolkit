@@ -63,6 +63,10 @@ offenders_in() {
   for f in "${files[@]}"; do
     # setup/SKILL.md names the retired key once, to migrate configs off it.
     if [ "$f" = "$ROOT/skills/setup/SKILL.md" ]; then
+      # The migration paragraph names the retired key on exactly two lines; a
+      # third means the exception has drifted and must be re-read, not widened.
+      n="$(grep -ciF 'mobile_mcp' "$f")"
+      [ "$n" -eq 2 ] || { echo "setup/SKILL.md names the retired key on $n line(s), expected 2"; return 1; }
       hits="$(grep -viF 'mobile_mcp' "$f" | grep -ioE "$TOOL_VOCAB" | sort -u | tr '\n' ' ')"
     else
       hits="$(grep -ioE "$TOOL_VOCAB" "$f" | sort -u | tr '\n' ' ')"
