@@ -408,7 +408,7 @@ if (runs('Validation')) {
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
-For TEST a full test run is mandatory, through this platform's own test tooling: every newly added test has to pass on its first run. When one fails on the first run, re-run that test up to three times; if the results flap, return FLAKY and record the test name, the failure rate, and your hypothesis for the cause in Validation.md. mobile MCP is optional and only for UI tests that need visual verification, and mobile_mcp resolving to off — Task.md [MOBILE_MCP] first, then CLAUDE-spine-toolkit.md ## Validation — removes even that option. manual_checks: always in the same two sources still asks you for a ${DIR}/ManualChecks.md covering what the automated suite cannot reach.
+For TEST a full test run is mandatory, through this platform's own test tooling: every newly added test has to pass on its first run. When one fails on the first run, re-run that test up to three times; if the results flap, return FLAKY and record the test name, the failure rate, and your hypothesis for the cause in Validation.md. Driving a running instance of the app is optional and only for UI tests that need visual verification; drive_app resolving to off — Task.md [DRIVE_APP] first, then CLAUDE-spine-toolkit.md ## Validation — removes even that option, as does this platform having no tooling to drive one. manual_checks: always in the same two sources still asks you for a ${DIR}/ManualChecks.md covering what the automated suite cannot reach.
 
 Change no production code and no tests — a flaky test that you quietly stabilise is a finding you have hidden. Return the same status you wrote on the first line.`,
     ),
