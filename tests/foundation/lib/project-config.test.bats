@@ -22,11 +22,8 @@ setup() {
   done
 }
 
-# `lang` is a core skill's own name, not a catalog value; it loses the
-# `swift-` prefix in a later rename and is filtered out until then.
 catalog_words() {
-  grep -vF 'lang' "$1" \
-    | grep -icE '\b(swift|swiftui|uikit|appkit|combine|rxswift|swinject|xctest|ios|macos|viper|mvvm)\b'
+  grep -icE '\b(swift|swiftui|uikit|appkit|combine|rxswift|swinject|xctest|ios|macos|viper|mvvm)\b' "$1"
 }
 
 @test "the config template names no platform's stack values" {
