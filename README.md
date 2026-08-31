@@ -11,7 +11,7 @@ someone to dispatch work to.
 ## Install
 
 ```
-/plugin marketplace add iruirc/swift-toolkit
+/plugin marketplace add iruirc/claude-marketplace
 /plugin install spine-toolkit
 ```
 
