@@ -3,5 +3,5 @@
   "description": "Task lifecycle orchestrator for Claude Code: stages, artifacts between them, and the rules for moving between them. Profiles FEATURE/BUG/REFACTOR/TEST/REVIEW/EPIC/RESEARCH, deterministic parameter resolution, Tasks/ folder semantics, agent telemetry and i18n. Stack knowledge arrives from platform plugins.",
   "version": "0.1.0",
   "author": { "name": "Dmitry Nuzhin" },
-  "repository": "https://github.com/iruirc/swift-toolkit"
+  "repository": "https://github.com/iruirc/spine-toolkit"
 }
