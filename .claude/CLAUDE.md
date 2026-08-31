@@ -23,7 +23,7 @@ en
 - `skills/` — `orchestrator`, `stack-detect`, `setup`, `workflow-*`, `task-*`, `feature-*`,
   `ops-checklist`, `agent-status`, `lang`
 - `workflows/` — one `profile-*.js` orchestration script per profile
-- `commands/` — `/task-*`, `/setup`, `/swift-agents`, `/lang`
+- `commands/` — `/task-*`, `/setup`, `/agent-status`, `/lang`
 - `conventions/` — `i18n.md`, `stage-dispatch.md`, `platform-contract.md` and the rest
 - `templates/` — `task-md`, `claude-md-stub`, `claude-toolkit-md`
 - `scripts/` — lints plus the test and telemetry runners
