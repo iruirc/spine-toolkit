@@ -20,12 +20,10 @@ setup() {
   TOOL_VOCAB='mobile[ _-]?mcp'
 }
 
-# `swift-lang` is a core skill's own name, not an ecosystem word; it loses the
-# prefix in a later rename and is filtered out until then.
 offenders_in() {
   local hits offenders="" f
   for f in "$@"; do
-    hits="$(grep -viF 'swift-lang' "$f" | grep -ioE "$VOCAB" | sort -u | tr '\n' ' ')"
+    hits="$(grep -ioE "$VOCAB" "$f" | sort -u | tr '\n' ' ')"
     [ -z "$hits" ] || offenders="$offenders${f#"$ROOT/"}: $hits"$'\n'
   done
   printf '%s' "$offenders"

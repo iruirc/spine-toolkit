@@ -95,7 +95,7 @@ imported.
 
 ## Project configuration
 
-`CLAUDE-spine-toolkit.md` is toolkit-owned; `setup` writes it and `/swift-lang` updates one block of
+`CLAUDE-spine-toolkit.md` is toolkit-owned; `setup` writes it and `/lang` updates one block of
 it. Your own project instructions stay in `CLAUDE.md`, which the toolkit only ever touches to insert
 the import line. The blocks the toolkit reads:
 
@@ -109,7 +109,7 @@ The template is `templates/claude-toolkit-md/en.md`.
 
 English is the source of truth. User-facing strings live in `skills/<name>/locales/en.md` with a
 key-for-key `ru.md` beside it, and are referenced from skill bodies by key, never inlined. The active language is `## Language` in the
-project config; `/swift-lang en|ru` switches it. Skill triggers are bilingual regardless of the
+project config; `/lang en|ru` switches it. Skill triggers are bilingual regardless of the
 setting — only the response language changes. Convention: `conventions/i18n.md`.
 
 ## Development

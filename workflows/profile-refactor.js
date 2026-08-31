@@ -384,7 +384,7 @@ if (runs('Validation')) {
 
 For REFACTOR a full test run is mandatory as a regression check: every pre-existing test must pass WITHOUT modification, and a test touched during the refactor is itself a finding. A build on its own is optional. Driving a running instance of the app happens only when the refactor touched a UI layer — views, screens, or navigation — and a purely domain or infrastructure refactor skips it; say which case this is. Two things suspend it: drive_app resolving to off — Task.md [DRIVE_APP] first, then CLAUDE-spine-toolkit.md ## Validation — and this platform having no tooling to drive a running instance, which you announce as a declared deviation in your first message. Either way the affected screens go into ${DIR}/ManualChecks.md, titles echoed in manual_checks, for a human to walk. manual_checks: always in the same two sources produces that artifact even on a run you drove yourself.
 
-Apply the mobile-ops-checklist skill in regression mode: re-check only the items that were Applicable for the affected area before the refactor, and write ${DIR}/OpsChecklist.md. An item that was Applicable before and now has no verifiable evidence is a finding — it means external behaviour moved, which this profile forbids.
+Apply the ops-checklist skill in regression mode: re-check only the items that were Applicable for the affected area before the refactor, and write ${DIR}/OpsChecklist.md. An item that was Applicable before and now has no verifiable evidence is a finding — it means external behaviour moved, which this profile forbids.
 
 Change no production code and no tests. Return the same status you wrote on the first line.`,
     ),
