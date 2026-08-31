@@ -293,6 +293,12 @@ supply it. A config carrying the placeholder is worse than one carrying nothing:
 Routing check 4 sees a config, so the run proceeds to step 5.7 and fails there naming a plugin that
 does not exist.
 
+`## Validation` is rewritten on the way through in both migrating states: a `mobile_mcp:` key in the
+migrated body becomes `drive_app:`, value preserved. The section is otherwise carried over verbatim
+like every other. A `[MOBILE_MCP]` line in a Task.md of a task already in flight is **not** migrated
+— core reads only `[DRIVE_APP]`, so such a task falls back to the project default; say so once in the
+migration report rather than rewriting task folders.
+
 `CLAUDE.md` (state D only — state E leaves user sections alone):
 ```
 <preamble: stub or preserved>

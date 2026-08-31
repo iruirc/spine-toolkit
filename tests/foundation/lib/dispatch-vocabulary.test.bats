@@ -13,10 +13,11 @@ setup() {
   # BATS_TEST_FILENAME, not BASH_SOURCE[0]: bats sources a preprocessed copy of
   # the test file from a tmp dir, so BASH_SOURCE[0] there resolves to the copy.
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  # One ecosystem's languages, frameworks and tooling. `mobile MCP` is deliberately
-  # absent: it drives an app on either mobile ecosystem, and `mobile_mcp` is core's
-  # own config key for whether a stage may reach for it at all.
+  # One ecosystem's languages, frameworks and tooling.
   VOCAB='\b(swift|swiftui|uikit|appkit|objective-?c|xcode[a-z]*|xcframework|xctest|swiftdata|grdb|swinject|rxswift|mainactor|build_sim|test_sim|nimble|viewinspector|snapshottesting|iphone|ipad|cocoapods|carthage|testflight|bgtask)\b|core data'
+  # Tooling of *some* ecosystems, not all. Core states the Validation policy; the
+  # platform's validator names the tool that carries it out.
+  TOOL_VOCAB='mobile[ _-]?mcp'
 }
 
 # `swift-lang` is a core skill's own name, not an ecosystem word; it loses the
@@ -51,4 +52,22 @@ offenders_in() {
   # workflow script or a workflow skill and so is outside both checks above.
   offenders="$(offenders_in "$ROOT/skills/orchestrator/SKILL.md" "$ROOT"/skills/orchestrator/locales/*.md)"
   [ -z "$offenders" ] || { echo "single-ecosystem vocabulary in the orchestrator:"; echo "$offenders"; return 1; }
+}
+
+@test "core names no external driving tool anywhere in a brief or a config it writes" {
+  files=("$ROOT"/workflows/profile-*.js "$ROOT"/skills/*/SKILL.md "$ROOT"/skills/*/locales/*.md \
+         "$ROOT"/templates/claude-toolkit-md/*.md "$ROOT"/templates/task-md/*.md)
+  # A glob that matched nothing would leave this test green over an empty list.
+  [ "${#files[@]}" -ge 30 ] || { echo "scanned ${#files[@]} file(s); a glob went vacuous"; return 1; }
+  offenders=""
+  for f in "${files[@]}"; do
+    # setup/SKILL.md names the retired key once, to migrate configs off it.
+    if [ "$f" = "$ROOT/skills/setup/SKILL.md" ]; then
+      hits="$(grep -viF 'mobile_mcp' "$f" | grep -ioE "$TOOL_VOCAB" | sort -u | tr '\n' ' ')"
+    else
+      hits="$(grep -ioE "$TOOL_VOCAB" "$f" | sort -u | tr '\n' ' ')"
+    fi
+    [ -z "$hits" ] || offenders="$offenders${f#"$ROOT/"}: $hits"$'\n'
+  done
+  [ -z "$offenders" ] || { echo "core names an ecosystem-specific tool:"; echo "$offenders"; return 1; }
 }
