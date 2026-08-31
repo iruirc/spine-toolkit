@@ -1,4 +1,4 @@
 interface:
-  display_name: "Mobile Ops Checklist"
-  short_description: "Help with Mobile Ops Checklist tasks"
-  default_prompt: "Use $ops-checklist to handle Mobile Ops Checklist work."
+  display_name: "Ops Checklist"
+  short_description: "Help with Ops Checklist tasks"
+  default_prompt: "Use $ops-checklist to handle Ops Checklist work."

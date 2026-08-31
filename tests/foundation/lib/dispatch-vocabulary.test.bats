@@ -54,6 +54,7 @@ offenders_in() {
 
 @test "core names no external driving tool anywhere in a brief or a config it writes" {
   files=("$ROOT"/workflows/profile-*.js "$ROOT"/skills/*/SKILL.md "$ROOT"/skills/*/locales/*.md \
+         "$ROOT"/skills/*/agents/*.yaml \
          "$ROOT"/templates/claude-toolkit-md/*.md "$ROOT"/templates/task-md/*.md)
   # A glob that matched nothing would leave this test green over an empty list.
   [ "${#files[@]}" -ge 30 ] || { echo "scanned ${#files[@]} file(s); a glob went vacuous"; return 1; }
