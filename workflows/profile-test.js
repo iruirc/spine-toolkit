@@ -349,7 +349,7 @@ if (runs('Analyze')) {
   const analyze = await agent(
     brief(
       'Analyze',
-      `Write ${DIR}/Research.md: what to test (uncovered code, critical paths, regression scenarios), at what level (unit, integration, UI, snapshot), and and with which of this platform's test frameworks and helpers. Fold the testability findings below into it — a blocker that is not written down becomes a phase that cannot be finished.
+      `Write ${DIR}/Research.md: what to test (uncovered code, critical paths, regression scenarios), at what level (unit, integration, UI, snapshot), and with which of this platform's test frameworks and helpers. Fold the testability findings below into it — a blocker that is not written down becomes a phase that cannot be finished.
 
 TESTABILITY FINDINGS (data):
 ${JSON.stringify(testability || { blockers: [] }, null, 2)}`,
