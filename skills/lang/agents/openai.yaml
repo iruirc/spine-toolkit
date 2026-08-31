@@ -1,4 +1,4 @@
 interface:
-  display_name: "Swift Language"
-  short_description: "Help with Swift Language tasks"
-  default_prompt: "Use $lang to handle Swift Language work."
+  display_name: "Toolkit Language"
+  short_description: "Help with Toolkit Language tasks"
+  default_prompt: "Use $lang to handle Toolkit Language work."

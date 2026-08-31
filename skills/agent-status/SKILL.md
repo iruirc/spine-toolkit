@@ -2,8 +2,8 @@
 name: agent-status
 description: |
   Show agent telemetry for the current session: stage, agent, generated tokens, context size, tool calls and elapsed time. Read-only.
-  Use when (en): "agent status", "how many tokens did that cost", "which agents ran", "/swift-agents", "show agent metrics"
-  Use when (ru): "статус агентов", "сколько токенов ушло", "какие агенты отработали", "/swift-agents", "покажи метрики агентов"
+  Use when (en): "agent status", "how many tokens did that cost", "which agents ran", "/agent-status", "show agent metrics"
+  Use when (ru): "статус агентов", "сколько токенов ушло", "какие агенты отработали", "/agent-status", "покажи метрики агентов"
 ---
 
 # Agent Status
