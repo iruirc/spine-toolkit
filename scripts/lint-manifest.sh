@@ -15,6 +15,7 @@ set -euo pipefail
 plugin="${1:?usage: lint-manifest.sh <plugin-dir>}"
 manifest="$plugin/skills/manifest/SKILL.md"
 ROLES="architect developer tester reviewer refactorer validator security diagnostics init"
+ENTRYPOINTS="setup"
 violations=0
 
 [ -f "$manifest" ] || { echo "no manifest skill at $manifest"; exit 1; }
@@ -159,6 +160,11 @@ while IFS= read -r line; do
   entry_name="${BASH_REMATCH[1]}"
   rhs="${BASH_REMATCH[2]}"
   rhs="${rhs%"${rhs##*[![:space:]]}"}"  # trim trailing whitespace
+  # An unknown name is a row core will never call, which reads exactly like a
+  # correctly declared one. A MISSING `setup` row is not checked: the contract
+  # declares it, like the em dash, a supported shape.
+  grep -qw "$entry_name" <<<"$ENTRYPOINTS" \
+    || { echo "entrypoint outside the core vocabulary (core never calls it): $entry_name"; violations=$((violations+1)); }
   case "$rhs" in
     "—") ;;
     '`'*'`')
