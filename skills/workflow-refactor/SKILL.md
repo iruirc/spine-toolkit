@@ -85,7 +85,7 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   If `start_phase=<phase_id>` was passed in args — `[refactorer]` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
-  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else `on`. Written by `[refactorer]`.
+  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else the default this run's `scale` sets (§2a). Written by `[refactorer]`.
 
 - **Validation** — `[validator]`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between the `validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the REFACTOR profile, the validator runs a full test run mandatorily as a regression check (every pre-existing test must pass **without modification** — touching a test during a refactor is itself a finding), a build on its own is optional, and a running instance of the app is driven only when the refactor touched a UI layer (views, screens, or navigation) — purely domain/infrastructure refactors skip it. Detailed behavior lives with the `validator` agent. `drive_app` resolving to `off` (`Task.md [DRIVE_APP]` first, then `CLAUDE-spine-toolkit.md ## Validation`), or a platform with no tooling to drive a running instance whose validator declares the deviation, suppresses the UI smoke entirely — the affected screens move to a separate `ManualChecks.md` (titles echoed in `manual_checks`) for a human to walk. `manual_checks: always` in the same two sources produces that artifact even on a run the validator drove itself.
 
@@ -96,6 +96,32 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 - **Done** — final report `Done.md`: what was refactored, why it is now better (readability, separation of concerns, reduced coupling), measurable metrics where available (file size, cyclomatic complexity of key functions, dependency count), validation status (build/test result), and objections (if the user insisted on a contested decision).
 
   Refresh `Walkthrough.md` here when the Refactor stage did not run in this invocation — an entry at Review or Done means commits landed after it was written. `task-walkthrough` owns the refresh rules; its `[COVERS]` line decides whether there is anything to do.
+
+## 2a. Scale
+
+`scale` arrives in the contract as `lite` or `full`, never empty. `full` runs the stages above
+exactly as written. The axis itself — the three levers, the floor, the ratchet and its four
+criteria — is `conventions/task-scale.md`; what follows is only what is specific to REFACTOR.
+
+At `lite`:
+
+- **Analyze does not get its own stage.** No agent is dispatched for it and no `Research.md` is
+  written. `Plan.md` opens with a `## Analysis` section carrying what that stage would have found:
+  what is wrong now, the target shape, the components affected, and the risk the move carries. The
+  behaviour-preservation invariant is stated there, because it is what Validation checks against.
+- **`OpsChecklist.md` is not written.** The regression check that matters on this profile is the
+  pre-existing test suite passing unmodified, and that is Validation's, not the checklist's.
+- **`Walkthrough.md` is not written** unless `[WALKTHROUGH]` in `Task.md` says so.
+- Every artifact this run does write carries a line ceiling, from the table in
+  `scripts/lint-artifact-budget.sh`.
+
+Unchanged at `lite`: one commit per green phase with the phase's tests run before it, `Validation`
+as a full regression run by its own agent — with the rule that touching a pre-existing test is
+itself a finding — and `Review` by an independent agent.
+
+**The ratchet.** Both points collapse into the planner's first act, `lite` having folded Analyze
+into Plan. Criterion 2 does most of the work on this profile: a refactor that moves a public API
+other code depends on is a `full` task whatever its line count.
 
 ## 3. Manual mode
 
