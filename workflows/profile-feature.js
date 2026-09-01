@@ -173,6 +173,38 @@ const REVIEW = {
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
 
+// The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
+// the stage that made it onward, including the artifact that stage is about to write. A contract
+// with no field is a run from before the axis existed, and full is what those runs did.
+let scale = A.scale === 'lite' ? 'lite' : 'full'
+let scaleEscalation = null
+const lite = () => scale === 'lite'
+const escalate = (stage, r) => {
+  if (!lite() || !r || !r.scale_escalation || r.scale_escalation.to !== 'full') return
+  scale = 'full'
+  scaleEscalation = { stage, to: 'full', reason: r.scale_escalation.reason || 'no reason given' }
+  log(`scale raised to full at ${stage}: ${scaleEscalation.reason}`)
+  result.notes.push(`Scale raised to full at ${stage}: ${scaleEscalation.reason}. Write [SCALE] = [full] into Task.md.`)
+}
+
+// Line ceilings for a lite task's artifacts. scripts/lint-artifact-budget.sh carries the same table
+// and is what measures against it; artifact-budget.test.bats fails when the two disagree. First
+// draft, taken from the shape of existing artifacts rather than from a measurement.
+const CAP = { 'Reproduce.md': 120, 'Plan.md': 200, 'Validation.md': 100, 'Review.md': 120, 'Done.md': 80 }
+const cap = (file) => (lite() && CAP[file] ? `\n\nKeep ${file} to ${CAP[file]} lines or fewer. Logs, dumps and long tool output go in by reference, never pasted inline.` : '')
+
+const ESCALATION = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['to', 'reason'],
+  properties: { to: { type: 'string', enum: ['full'] }, reason: { type: 'string' } },
+}
+const withEscalation = (schema) => ({ ...schema, properties: { ...schema.properties, scale_escalation: ESCALATION } })
+const ratchet = () =>
+  lite()
+    ? `\n\nThis run is at scale lite, which folded the investigation into this artifact and capped its length. Raise it to full — return scale_escalation {to: "full", reason: "<what you found>"} and then write this artifact at full depth, without the cap — if any one of these holds: the perimeter is more than five production files or spans more than one package; the change crosses a package boundary or a public API other code depends on; the work items do not fit in one phase; you cannot state the mechanism in one paragraph. Never lower it.`
+    : ''
+
 // A role the platform declares absent (`—`) blocks the stage that names it: the script neither
 // dispatches nor skips it, it ends the range here and lets the orchestrator run the stage itself
 // and announce the deviation (orchestrator SKILL.md § Dispatch, "Method A — a stage whose role
@@ -201,6 +233,8 @@ const finish = (next, extra) => ({
   notes: result.notes.join(' '),
   stages: result.stages,
   handback,
+  scale,
+  scale_escalation: scaleEscalation,
   ...(extra || {}),
 })
 // stages[] is the per-stage report auto has no other source for: there one return covers the whole
@@ -319,7 +353,7 @@ Change no production code and no tests.`,
 // ── Research ────────────────────────────────────────────────────────────────
 // Sequential rather than a parallel panel: both lenses feed one artifact, and only the
 // architect writes it. Two agents racing on Research.md would cost more than the wait saves.
-if (runs('Research')) {
+if (runs('Research') && !lite()) {
   if (!need('Research', 'architect')) return finish('ask_user')
   const securityAgentType = lens('security')
   const security = securityAgentType
@@ -365,34 +399,36 @@ ${JSON.stringify(security || { risks: [] }, null, 2)}`,
   if (!research) return finish('stop', { status: 'error', reason: 'the Research agent returned nothing' })
   record('Research', research)
 }
+if (runs('Research') && lite()) result.notes.push('Research folded into the ## Research section of Plan.md; scale is lite.')
 
 // ── Plan ────────────────────────────────────────────────────────────────────
 // The estimation gate is the reason this stage returns a verdict rather than just an artifact:
-// entering Execute without a usable range is what the gate exists to prevent.
+// entering Execute without a usable range is what the gate exists to prevent. At lite there is
+// neither — a range nobody consumes is the paperwork the scale axis exists to stop.
 let plan = null
 if (runs('Plan')) {
   if (!need('Plan', 'architect')) return finish('ask_user')
   plan = await agent(
     brief(
       'Plan',
-      `Write ${DIR}/Plan.md from Research.md, with two layers of progress tracking:
+      `${lite() ? `This run is at scale lite, so Research got no stage of its own and there is no Research.md. Open ${DIR}/Plan.md with a "## Research" section carrying what that stage would have produced: the Primary and Secondary requirements, the work-item list, and the integration points a phase will cross. Then write the plan from it.\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'that section' : 'Research.md'}, with two layers of progress tracking:
 
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per file to edit, per acceptance criterion, per test to add, per verification step. Static prose (rationale, decisions, design notes) stays plain bullets; only action items become checkboxes.
 
-Seed the per-phase action items from Research.md ## Landscape ### Work items. Every phase has to end independently buildable, green, and committable on its own.
+Seed the per-phase action items from ${lite() ? 'the ## Research section above' : 'Research.md ## Landscape ### Work items'}. Every phase has to end independently buildable, green, and committable on its own.${lite() ? '' : `
 
 Then apply the feature-estimation skill and add a ## Estimation section, with depth scaled to the feature's risk per that skill's Estimation depth table. The minimum is feature type, baseline table, engineering range, and confidence; PERT, scope-aware risk deltas, estimate maturity, estimation conditions, delivery calendar, store buffer, known unknowns, and the self-check are added only when their triggers fire.
 
-Report estimation_gate as blocked, with the reason, when any of these hold: ## Estimation is missing or malformed; a triggered section is absent; ### Estimate maturity is Draft; the maturity is Conditional and ### Estimation conditions is missing or has any pending_user row; or a Known Unknown trips the load-bearing-unknown rule without a required spike or resolution. If the project is AI-assisted, the AI-assisted range is informational — the gate evaluates the human estimate.`,
+Report estimation_gate as blocked, with the reason, when any of these hold: ## Estimation is missing or malformed; a triggered section is absent; ### Estimate maturity is Draft; the maturity is Conditional and ### Estimation conditions is missing or has any pending_user row; or a Known Unknown trips the load-bearing-unknown rule without a required spike or resolution. If the project is AI-assisted, the AI-assisted range is informational — the gate evaluates the human estimate.`}${cap('Plan.md')}${ratchet()}${lite() ? '\n\nIf you raise the scale, the plan you write is a full-depth one: apply the feature-estimation skill, add the ## Estimation section, and report estimation_gate, exactly as a full run would. That skill holds what the section carries and when the gate blocks.' : ''}`,
     ),
     {
       label: 'plan',
       phase: 'Plan',
       agentType: A.agents.architect,
-      schema: {
+      schema: withEscalation({
         ...PLAN,
-        required: [...PLAN.required, 'estimation_gate'],
+        required: lite() ? [...PLAN.required] : [...PLAN.required, 'estimation_gate'],
         properties: {
           ...PLAN.properties,
           estimation_gate: {
@@ -405,11 +441,12 @@ Report estimation_gate as blocked, with the reason, when any of these hold: ## E
             },
           },
         },
-      },
+      }),
     },
   )
   if (!plan) return finish('stop', { status: 'error', reason: 'the Plan agent returned nothing' })
   record('Plan', plan)
+  escalate('Plan', plan)
 
   if (plan.estimation_gate && plan.estimation_gate.status === 'blocked') {
     result.notes.push(`Plan stays open: the estimation gate is blocked — ${plan.estimation_gate.reason || 'no reason given'}. Execute was not started.`)
@@ -445,11 +482,9 @@ if (runs('Validation')) {
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
-For FEATURE a build and a full test run are both mandatory, through whatever build and test tooling this platform prescribes. Driving a running instance of the app is mandatory when the feature has a UI layer — views, screens, navigation — and skipped for a purely domain or infrastructure feature; say which case this is and why. Two things suspend it: drive_app resolving to off — Task.md [DRIVE_APP] first, then CLAUDE-spine-toolkit.md ## Validation — and this platform having no tooling to drive a running instance, which you announce as a declared deviation in your first message. Either way you drive nothing: write the UI cases a human has to run into ${DIR}/ManualChecks.md, return their titles in manual_checks, and mark the matching OpsChecklist items Pending rather than Applicable. Independently of that, manual_checks: always in the same two sources means you write ManualChecks.md on every UI-bearing run, covering what the happy path did not reach and what driving the app cannot do at all.
+For FEATURE a build and a full test run are both mandatory, through whatever build and test tooling this platform prescribes. Driving a running instance of the app is mandatory when the feature has a UI layer — views, screens, navigation — and skipped for a purely domain or infrastructure feature; say which case this is and why. Two things suspend it: drive_app resolving to off — Task.md [DRIVE_APP] first, then CLAUDE-spine-toolkit.md ## Validation — and this platform having no tooling to drive a running instance, which you announce as a declared deviation in your first message. Either way you drive nothing: write the UI cases a human has to run into ${DIR}/ManualChecks.md, return their titles in manual_checks, and mark the matching OpsChecklist items Pending rather than Applicable. Independently of that, manual_checks: always in the same two sources means you write ManualChecks.md on every UI-bearing run, covering what the happy path did not reach and what driving the app cannot do at all.${lite() ? '' : `\n\nAlso apply the ops-checklist skill and write ${DIR}/OpsChecklist.md, marking every item Applicable with its verification evidence (file path, test name, commit ref), N/A with a reason, or Pending. A Pending item is not by itself a FAILED verdict — Pending items go to Review, which decides.`}
 
-Also apply the ops-checklist skill and write ${DIR}/OpsChecklist.md, marking every item Applicable with its verification evidence (file path, test name, commit ref), N/A with a reason, or Pending. A Pending item is not by itself a FAILED verdict — Pending items go to Review, which decides.
-
-Change no production code and no tests. Return the same status you wrote on the first line.`,
+Change no production code and no tests. Return the same status you wrote on the first line.${cap('Validation.md')}`,
     ),
     { label: 'validation', phase: 'Validation', agentType: A.agents.validator, schema: VALIDATION },
   )
@@ -475,11 +510,9 @@ if (runs('Review') && A.need_review !== false) {
       'Review',
       `Review the diff this task produced and write ${DIR}/Review.md. Its FIRST LINE is required to be exactly:
 
-[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
+[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION${lite() ? '' : `\n\nCross-check ${DIR}/OpsChecklist.md: every item marked Applicable must have implementation evidence visible in the diff or in the test results. An Applicable item without evidence is a finding and normally yields CHANGES_REQUESTED. Collect the Pending items under a ## Outstanding ops items section in Review.md for the user to accept or defer explicitly.`}
 
-Cross-check ${DIR}/OpsChecklist.md: every item marked Applicable must have implementation evidence visible in the diff or in the test results. An Applicable item without evidence is a finding and normally yields CHANGES_REQUESTED. Collect the Pending items under a ## Outstanding ops items section in Review.md for the user to accept or defer explicitly.
-
-Modify nothing. Return the same status you wrote on the first line.`,
+Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
   )
@@ -505,7 +538,7 @@ if (runs('Done')) {
       'Done',
       `Write the final report ${DIR}/Done.md: what was built, which artifacts it produced, the validation status, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries.
 
-When ${DIR}/Plan.md has a ## Estimation section, a ## Estimate retrospective section is mandatory, following the hybrid model in the feature-estimation skill. Always record the automatic git proxy — the commit span of this task's phase commits plus the phase and rework counts, labelled proxy and never presented as human-days — and add the user-provided human effort when it was offered. The in-range verdict uses human effort when it exists and the proxy otherwise; only when neither exists write unknown and name the missing signal. In AI-assisted mode break the actual down per leverage class. Append this feature's data point to the calibration log.`,
+When ${DIR}/Plan.md has a ## Estimation section, a ## Estimate retrospective section is mandatory, following the hybrid model in the feature-estimation skill. Always record the automatic git proxy — the commit span of this task's phase commits plus the phase and rework counts, labelled proxy and never presented as human-days — and add the user-provided human effort when it was offered. The in-range verdict uses human effort when it exists and the proxy otherwise; only when neither exists write unknown and name the missing signal. In AI-assisted mode break the actual down per leverage class. Append this feature's data point to the calibration log.${cap('Done.md')}`,
     ),
     { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, effort: 'low' },
   )

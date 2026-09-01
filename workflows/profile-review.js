@@ -166,6 +166,38 @@ const REVIEW = {
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
 
+// The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
+// the stage that made it onward, including the artifact that stage is about to write. A contract
+// with no field is a run from before the axis existed, and full is what those runs did.
+let scale = A.scale === 'lite' ? 'lite' : 'full'
+let scaleEscalation = null
+const lite = () => scale === 'lite'
+const escalate = (stage, r) => {
+  if (!lite() || !r || !r.scale_escalation || r.scale_escalation.to !== 'full') return
+  scale = 'full'
+  scaleEscalation = { stage, to: 'full', reason: r.scale_escalation.reason || 'no reason given' }
+  log(`scale raised to full at ${stage}: ${scaleEscalation.reason}`)
+  result.notes.push(`Scale raised to full at ${stage}: ${scaleEscalation.reason}. Write [SCALE] = [full] into Task.md.`)
+}
+
+// Line ceilings for a lite task's artifacts. scripts/lint-artifact-budget.sh carries the same table
+// and is what measures against it; artifact-budget.test.bats fails when the two disagree. First
+// draft, taken from the shape of existing artifacts rather than from a measurement.
+const CAP = { 'Reproduce.md': 120, 'Plan.md': 200, 'Validation.md': 100, 'Review.md': 120, 'Done.md': 80 }
+const cap = (file) => (lite() && CAP[file] ? `\n\nKeep ${file} to ${CAP[file]} lines or fewer. Logs, dumps and long tool output go in by reference, never pasted inline.` : '')
+
+const ESCALATION = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['to', 'reason'],
+  properties: { to: { type: 'string', enum: ['full'] }, reason: { type: 'string' } },
+}
+const withEscalation = (schema) => ({ ...schema, properties: { ...schema.properties, scale_escalation: ESCALATION } })
+const ratchet = () =>
+  lite()
+    ? `\n\nThis run is at scale lite, which folded the investigation into this artifact and capped its length. Raise it to full — return scale_escalation {to: "full", reason: "<what you found>"} and then write this artifact at full depth, without the cap — if any one of these holds: the perimeter is more than five production files or spans more than one package; the change crosses a package boundary or a public API other code depends on; the work items do not fit in one phase; you cannot state the mechanism in one paragraph. Never lower it.`
+    : ''
+
 // A role the platform declares absent (`—`) blocks the stage that names it: the script neither
 // dispatches nor skips it, it ends the range here and lets the orchestrator run the stage itself
 // and announce the deviation (orchestrator SKILL.md § Dispatch, "Method A — a stage whose role
@@ -194,6 +226,8 @@ const finish = (next, extra) => ({
   notes: result.notes.join(' '),
   stages: result.stages,
   handback,
+  scale,
+  scale_escalation: scaleEscalation,
   ...(extra || {}),
 })
 // stages[] is the per-stage report auto has no other source for: there one return covers the whole

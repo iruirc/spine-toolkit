@@ -175,6 +175,38 @@ const REVIEW = {
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
 
+// The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
+// the stage that made it onward, including the artifact that stage is about to write. A contract
+// with no field is a run from before the axis existed, and full is what those runs did.
+let scale = A.scale === 'lite' ? 'lite' : 'full'
+let scaleEscalation = null
+const lite = () => scale === 'lite'
+const escalate = (stage, r) => {
+  if (!lite() || !r || !r.scale_escalation || r.scale_escalation.to !== 'full') return
+  scale = 'full'
+  scaleEscalation = { stage, to: 'full', reason: r.scale_escalation.reason || 'no reason given' }
+  log(`scale raised to full at ${stage}: ${scaleEscalation.reason}`)
+  result.notes.push(`Scale raised to full at ${stage}: ${scaleEscalation.reason}. Write [SCALE] = [full] into Task.md.`)
+}
+
+// Line ceilings for a lite task's artifacts. scripts/lint-artifact-budget.sh carries the same table
+// and is what measures against it; artifact-budget.test.bats fails when the two disagree. First
+// draft, taken from the shape of existing artifacts rather than from a measurement.
+const CAP = { 'Reproduce.md': 120, 'Plan.md': 200, 'Validation.md': 100, 'Review.md': 120, 'Done.md': 80 }
+const cap = (file) => (lite() && CAP[file] ? `\n\nKeep ${file} to ${CAP[file]} lines or fewer. Logs, dumps and long tool output go in by reference, never pasted inline.` : '')
+
+const ESCALATION = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['to', 'reason'],
+  properties: { to: { type: 'string', enum: ['full'] }, reason: { type: 'string' } },
+}
+const withEscalation = (schema) => ({ ...schema, properties: { ...schema.properties, scale_escalation: ESCALATION } })
+const ratchet = () =>
+  lite()
+    ? `\n\nThis run is at scale lite, which folded the investigation into this artifact and capped its length. Raise it to full — return scale_escalation {to: "full", reason: "<what you found>"} and then write this artifact at full depth, without the cap — if any one of these holds: the perimeter is more than five production files or spans more than one package; the change crosses a package boundary or a public API other code depends on; the work items do not fit in one phase; you cannot state the mechanism in one paragraph. Never lower it.`
+    : ''
+
 // A role the platform declares absent (`—`) blocks the stage that names it: the script neither
 // dispatches nor skips it, it ends the range here and lets the orchestrator run the stage itself
 // and announce the deviation (orchestrator SKILL.md § Dispatch, "Method A — a stage whose role
@@ -203,6 +235,8 @@ const finish = (next, extra) => ({
   notes: result.notes.join(' '),
   stages: result.stages,
   handback,
+  scale,
+  scale_escalation: scaleEscalation,
   ...(extra || {}),
 })
 // stages[] is the per-stage report auto has no other source for: there one return covers the whole
@@ -328,21 +362,22 @@ if (runs('Reproduce')) {
 
 Apply the feature-requirements skill, Secondary checklist only, to enumerate which Secondary states the bug touches — error, loading, empty, offline, a11y, deeplink, push, i18n, analytics, lifecycle, cancellation. A bug usually hides in one of those rather than in the happy path, and naming them now is what stops "fixed the happy path, broke offline".
 
-Set reproducible to no only when you could not make it happen at all, and record what you tried in Reproduce.md before you do.`,
+Set reproducible to no only when you could not make it happen at all, and record what you tried in Reproduce.md before you do.${lite() ? `\n\nThis run is at scale lite, so Diagnose gets no stage of its own. Add a "## Diagnosis" section to Reproduce.md carrying what it would have produced: the root cause, the components a fix touches, how wide it has to be, and the risks it carries. If you cannot localize the root cause, say so there and raise the scale rather than guessing. If you do raise it, leave that section out — Diagnose then runs as its own stage.` : ''}${cap('Reproduce.md')}${ratchet()}`,
     ),
     {
       label: 'reproduce',
       phase: 'Reproduce',
       agentType: A.agents.diagnostics,
-      schema: {
+      schema: withEscalation({
         ...ARTIFACT,
         required: [...ARTIFACT.required, 'reproducible'],
         properties: { ...ARTIFACT.properties, reproducible: { type: 'string', enum: ['always', 'sometimes', 'conditional', 'no'] } },
-      },
+      }),
     },
   )
   if (!repro) return finish('stop', { status: 'error', reason: 'the Reproduce agent returned nothing' })
   record('Reproduce', repro)
+  escalate('Reproduce', repro)
 
   if (repro.reproducible === 'no') {
     result.notes.push('The bug could not be reproduced; Reproduce.md records what was tried.')
@@ -353,7 +388,7 @@ Set reproducible to no only when you could not make it happen at all, and record
 // ── Diagnose ────────────────────────────────────────────────────────────────
 // A genuine barrier: the synthesis reads both lenses. Two agents, so the parallel call is the
 // whole fan-out and there is nothing for a pipeline to overlap.
-if (runs('Diagnose')) {
+if (runs('Diagnose') && !lite()) {
   if (!need('Diagnose', 'architect')) return finish('ask_user')
   const LENS = {
     type: 'object',
@@ -407,6 +442,7 @@ ${JSON.stringify(views, null, 2)}`,
   if (!diagnosis) return finish('stop', { status: 'error', reason: 'the Diagnose synthesis returned nothing' })
   record('Diagnose', diagnosis)
 }
+if (runs('Diagnose') && lite()) result.notes.push('Diagnose folded into the ## Diagnosis section of Reproduce.md; scale is lite.')
 
 // ── Plan ────────────────────────────────────────────────────────────────────
 let plan = null
@@ -420,12 +456,13 @@ if (runs('Plan')) {
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per file to edit, per acceptance criterion, per regression-test case, per verification step. Static prose (root-cause notes, decisions) stays plain bullets; only action items become checkboxes.
 
-Cover the focused fix${A.need_test === false ? '' : ', a regression test that locks in the scenario from Reproduce.md'}, and any migration or compatibility step the change forces. Every phase has to end independently buildable, green, and committable on its own.`,
+Cover the focused fix${A.need_test === false ? '' : ', a regression test that locks in the scenario from Reproduce.md'}, and any migration or compatibility step the change forces. Every phase has to end independently buildable, green, and committable on its own.${cap('Plan.md')}${ratchet()}`,
     ),
-    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: PLAN },
+    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: withEscalation(PLAN) },
   )
   if (!plan) return finish('stop', { status: 'error', reason: 'the Plan agent returned nothing' })
   record('Plan', plan)
+  escalate('Plan', plan)
 }
 
 // ── Fix ─────────────────────────────────────────────────────────────────────
@@ -456,11 +493,9 @@ if (runs('Validation')) {
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
-For BUG a build and a full test run are both mandatory, through this platform's own build and test tooling, and so is a replay regardless of which layer changed — you drive a running instance of the app with whatever tooling this platform has for that, and walk the reproduction scenario from Reproduce.md against it. Validation is not PASSED without your own explicit statement that the bug no longer reproduces. Two things suspend the replay and both produce the same result rather than a failure: drive_app resolving to off — Task.md [DRIVE_APP] first, then CLAUDE-spine-toolkit.md ## Validation — and this platform having no way to drive a running instance at all, which you announce as a declared deviation in your first message. Either way return reproduction_status deferred-manual, put the replay steps into ${DIR}/ManualChecks.md and their titles into manual_checks, and claim nothing about whether the bug is fixed. Reserve not-replayed for a replay that was expected of you and stayed inconclusive.
+For BUG a build and a full test run are both mandatory, through this platform's own build and test tooling, and so is a replay regardless of which layer changed — you drive a running instance of the app with whatever tooling this platform has for that, and walk the reproduction scenario from Reproduce.md against it. Validation is not PASSED without your own explicit statement that the bug no longer reproduces. Two things suspend the replay and both produce the same result rather than a failure: drive_app resolving to off — Task.md [DRIVE_APP] first, then CLAUDE-spine-toolkit.md ## Validation — and this platform having no way to drive a running instance at all, which you announce as a declared deviation in your first message. Either way return reproduction_status deferred-manual, put the replay steps into ${DIR}/ManualChecks.md and their titles into manual_checks, and claim nothing about whether the bug is fixed. Reserve not-replayed for a replay that was expected of you and stayed inconclusive.${lite() ? '' : `\n\nAlso apply the ops-checklist skill, scoped to the categories the bug touched per the Secondary enumeration in Reproduce.md, and write ${DIR}/OpsChecklist.md. Full-checklist coverage is not required for BUG; the point is catching a regression in an adjacent behaviour.`}
 
-Also apply the ops-checklist skill, scoped to the categories the bug touched per the Secondary enumeration in Reproduce.md, and write ${DIR}/OpsChecklist.md. Full-checklist coverage is not required for BUG; the point is catching a regression in an adjacent behaviour.
-
-Change no production code and no tests. Return the same status you wrote on the first line.`,
+Change no production code and no tests. Return the same status you wrote on the first line.${cap('Validation.md')}`,
     ),
     {
       label: 'validation',
@@ -496,7 +531,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-Judge the fix against Reproduce.md and Plan.md: does it address the root cause rather than the symptom, does the regression test lock in the real scenario, does it carry the risks Research.md named. Modify nothing. Return the same status you wrote on the first line.`,
+Judge the fix against Reproduce.md and Plan.md: does it address the root cause rather than the symptom, does the regression test lock in the real scenario, does it carry the risks Research.md named. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
   )
@@ -520,7 +555,7 @@ if (runs('Done')) {
   const done = await agent(
     brief(
       'Done',
-      `Write the final report ${DIR}/Done.md: what was fixed, which regression test was added, the validation status including the outcome of the reproduction replay, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries. Keep it short enough to be read.`,
+      `Write the final report ${DIR}/Done.md: what was fixed, which regression test was added, the validation status including the outcome of the reproduction replay, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries. Keep it short enough to be read.${cap('Done.md')}`,
     ),
     { label: 'done', phase: 'Done', agentType: A.agents.developer, schema: ARTIFACT, effort: 'low' },
   )
