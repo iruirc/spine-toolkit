@@ -9,7 +9,9 @@ set -euo pipefail
 #
 # Scale per task dir: Task.md [SCALE] -> the nearest CLAUDE-spine-toolkit.md ## Scale -> full.
 # REVIEW and RESEARCH are never measured: neither has an implementing stage, and the artifact
-# their run produces IS the deliverable.
+# their run produces IS the deliverable. EPIC is never measured either, for a different reason:
+# its own Plan.md and Done.md are not gated by this ceiling (workflow-epic/SKILL.md). Its
+# .step/ subfolders are unaffected — walk() measures each one against its own Task.md.
 
 # First draft, taken from the shape of existing artifacts rather than from a measurement; the
 # design's Rollout §1 revises them. workflows/profile-*.js carries the same table as its prelude
@@ -22,7 +24,7 @@ python3 - "$CAPS" "$@" <<'PY'
 import os, re, sys
 
 caps = dict((n, int(v)) for n, v in (p.split(':') for p in sys.argv[1].split()))
-UNMEASURED = {'REVIEW', 'RESEARCH'}
+UNMEASURED = {'REVIEW', 'RESEARCH', 'EPIC'}
 violations = []
 
 

@@ -87,7 +87,9 @@ task, not of one dispatch.
 `scale` sets the default for an artifact that has its own switch, and loses to that switch when it
 is set. `[WALKTHROUGH] = [on]` in `Task.md` writes `Walkthrough.md` on a `lite` run. The reverse
 does not hold: `full` turns nothing back on that the user turned off. An axis that silently
-overrode an addressed decision would be the opacity this design exists to avoid.
+overrode an addressed decision would be the opacity this design exists to avoid. The same one-shot
+resolution means a mid-run raise to `full` does not turn `walkthrough` back on either: the
+orchestrator resolved it once before dispatch, and the script has no way to re-resolve it.
 
 ## Budgets are measured
 
