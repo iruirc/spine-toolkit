@@ -15,8 +15,9 @@ A briefing describes the business goal. The engineering task is to discover what
 > Bold **topics** below are rows of the installed platform's manifest `## Topics`; resolve each to
 > that platform's own skills per `conventions/platform-contract.md`. Secondary design draws on
 > **errors** (how error states surface to the UI), **deep links** (entry-side design: parser, entry
-> points, cold-start, auth gate), **navigation** (how a parsed deep-link route reaches a screen) and
-> **concurrency** (offline/sync behaviors).
+> points, cold-start, auth gate), **navigation** (how a parsed deep-link route reaches a screen),
+> **concurrency** (offline/sync behaviors) and **release ops** (push transport, assistive-tech
+> specifics).
 
 ## When to use
 
@@ -50,9 +51,9 @@ For each row below, ask: *what does this feature do in this scenario?* Mark **Ap
 | Loading state | Skeleton, spinner, or instant? Threshold for showing? |
 | Empty state | First launch, no results, cleared data — what does the screen say? |
 | Offline mode | Hidden, read-only, optimistic + queue, full-block? |
-| Accessibility | VoiceOver/TalkBack labels, system text scaling, contrast, touch targets ≥44pt (iOS) / 48dp (Android) |
+| Accessibility | Assistive-tech labels, system text scaling, contrast, minimum touch/click target size — see topic **release ops** |
 | Deep link entry | Can a deep link land directly on this screen mid-flow? State reset or preserve? |
-| Push notification | Does a push lead here? Foreground vs background behavior? |
+| Push notification | Does a push lead here? Foreground vs background behavior? — see topic **release ops** |
 | Analytics events | Which user actions need to be logged? Funnel events? |
 | Localization | Strings extracted? Text expansion (RU/DE +30%)? RTL? |
 | Concurrent updates | Two devices, same user — server-authoritative, LWW, or merge? |
