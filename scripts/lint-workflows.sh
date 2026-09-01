@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Checks workflows/*.js against the contract in
-# docs/superpowers/specs/2026-08-19-workflow-orchestration-design.md:
+# Checks workflows/*.js against the workflow-orchestration contract:
 #
 #   - meta is a literal with name, description, phases
 #   - meta.name is profile-<x> and collides with no skill directory
