@@ -119,6 +119,25 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   On branch A, and only for a walk with no failed, cancelled or pending steps, also apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else `on`. An epic has no commits of its own: the file sits a layer above the steps, linking to each step's own walkthrough rather than restating it. Branch B gets none — there is no implementation to walk through.
 
+## 2a. Scale
+
+`scale` arrives in the contract as `lite` or `full`, never empty. The axis is
+`conventions/task-scale.md`; EPIC's relationship to it is one rule.
+
+**The epic's own stages are not gated by it.** Research and Plan at epic level are the
+decomposition decision and the step list, and an initiative large enough to be an epic has already
+answered the question the axis asks. Neither folds, at either value.
+
+**Steps inherit it.** Each `.step/` folder is dispatched as a task of its own, and it takes the
+epic's `scale` unless its own `Task.md` carries `[SCALE]`, which wins — the same precedence every
+other per-step field has (`[WORKFLOW_MODE]`, `## 4. [Stack]`, `[NEED_TEST]`, `[NEED_REVIEW]`). This
+is where the axis pays: the artifacts of a twenty-six-step epic are the epic's volume, and its own
+two artifacts are a rounding error beside them.
+
+A step that raises itself to `full` raises itself only. The raise is written into that step's
+`Task.md`, and the epic's value is untouched — one step turning out to be large says nothing about
+the next one.
+
 ## 3. Manual mode
 
 After each stage (Research, Plan) and **after each step in Execute**, the orchestrator asks the user via the structured question mechanism using the `stage_done_prompt` key from `locales/<lang>.md`, with placeholders `{stage}` and `{step_id}`.
