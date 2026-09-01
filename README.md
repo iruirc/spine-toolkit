@@ -5,8 +5,9 @@ the rules for moving from one to the next. It knows nothing about any programmin
 framework — stack knowledge arrives from a **platform plugin** it invokes across the plugin
 boundary.
 
-Install it alone and you get the process. Install a platform plugin alongside it and the process has
-someone to dispatch work to.
+Install it alone to see the process on its own — commands, artifacts, dispatch — with no ecosystem
+baked in. Configuring an actual project still needs at least one platform plugin installed alongside
+it; `/setup` stops and says so if none is found.
 
 ## Install
 

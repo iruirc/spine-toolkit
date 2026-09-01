@@ -45,7 +45,20 @@ while read -r declared; do
     || { echo "role outside the core vocabulary: $declared"; violations=$((violations+1)); }
 done < <(grep -oE '^[a-z][a-z-]*' <<<"$assignments" | sort -u)
 
+# The namespace half of `plugin:agent` travels into subagent dispatch verbatim, so a
+# manifest may only name agents of the plugin that ships it: checking the file alone
+# accepts any prefix, and a plugin rename then dispatches a name resolving to nothing.
+own_name=""
+if [ -f "$plugin/.claude-plugin/plugin.json" ]; then
+  own_name=$(sed -n 's/^[[:space:]]*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+    "$plugin/.claude-plugin/plugin.json" | head -1)
+fi
+[ -n "$own_name" ] \
+  || { echo "cannot read \"name\" from $plugin/.claude-plugin/plugin.json"; violations=$((violations+1)); }
+
 while read -r ref; do
+  [ -z "$own_name" ] || [ "${ref%%:*}" = "$own_name" ] \
+    || { echo "manifest names an agent outside this plugin's namespace (expected $own_name:): $ref"; violations=$((violations+1)); }
   [ -f "$plugin/agents/${ref#*:}.md" ] \
     || { echo "manifest names an agent with no file: $ref"; violations=$((violations+1)); }
 done < <(grep -oE '[a-z][a-z-]*:[a-z][a-z-]*' <<<"$assignments" | sort -u)

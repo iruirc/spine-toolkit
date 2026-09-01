@@ -265,7 +265,7 @@ When every checkbox in the phase is ticked: build, run the tests for the touched
 
 ${guidance}
 
-The commit message is Conventional Commits: "<type>(<scope>): <imperative subject>", plus an optional body explaining WHY. NEVER put the task id, phase number, or ticket number in it — provenance lives in Plan.md, the branch name, and the PR. Full spec in conventions/commit-messages.md; if git log shows this project uses a different convention, follow the project. The same rule governs code comments: no task, phase, epic, or bug reference in production or test code, including XCTAssert / XCTFail / XCTSkip message strings.
+The commit message is Conventional Commits: "<type>(<scope>): <imperative subject>", plus an optional body explaining WHY. NEVER put the task id, phase number, or ticket number in it — provenance lives in Plan.md, the branch name, and the PR. Full spec in conventions/commit-messages.md; if git log shows this project uses a different convention, follow the project. The same rule governs code comments: no task, phase, epic, or bug reference in production or test code, including assertion and failure message strings.
 
 The phase is not done until every checkbox is ticked AND it is committed. If you cannot get it green, leave the row at 🔄, set committed to false, and say plainly what blocks it.`,
       ),

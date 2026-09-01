@@ -33,8 +33,11 @@ setup() {
 }
 
 @test "method skills name no platform skill" {
+  # Every loop below reads a hard-coded path: without this, a renamed or moved
+  # skill drops out of all three checks and the suite stays green over nothing.
   offenders=""
   for s in $METHOD_SKILLS; do
+    [ -f "$ROOT/skills/$s/SKILL.md" ] || { echo "method skill missing: $s"; return 1; }
     hits="$(grep -oE '\b(arch-[a-z-]+|architecture-choice|di-[a-z-]+|persistence-[a-z-]+|net-[a-z-]+|reactive-[a-z-]+|pkg-spm-design|nav-deeplinks|error-architecture|concurrency-architecture|workspace-[a-z-]+)\b' \
               "$ROOT/skills/$s/SKILL.md" | sort -u | tr '\n' ' ')"
     [ -z "$hits" ] || offenders="$offenders$s: $hits"$'\n'
@@ -50,6 +53,7 @@ setup() {
   # ecosystem's answer written as if it were the only one.
   offenders=""
   for s in $METHOD_SKILLS; do
+    [ -f "$ROOT/skills/$s/SKILL.md" ] || { echo "method skill missing: $s"; return 1; }
     hits="$(grep -ioE '\b(swift|swiftui|uikit|appkit|objective-?c|xcode|xcframework|xctest|swiftdata|grdb|swinject|rxswift|mainactor|view ?controllers?|iphone|ipad|spm|cocoapods|carthage|testflight|bgtask)\b|core data' \
               "$ROOT/skills/$s/SKILL.md" | sort -u | tr '\n' ' ')"
     [ -z "$hits" ] || offenders="$offenders$s: $hits"$'\n'
@@ -64,6 +68,7 @@ setup() {
   # name no topic (feature-estimation today) are exempt, not excused: the check
   # is the pairing, so the pointer arrives with the first topic either way.
   for s in $METHOD_SKILLS; do
+    [ -f "$ROOT/skills/$s/SKILL.md" ] || { echo "method skill missing: $s"; return 1; }
     grep -qE "\\*\\*($TOPICS)\\*\\*" "$ROOT/skills/$s/SKILL.md" || continue
     grep -q 'manifest `## Topics`' "$ROOT/skills/$s/SKILL.md" \
       || { echo "$s names a topic but no resolution path for it"; return 1; }

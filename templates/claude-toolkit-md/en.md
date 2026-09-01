@@ -26,7 +26,7 @@ en
 - **NEVER reference the current task, phase, EPIC, ticket, fix, PR, or caller** in production code comments. Forbidden examples: `// EPIC 145 §1.6 Phase 5 — …`, `// Task 042 phase 2`, `// Bug123 fix`, `// Used by Y flow`, `// §1.7 follow-up will replace this`, `// Was X before refactor`. Provenance lives in `git log` / commit message / PR description / `Tasks/` — duplicating it in code rots and crowds out the WHY.
 - **WHAT-comments are forbidden** (e.g. `// increment counter` over `counter += 1`). Decorative preludes, history-only notes, and forward-promise comments are also forbidden.
 - **File headers** carry an evergreen description of the file's role only — no `// Created for EPIC X / Phase Y` lines.
-- The same rule applies to test code: no phase/EPIC refs in test comments OR in `XCTAssert*` / `XCTFail` / `XCTSkip` message strings (those are read in failure output and must be self-explanatory).
+- The same rule applies to test code: no phase/EPIC refs in test comments or in assertion/failure message strings (those are read in failure output and must be self-explanatory).
 
 ### Commits & provenance
 
