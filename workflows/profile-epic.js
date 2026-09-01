@@ -599,6 +599,12 @@ if (runs('Execute')) {
 
       completed_steps.push({ step_id: st.step_id, task_id: st.task_id, status: 'ok' })
 
+      // A step that raised itself mutated only its own run: this script has no filesystem, so the
+      // write-back into that step's Task.md is owed to the orchestrator and travels as a note.
+      if (r.scale_escalation) {
+        result.notes.push(`Scale raised to full at step ${st.step_id}: ${r.scale_escalation.reason || 'no reason given'}. Write [SCALE] = [full] into that step's Task.md.`)
+      }
+
       // The checkbox is the resume marker: it has to be ticked as the step lands, not in a sweep
       // at the end, or an interrupted walk leaves Plan.md claiming work that was never done.
       await agent(
