@@ -49,15 +49,15 @@ If the change touches multiple modules at the same layer, prefer the most specif
 ### Refactor with body
 
 ```
-refactor(MediaPlayer): migrate manual KVO to block-based observation
+refactor(MediaPlayer): migrate manual observers to scoped subscriptions
 
-Manual addObserver with UnsafeMutableRawPointer is fragile — double-remove
-throws NSInternalInconsistencyException. Block-based observe() returns
-NSKeyValueObservation tokens stored in an array; cleanup is deterministic.
+Hand-paired register/unregister calls are fragile — unregistering twice
+faults and missing one leaks the observer. Scoped subscription tokens held
+in an array make teardown deterministic.
 
-- Replace UnsafeMutableRawPointer observers with NSKeyValueObservation
+- Replace raw observer registrations with subscription tokens
 - Drop the manual isObserving guard flag
-- Extract KVO handlers into dedicated private methods
+- Extract observation handlers into dedicated private methods
 ```
 
 ### Feature (concise)
@@ -88,28 +88,28 @@ inputs — guards against regressions when the calculator is refactored.
 ### Docs
 
 ```
-docs(README): document minimum Swift toolchain requirement
+docs(README): document the minimum toolchain version
 ```
 
 ### Chore
 
 ```
-chore(deps): bump SnapKit to 5.7.0
+chore(deps): bump the http client to 5.7.0
 
-Picks up the new constraintsEqualToSet API used by the upcoming
-PaywallView layout work.
+Picks up the streaming-response API the upcoming export feature
+needs.
 ```
 
 ## Anti-examples
 
 These are **forbidden**:
 
-- `042/01.step: phase 4 — migrate KVO to block-based` — embeds task/step/phase IDs
+- `042/01.step: phase 4 — migrate observers to tokens` — embeds task/step/phase IDs
 - `Phase 4 done` — no type, no scope, vague subject
 - `wip` / `fix` / `update` — useless subject, no scope, no WHY
-- `EPIC 042 §01 Phase 4 — migrate manual KVO` — task references belong in `Plan.md` and PR
+- `EPIC 042 §01 Phase 4 — migrate manual observers` — task references belong in `Plan.md` and PR
 - `fix: fixes the bug` — duplicates type in subject, no WHY
-- `Refactor: Migrate Manual KVO.` — wrong case, trailing period
+- `Refactor: Migrate Manual Observers.` — wrong case, trailing period
 
 ## Comment hygiene parity
 

@@ -50,6 +50,15 @@ teardown() { rm -rf "$TMP"; }
   [[ "$output" == *"ghost"* ]]
 }
 
+@test "fails when an agent is named in another plugin's namespace" {
+  # The prefix travels into subagent dispatch verbatim, and the agent file is
+  # found either way, so nothing downstream distinguishes this from a rename.
+  sed -i.bak 's|fixture-platform:fixture-|other-platform:fixture-|g' "$TMP/p/skills/manifest/SKILL.md" && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"outside this plugin's namespace"* ]]
+}
+
 @test "fails when a required role is not declared at all" {
   sed -i.bak '/^validator /d' "$TMP/p/skills/manifest/SKILL.md" && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"

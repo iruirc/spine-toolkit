@@ -70,11 +70,11 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
   Per-item flow inside a phase: complete one actionable item → tick its checkbox `- [ ]` → `- [x]` in the per-phase detail section of Plan.md. Per-phase flow: when all the phase's checkboxes are `- [x]` → build → run targeted tests → flip the phase's row in the top-level progress table ⬜→✅ → `git add` the phase's files (including the Plan.md updates — both checkboxes and table) → `git commit`. Commit message format: **Conventional Commits** — `<type>(<scope>): <imperative subject>` followed by an optional body explaining WHY. For Refactor-stage commits the type is usually `refactor` (use `test` for a test-only phase, `chore` for build/config-only). **NEVER include the task ID, step ID, or phase number** — provenance lives in `Plan.md`, the branch name, and the PR description. Full spec + anti-examples in `conventions/commit-messages.md`. Example:
 
   ```
-  refactor(MediaPlayer): migrate manual KVO to block-based observation
+  refactor(MediaPlayer): migrate manual observers to scoped subscriptions
 
-  Manual addObserver with UnsafeMutableRawPointer is fragile — double-remove
-  throws NSInternalInconsistencyException. Block-based observe() returns
-  NSKeyValueObservation tokens stored in an array; cleanup is deterministic.
+  Hand-paired register/unregister calls are fragile — unregistering twice
+  faults and missing one leaks the observer. Scoped subscription tokens held
+  in an array make teardown deterministic.
   ```
 
   If `git log` shows the project uses a different convention for similar tasks, follow that convention instead.
