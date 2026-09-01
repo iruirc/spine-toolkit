@@ -68,6 +68,20 @@ lines() { python3 -c 'import sys; open(sys.argv[1],"w").write("x\n"*int(sys.argv
   [ "$status" -eq 0 ]
 }
 
+@test "an epic's own Plan.md is exempt, but a step folder inside it is still measured" {
+  printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"
+  lines "$TASK/Plan.md" 300
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ]
+
+  mkdir -p "$TASK/1.step"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$TASK/1.step/Task.md"
+  lines "$TASK/1.step/Plan.md" 300
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ]
+  case "$output" in *"1.step/Plan.md"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
 @test "an artifact inside its ceiling passes" {
   lines "$TASK/Plan.md" 199
   lines "$TASK/Done.md" 80
