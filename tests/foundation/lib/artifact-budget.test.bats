@@ -53,6 +53,14 @@ lines() { python3 -c 'import sys; open(sys.argv[1],"w").write("x\n"*int(sys.argv
   [ "$status" -eq 0 ]
 }
 
+@test "an unrecognized Scale value resolves to full and is reported, not silent" {
+  lines "$TASK/Plan.md" 300
+  printf '## Scale\n\ngarbage\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ]
+  case "$output" in *"garbage"*"treating as full"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
 @test "the profiles with no implementing stage are not measured" {
   lines "$TASK/Review.md" 400
   printf '[TASK_TYPE] = [RESEARCH]\n' >"$TASK/Task.md"
