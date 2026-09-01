@@ -87,7 +87,7 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   If `start_phase=<phase_id>` was passed in args — `[developer]` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
-  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else `on`. Written by the same agent that writes `Done.md` — `[architect]`.
+  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else the default this run's `scale` sets (§2a). Written by the same agent that writes `Done.md` — `[architect]`.
 
 - **Validation** — `[validator]`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between the `validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the FEATURE profile, the validator runs a build and a full test run mandatorily, through the platform's own build and test tooling, and drives a running instance of the app mandatorily when there is a UI layer (views, screens, navigation); driving is skipped for purely domain/infrastructure features. Detailed per-profile behavior (mandatory vs. optional driving steps, log capture, return-digest format) lives with the `validator` agent. When `drive_app` resolves to `off` (`Task.md [DRIVE_APP]` first, then `CLAUDE-spine-toolkit.md ## Validation`), or the platform has no tooling to drive a running instance and its validator declares the deviation, no driving happens at all: the validator writes the UI cases a human must run into a separate `ManualChecks.md`, marks the matching `OpsChecklist.md` items Pending, and returns the case titles in `manual_checks` — surface that list with the stage report. The `manual_checks` key of the same two sources decides when that artifact appears: `auto` only for deferred checks, `always` on every UI-bearing run, including one the validator drove itself.
 
@@ -100,6 +100,37 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 - **Done** — final report `Done.md`: what was done, which artifacts were produced, validation status (build/test result), a mandatory `## Estimate retrospective` section when `Plan.md ## Estimation` exists, and objections (if the user insisted on a contested decision). The retrospective MUST capture actual effort via the hybrid model defined in `feature-estimation` (`## Estimate retrospective`): record the auto git proxy (commit-span of the task's phase commits + phase/rework count, labelled `proxy` — never presented as human-days) **always**, plus the user-provided human effort when offered, and use `human ?? proxy` for the in-range verdict; only when neither is available write `unknown` with the missing signal named. In AI-assisted mode, break actual down per leverage class so the calibration loop can narrow the divisors. The same section appends the feature's data point to the calibration log (`feature-estimation` Calibration over time).
 
   Refresh `Walkthrough.md` here when the Execute stage did not run in this invocation — an entry at Review or Done means commits landed after it was written. `task-walkthrough` owns the refresh rules; its `[COVERS]` line decides whether there is anything to do.
+
+## 2a. Scale
+
+`scale` arrives in the contract as `lite` or `full`, never empty. `full` runs the stages above
+exactly as written. The axis itself — the three levers, the floor, the ratchet and its four
+criteria — is `conventions/task-scale.md`; what follows is only what is specific to FEATURE.
+
+At `lite`:
+
+- **Research does not get its own stage.** No agent is dispatched for it and no `Research.md` is
+  written. `Plan.md` opens with a `## Research` section carrying what that stage would have found:
+  the Primary and Secondary requirements, the work-item list, and the integration points a phase
+  will cross. The investigation still happens — it stops being a separate agent and a separate file
+  that every later stage re-reads.
+- **`## Estimation` is not produced and the estimation gate does not run.** An engineering-day range
+  nobody consumes is the paperwork this axis exists to stop; `Done.md`'s `## Estimate retrospective`
+  is already conditional on the section existing, so it drops out with it.
+- **`OpsChecklist.md` is not written**, and Review has no ops cross-check to perform.
+- **`Walkthrough.md` is not written** unless `[WALKTHROUGH]` in `Task.md` says so.
+- Every artifact this run does write carries a line ceiling, and `Validation.md` links to build and
+  test output rather than pasting it. The ceilings are the table in
+  `scripts/lint-artifact-budget.sh` — read them from there, pass each one to the agent writing that
+  artifact, and expect the orchestrator to measure against the same table when the stage returns.
+
+Unchanged at `lite`: one commit per green phase, tests run before each, `Validation` with its own
+agent, and `Review` with an independent one.
+
+**The ratchet.** Both of its points collapse into the planner's first act here, because `lite`
+folded Research into Plan and nothing before Plan has measured the perimeter. The `[architect]`
+raises the scale by returning `scale_escalation` and then writing `Plan.md` at full depth — with
+`## Estimation` and its gate — in the same pass.
 
 ## 3. Manual mode
 
