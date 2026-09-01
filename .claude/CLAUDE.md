@@ -25,6 +25,7 @@ en
 - `workflows/` — one `profile-*.js` orchestration script per profile
 - `commands/` — `/task-*`, `/setup`, `/agent-status`, `/lang`
 - `conventions/` — `i18n.md`, `stage-dispatch.md`, `platform-contract.md` and the rest
+- `docs/` — `building-a-platform.md`, the how-to for platform authors
 - `templates/` — `task-md`, `claude-md-stub`, `claude-toolkit-md`
 - `scripts/` — lints plus the test and telemetry runners
 - `hooks/` — plugin hooks; the only channel that reaches existing user projects on plugin update
@@ -49,4 +50,5 @@ en
 - Adding a command: bilingual `description:` line, body in English.
 - Changing the contract in `conventions/platform-contract.md`: update
   `tests/fixtures/fixture-platform/` in the same commit. The fixture is the contract's only
-  executable copy, and a contract that disagrees with it is worse than no contract.
+  executable copy, and a contract that disagrees with it is worse than no contract. Check
+  `docs/building-a-platform.md` too — it is the third copy, and the one platform authors read first.

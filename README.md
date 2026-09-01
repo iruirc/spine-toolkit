@@ -79,8 +79,10 @@ That skill is data, not instructions: five H2 tables (`## Roles`, `## Axes`, `##
 `## Topics`, `## Entrypoints`) and no procedure. Invoking a skill is the only channel between the two
 plugins — core never reads the host's plugin cache from disk.
 
-Two things to read, in this order:
+Three things to read, in this order:
 
+- **`docs/building-a-platform.md`** — the how-to: from an empty directory to a platform a project can
+  be configured against, with the failure modes that fail silently and a release checklist.
 - **`conventions/platform-contract.md`** — the contract: every table, every cell, what core does with
   it, and what a platform is free to choose.
 - **`tests/fixtures/fixture-platform/`** — a complete, minimal platform plugin. Core's own test suite
