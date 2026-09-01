@@ -17,7 +17,7 @@ setup() {
 @test "stack-detect carries no platform vocabulary" {
   # word-anchored: bare `ios` also matches "scenarios", reddening the suite for
   # a word that has nothing to do with the catalog.
-  run grep -icE '\b(swift|swiftui|uikit|appkit|combine|rxswift|swinject|xctest|ios|macos|xcdatamodeld)\b' "$SD"
+  run grep -icE '\b(swift|swiftui|uikit|appkit|combine|rxswift|swinject|xct[a-z]*|ios|macos|xcdatamodeld)\b' "$SD"
   [ "$output" = "0" ]
 }
 
@@ -25,7 +25,9 @@ setup() {
   # The bare word also appears in the algorithm's exclusion step, so grepping for
   # it passes on a file that says the opposite. Read the two statements instead.
   grep -q 'the one axis core requires every manifest to declare' "$SD"
-  grep -qE '^ *axes +:= keys of catalog . ecosystem$' "$SD"
+  # Literal minus, not `.`: a dot there matched a union sign too, i.e. the
+  # negation of the line this asserts, and needed a UTF-8 locale to match at all.
+  grep -qE '^ *axes +:= keys of catalog − ecosystem$' "$SD"
 }
 
 @test "core references no conventions file it does not own" {

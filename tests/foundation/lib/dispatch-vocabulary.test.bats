@@ -14,7 +14,7 @@ setup() {
   # the test file from a tmp dir, so BASH_SOURCE[0] there resolves to the copy.
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   # One ecosystem's languages, frameworks and tooling.
-  VOCAB='\b(swift|swiftui|uikit|appkit|objective-?c|xcode[a-z]*|xcframework|xctest|swiftdata|grdb|swinject|rxswift|mainactor|build_sim|test_sim|nimble|viewinspector|snapshottesting|iphone|ipad|cocoapods|carthage|testflight|bgtask)\b|core data'
+  VOCAB='\b(swift|swiftui|uikit|appkit|objective-?c|xcode[a-z]*|xcframework|xct[a-z]*|swiftdata|grdb|swinject|rxswift|mainactor|build_sim|test_sim|nimble|viewinspector|snapshottesting|iphone|ipad|cocoapods|carthage|testflight|bgtask)\b|core data'
   # Tooling of *some* ecosystems, not all. Core states the Validation policy; the
   # platform's validator names the tool that carries it out.
   TOOL_VOCAB='mobile[ _-]?mcp'
@@ -62,7 +62,7 @@ offenders_in() {
          "$ROOT"/templates/claude-toolkit-md/*.md "$ROOT"/templates/task-md/*.md \
          "$ROOT"/templates/claude-md-stub/*.md "$ROOT"/hooks/dispatch-contract.md)
   # Floored at the real count: a loose floor lets a whole class go unscanned.
-  [ "${#files[@]}" -ge 77 ] || { echo "scanned ${#files[@]} file(s); a glob went vacuous"; return 1; }
+  [ "${#files[@]}" -ge 94 ] || { echo "scanned ${#files[@]} file(s); a glob went vacuous"; return 1; }
   offenders=""
   for f in "${files[@]}"; do
     # setup/SKILL.md names the retired key once, to migrate configs off it.
