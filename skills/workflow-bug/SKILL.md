@@ -87,7 +87,7 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   If `start_phase=<phase_id>` was passed in args — `[developer]` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
-  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else `on`. Written by `[developer]`.
+  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else the default this run's `scale` sets (§2a). Written by `[developer]`.
 
 - **Validation** — `[validator]`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between the `validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the BUG profile, the validator runs a build and a full test run mandatorily, through the platform's own build and test tooling, AND a replay mandatorily (regardless of layer), driving a running instance of the app with this platform's own tooling, to walk the reproduction scenario from `Reproduce.md`. Validation is not considered PASSED without an explicit agent-composed statement that the bug no longer reproduces — surfaced in the return digest as `reproduction_status: fixed`. Detailed behavior (replay procedure, return-digest format) lives with the `validator` agent. When `drive_app` resolves to `off` (`Task.md [DRIVE_APP]` first, then `CLAUDE-spine-toolkit.md ## Validation`), or the platform has no tooling to drive a running instance and its validator declares the deviation, the replay is handed to the user like any other deferred check: `reproduction_status` comes back `deferred-manual`, the replay steps land in `ManualChecks.md` and its case titles in `manual_checks`, and the run continues with nothing claimed about the bug being fixed.
 
@@ -98,6 +98,36 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 - **Done** — final report `Done.md`: what was fixed, which regression test was added, validation status (build/test result + outcome of the reproduction replay), and objections (if the user insisted on a contested decision).
 
   Refresh `Walkthrough.md` here when the Fix stage did not run in this invocation — an entry at Review or Done means commits landed after it was written. `task-walkthrough` owns the refresh rules; its `[COVERS]` line decides whether there is anything to do.
+
+## 2a. Scale
+
+`scale` arrives in the contract as `lite` or `full`, never empty. `full` runs the stages above
+exactly as written. The axis itself — the three levers, the floor, the ratchet and its four
+criteria — is `conventions/task-scale.md`; what follows is only what is specific to BUG.
+
+At `lite`:
+
+- **Diagnose does not get its own stage.** No agent is dispatched for it and no `Research.md` is
+  written. `Reproduce.md` gains a `## Diagnosis` section carrying what that stage would have found:
+  the root cause, the components a fix touches, how wide it has to be, and the risks. The
+  investigation still happens — it stops being a second agent and a second file that every later
+  stage re-reads.
+- **`OpsChecklist.md` is not written.** BUG's checklist is already scoped to the categories the bug
+  touched rather than run in full, and at `lite` the perimeter is narrow enough that the Secondary
+  enumeration in `Reproduce.md` is the whole of it.
+- **`Walkthrough.md` is not written** unless `[WALKTHROUGH]` in `Task.md` says so.
+- Every artifact this run does write carries a line ceiling, and `Validation.md` links to build and
+  test output rather than pasting it. The ceilings are the table in
+  `scripts/lint-artifact-budget.sh` — read them from there, pass each one to the agent writing that
+  artifact, and expect the orchestrator to measure against the same table when the stage returns.
+
+Unchanged at `lite`: `Reproduce` itself, one commit per green phase, the regression test,
+`Validation` with its own agent and its mandatory replay, and `Review` with an independent one.
+
+**The ratchet** fires at the end of `Reproduce` — the first point at which anyone has measured the
+perimeter — and again at the planner's first act. The `[diagnostics]` agent that cannot localize the
+root cause raises the scale on criterion 4; the folded `## Diagnosis` section is where it would have
+had to be written, so a raise there costs nothing already spent.
 
 ## 3. Manual mode
 
