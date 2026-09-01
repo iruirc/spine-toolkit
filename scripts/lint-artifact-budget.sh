@@ -72,13 +72,26 @@ def measure(task_dir):
         return
     scale = (field(task_md, 'SCALE') or '').lower() or project_scale(task_dir) or 'full'
     if scale != 'lite':
+        # Garbage resolves to full, same as a missing block — that direction is safe (the
+        # task runs deeper, not shallower). But full and garbage must not look alike: an
+        # unrecognized value is reported, so a typo shows up rather than passing as silence.
+        if scale != 'full':
+            print(
+                "%s: scale '%s' not recognized, treating as full (not measured)"
+                % (task_dir, scale),
+                file=sys.stderr,
+            )
         return
     for name, cap in sorted(caps.items()):
         path = os.path.join(task_dir, name)
         if not os.path.isfile(path):
             continue
-        with open(path, 'rb') as fh:
-            n = sum(1 for _ in fh)
+        try:
+            with open(path, 'rb') as fh:
+                n = sum(1 for _ in fh)
+        except OSError:
+            print('%s: unreadable, skipping' % path, file=sys.stderr)
+            continue
         if n > cap:
             violations.append('%s: %d lines, lite ceiling %d' % (path, n, cap))
 
