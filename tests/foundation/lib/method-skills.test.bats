@@ -53,7 +53,7 @@ setup() {
   offenders=""
   for s in $METHOD_SKILLS; do
     [ -f "$ROOT/skills/$s/SKILL.md" ] || { echo "method skill missing: $s"; return 1; }
-    hits="$(grep -ioE '\b(swift|swiftui|uikit|appkit|objective-?c|xcode|xcframework|xctest|swiftdata|grdb|swinject|rxswift|mainactor|view ?controllers?|iphone|ipad|spm|cocoapods|carthage|testflight|bgtask|keychain|keystore|voiceover|talkback|apns|fcm|crashlytics|bugsnag|sentry|idfa|android)\b|core data|app store|play store' \
+    hits="$(grep -ioE '\b(swift|swiftui|uikit|appkit|objective-?c|xcode|xcframework|xctest|swiftdata|grdb|swinject|rxswift|mainactor|view ?controllers?|iphone|ipad|ios|macos|watchos|tvos|spm|cocoapods|carthage|testflight|bgtask|keychain|keystore|voiceover|talkback|apns|fcm|crashlytics|bugsnag|sentry|idfa|android)\b|core data|app store|play store' \
               "$ROOT/skills/$s/SKILL.md" | sort -u | tr '\n' ' ')"
     [ -z "$hits" ] || offenders="$offenders$s: $hits"$'\n'
   done
