@@ -121,8 +121,9 @@ At `lite`:
   `scripts/lint-artifact-budget.sh` — read them from there, pass each one to the agent writing that
   artifact, and expect the orchestrator to measure against the same table when the stage returns.
 
-Unchanged at `lite`: `Reproduce` itself, one commit per green phase, the regression test,
-`Validation` with its own agent and its mandatory replay, and `Review` with an independent one.
+Unchanged at `lite`: `Reproduce` itself, one commit per green phase with the phase's tests run
+before it, the regression test, `Validation` with its own agent and its mandatory replay, and
+`Review` with an independent one.
 
 **The ratchet** fires at the end of `Reproduce` — the first point at which anyone has measured the
 perimeter — and again at the planner's first act. The `[diagnostics]` agent that cannot localize the
