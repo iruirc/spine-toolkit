@@ -604,6 +604,25 @@ After the dialog finishes (all items processed OR user aborted), re-run the open
 
 **Scope:** the inspection runs ONLY at stage-done boundaries that produce a research-style artifact. It does NOT run after Plan / Execute / Validation / Review / Done. The `workflow-*` Output Contract is unchanged — open-questions handling is entirely orchestrator-side and does not require new fields in `next_recommended_action`.
 
+**Artifact budget (`lite` only).** After a stage returns, and before rendering `stage_done_prompt`,
+measure the task folder: run `<core root>/scripts/lint-artifact-budget.sh <task_dir>`, the core root
+being the directory that holds `workflows/` (`conventions/agent-tooling.md` → Plugin Roots And
+Templates). It exits 0 at `full`, on a profile with no implementing stage, and on a `lite` task
+inside its ceilings; a non-zero exit prints one line per artifact over budget.
+
+Measure rather than instruct: a count limit published in a brief and never checked is the class of
+directive this toolkit has already watched go unobserved, which is why the ceilings live in that
+script and not in a sentence (`conventions/task-scale.md`).
+
+On a non-zero exit, report each line with key `budget_over_limit` (`{artifact}`, `{actual}`,
+`{cap}`) and re-dispatch that artifact's own stage owner **once**, asking for a trim only — no new
+findings, no re-investigation, no change to any verdict line. If it is still over after that one
+pass, report it and carry on. A long artifact is a cost, not a failure, and a trim loop would spend
+more than the prose does.
+
+In `auto` on a Method A range the whole range returns at once: run the same measurement then, once,
+over what the range wrote.
+
 **Per-phase commits vs flow-level commits.** The "commit always confirmed with user" rule applies ONLY to flow-level wrap commits the orchestrator itself initiates (squash, merge, push) — these are user-confirmed regardless of mode. **Per-phase commits inside a workflow-* multi-phase stage (Refactor / Execute / Fix / Write) are autonomous** — the workflow-* skill creates one commit per green phase without a user prompt, in both manual and auto modes. The orchestrator MUST NOT misread "does not confirm commit with user" inside workflow-* skills as "does not commit at all"; per-phase commits are mandatory for the phase invariant ("each phase independently buildable+test-passing+committed") to hold against interrupts.
 
 **Backup before overwriting / removing an artifact:** copy to `Tasks/<STATUS>/<task_id>-*/_archive/<stage>-<timestamp>.md`, where `<timestamp>` is ISO-8601 without colons (`2026-04-25T143022`). The orchestrator makes the backup BEFORE calling workflow-* and passes the paths via `archive_paths` in the outbound contract.
