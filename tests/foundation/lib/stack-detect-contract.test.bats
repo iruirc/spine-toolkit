@@ -22,21 +22,33 @@ setup() {
 }
 
 @test "stack-detect declares ecosystem as the one mandatory axis" {
-  grep -q 'ecosystem' "$SD"
+  # The bare word also appears in the algorithm's exclusion step, so grepping for
+  # it passes on a file that says the opposite. Read the two statements instead.
+  grep -q 'the one axis core requires every manifest to declare' "$SD"
+  grep -qE '^ *axes +:= keys of catalog . ecosystem$' "$SD"
 }
 
 @test "core references no conventions file it does not own" {
   missing=""
-  for ref in $(grep -rhoE 'conventions/[A-Za-z0-9._-]+\.md' \
-                 "$ROOT/skills" "$ROOT/conventions" "$ROOT/hooks" \
-                 "$ROOT/workflows" "$ROOT/commands" "$ROOT/templates" | sort -u); do
+  refs="$(grep -rhoE 'conventions/[A-Za-z0-9._-]+\.md' \
+            "$ROOT/skills" "$ROOT/conventions" "$ROOT/hooks" \
+            "$ROOT/workflows" "$ROOT/commands" "$ROOT/templates" | sort -u)"
+  # Core points at its conventions from dozens of places; an empty list means the
+  # grep stopped finding them, not that the references became clean.
+  n="$(printf '%s\n' "$refs" | grep -c . || true)"
+  [ "$n" -ge 5 ] || { echo "found $n convention reference(s); the scan went vacuous"; return 1; }
+  for ref in $refs; do
     [ -f "$ROOT/$ref" ] || missing="$missing $ref"
   done
   [ -z "$missing" ] || { echo "dangling convention reference(s):$missing"; return 1; }
 }
 
 @test "no workflow envelope enumerates axes core does not own" {
-  offenders="$(grep -h '^stack_axes_envelope:' "$ROOT/skills"/*/SKILL.md \
-    | grep -vE '^stack_axes_envelope: \{ may: (all|\[\]), never: (all|\[\]) \}$' || true)"
+  envelopes="$(grep -h '^stack_axes_envelope:' "$ROOT/skills"/*/SKILL.md || true)"
+  # One per profile skill: with none found there is nothing to be wrong about,
+  # which is how a renamed key would read as a pass.
+  n="$(printf '%s\n' "$envelopes" | grep -c . || true)"
+  [ "$n" -ge 7 ] || { echo "found $n envelope(s), expected at least 7"; return 1; }
+  offenders="$(grep -vE '^stack_axes_envelope: \{ may: (all|\[\]), never: (all|\[\]) \}$' <<<"$envelopes" || true)"
   [ -z "$offenders" ] || { echo "envelope names an axis: $offenders"; return 1; }
 }

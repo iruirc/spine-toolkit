@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Allowed cyrillic locations:
-#   skills/*/locales/ru.md           (Russian locale strings)
+#   skills/*/locales/ru.md           (Russian locale strings; en.md is checked)
 #   templates/claude-md-stub/ru.md   (Russian template)
 #   conventions/i18n.md              (canonical multilingual examples)
 #   any *.ru.md anywhere             (Russian-only mirrors)
@@ -20,7 +20,7 @@ violations=0
 while IFS= read -r -d '' f; do
   case "$f" in
     *.ru.md) continue ;;
-    ./skills/*/locales/*.md) continue ;;
+    ./skills/*/locales/ru.md) continue ;;
     ./templates/claude-md-stub/ru.md) continue ;;
     ./conventions/i18n.md) continue ;;
     ./.git/*) continue ;;
@@ -43,6 +43,11 @@ for i, line in enumerate(lines, 1):
     if fence_count >= 2 and any('А' <= c <= 'я' or c in 'ёЁ' for c in line):
         print(f'{path}:{i}: cyrillic outside frontmatter: {line.rstrip()}')
         sys.exit(1)
+# Under two fences the loop above never enters its body, so a broken frontmatter
+# silently exempts the whole file from the check it is the exception to.
+if fence_count < 2:
+    print(f'{path}:1: malformed frontmatter ({fence_count} `---` fence(s)) — cyrillic here cannot be checked')
+    sys.exit(1)
 PY
       ;;
     *)

@@ -31,9 +31,10 @@ offenders_in() {
 
 @test "no workflow skill names one ecosystem's tooling" {
   files=("$ROOT"/skills/workflow-*/SKILL.md "$ROOT"/skills/workflow-*/locales/*.md)
-  # Seven profiles, each with a SKILL.md; a glob that matched nothing would leave
-  # this test green over an empty list.
-  [ "${#files[@]}" -ge 7 ] || { echo "scanned ${#files[@]} file(s); the glob went vacuous"; return 1; }
+  # Seven SKILL.md plus fourteen locale files. Floored at the real count, not at
+  # seven: at seven, renaming `locales/` leaves every locale file unscanned and
+  # this test still green.
+  [ "${#files[@]}" -ge 21 ] || { echo "scanned ${#files[@]} file(s); the glob went vacuous"; return 1; }
   offenders="$(offenders_in "${files[@]}")"
   [ -z "$offenders" ] || { echo "single-ecosystem vocabulary in a workflow skill:"; echo "$offenders"; return 1; }
 }
@@ -53,10 +54,15 @@ offenders_in() {
 }
 
 @test "core names no external driving tool anywhere in a brief or a config it writes" {
+  # "Anywhere" is the claim, so the list is every surface core writes or ships:
+  # the agent manifests, commands, the stub template, the dispatch contract the
+  # hook injects, and the conventions a brief points an agent at.
   files=("$ROOT"/workflows/profile-*.js "$ROOT"/skills/*/SKILL.md "$ROOT"/skills/*/locales/*.md \
-         "$ROOT"/templates/claude-toolkit-md/*.md "$ROOT"/templates/task-md/*.md)
-  # A glob that matched nothing would leave this test green over an empty list.
-  [ "${#files[@]}" -ge 30 ] || { echo "scanned ${#files[@]} file(s); a glob went vacuous"; return 1; }
+         "$ROOT"/skills/*/agents/*.yaml "$ROOT"/commands/*.md "$ROOT"/conventions/*.md \
+         "$ROOT"/templates/claude-toolkit-md/*.md "$ROOT"/templates/task-md/*.md \
+         "$ROOT"/templates/claude-md-stub/*.md "$ROOT"/hooks/dispatch-contract.md)
+  # Floored at the real count: a loose floor lets a whole class go unscanned.
+  [ "${#files[@]}" -ge 77 ] || { echo "scanned ${#files[@]} file(s); a glob went vacuous"; return 1; }
   offenders=""
   for f in "${files[@]}"; do
     # setup/SKILL.md names the retired key once, to migrate configs off it.

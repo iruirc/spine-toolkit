@@ -22,7 +22,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-[ -d workflows ] || { echo "no workflows/ directory — nothing to lint"; exit 0; }
+# This lint is an independent CI gate: exiting 0 over a renamed or emptied
+# workflows/ reports success for the one state that removes every check below.
+[ -d workflows ] || { echo "no workflows/ directory — the scripts this lints are gone"; exit 1; }
 
 python3 - <<'PY'
 import os, re, sys
@@ -76,9 +78,9 @@ def skill_stages(profile):
 
 preludes = {}
 files = sorted(f for f in os.listdir('workflows') if f.endswith('.js'))
-if not files:
-    print('no workflow scripts — nothing to lint')
-    sys.exit(0)
+if len(files) < 7:
+    print(f'workflows/ holds {len(files)} script(s), expected the seven profiles')
+    sys.exit(1)
 
 for fname in files:
     path = f'workflows/{fname}'
@@ -191,7 +193,9 @@ for fname in files:
                     f"the stage's need() or lens() has to name that role"
                 )
 
-    for literal in re.findall(r"agentType:\s*'([^']*)'", src):
+    # All three JS string forms: a literal in the two the check did not read is
+    # exactly as dispatched as one in the third.
+    for _q, literal in re.findall(r"agentType:\s*(['\"`])([^'\"`]*)\1", src):
         violations.append(f'{path}: agentType is the string literal \'{literal}\' — must resolve through A.agents.<role>')
 
     # meta is parsed before the run and is not a binding inside the sandbox, so the prelude reads a
