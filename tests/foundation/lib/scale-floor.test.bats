@@ -17,7 +17,7 @@ setup() {
       case "$line" in
         *"lite()"*) offenders="$offenders${f##*/}: $line"$'\n' ;;
       esac
-    done < <(grep -E "^(\} else )?if \(runs\('($FLOOR)'\)" "$f")
+    done < <(grep -E "^(\} else )?if \(.*runs\('($FLOOR)'\)" "$f")
   done
   [ -z "$offenders" ] || { echo "a floor stage gated on scale:"; echo "$offenders"; return 1; }
 }
