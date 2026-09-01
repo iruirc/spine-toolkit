@@ -173,6 +173,38 @@ const REVIEW = {
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
 
+// The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
+// the stage that made it onward, including the artifact that stage is about to write. A contract
+// with no field is a run from before the axis existed, and full is what those runs did.
+let scale = A.scale === 'lite' ? 'lite' : 'full'
+let scaleEscalation = null
+const lite = () => scale === 'lite'
+const escalate = (stage, r) => {
+  if (!lite() || !r || !r.scale_escalation || r.scale_escalation.to !== 'full') return
+  scale = 'full'
+  scaleEscalation = { stage, to: 'full', reason: r.scale_escalation.reason || 'no reason given' }
+  log(`scale raised to full at ${stage}: ${scaleEscalation.reason}`)
+  result.notes.push(`Scale raised to full at ${stage}: ${scaleEscalation.reason}. Write [SCALE] = [full] into Task.md.`)
+}
+
+// Line ceilings for a lite task's artifacts. scripts/lint-artifact-budget.sh carries the same table
+// and is what measures against it; artifact-budget.test.bats fails when the two disagree. First
+// draft, taken from the shape of existing artifacts rather than from a measurement.
+const CAP = { 'Reproduce.md': 120, 'Plan.md': 200, 'Validation.md': 100, 'Review.md': 120, 'Done.md': 80 }
+const cap = (file) => (lite() && CAP[file] ? `\n\nKeep ${file} to ${CAP[file]} lines or fewer. Logs, dumps and long tool output go in by reference, never pasted inline.` : '')
+
+const ESCALATION = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['to', 'reason'],
+  properties: { to: { type: 'string', enum: ['full'] }, reason: { type: 'string' } },
+}
+const withEscalation = (schema) => ({ ...schema, properties: { ...schema.properties, scale_escalation: ESCALATION } })
+const ratchet = () =>
+  lite()
+    ? `\n\nThis run is at scale lite, which folded the investigation into this artifact and capped its length. Raise it to full — return scale_escalation {to: "full", reason: "<what you found>"} and then write this artifact at full depth, without the cap — if any one of these holds: the perimeter is more than five production files or spans more than one package; the change crosses a package boundary or a public API other code depends on; the work items do not fit in one phase; you cannot state the mechanism in one paragraph. Never lower it.`
+    : ''
+
 // A role the platform declares absent (`—`) blocks the stage that names it: the script neither
 // dispatches nor skips it, it ends the range here and lets the orchestrator run the stage itself
 // and announce the deviation (orchestrator SKILL.md § Dispatch, "Method A — a stage whose role
@@ -201,6 +233,8 @@ const finish = (next, extra) => ({
   notes: result.notes.join(' '),
   stages: result.stages,
   handback,
+  scale,
+  scale_escalation: scaleEscalation,
   ...(extra || {}),
 })
 // stages[] is the per-stage report auto has no other source for: there one return covers the whole
@@ -317,7 +351,7 @@ Change no production code and no tests.`,
 // ── end prelude ──────────────────────────────────────────────────────────────
 
 // ── Analyze ─────────────────────────────────────────────────────────────────
-if (runs('Analyze')) {
+if (runs('Analyze') && !lite()) {
   if (!need('Analyze', 'architect')) return finish('ask_user')
   const analyze = await agent(
     brief(
@@ -333,6 +367,7 @@ The invariant: external behaviour does not change. Only structure, readability, 
   if (!analyze) return finish('stop', { status: 'error', reason: 'the Analyze agent returned nothing' })
   record('Analyze', analyze)
 }
+if (runs('Analyze') && lite()) result.notes.push('Analyze folded into the ## Analysis section of Plan.md; scale is lite.')
 
 // ── Plan ────────────────────────────────────────────────────────────────────
 let plan = null
@@ -341,17 +376,18 @@ if (runs('Plan')) {
   plan = await agent(
     brief(
       'Plan',
-      `Write ${DIR}/Plan.md from the landscape diff in Research.md, with two layers of progress tracking:
+      `${lite() ? `This run is at scale lite, so Analyze got no stage of its own and there is no Research.md. Open ${DIR}/Plan.md with a "## Analysis" section carrying what that stage would have produced: what is wrong now, the target shape, the components affected, the risk the move carries, and the behaviour-preservation invariant Validation will check against. Then write the plan from it.\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'that section' : 'the landscape diff in Research.md'}, with two layers of progress tracking:
 
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per file to edit, per acceptance criterion, per test to add, per verification command to run. Static prose (rationale, rollback markers, decisions) stays plain bullets; only action items become checkboxes.
 
-Every phase must be independently buildable, test-passing, AND committable on its own — that is the requirement of incremental refactoring, and commit-ready is not enough, because an interrupt destroys uncommitted work.`,
+Every phase must be independently buildable, test-passing, AND committable on its own — that is the requirement of incremental refactoring, and commit-ready is not enough, because an interrupt destroys uncommitted work.${cap('Plan.md')}${ratchet()}`,
     ),
-    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: PLAN },
+    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: withEscalation(PLAN) },
   )
   if (!plan) return finish('stop', { status: 'error', reason: 'the Plan agent returned nothing' })
   record('Plan', plan)
+  escalate('Plan', plan)
 }
 
 // ── Refactor ────────────────────────────────────────────────────────────────
@@ -382,11 +418,9 @@ if (runs('Validation')) {
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
-For REFACTOR a full test run is mandatory as a regression check: every pre-existing test must pass WITHOUT modification, and a test touched during the refactor is itself a finding. A build on its own is optional. Driving a running instance of the app happens only when the refactor touched a UI layer — views, screens, or navigation — and a purely domain or infrastructure refactor skips it; say which case this is. Two things suspend it: drive_app resolving to off — Task.md [DRIVE_APP] first, then CLAUDE-spine-toolkit.md ## Validation — and this platform having no tooling to drive a running instance, which you announce as a declared deviation in your first message. Either way the affected screens go into ${DIR}/ManualChecks.md, titles echoed in manual_checks, for a human to walk. manual_checks: always in the same two sources produces that artifact even on a run you drove yourself.
+For REFACTOR a full test run is mandatory as a regression check: every pre-existing test must pass WITHOUT modification, and a test touched during the refactor is itself a finding. A build on its own is optional. Driving a running instance of the app happens only when the refactor touched a UI layer — views, screens, or navigation — and a purely domain or infrastructure refactor skips it; say which case this is. Two things suspend it: drive_app resolving to off — Task.md [DRIVE_APP] first, then CLAUDE-spine-toolkit.md ## Validation — and this platform having no tooling to drive a running instance, which you announce as a declared deviation in your first message. Either way the affected screens go into ${DIR}/ManualChecks.md, titles echoed in manual_checks, for a human to walk. manual_checks: always in the same two sources produces that artifact even on a run you drove yourself.${lite() ? '' : `\n\nApply the ops-checklist skill in regression mode: re-check only the items that were Applicable for the affected area before the refactor, and write ${DIR}/OpsChecklist.md. An item that was Applicable before and now has no verifiable evidence is a finding — it means external behaviour moved, which this profile forbids.`}
 
-Apply the ops-checklist skill in regression mode: re-check only the items that were Applicable for the affected area before the refactor, and write ${DIR}/OpsChecklist.md. An item that was Applicable before and now has no verifiable evidence is a finding — it means external behaviour moved, which this profile forbids.
-
-Change no production code and no tests. Return the same status you wrote on the first line.`,
+Change no production code and no tests. Return the same status you wrote on the first line.${cap('Validation.md')}`,
     ),
     { label: 'validation', phase: 'Validation', agentType: A.agents.validator, schema: VALIDATION },
   )
@@ -414,7 +448,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-Judge it against the refactor invariant first: did external behaviour stay put. Then against the target landscape in Research.md: is the structure actually where the plan said it would be, or did the phases stop halfway. Modify nothing. Return the same status you wrote on the first line.`,
+Judge it against the refactor invariant first: did external behaviour stay put. Then against the target landscape in Research.md: is the structure actually where the plan said it would be, or did the phases stop halfway. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
   )
@@ -438,7 +472,7 @@ if (runs('Done')) {
   const done = await agent(
     brief(
       'Done',
-      `Write the final report ${DIR}/Done.md: what was refactored, why the result is better (readability, separation of concerns, reduced coupling), whatever measurable metrics you have (file size, cyclomatic complexity of the key functions, dependency count), the validation status, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries.`,
+      `Write the final report ${DIR}/Done.md: what was refactored, why the result is better (readability, separation of concerns, reduced coupling), whatever measurable metrics you have (file size, cyclomatic complexity of the key functions, dependency count), the validation status, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries.${cap('Done.md')}`,
     ),
     { label: 'done', phase: 'Done', agentType: A.agents.refactorer, schema: ARTIFACT, effort: 'low' },
   )
