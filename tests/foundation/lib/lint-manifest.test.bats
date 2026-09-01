@@ -112,6 +112,10 @@ teardown() { rm -rf "$TMP"; }
 
 @test "passes when the Roles table is tab-aligned instead of space-aligned" {
   perl -i -pe 's/^architect\s+=/architect\t=\t/' "$TMP/p/skills/manifest/SKILL.md"
+  # This is the one mutation test asserting a PASS: unapplied, it silently
+  # becomes a second copy of "passes on the fixture platform".
+  grep -q "^architect$(printf '\t')" "$TMP/p/skills/manifest/SKILL.md" \
+    || { echo "the tab substitution did not apply"; return 1; }
   run "$LINT" "$TMP/p"
   [ "$status" -eq 0 ]
 }

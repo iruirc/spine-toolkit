@@ -136,9 +136,9 @@ for fname in files:
         if title not in agents_by_phase:
             violations.append(f'{path}: meta.phases entry "{title}" has no agent field')
 
-    # meta.phases[].agent is now free prose over role words ("security lens, then architect",
-    # "developer / tester") rather than swift-<agent> tokens, so a role is recognized by
-    # word-boundary match against the vocabulary rather than by a naming pattern.
+    # meta.phases[].agent is free prose over role words ("security lens, then architect",
+    # "developer / tester"), so a role is recognized by word-boundary match against the
+    # vocabulary rather than by a naming pattern.
     named = set()
     for spec in agents_by_phase.values():
         named.update(roles_in(spec))

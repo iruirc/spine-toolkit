@@ -3,8 +3,8 @@ export const meta = {
   description: 'Probe: is the meta binding readable from inside the script body?',
   whenToUse: 'Run by hand while implementing the progress-visibility plan. Not a profile.',
   phases: [
-    { title: 'Alpha', detail: 'first', agent: 'swift-architect' },
-    { title: 'Beta', detail: 'second', agent: 'swift-refactorer / swift-tester' },
+    { title: 'Alpha', detail: 'first', agent: 'fixture-architect' },
+    { title: 'Beta', detail: 'second', agent: 'fixture-refactorer / fixture-tester' },
   ],
 }
 

@@ -11,8 +11,13 @@ if ! command -v bats >/dev/null 2>&1; then
   exit 3
 fi
 
+# `all` differs from `unit` only when an integration suite exists; core has none
+# today, and an `all` hard-coded to lib/ would silently not run one that appears.
+suites=("$root/tests/foundation/lib")
+[ -d "$root/tests/foundation/integration" ] && suites+=("$root/tests/foundation/integration")
+
 case "$target" in
   unit) bats "$root/tests/foundation/lib" ;;
-  all)  bats "$root/tests/foundation/lib" ;;
+  all)  bats "${suites[@]}" ;;
   *)    echo "usage: $0 [unit|all]" >&2; exit 2 ;;
 esac

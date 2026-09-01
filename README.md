@@ -23,7 +23,8 @@ Then, in a project:
 ```
 
 `setup` writes `CLAUDE-spine-toolkit.md` in the project root, inserts an
-`@./CLAUDE-spine-toolkit.md` import into your `CLAUDE.md`, and creates `Tasks/`. It asks which
+`@./CLAUDE-spine-toolkit.md` import into your `CLAUDE.md`, and offers to create `Tasks/` and
+`Docs/` — it asks before creating either, and never touches an existing one. It asks which
 platform plugin serves this project — the candidates are the installed plugins that expose a
 `manifest` skill, and with one installed it asks you to confirm that one — and writes the answer
 into `## Platform`. Nothing is inferred from the repository, and no block is left for you to fill
@@ -34,7 +35,8 @@ From there, tasks are managed with `/spine-toolkit:task-new`, `:task-run`, `:tas
 phrases ("create task: …", "run 001", "status 001").
 
 Write the `spine-toolkit:` prefix and you are always right. The short `/task-new`, `/task-move`,
-`/task-status` and `/setup` also work, because each has a skill of the same name to catch them;
+`/task-status`, `/setup`, `/lang` and `/agent-status` also work, because each has a skill of the
+same name to catch them;
 `/task-run`, `/task-continue`, `/task-redo` and `/task-restart` are commands with no matching skill,
 and bare they resolve to nothing — verified in both an interactive and a headless session.
 
@@ -103,6 +105,9 @@ the import line. The blocks the toolkit reads:
 `## Language`, `## Platform`, `## Agents` (per-role overrides of the manifest), `## Stack`,
 `## Mode`, `## Progress`, `## Validation`, `## Reporting`, `## Modules` (per-module stack
 overrides), `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`.
+
+The template writes three more — `## Persona`, `## Rules` and `## Orchestration`. Those are for the
+agents reading the file as context, not blocks the toolkit parses.
 
 The template is `templates/claude-toolkit-md/en.md`.
 
