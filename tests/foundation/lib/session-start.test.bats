@@ -16,14 +16,21 @@ teardown() { rm -rf "$TMP"; }
   [ -z "$output" ]
 }
 
+# bats merges stderr into $output, so a non-empty $output alone cannot tell a
+# rendered contract from a stack trace. The host parses this as JSON or drops it.
+assert_contract() {
+  [ "$status" -eq 0 ]
+  printf '%s' "$output" | python3 -c 'import json,sys; sys.exit(0 if "additionalContext" in json.load(sys.stdin)["hookSpecificOutput"] else 1)'
+}
+
 @test "hook fires on the project config" {
   touch "$TMP/CLAUDE-spine-toolkit.md"
   run bash -c "printf '{\"cwd\":\"$TMP\"}' | '$ROOT/hooks/session-start'"
-  [ -n "$output" ]
+  assert_contract
 }
 
 @test "hook fires on Tasks/ACTIVE" {
   mkdir -p "$TMP/Tasks/ACTIVE"
   run bash -c "printf '{\"cwd\":\"$TMP\"}' | '$ROOT/hooks/session-start'"
-  [ -n "$output" ]
+  assert_contract
 }

@@ -5,15 +5,29 @@ set -euo pipefail
 # cannot scan the wrong tree and report a pass.
 cd "$(dirname "$0")/.."
 
+# A key present in both files with an empty body is parity-clean and useless:
+# structure is comparable across languages, values are not, so this is the one
+# value check that generalizes.
+keys_with_no_value() {
+  python3 - "$1" <<'PYEOF'
+import re, sys
+blocks = re.split(r'^## ', open(sys.argv[1], encoding='utf-8').read(), flags=re.M)[1:]
+print(' '.join(b.split('\n', 1)[0].strip() for b in blocks if not b.split('\n', 1)[-1].strip()))
+PYEOF
+}
+
 violations=0
-for en in skills/*/locales/en.md; do
-  dir=$(dirname "$en")
+# Iterate the locale DIRECTORIES, not en.md: iterating en.md drops a skill that
+# lost that file from the run entirely, which is the failure this lint is for.
+for dir in skills/*/locales; do
+  [ -d "$dir" ] || continue
+  en="$dir/en.md"
   ru="$dir/ru.md"
-  if [ ! -f "$ru" ]; then
-    echo "Missing ru.md next to $en"
-    violations=$((violations + 1))
-    continue
-  fi
+  missing=0
+  for f in "$en" "$ru"; do
+    [ -f "$f" ] || { echo "Missing $(basename "$f") in $dir/"; violations=$((violations + 1)); missing=1; }
+  done
+  [ "$missing" -eq 0 ] || continue
 
   # Existence only, not content-identity: a workspace skill legitimately resolves
   # a different config and so states different steps (conventions/i18n.md).
@@ -29,6 +43,11 @@ for en in skills/*/locales/en.md; do
     echo "$diff_out"
     violations=$((violations + 1))
   fi
+
+  for f in "$en" "$ru"; do
+    empty=$(keys_with_no_value "$f")
+    [ -z "$empty" ] || { echo "Key(s) with no value in $f: $empty"; violations=$((violations + 1)); }
+  done
 done
 
 if [ "$violations" -gt 0 ]; then

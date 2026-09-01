@@ -104,7 +104,9 @@ teardown() { rm -rf "$TMP"; }
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
   [ -n "$output" ]
-  [[ "$output" == *"architect"* ]]
+  # `[ ]`, not `[[ ]]`: a failing `[[ ]]` anywhere but a test's last line does
+  # not trip bats' set -e, so it asserts nothing.
+  [ "${output#*architect}" != "$output" ]
   [[ "$output" == *"init"* ]]
 }
 
@@ -131,6 +133,16 @@ teardown() { rm -rf "$TMP"; }
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
   [[ "$output" == *"setup"* ]]
+}
+
+@test "fails when an entrypoint name is outside the core vocabulary" {
+  # A typo'd name is a row core never calls, indistinguishable at runtime from a
+  # platform that meant to declare the entrypoint absent.
+  sed -i.bak 's|^setup = —|setpu = —|' "$TMP/p/skills/manifest/SKILL.md" \
+    && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"setpu"* ]]
 }
 
 @test "fails when a role fans out on ecosystem" {

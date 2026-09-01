@@ -31,8 +31,12 @@ setup() {
 }
 
 @test "every agent the fixture manifest names exists as a file" {
-  while read -r agent; do
-    name="${agent#fixture-platform:}"
-    [ -f "$FIX/agents/${name}.md" ]
-  done < <(grep -oE 'fixture-platform:[a-z-]+' "$FIX/skills/manifest/SKILL.md" | sort -u)
+  refs="$(grep -oE 'fixture-platform:[a-z0-9-]+' "$FIX/skills/manifest/SKILL.md" | sort -u)"
+  # Renaming the namespace makes the grep find nothing and this loop pass over
+  # zero refs — the exact mutation the lint's own namespace check exists for.
+  n="$(printf '%s\n' "$refs" | grep -c . || true)"
+  [ "$n" -ge 2 ] || { echo "found $n agent reference(s), expected at least 2"; return 1; }
+  for agent in $refs; do
+    [ -f "$FIX/agents/${agent#fixture-platform:}.md" ]
+  done
 }
