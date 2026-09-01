@@ -82,7 +82,7 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   If `start_phase=<phase_id>` was passed in args — `[tester]` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
-  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else `on`. Written by `[tester]`.
+  When the stage's phases are done, apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — the human-facing account of what actually landed, readable before anything has been validated or reviewed. Governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else the default this run's `scale` sets (§2a). Written by `[tester]`.
 
 - **Validation** — `[validator]`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between the `validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the TEST profile, the validator runs a full test run mandatorily, through the platform's own test tooling (every newly added test must pass on first run / green); on a first-run failure the validator re-runs the failing test up to 3 times and, if results flap, returns `[VALIDATION_STATUS] = FLAKY` with the test name, fail rate, and a hypothesized cause recorded in `Validation.md`. driving a running instance of the app is optional — only for UI tests requiring visual verification, and `drive_app` resolving to `off` (`Task.md [DRIVE_APP]` first, then `CLAUDE-spine-toolkit.md ## Validation`) removes even that option, as does a platform with no tooling to drive one. Detailed behavior (flaky-detection procedure, return-digest format) lives with the `validator` agent. Since no driving step is mandatory on this profile, `off` here drops an optional check rather than handing one over, and `auto` therefore has nothing to defer and writes no `ManualChecks.md`. `manual_checks: always` (`Task.md [MANUAL_CHECKS]` first, then `CLAUDE-spine-toolkit.md ## Validation`) is what produces that artifact on a UI-bearing test run: the ground a green suite leaves unverified — push, biometrics, camera, permission dialogs, backgrounding, low connectivity — written up as cases a human walks, with the matching `OpsChecklist.md` items Pending and the case titles returned in `manual_checks`; surface that list with the stage report.
 
@@ -91,6 +91,31 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 - **Done** — final report `Done.md`: what is now covered (list of components and scenarios), what coverage was achieved (if measured), the list of frameworks used, validation status (are all added tests green, any flaky), and objections (if the user insisted on a contested decision — e.g. declining to test a critical path).
 
   Refresh `Walkthrough.md` here when the Write stage did not run in this invocation — an entry at Review or Done means commits landed after it was written. `task-walkthrough` owns the refresh rules; its `[COVERS]` line decides whether there is anything to do.
+
+## 2a. Scale
+
+`scale` arrives in the contract as `lite` or `full`, never empty. `full` runs the stages above
+exactly as written. The axis itself — the three levers, the floor, the ratchet and its four
+criteria — is `conventions/task-scale.md`; what follows is only what is specific to TEST.
+
+At `lite`:
+
+- **Analyze does not get its own stage.** No agent is dispatched for it and no `Research.md` is
+  written. `Plan.md` opens with a `## Analysis` section carrying what that stage would have found:
+  what is uncovered, which paths are critical, the test level each case belongs at, and whether the
+  code under test needs seams before it can be tested at all.
+- **`Walkthrough.md` is not written** unless `[WALKTHROUGH]` in `Task.md` says so.
+- Every artifact this run does write carries a line ceiling, from the table in
+  `scripts/lint-artifact-budget.sh`.
+
+Unchanged at `lite`: one commit per green phase with the phase's tests run before it, `Validation`
+by its own agent **including the flake detection** — a test that flaps is the failure this profile
+exists to catch, and its three-run re-check is a guarantee, not ceremony — and `Review` of the
+tests by an independent agent.
+
+**The ratchet.** Both points collapse into the planner's first act, `lite` having folded Analyze
+into Plan. Criterion 1 is the usual trigger here: a suite spanning more than five production files'
+worth of surface is not a small task, however small each test looks.
 
 ## 3. Manual mode
 
