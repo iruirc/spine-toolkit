@@ -102,6 +102,22 @@ Validation and Review, and refreshed afterwards if later commits moved past it.
 `on` — write it; `off` — never. Not applicable to RESEARCH and REVIEW, whose deliverable is the
 artifact itself. A single task overrides with `[WALKTHROUGH] = [on|off]` in its `Task.md`.)
 
+## Scale
+
+lite
+
+(how deep a task's pipeline goes. `lite` — investigation folds into the artifact that consumes it,
+each artifact carries a line ceiling, and no estimation section or ops checklist is produced;
+`full` — every stage gets its own agent and its own artifact. The floor is identical at both
+values: one commit per green phase, a reproduction before a bug fix, a Validation stage with its
+own agent, and a Review stage with an independent one. `lite` is cheaper, not looser.
+A `lite` run can be raised to `full` once — by the stage that first measures the perimeter, or by
+the planner — and is never lowered; the raise is written back into the task's `Task.md`.
+A single task overrides with `[SCALE] = [lite|full]` in its `Task.md`, and `[SCALE] = [full]`
+there also switches the raise off, the author having already decided.
+A project without this block runs `full`, which is what every project did before the block
+existed.)
+
 ## Modules
 
 (optional: list of modules with a per-module stack overriding `## Stack` for the paths it names, e.g.: "- Core: /Packages/Core — <axis>: <value>, <axis>: <value>")

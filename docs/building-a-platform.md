@@ -460,7 +460,9 @@ consulted at all. A block that names no role overrides nothing, which is the sta
 
 The same file holds `## Stack` (resolved axis values), `## Modules` (per-module stack overrides), and
 core's own blocks: `## Language`, `## Platform`, `## Mode`, `## Progress`, `## Validation`,
-`## Reporting`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`.
+`## Reporting`, `## Scale`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`.
+`## Scale` is core's alone — a platform neither declares it nor reads it, and nothing in your
+manifest changes because of it.
 
 ## 8. Release checklist
 
