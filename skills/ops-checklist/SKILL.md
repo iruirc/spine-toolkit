@@ -1,11 +1,11 @@
 ---
 name: ops-checklist
-description: "Use during validation or review of any mobile / app feature to verify operational concerns are handled — feature flags, crash reporting, deep links, push, offline, accessibility, analytics, store-review constraints, performance, privacy, migrations, testing, third-party SDKs, CI/CD. Each item is marked Applicable / N/A (with reason) / Pending. Output is a separate `OpsChecklist.md` artifact in the task folder."
+description: "Use during validation or review of any feature to verify operational concerns are handled — feature flags, crash reporting, deep links, push, offline, accessibility, analytics, release-review constraints, performance, privacy, migrations, testing, third-party SDKs, CI/CD. Each item is marked Applicable / N/A (with reason) / Pending. Output is a separate `OpsChecklist.md` artifact in the task folder."
 ---
 
-# Mobile Ops Checklist
+# Ops Checklist
 
-A cross-cutting checklist distilled from production mobile engineering challenges (Orosz, Building Mobile Apps at Scale). It is *not* a design tool — design happens in `feature-landscape`. It is the late-stage verification that nothing operational was forgotten: feature flag, analytics, deep link, push, offline, privacy, store readiness.
+A cross-cutting checklist for shippable-feature operational concerns. It is *not* a design tool — design happens in `feature-landscape`. It is the late-stage verification that nothing operational was forgotten: feature flag, analytics, deep link, push, offline, privacy, release readiness.
 
 > **Related skills:**
 > - `feature-requirements` — Secondary list maps onto a subset of this checklist; this skill is the validation-time counterpart
@@ -15,7 +15,9 @@ A cross-cutting checklist distilled from production mobile engineering challenge
 > Bold **topics** below are rows of the installed platform's manifest `## Topics`; resolve each to
 > that platform's own skills per `conventions/platform-contract.md`. Items here lean on **errors**
 > (the taxonomy behind the error rows), **persistence** (schema migrations), **concurrency**
-> (background work and cancellation), **networking** (retry / pagination / cache) and **deep links**.
+> (background work and cancellation), **networking** (retry / pagination / cache), **deep links**
+> and **release ops** (store/distribution review, push transport, crash reporting, secure storage,
+> assistive-tech specifics).
 
 ## When to use
 
@@ -47,7 +49,7 @@ Default an item to **Applicable** unless you have a concrete reason to mark it N
 - [ ] Feature flag wraps the new feature (kill switch ready)
 - [ ] Gradual rollout plan documented (1% → 10% → 100% with monitoring gates)
 - [ ] Minimum supported OS version covered
-- [ ] App Store / Play Store review constraints reviewed (no rejection risk: no private API use, no IDFA misuse, no payment-flow violation)
+- [ ] **Release ops** — distribution-channel review constraints reviewed (no rejection risk)
 - [ ] Forced-upgrade path considered if breaking
 - [ ] Feature flag TTL set (prevent dead-flag accumulation)
 
@@ -76,8 +78,8 @@ Default an item to **Applicable** unless you have a concrete reason to mark it N
 
 ### Crash & stability
 
-- [ ] Crash reporting wired (Crashlytics / Bugsnag / Sentry)
-- [ ] Symbolication setup verified for new binaries
+- [ ] **Release ops** — crash reporting wired
+- [ ] **Release ops** — symbolication setup verified for new binaries
 - [ ] OOM tracking strategy if memory-intensive
 - [ ] Fatal vs recoverable errors distinguished (taxonomy from topic **errors**)
 
@@ -91,8 +93,8 @@ Default an item to **Applicable** unless you have a concrete reason to mark it N
 
 ### Push & background
 
-- [ ] APNS / FCM token registration handled
-- [ ] Token rotation handled
+- [ ] **Release ops** — push-provider token registration handled
+- [ ] **Release ops** — token rotation handled
 - [ ] Silent push for server-side state changes (if applicable)
 - [ ] Opt-out flow gracefully degraded
 - [ ] Background fetch / scheduled background task registered correctly
@@ -104,13 +106,13 @@ Default an item to **Applicable** unless you have a concrete reason to mark it N
 - [ ] Deep link path defined and registered
 - [ ] Backward compatibility of pre-existing links preserved
 - [ ] State reset vs preserve policy decided (deep link mid-flow)
-- [ ] Universal Links (iOS) / App Links (Android) entitlements configured
+- [ ] **Release ops** — deep-link association entitlements configured
 
 ### Accessibility
 
-- [ ] VoiceOver / TalkBack labels and hints on interactive elements
+- [ ] **Release ops** — assistive-technology labels and hints on interactive elements
 - [ ] Dynamic Type / system-text-size scaling
-- [ ] Touch targets ≥ 44pt (iOS) / 48dp (Android)
+- [ ] **Release ops** — touch/click targets meet the platform's minimum size
 - [ ] Color contrast WCAG AA on critical text
 - [ ] Tested with assistive tech, not just static audit
 
@@ -133,11 +135,11 @@ Default an item to **Applicable** unless you have a concrete reason to mark it N
 ### Privacy & security
 
 - [ ] No PII in logs, analytics, or crash reports
-- [ ] Secrets in Keychain (iOS) / Keystore (Android) — never UserDefaults / SharedPreferences
+- [ ] **Release ops** — secrets in the platform's secure storage, never a plaintext preferences store
 - [ ] Certificate pinning if handling sensitive data
-- [ ] Transport security enforced (ATS on iOS / network-security-config on Android) — no cleartext exceptions
+- [ ] **Release ops** — transport security enforced, no cleartext exceptions
 - [ ] GDPR / CCPA: consent flow + data-erasure path
-- [ ] App Privacy report (iOS) / Data Safety form (Android) updated
+- [ ] **Release ops** — store-facing privacy disclosure updated
 
 ### Migrations
 
