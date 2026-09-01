@@ -173,6 +173,38 @@ const REVIEW = {
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
 
+// The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
+// the stage that made it onward, including the artifact that stage is about to write. A contract
+// with no field is a run from before the axis existed, and full is what those runs did.
+let scale = A.scale === 'lite' ? 'lite' : 'full'
+let scaleEscalation = null
+const lite = () => scale === 'lite'
+const escalate = (stage, r) => {
+  if (!lite() || !r || !r.scale_escalation || r.scale_escalation.to !== 'full') return
+  scale = 'full'
+  scaleEscalation = { stage, to: 'full', reason: r.scale_escalation.reason || 'no reason given' }
+  log(`scale raised to full at ${stage}: ${scaleEscalation.reason}`)
+  result.notes.push(`Scale raised to full at ${stage}: ${scaleEscalation.reason}. Write [SCALE] = [full] into Task.md.`)
+}
+
+// Line ceilings for a lite task's artifacts. scripts/lint-artifact-budget.sh carries the same table
+// and is what measures against it; artifact-budget.test.bats fails when the two disagree. First
+// draft, taken from the shape of existing artifacts rather than from a measurement.
+const CAP = { 'Reproduce.md': 120, 'Plan.md': 200, 'Validation.md': 100, 'Review.md': 120, 'Done.md': 80 }
+const cap = (file) => (lite() && CAP[file] ? `\n\nKeep ${file} to ${CAP[file]} lines or fewer. Logs, dumps and long tool output go in by reference, never pasted inline.` : '')
+
+const ESCALATION = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['to', 'reason'],
+  properties: { to: { type: 'string', enum: ['full'] }, reason: { type: 'string' } },
+}
+const withEscalation = (schema) => ({ ...schema, properties: { ...schema.properties, scale_escalation: ESCALATION } })
+const ratchet = () =>
+  lite()
+    ? `\n\nThis run is at scale lite, which folded the investigation into this artifact and capped its length. Raise it to full — return scale_escalation {to: "full", reason: "<what you found>"} and then write this artifact at full depth, without the cap — if any one of these holds: the perimeter is more than five production files or spans more than one package; the change crosses a package boundary or a public API other code depends on; the work items do not fit in one phase; you cannot state the mechanism in one paragraph. Never lower it.`
+    : ''
+
 // A role the platform declares absent (`—`) blocks the stage that names it: the script neither
 // dispatches nor skips it, it ends the range here and lets the orchestrator run the stage itself
 // and announce the deviation (orchestrator SKILL.md § Dispatch, "Method A — a stage whose role
@@ -201,6 +233,8 @@ const finish = (next, extra) => ({
   notes: result.notes.join(' '),
   stages: result.stages,
   handback,
+  scale,
+  scale_escalation: scaleEscalation,
   ...(extra || {}),
 })
 // stages[] is the per-stage report auto has no other source for: there one return covers the whole
@@ -319,7 +353,7 @@ Change no production code and no tests.`,
 // ── Analyze ─────────────────────────────────────────────────────────────────
 // Sequential rather than a parallel panel: both lenses feed one artifact, and the tester —
 // who also owns Plan and Write — is the one who writes it.
-if (runs('Analyze')) {
+if (runs('Analyze') && !lite()) {
   if (!need('Analyze', 'tester')) return finish('ask_user')
   const testabilityAgentType = lens('architect')
   const testability = testabilityAgentType
@@ -359,6 +393,7 @@ ${JSON.stringify(testability || { blockers: [] }, null, 2)}`,
   if (!analyze) return finish('stop', { status: 'error', reason: 'the Analyze agent returned nothing' })
   record('Analyze', analyze)
 }
+if (runs('Analyze') && lite()) result.notes.push('Analyze folded into the ## Analysis section of Plan.md; scale is lite.')
 
 // ── Plan ────────────────────────────────────────────────────────────────────
 let plan = null
@@ -367,17 +402,18 @@ if (runs('Plan')) {
   plan = await agent(
     brief(
       'Plan',
-      `Write ${DIR}/Plan.md from Research.md, with two layers of progress tracking:
+      `${lite() ? `This run is at scale lite, so Analyze got no stage of its own and there is no Research.md. Open ${DIR}/Plan.md with a "## Analysis" section carrying what that stage would have produced: what is uncovered, which paths are critical, the level each case belongs at, and whether the code under test needs seams before it can be tested at all. Then write the plan from it.\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'that section' : 'Research.md'}, with two layers of progress tracking:
 
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘, plus a priority column holding P0, P1, or P2.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per test case to add, per fixture or mock to create, per assertion cluster to verify. Static prose (test-strategy notes, framework choices) stays plain bullets; only action items become checkboxes.
 
-Group phases by testable unit — one per component, module, or use case — and give each a priority: P0 critical and release-blocking, P1 important, P2 nice to have.`,
+Group phases by testable unit — one per component, module, or use case — and give each a priority: P0 critical and release-blocking, P1 important, P2 nice to have.${cap('Plan.md')}${ratchet()}`,
     ),
-    { label: 'plan', phase: 'Plan', agentType: A.agents.tester, schema: PLAN },
+    { label: 'plan', phase: 'Plan', agentType: A.agents.tester, schema: withEscalation(PLAN) },
   )
   if (!plan) return finish('stop', { status: 'error', reason: 'the Plan agent returned nothing' })
   record('Plan', plan)
+  escalate('Plan', plan)
 }
 
 // ── Write ───────────────────────────────────────────────────────────────────
@@ -410,7 +446,7 @@ if (runs('Validation')) {
 
 For TEST a full test run is mandatory, through this platform's own test tooling: every newly added test has to pass on its first run. When one fails on the first run, re-run that test up to three times; if the results flap, return FLAKY and record the test name, the failure rate, and your hypothesis for the cause in Validation.md. Driving a running instance of the app is optional and only for UI tests that need visual verification; drive_app resolving to off — Task.md [DRIVE_APP] first, then CLAUDE-spine-toolkit.md ## Validation — removes even that option, as does this platform having no tooling to drive one. manual_checks: always in the same two sources still asks you for a ${DIR}/ManualChecks.md covering what the automated suite cannot reach.
 
-Change no production code and no tests — a flaky test that you quietly stabilise is a finding you have hidden. Return the same status you wrote on the first line.`,
+Change no production code and no tests — a flaky test that you quietly stabilise is a finding you have hidden. Return the same status you wrote on the first line.${cap('Validation.md')}`,
     ),
     { label: 'validation', phase: 'Validation', agentType: A.agents.validator, schema: VALIDATION },
   )
@@ -438,7 +474,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-What counts here: edge-case coverage, assertions that mean something (an "assert true == true" is a finding), logic mocked out that should have been tested directly, tests that leak state into each other, and whether the next person can read them. Modify nothing. Return the same status you wrote on the first line.`,
+What counts here: edge-case coverage, assertions that mean something (an "assert true == true" is a finding), logic mocked out that should have been tested directly, tests that leak state into each other, and whether the next person can read them. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
   )
@@ -462,7 +498,7 @@ if (runs('Done')) {
   const done = await agent(
     brief(
       'Done',
-      `Write the final report ${DIR}/Done.md: what is covered now (the components and scenarios), what coverage was reached if it was measured, which frameworks were used, the validation status including any test that came back flaky, and — under a heading "Objections" — any contested decision the user insisted on, such as declining to cover a critical path, with the risk it carries.`,
+      `Write the final report ${DIR}/Done.md: what is covered now (the components and scenarios), what coverage was reached if it was measured, which frameworks were used, the validation status including any test that came back flaky, and — under a heading "Objections" — any contested decision the user insisted on, such as declining to cover a critical path, with the risk it carries.${cap('Done.md')}`,
     ),
     { label: 'done', phase: 'Done', agentType: A.agents.tester, schema: ARTIFACT, effort: 'low' },
   )
