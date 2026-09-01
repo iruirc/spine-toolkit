@@ -116,10 +116,10 @@ At `lite`:
   touched rather than run in full, and at `lite` the perimeter is narrow enough that the Secondary
   enumeration in `Reproduce.md` is the whole of it.
 - **`Walkthrough.md` is not written** unless `[WALKTHROUGH]` in `Task.md` says so.
-- Every artifact this run does write carries a line ceiling, and `Validation.md` links to build and
-  test output rather than pasting it. The ceilings are the table in
-  `scripts/lint-artifact-budget.sh` — read them from there, pass each one to the agent writing that
-  artifact, and expect the orchestrator to measure against the same table when the stage returns.
+- Every artifact the table in `scripts/lint-artifact-budget.sh` names carries a line ceiling, and
+  `Validation.md` links to build and test output rather than pasting it. Read the ceilings from
+  that table, pass each one to the agent writing that artifact, and expect the orchestrator to
+  measure against the same table when the stage returns.
 
 Unchanged at `lite`: `Reproduce` itself, one commit per green phase with the phase's tests run
 before it, the regression test, `Validation` with its own agent and its mandatory replay, and
