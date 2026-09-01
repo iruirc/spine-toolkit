@@ -38,6 +38,7 @@ en
 - `conventions/i18n.md` — the i18n convention reference.
 - `conventions/stage-dispatch.md` — the stage→agent execution contract.
 - `conventions/platform-contract.md` — what a platform plugin must declare to core.
+- `conventions/task-scale.md` — the `lite` / `full` axis: levers, floor, ratchet.
 
 ## When working on this repo
 
