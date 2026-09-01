@@ -131,7 +131,7 @@ Task routing, profile, and stage logic lives in skills — the list below is the
 - `spine-toolkit:orchestrator` — picks the profile by `TASK_TYPE`, determines the start point, dispatches stages
 - `spine-toolkit:workflow-feature|bug|refactor|test|review|research|epic` — profile procedures
 - `spine-toolkit:task-new|task-move|task-status` — task management
-- `spine-toolkit:setup` — configures spine-toolkit in an existing project (creates `CLAUDE-spine-toolkit.md` from template, inserts the `@./CLAUDE-spine-toolkit.md` import into `CLAUDE.md`, creates `Tasks/`)
+- `spine-toolkit:setup` — configures spine-toolkit in an existing project (creates `CLAUDE-spine-toolkit.md` from template, inserts the `@./CLAUDE-spine-toolkit.md` import into `CLAUDE.md`, offers to create `Tasks/` and `Docs/`)
 - `spine-toolkit:lang` — switches the project's prompt language
 
 Each profile also has a workflow script (`workflows/profile-*.js`) running the same stages as code; the orchestrator uses it where the host has the `Workflow` tool and falls back to the skill where it does not. Two consequences worth knowing: agents inside a workflow run in `acceptEdits`, so their file edits apply without a prompt whatever permission mode the session is in, and on the Pro plan workflows stay off until enabled in `/config`.

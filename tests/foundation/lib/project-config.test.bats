@@ -23,7 +23,7 @@ setup() {
 }
 
 catalog_words() {
-  grep -icE '\b(swift|swiftui|uikit|appkit|combine|rxswift|swinject|xctest|ios|macos|viper|mvvm)\b' "$1"
+  grep -icE '\b(swift|swiftui|uikit|appkit|combine|rxswift|swinject|xct[a-z]*|ios|macos|viper|mvvm)\b' "$1"
 }
 
 @test "the config template names no platform's stack values" {
@@ -43,7 +43,7 @@ catalog_words() {
   [ -z "$offenders" ] || {
     echo "unexpected reference(s) to the pre-split config name:"; echo "$offenders"; return 1
   }
-  # The exception covers four files today; a fifth means it has drifted and must
+  # The exception covers five files today; a sixth means it has drifted and must
   # be re-read, not widened.
   n="$(printf '%s\n' "$hits" | grep -c . || true)"
   [ "$n" -eq 5 ] || { echo "the pre-split name appears in $n file(s), expected 5"; return 1; }
@@ -90,13 +90,15 @@ catalog_words() {
   # with no sibling tree left to restore.
   # Both namings are now wrong for core to write: the pre-split directory, and
   # the published repo name that the first pattern's `[^A-Za-z0-9_.-]` class
-  # swallows. Core's own repo name is a monorepo-root prefix and equally wrong,
-  # but a leading slash is spared so the installed-plugin cache paths `setup`
-  # and `task-new` document stay legal.
+  # swallows. Core's own repo name is a monorepo-root prefix and equally wrong;
+  # the installed-plugin cache paths `setup` and `task-new` document are the one
+  # legitimate use, excluded by that prefix rather than by sparing a leading dot
+  # or slash — which spared every absolute and dot-relative sibling path too.
   pat='(\.\./(platform|swift-platform|spine-toolkit)([^A-Za-z0-9_-]|$)'
   pat="$pat"'|(^|[^A-Za-z0-9_.-])platform/'
-  pat="$pat"'|(^|[^A-Za-z0-9_./-])(swift-platform|spine-toolkit)/)'
-  hits="$(grep -rnE --exclude-dir=.git "$pat" "$ROOT" || true)"
+  pat="$pat"'|(^|[^A-Za-z0-9_-])(swift-platform|spine-toolkit)/)'
+  hits="$(grep -rnE --exclude-dir=.git "$pat" "$ROOT" \
+            | grep -vE '/\.claude/plugins/(cache|marketplaces)/' || true)"
   offenders="$(grep -vF 'project-config.test.bats' <<<"$hits" || true)"
   [ -z "$offenders" ] || { echo "core reference(s) to the platform tree:"; echo "$offenders"; return 1; }
   # The self-exclusion above is otherwise unbounded — a violation added to this
