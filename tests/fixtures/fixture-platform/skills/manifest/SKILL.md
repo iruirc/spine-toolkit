@@ -70,6 +70,7 @@ networking       → `fetch-client`
 persistence      → —
 concurrency      → `task-scheduler`
 deep links       → —
+release ops      → —
 
 ## Entrypoints
 
