@@ -177,3 +177,9 @@ No agent implements the `{role}` role on this platform, so stage {stage} runs he
 
 ## routing_project_init
 Creating a project from scratch belongs to the platform plugin — run its project-init entry point (the agent it maps to the `init` role, usually behind its own slash command). The orchestrator drives tasks under `Tasks/`, not bootstrapping.
+
+## scale_escalated
+Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in `Task.md`; the remaining stages run at full depth.
+
+## budget_over_limit
+`{artifact}` runs to {actual} lines against a `lite` ceiling of {cap}. Trimming it to the ceiling — logs and dumps by reference rather than pasted inline.

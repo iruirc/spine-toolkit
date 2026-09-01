@@ -77,6 +77,13 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
 - **Done** — final report `Done.md`: what was investigated, the verdict / key finding (one paragraph), pointer to `Research.md`, count and brief list of follow-up tasks (with `task-new` invocation hints).
 
+## 2a. Scale
+
+`scale` arrives in the contract, filled, and this profile ignores it: RESEARCH's deliverable is the
+investigation itself, no implementing stage and no artifact of its own to fold anything into. The
+field is documented here rather than omitted so that no consumer has to discover the field is only
+sometimes present (`conventions/task-scale.md`).
+
 ## 3. Manual mode
 
 After each completed stage the orchestrator asks the user via the structured question mechanism using the `stage_done_prompt` key from `locales/<lang>.md`, with placeholder `{stage}`.
