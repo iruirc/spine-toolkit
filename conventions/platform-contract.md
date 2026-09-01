@@ -158,7 +158,7 @@ persistence      → —
 ```
 
 The topic vocabulary is open — a platform names the topics it actually has — but core's own
-methodology skills ask for exactly these nine, and match them literally:
+methodology skills ask for exactly these ten, and match them literally:
 
 ```topics
 state management
@@ -170,9 +170,10 @@ concurrency
 errors
 packaging
 deep links
+release ops
 ```
 
-Rows beyond the nine are the platform's own business; core never reads them. Every row is a topic
+Rows beyond the ten are the platform's own business; core never reads them. Every row is a topic
 and nothing else: a skill core invokes by name belongs in `## Entrypoints`, not here, so a consumer
 may iterate these rows generically without special-casing one of them.
 
@@ -185,7 +186,7 @@ at all, mean the same thing — this platform covers that topic with no skill of
 declared absence, handled like the em dash in `## Roles`: the consumer proceeds on its own
 knowledge and says so, and neither is an error. Core never invents a topic and never fuzzy-matches
 one, so a platform that spells `deep links` as `deeplinks` has no row for the topic core asked for,
-and the skills behind it go unconsulted on every task — which is why the nine names above are worth
+and the skills behind it go unconsulted on every task — which is why the ten names above are worth
 copying before writing a platform, not after.
 
 ## `## Entrypoints`
