@@ -37,7 +37,7 @@ const echo = await agent(
   {
     label: 'echo',
     phase: 'Echo',
-    agentType: 'swift-platform:swift-architect',
+    agentType: 'fixture-platform:fixture-architect',
     schema: {
       type: 'object',
       additionalProperties: false,

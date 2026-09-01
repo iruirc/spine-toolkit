@@ -107,13 +107,13 @@ Architect — feasibility, comparative analysis, domain investigation
 Diagnostics — audit, inventory, pattern hunt
 
 ## auq_research_agent_security
-Security — OWASP, vulnerability, pinning audit
+Security — OWASP, vulnerability, certificate pinning
 
 ## research_agent_diagnostics_keywords
 audit; inventory; grep all
 
 ## research_agent_security_keywords
-security; OWASP; vulnerability; pinning
+security; OWASP; vulnerability; certificate pinning
 
 ## dispatch_method_a
 Stages of the {profile} profile run through the workflow pipeline — the runtime holds the sequence, one agent per stage.
