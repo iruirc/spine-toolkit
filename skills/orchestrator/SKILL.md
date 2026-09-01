@@ -372,10 +372,9 @@ than testing for the field first. It travels in the contract for the reason `wal
 Method A script gates on it and has no filesystem to read it from. What the two values mean, which
 three levers one value moves, and what the floor is at both: `conventions/task-scale.md`.
 
-`scale` also moves the default under `walkthrough`, and loses to that field's own switch: the
-chain reads `Task.md [WALKTHROUGH]` → `off` when `scale` is `lite` → `CLAUDE-spine-toolkit.md
-## Reporting` → `on`. So `[WALKTHROUGH] = [on]` writes `Walkthrough.md` on a `lite` run, and
-`full` turns nothing back on that the user turned off.
+`scale` also moves the default under `walkthrough`, and loses to that field's own switch
+(`conventions/task-scale.md` → Explicit beats the axis): the chain reads `Task.md [WALKTHROUGH]` →
+`off` when `scale` is `lite` → `CLAUDE-spine-toolkit.md ## Reporting` → `on`.
 
 **Receiving a raise.** A stage may return `scale_escalation: {to: "full", reason: "<what it
 found>"}` — the ratchet of `conventions/task-scale.md`, which owns the two points it may fire at
