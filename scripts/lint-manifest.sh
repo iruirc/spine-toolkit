@@ -96,9 +96,15 @@ while IFS= read -r line; do
     violations=$((violations+1))
     continue
   fi
-  # `|| true`: an axis with no row makes grep exit 1, and under `pipefail` that would
-  # abort the whole script here — the very case this branch exists to report.
-  allowed=$(grep -E "^$axis[[:space:]]*=" <<<"$axes" | head -1 | sed 's/^[^=]*=//' || true)
+  # Exact string compare, not `grep -E "^$axis"`: a regex metacharacter in the
+  # axis name matched a different row and reported the manifest OK.
+  allowed=""
+  while IFS= read -r arow; do
+    [ -n "$arow" ] || continue
+    [ "$(trim "${arow%%=*}")" = "$axis" ] || continue
+    allowed="${arow#*=}"
+    break
+  done <<<"$axes"
   if [ -z "$(trim "$allowed")" ]; then
     echo "fan-out on an axis '## Axes' does not declare: $lhs"
     violations=$((violations+1))

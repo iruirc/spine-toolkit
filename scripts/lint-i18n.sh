@@ -14,7 +14,9 @@ cd "$(dirname "$0")/.."
 #   agents/<name>.md                 (only inside frontmatter description: bilingual triggers)
 #   commands/<name>.md               (only inside frontmatter description: bilingual one-line)
 #
-# Anything else with cyrillic chars is a violation.
+# Anything else with cyrillic chars is a violation. Scanned file types: md, json,
+# yml, yaml, js, sh, bats, zsh — an extensionless file is out of scope, since the
+# reader here would have to guess whether it is text.
 
 violations=0
 while IFS= read -r -d '' f; do
@@ -24,6 +26,8 @@ while IFS= read -r -d '' f; do
     ./templates/claude-md-stub/ru.md) continue ;;
     ./conventions/i18n.md) continue ;;
     ./.git/*) continue ;;
+    # Defines the cyrillic range it searches for, so it matches itself.
+    ./scripts/lint-i18n.sh) continue ;;
   esac
 
   # For SKILL.md / agents/*.md / commands/*.md, allow cyrillic ONLY inside the
@@ -62,7 +66,8 @@ for i, line in enumerate(text.split('\n'), 1):
 PY
       ;;
   esac
-done < <(find . -type f \( -name '*.md' -o -name '*.json' -o -name '*.yml' -o -name '*.yaml' -o -name '*.js' \) -print0)
+done < <(find . -type f \( -name '*.md' -o -name '*.json' -o -name '*.yml' -o -name '*.yaml' \
+  -o -name '*.js' -o -name '*.sh' -o -name '*.bats' -o -name '*.zsh' \) -print0)
 
 if [ "$violations" -gt 0 ]; then
   echo

@@ -107,13 +107,13 @@ Architect — feasibility, сравнительный анализ, исслед
 Diagnostics — аудит, инвентарь, поиск паттерна
 
 ## auq_research_agent_security
-Security — OWASP, уязвимость, аудит pinning
+Security — OWASP, уязвимость, certificate pinning
 
 ## research_agent_diagnostics_keywords
 audit; inventory; grep all; аудит; найди все
 
 ## research_agent_security_keywords
-security; OWASP; vulnerability; pinning; безопасность
+security; OWASP; vulnerability; certificate pinning; безопасность
 
 ## dispatch_method_a
 Стадии профиля {profile} идут через workflow-конвейер — последовательность держит рантайм, по агенту на стадию.

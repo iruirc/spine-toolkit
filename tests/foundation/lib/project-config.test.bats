@@ -38,11 +38,15 @@ catalog_words() {
   # `setup` migrates a project written by the pre-split toolkit, so it must name
   # the old file. Nothing else may: elsewhere the name is rot, and a consumer
   # reading it looks at a file no current install has.
-  offenders="$(grep -rl 'CLAUDE-swift-toolkit' "$ROOT" \
-    | grep -vE "/(skills/setup/|commands/setup\.md|tests/foundation/lib/project-config\.test\.bats)" || true)"
+  hits="$(grep -rl --exclude-dir=.git 'CLAUDE-swift-toolkit' "$ROOT" || true)"
+  offenders="$(grep -vE "/(skills/setup/|commands/setup\.md|tests/foundation/lib/project-config\.test\.bats)" <<<"$hits" || true)"
   [ -z "$offenders" ] || {
     echo "unexpected reference(s) to the pre-split config name:"; echo "$offenders"; return 1
   }
+  # The exception covers four files today; a fifth means it has drifted and must
+  # be re-read, not widened.
+  n="$(printf '%s\n' "$hits" | grep -c . || true)"
+  [ "$n" -eq 5 ] || { echo "the pre-split name appears in $n file(s), expected 5"; return 1; }
 }
 
 @test "every bare relative path core names resolves under its own plugin root" {
