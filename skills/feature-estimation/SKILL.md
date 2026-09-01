@@ -5,7 +5,7 @@ description: "Use when estimating software feature work — after `feature-lands
 
 # Feature Estimation
 
-Estimates fail because they ignore the cost of what nobody wrote down: error states, the store review window, the engineer's unfamiliarity with the module, the API contract changing mid-sprint. This skill adds **scope-aware risk deltas** on top of a decomposed baseline, uses PERT only where item-level variance dominates, labels confidence/maturity, and produces a calibrated *range* anchored to named scenarios — never a single number. Ceremony scales to risk: a small, familiar feature collapses to Feature type + Baseline + Range + Confidence, while a cross-platform, deadline-bound migration earns the full artifact. When the project is AI-assisted, it additionally derives a second, AI-assisted range from the same baseline — Low-confidence until the team has calibrated it.
+Estimates fail because they ignore the cost of what nobody wrote down: error states, the release-review window, the engineer's unfamiliarity with the module, the API contract changing mid-sprint. This skill adds **scope-aware risk deltas** on top of a decomposed baseline, uses PERT only where item-level variance dominates, labels confidence/maturity, and produces a calibrated *range* anchored to named scenarios — never a single number. Ceremony scales to risk: a small, familiar feature collapses to Feature type + Baseline + Range + Confidence, while a cross-platform, deadline-bound migration earns the full artifact. When the project is AI-assisted, it additionally derives a second, AI-assisted range from the same baseline — Low-confidence until the team has calibrated it.
 
 > **Related skills:**
 > - `feature-landscape` — produces the work-items list this skill consumes
@@ -35,7 +35,7 @@ Estimates fail because they ignore the cost of what nobody wrote down: error sta
 - Release and rollback path — feature flag / kill switch / remote config / hotfix path / binary-only
 - Feature type — UI-only / API-driven / SDK integration / persistence or migration / refactor / cross-platform / release / ops-heavy
 - Delivery mode — `manual` (default) or `ai-assisted`; from the first non-empty line under `CLAUDE-spine-toolkit.md ## DeliveryMode` or a per-estimate opt-in. Drives the optional AI-assisted range.
-- Team calendar assumptions — focus factor or effective capacity, planned external waits, store/release windows
+- Team calendar assumptions — focus factor or effective capacity, planned external waits, release windows
 - Hard deadline presence (yes / no)
 
 ## The model
@@ -155,7 +155,7 @@ Choose one feature type before estimating. The type sets the default risk postur
 | Persistence / migration | Consider PERT for migration items | Fixture tests, rollback, data-loss path, offline behavior |
 | Refactor / architecture change | Baseline by touched layer; avoid feature-like Secondary unless UX changes | Regression tests, module boundaries, rollout plan |
 | Cross-platform feature | Two estimates, one per platform | Platform-specific baselines and fragmentation deltas |
-| Release / ops-heavy change | Concrete ops work belongs in baseline | Feature flags, dashboards, runbook, store/release windows |
+| Release / ops-heavy change | Concrete ops work belongs in baseline | Feature flags, dashboards, runbook, release windows |
 
 ### Step 2 — Baseline
 
@@ -215,7 +215,7 @@ Under AI-assisted mode, the Unknown-unknowns delta may sit *higher* on a novel d
 | Platform release review | **+2–7 calendar days** | Any hard deadline that requires a build to clear the platform's release-review gate — resolve via topic **release ops** |
 
 **Rules:**
-- Deltas **add as risk days**. The store-review buffer is reported on its own line as calendar time.
+- Deltas **add as risk days**. The release-review buffer is reported on its own line as calendar time.
 - Always name the affected baseline for each delta. Do not apply API or Secondary deltas to the whole feature when the risk only touches one layer.
 - Don't double-count: if Secondary is fully scoped (no Pending rows), don't apply the Secondary delta — those days are already in the baseline.
 - Don't push Unknown Unknowns above +50% — beyond that you're guessing, not buffering. Decompose the landscape further instead.
@@ -401,7 +401,7 @@ Conditional — see `### Estimation conditions` for the blocking conditions; no 
 | Engineering days | 10.7d | 16.6d | From `### Range` above |
 | Focus factor | / 0.6 | / 0.6 | One engineer at 60% focused capacity |
 | External waits | +0 workdays | +2 workdays | Worst case assumes backend/design wait |
-| Delivery workdays before store | ~18 workdays | ~30 workdays | Engineering / focus + explicit waits; still working days — convert to calendar via the team's week before quoting a date |
+| Delivery workdays before release review | ~18 workdays | ~30 workdays | Engineering / focus + explicit waits; still working days — convert to calendar via the team's week before quoting a date |
 | Release review | +2–7 calendar days | +2–7 calendar days | Separate wall-clock buffer, not engineering |
 
 ### Assumptions

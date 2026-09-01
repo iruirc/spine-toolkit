@@ -201,9 +201,9 @@ Structure:
 
 ## N/A semantics by delivery form
 
-- **Library / package** — Most categories N/A: deep links, push, store review, accessibility (no UI), analytics (library should not emit), localization (consumer's job). Applicable: error handling, performance, testing, third-party SDKs, CI/CD, security (if handling secrets).
+- **Library / package** — Most categories N/A: deep links, push, release review, accessibility (no UI), analytics (library should not emit), localization (consumer's job). Applicable: error handling, performance, testing, third-party SDKs, CI/CD, security (if handling secrets).
 - **CLI tool** — Push / deep links / accessibility / localization N/A. Crash reporting may be N/A (stderr is the report). Privacy still applies if reading user files.
-- **Desktop app distributed outside a store** — store-review items N/A; the OS's notarization / signing requirements still apply.
+- **Desktop app distributed outside a store** — release-review items N/A; the OS's notarization / signing requirements still apply.
 - **Mobile app** — All categories typically Applicable.
 
 ## Anti-patterns to avoid
