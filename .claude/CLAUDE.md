@@ -43,8 +43,9 @@ en
 - Adding a user-facing string: add the key to BOTH `locales/en.md` AND `locales/ru.md`, then
   reference it from the skill body. Parity check
   (`diff <(grep '^## ' .../en.md | sort) <(grep '^## ' .../ru.md | sort)`) must be empty.
-- Adding a skill with user-facing strings: include both locale files; the body must carry the
-  `## Language Resolution` section verbatim.
+- Adding a skill with user-facing strings: include both locale files; the body must carry a
+  `## Language Resolution` section naming the config that skill reads (the standard steps in
+  `conventions/i18n.md` for a skill that runs inside a project root).
 - Adding a command: bilingual `description:` line, body in English.
 - Changing the contract in `conventions/platform-contract.md`: update
   `tests/fixtures/fixture-platform/` in the same commit. The fixture is the contract's only

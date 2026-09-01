@@ -126,9 +126,7 @@ manual
 
 ## Orchestration
 
-The full skill map and dependencies between skill groups — see the spine-toolkit README ("Skills as a system").
-
-Task routing, profile, and stage logic lives in skills:
+Task routing, profile, and stage logic lives in skills — the list below is the whole map, and nothing outside it dispatches a stage:
 
 - `spine-toolkit:orchestrator` — picks the profile by `TASK_TYPE`, determines the start point, dispatches stages
 - `spine-toolkit:workflow-feature|bug|refactor|test|review|research|epic` — profile procedures

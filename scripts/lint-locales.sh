@@ -15,6 +15,14 @@ for en in skills/*/locales/en.md; do
     continue
   fi
 
+  # Existence only, not content-identity: a workspace skill legitimately resolves
+  # a different config and so states different steps (conventions/i18n.md).
+  skill="${dir%/locales}/SKILL.md"
+  if ! grep -q '^## Language Resolution' "$skill"; then
+    echo "Localized skill with no '## Language Resolution' section: $skill"
+    violations=$((violations + 1))
+  fi
+
   diff_out=$(diff <(grep '^## ' "$en" | sort) <(grep '^## ' "$ru" | sort) || true)
   if [ -n "$diff_out" ]; then
     echo "Key parity mismatch in $dir/:"

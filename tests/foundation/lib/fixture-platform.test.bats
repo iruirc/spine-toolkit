@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# The fixture platform (core/tests/fixtures/fixture-platform) is the reference
+# The fixture platform (tests/fixtures/fixture-platform) is the reference
 # implementation of the platform manifest contract: these tests are the contract's
 # executable spec, not just coverage for the fixture itself.
 

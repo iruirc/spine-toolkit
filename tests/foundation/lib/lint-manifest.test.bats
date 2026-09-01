@@ -59,6 +59,18 @@ teardown() { rm -rf "$TMP"; }
   [[ "$output" == *"outside this plugin's namespace"* ]]
 }
 
+@test "a digit in a plugin or agent name is legal" {
+  # vue3-platform / swift6-platform: the old `[a-z-]` classes rejected these and
+  # then reported a phantom agent, because extraction matched the tail fragment.
+  sed -i.bak 's/"fixture-platform"/"fixture3-platform"/' "$TMP/p/.claude-plugin/plugin.json"
+  sed -i.bak 's/fixture-platform:fixture-architect/fixture3-platform:fixture-arch3/g; s/fixture-platform:/fixture3-platform:/g' \
+    "$TMP/p/skills/manifest/SKILL.md"
+  mv "$TMP/p/agents/fixture-architect.md" "$TMP/p/agents/fixture-arch3.md"
+  rm -f "$TMP/p/.claude-plugin/plugin.json.bak" "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 0 ]
+}
+
 @test "fails when a required role is not declared at all" {
   sed -i.bak '/^validator /d' "$TMP/p/skills/manifest/SKILL.md" && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"

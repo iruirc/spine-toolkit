@@ -12,8 +12,7 @@ Nothing is inferred from the repository and nothing is auto-discovered while a t
 
 A working example is `tests/fixtures/fixture-platform/` — the fixture core's own tests bind
 against, and the thing to copy when writing a new platform. `scripts/lint-manifest.sh
-<plugin-dir>` checks a manifest against everything below that a script can check. Paths in this
-document are relative to this plugin's own root, as everywhere else in it.
+<plugin-dir>` checks a manifest against everything below that a script can check.
 
 ## The manifest skill
 
@@ -26,6 +25,25 @@ back.
 The body is **data**: five H2 tables and no procedure. It says so in its own first lines, so the
 agent that invokes it reads the tables instead of executing them. Prose between tables is for
 humans; only the rows are parsed.
+
+**"Table" here means plain `name = value` lines under an H2, not Markdown pipe-table syntax** (the
+`## Topics` rows use `name → value` instead, and the `## Heuristics` rows `signal → axes`). A row
+starts at column one; whitespace around `=` and `→` is free, so the rows may be aligned or not:
+
+```
+## Roles
+
+architect = kotlin-platform:kotlin-architect
+```
+
+Plugin and agent names on the right-hand side are lowercase, may contain digits and hyphens, and
+must start with a letter — `vue3-platform:vue3-architect` is legal, `Vue3_Platform` is not.
+
+Paths in this document are relative to a plugin's own root: the directory holding that plugin's
+`.claude-plugin/plugin.json`, which for an installed plugin is wherever the host unpacked it (the
+plugin's own files reach it as `${CLAUDE_PLUGIN_ROOT}`). Nothing in the contract needs that
+location resolved except `scripts/lint-manifest.sh <plugin-dir>`, which a platform author runs
+against their own checkout.
 
 ## `## Roles`
 
