@@ -448,7 +448,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-Judge it against the refactor invariant first: did external behaviour stay put. Then against the target landscape in Research.md: is the structure actually where the plan said it would be, or did the phases stop halfway. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
+Judge it against the refactor invariant first: did external behaviour stay put. Then against the target landscape in ${lite() ? 'the ## Analysis section of Plan.md' : 'Research.md'}: is the structure actually where the plan said it would be, or did the phases stop halfway. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
   )

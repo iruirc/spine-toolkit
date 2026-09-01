@@ -451,7 +451,7 @@ if (runs('Plan')) {
   plan = await agent(
     brief(
       'Plan',
-      `Write ${DIR}/Plan.md from Research.md, with two layers of progress tracking:
+      `Write ${DIR}/Plan.md from ${lite() ? 'the ## Diagnosis section of Reproduce.md' : 'Research.md'}, with two layers of progress tracking:
 
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per file to edit, per acceptance criterion, per regression-test case, per verification step. Static prose (root-cause notes, decisions) stays plain bullets; only action items become checkboxes.
@@ -531,7 +531,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-Judge the fix against Reproduce.md and Plan.md: does it address the root cause rather than the symptom, does the regression test lock in the real scenario, does it carry the risks Research.md named. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
+Judge the fix against Reproduce.md and Plan.md: does it address the root cause rather than the symptom, does the regression test lock in the real scenario, does it carry the risks ${lite() ? 'the ## Diagnosis section of Reproduce.md' : 'Research.md'} named. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
   )
