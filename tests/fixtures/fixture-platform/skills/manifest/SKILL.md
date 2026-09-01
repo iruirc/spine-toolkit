@@ -9,20 +9,23 @@ description: Platform manifest for the fixture platform. Data, not instructions 
 > invoking this skill; there is no procedure here to follow.
 
 This is the minimal manifest a `*-platform` plugin declares to spine-toolkit, kept as a fixture:
-`core/tests/foundation/lib/fixture-platform.test.bats` runs against it directly, and
-`core/scripts/lint-manifest.sh` validates copies of it. Treat every value below as load-bearing —
+spine-toolkit's `fixture-platform.test.bats` runs against it directly, and its `lint-manifest.sh`
+validates copies of it. (Filenames, not paths: a directory-prefixed path here would resolve under
+THIS plugin's root and find nothing — the rule every reference below follows.) Treat every value below as load-bearing —
 use it as a template for a real platform's manifest, not as a stub to satisfy a grep.
 
 ## Roles
 
 Canonical core role → `plugin:agent`. `role[axis=value]` fans one role out across an axis value,
-demonstrated below on `developer` the way `kotlin-toolkit` splits it into backend and mobile
-variants. `—` declares a role absent — an expected deviation spine-toolkit dispatches around
-(`conventions/stage-dispatch.md`), not a gap to fill in later.
+demonstrated below on `developer` the way a platform serving two UI stacks splits it into one
+variant each. The bare `developer` row below it is the fallback for a project where `widget` never
+resolves; without it the role falls through to the em dash on every such task. `—` declares a role absent — an expected deviation spine-toolkit dispatches around (the
+stage-dispatch convention in `spine-toolkit`), not a gap to fill in later.
 
 architect               = fixture-platform:fixture-architect
 developer[widget=alpha] = fixture-platform:fixture-developer
 developer[widget=beta]  = fixture-platform:fixture-architect
+developer               = fixture-platform:fixture-developer
 tester                  = fixture-platform:fixture-developer
 reviewer                = fixture-platform:fixture-architect
 refactorer              = fixture-platform:fixture-developer
@@ -49,9 +52,9 @@ widget    = alpha, beta
 How `stack-detect` resolves axis values from repo signals: a `path` pattern flags an axis as
 relevant, an `import` literal pins one specific value.
 
-path: `src/**`  → widget
-import: `alpha` → widget=alpha
-import: `beta`  → widget=beta
+path:   `src/**` with no `alpha` or `beta` import → widget
+import: `alpha`                                    → widget=alpha
+import: `beta`                                     → widget=beta
 
 ## Topics
 
@@ -62,7 +65,11 @@ it here. Every row here is a topic; a skill spine-toolkit calls by name lives in
 instead.
 
 state management → `store-flux`, `store-atoms`
+navigation       → `route-table`
+networking       → `fetch-client`
 persistence      → —
+concurrency      → `task-scheduler`
+deep links       → —
 
 ## Entrypoints
 
