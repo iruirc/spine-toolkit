@@ -10,6 +10,7 @@
 # [DRIVE_APP] = [off]         # auto | off
 # [MANUAL_CHECKS] = [always]  # auto | always
 # [WALKTHROUGH] = [off]       # on | off
+# [SCALE] = [full]            # lite | full
 
 ## 1. [Files]
 

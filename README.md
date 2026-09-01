@@ -108,8 +108,8 @@ it. Your own project instructions stay in `CLAUDE.md`, which the toolkit only ev
 the import line. The blocks the toolkit reads:
 
 `## Language`, `## Platform`, `## Agents` (per-role overrides of the manifest), `## Stack`,
-`## Mode`, `## Progress`, `## Validation`, `## Reporting`, `## Modules` (per-module stack
-overrides), `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`.
+`## Mode`, `## Progress`, `## Validation`, `## Reporting`, `## Scale`, `## Modules` (per-module
+stack overrides), `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`.
 
 The template writes three more — `## Persona`, `## Rules` and `## Orchestration`. Those are for the
 agents reading the file as context, not blocks the toolkit parses.
