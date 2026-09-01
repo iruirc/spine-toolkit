@@ -38,7 +38,7 @@ setup() {
   offenders=""
   for s in $METHOD_SKILLS; do
     [ -f "$ROOT/skills/$s/SKILL.md" ] || { echo "method skill missing: $s"; return 1; }
-    hits="$(grep -oE '\b(arch-[a-z-]+|architecture-choice|di-[a-z-]+|persistence-[a-z-]+|net-[a-z-]+|reactive-[a-z-]+|pkg-spm-design|nav-deeplinks|error-architecture|concurrency-architecture|workspace-[a-z-]+)\b' \
+    hits="$(grep -oE '\b(arch-[a-z-]+|architecture-choice|di-[a-z-]+|persistence-[a-z-]+|net-[a-z-]+|reactive-[a-z-]+|pkg-spm-design|nav-deeplinks|error-architecture|concurrency-architecture|workspace-[a-z-]+|release-ops)\b' \
               "$ROOT/skills/$s/SKILL.md" | sort -u | tr '\n' ' ')"
     [ -z "$hits" ] || offenders="$offenders$s: $hits"$'\n'
   done
@@ -46,15 +46,14 @@ setup() {
 }
 
 @test "method skills carry no single-ecosystem implementation vocabulary" {
-  # Framework, language and tooling names of one ecosystem — not the mobile
-  # domain itself. App-store review windows, OS fragmentation, deep links and
-  # paired examples (Keychain/Keystore, VoiceOver/TalkBack) are the subject
-  # matter of these skills and stay; `@MainActor` or Core Data is one
-  # ecosystem's answer written as if it were the only one.
+  # Framework, language, tooling and vendor names of any one ecosystem —
+  # `@MainActor`/Core Data as much as Keychain/VoiceOver/App Store. That
+  # content now lives behind topic **release ops**, resolved per-platform;
+  # core keeps only the ecosystem-neutral category names.
   offenders=""
   for s in $METHOD_SKILLS; do
     [ -f "$ROOT/skills/$s/SKILL.md" ] || { echo "method skill missing: $s"; return 1; }
-    hits="$(grep -ioE '\b(swift|swiftui|uikit|appkit|objective-?c|xcode|xcframework|xctest|swiftdata|grdb|swinject|rxswift|mainactor|view ?controllers?|iphone|ipad|spm|cocoapods|carthage|testflight|bgtask)\b|core data' \
+    hits="$(grep -ioE '\b(swift|swiftui|uikit|appkit|objective-?c|xcode|xcframework|xctest|swiftdata|grdb|swinject|rxswift|mainactor|view ?controllers?|iphone|ipad|spm|cocoapods|carthage|testflight|bgtask|keychain|keystore|voiceover|talkback|apns|fcm|crashlytics|bugsnag|sentry|idfa|android)\b|core data|app store|play store' \
               "$ROOT/skills/$s/SKILL.md" | sort -u | tr '\n' ' ')"
     [ -z "$hits" ] || offenders="$offenders$s: $hits"$'\n'
   done
