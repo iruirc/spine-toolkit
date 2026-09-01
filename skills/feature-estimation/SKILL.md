@@ -1,16 +1,20 @@
 ---
 name: feature-estimation
-description: "Use when estimating mobile / app feature work — after `feature-landscape` produced work-items. Converts an ideal-day baseline into a calibrated day range using feature-type defaults, PERT for high-risk items, scope-aware additive risk deltas (unknowns, unscoped secondary requirements, parallel API, binary distribution, OS fragmentation), optional project overrides from `CLAUDE-spine-toolkit.md ## EstimationDeltas`, optional AI-assisted range derived per-item, confidence/maturity labels, delivery-calendar conversion, at most one dominant multiplier for unfamiliar tech, and a separate App/Play Store review calendar buffer. Ceremony scales to risk — small familiar features collapse to feature type + baseline + range + confidence. Output is a range anchored to named scenarios, never a point estimate."
+description: "Use when estimating software feature work — after `feature-landscape` produced work-items. Converts an ideal-day baseline into a calibrated day range using feature-type defaults, PERT for high-risk items, scope-aware additive risk deltas (unknowns, unscoped secondary requirements, parallel API, binary distribution, platform fragmentation), optional project overrides from `CLAUDE-spine-toolkit.md ## EstimationDeltas`, optional AI-assisted range derived per-item, confidence/maturity labels, delivery-calendar conversion, at most one dominant multiplier for unfamiliar tech, and a separate platform release-review calendar buffer. Ceremony scales to risk — small familiar features collapse to feature type + baseline + range + confidence. Output is a range anchored to named scenarios, never a point estimate."
 ---
 
 # Feature Estimation
 
-Estimates fail because they ignore the cost of what nobody wrote down: error states, the store review window, the engineer's unfamiliarity with the module, the API contract changing mid-sprint. This skill adds mobile-specific **scope-aware risk deltas** on top of a decomposed baseline, uses PERT only where item-level variance dominates, labels confidence/maturity, and produces a calibrated *range* anchored to named scenarios — never a single number. Ceremony scales to risk: a small, familiar feature collapses to Feature type + Baseline + Range + Confidence, while a cross-platform, deadline-bound migration earns the full artifact. When the project is AI-assisted, it additionally derives a second, AI-assisted range from the same baseline — Low-confidence until the team has calibrated it.
+Estimates fail because they ignore the cost of what nobody wrote down: error states, the store review window, the engineer's unfamiliarity with the module, the API contract changing mid-sprint. This skill adds **scope-aware risk deltas** on top of a decomposed baseline, uses PERT only where item-level variance dominates, labels confidence/maturity, and produces a calibrated *range* anchored to named scenarios — never a single number. Ceremony scales to risk: a small, familiar feature collapses to Feature type + Baseline + Range + Confidence, while a cross-platform, deadline-bound migration earns the full artifact. When the project is AI-assisted, it additionally derives a second, AI-assisted range from the same baseline — Low-confidence until the team has calibrated it.
 
 > **Related skills:**
 > - `feature-landscape` — produces the work-items list this skill consumes
 > - `feature-requirements` — Secondary list and Known Unknowns directly drive the deltas
 > - `ops-checklist` — Applicable ops items either become baseline work items or add concrete days (feature flag wiring, analytics dashboards, on-call runbook)
+>
+> Bold **topics** below are rows of the installed platform's manifest `## Topics`; resolve each to
+> that platform's own skills per `conventions/platform-contract.md`. The platform fragmentation
+> delta and the release-review buffer both draw on **release ops**.
 
 ## When to use
 
@@ -24,12 +28,12 @@ Estimates fail because they ignore the cost of what nobody wrote down: error sta
 
 - `Research.md ## Landscape ### Work items` — decomposed list with each item ≤ 2 days
 - `Research.md ## Requirements` — Secondary table + Known Unknowns
-- Project stack from `CLAUDE-spine-toolkit.md` — for stack-specific deltas (e.g. Android fragmentation only applies if cross-platform)
+- Project stack from `CLAUDE-spine-toolkit.md` — for stack-specific deltas (e.g. platform fragmentation only applies if the project targets more than one platform)
 - Optional project calibration from `CLAUDE-spine-toolkit.md ## EstimationDeltas`
 - API readiness state — built / in-parallel / not started
 - Engineer familiarity with the module — first time / occasional / fluent
 - Release and rollback path — feature flag / kill switch / remote config / hotfix path / binary-only
-- Feature type — UI-only / API-driven / SDK integration / persistence or migration / refactor / cross-platform / release-ops-heavy
+- Feature type — UI-only / API-driven / SDK integration / persistence or migration / refactor / cross-platform / release / ops-heavy
 - Delivery mode — `manual` (default) or `ai-assisted`; from the first non-empty line under `CLAUDE-spine-toolkit.md ## DeliveryMode` or a per-estimate opt-in. Drives the optional AI-assisted range.
 - Team calendar assumptions — focus factor or effective capacity, planned external waits, store/release windows
 - Hard deadline presence (yes / no)
@@ -51,10 +55,10 @@ ai_engineering(s)     = (ai_baseline(s) + ai_risk_days(s)) × dominant_multiplie
 # ai_risk_days adds the AI verification/rework delta on top of the scenario deltas (see Step 3).
 
 delivery_workdays(s) = engineering_days(s) / focus_factor + external_waits(s)
-store_buffer      = +2–7 calendar days            ← reported separately from engineering workdays
+release_buffer    = +2–7 calendar days            ← reported separately from engineering workdays; resolve applicability and value via topic **release ops**
 ```
 
-`engineering_days` and `store_buffer` are different units — working days vs wall-clock calendar days — so they are never added into one engineering figure. Report engineering days as the range, then convert to a separate delivery-calendar view using a stated focus factor and explicit waits.
+`engineering_days` and `release_buffer` are different units — working days vs wall-clock calendar days — so they are never added into one engineering figure. Report engineering days as the range, then convert to a separate delivery-calendar view using a stated focus factor and explicit waits.
 
 - **PERT is selective.** Use one ideal-day value for normal items. Use PERT only for high-variance items where the item itself has an optimistic / most-likely / pessimistic spread: new SDKs, migrations, concurrency, auth, offline sync, performance work, unfamiliar frameworks.
 - **PERT feeds the range, not just a point.** A PERT item's spread is its whole reason to exist. Use `pert_expected` for the central baseline, but anchor the best-case end with its optimistic value and the worst-case end with its pessimistic value — otherwise the spread is computed and thrown away, and PERT becomes decorative.
@@ -64,7 +68,7 @@ store_buffer      = +2–7 calendar days            ← reported separately from
 - **Risk scope is explicit.** Unknown-unknowns and binary distribution usually apply to the total baseline. API-in-parallel usually applies only to Networking / Repository / Integration items unless the API contract controls the UI/domain shape. Secondary-not-scoped applies to the items that will change if those Secondary requirements land late; use total baseline only when the Pending rows cut across the feature.
 - **Binary distribution is a fixed project property, not a scenario knob.** The rollback path (feature flag / kill switch / binary-only) is a fact about the feature, not something that turns out better in the best case and worse in the worst case. Pick one tier (0% / +10% / +20%) and apply the *same* value in both scenarios. The best/worst spread comes from the scenario knobs — unknowns, Secondary, API-in-parallel, PERT spread — not from binary distribution.
 - **At most one dominant multiplier** is allowed, applied after the risk-day sum, and only when a single factor genuinely rescales the *whole* effort (e.g. first time on a new framework touches every item). Never stack two multipliers. **When the dominant multiplier is in play, the unfamiliarity it represents IS the unknown — drop the Unknown-unknowns delta to its floor (+30%) or to 0, otherwise you count the same risk twice and re-introduce compounding through the back door.**
-- **Store review is a calendar buffer**, kept on its own line — it is wall-clock waiting, not engineering days. Never fold it into the engineering-day figure.
+- **A platform release-review gate is a calendar buffer**, kept on its own line — it is wall-clock waiting, not engineering days. Never fold it into the engineering-day figure. Whether your platform imposes one, and its typical length, resolves via topic **release ops**.
 
 ## Estimation depth — scale ceremony to risk
 
@@ -89,7 +93,7 @@ Everything else is **conditional** — include a section only when its trigger f
 | `### Estimation conditions` | `### Estimate maturity` is `Conditional`; records each condition and whether it blocks Execute |
 | `### Assumptions` | the Range depends on any assumption — almost always; omit only for a self-contained estimate with no load-bearing premise |
 | `### Delivery calendar (not engineering days)` | a stakeholder needs a date, or a hard deadline / release window is in play |
-| `### Store review buffer` | a hard deadline requires a store-submitted build (standalone line, or a row inside the delivery calendar when that section is present) |
+| `### Release-review buffer` | a hard deadline requires a build that passes through a platform release-review gate (standalone line, or a row inside the delivery calendar when that section is present) |
 | `### Known unknowns blocking final estimate` | any Known Unknown was evaluated — list the open ones, or write `(none)` to show they were checked and none block |
 | `### Estimation self-check` | scales to the sections actually present — verify only what you produced |
 | `### AI-assisted range` | AI-assisted mode is active; adds the leverage column to `### Baseline` and a derived AI range beside `### Range` |
@@ -134,7 +138,7 @@ Recommended override format:
 | Unknown unknowns | +20%–35% | Familiar module + stable tests | Team has shipped 5+ similar features within range |
 | Secondary not scoped | +30%–50% | Design-system states exist | Error/loading/empty components are reusable |
 | Binary distribution risk | +10% | Feature flag + kill switch | Rollback does not require a new binary for most users |
-| App / Play Store review | +1–3 calendar days | Internal / enterprise distribution only | No public store approval needed |
+| Release review | +1–3 calendar days | Internal / enterprise distribution only | No public review gate required |
 ```
 
 Overrides replace only the named key's default values. They do not remove the requirement to justify each applied delta in the scenario table.
@@ -191,7 +195,7 @@ For every applicable delta below, choose an **affected baseline** and calculate 
 | Secondary requirements not yet scoped | **+40%–70%** | When `feature-requirements ### Secondary` still has Pending rows |
 | API in parallel | **+30%–40%** | API being built same sprint — contract may shift |
 | Binary distribution risk | **0% / +10% / +20%** | 0% for a library / CLI / no user-facing binary. +10% when feature flag / kill switch / remote rollback covers most failures. +20% for a user-facing app binary with no instant rollback. |
-| OS / device fragmentation | **+20%–30%** | Android only — Custom UI, Camera, Media. iOS-only project: skip. |
+| Platform fragmentation | **+20%–30%** | Only when the platform's own device/OS matrix is fragmented — resolve applicability via topic **release ops**. |
 | AI verification / rework | **+15%–40%** (AI-assisted mode only) | Scoped to AI-generated slices — cost of reviewing output, catching plausible-but-wrong code, prompt iteration. Higher share AI-generated / more novel → upper end. |
 
 Under AI-assisted mode, the Unknown-unknowns delta may sit *higher* on a novel domain — AI can produce plausible-but-wrong code that hides risk — and *lower* on well-trodden ground. Pick the band end accordingly; this composes with the rule that Unknown-unknowns is a scenario knob.
@@ -208,7 +212,7 @@ Under AI-assisted mode, the Unknown-unknowns delta may sit *higher* on a novel d
 
 | Buffer | Value | When applies |
 |---|---|---|
-| App / Play Store review | **+2–7 calendar days** | Any hard deadline that requires a store-submitted build |
+| Platform release review | **+2–7 calendar days** | Any hard deadline that requires a build to clear the platform's release-review gate — resolve via topic **release ops** |
 
 **Rules:**
 - Deltas **add as risk days**. The store-review buffer is reported on its own line as calendar time.
@@ -238,7 +242,7 @@ Example:
 
 > "**10.7 days** — *best case*: API contract finalized this week, existing `CartRepository` reused, Secondary mockups already delivered, feature flag and kill switch available. Cache item takes its PERT-optimistic 0.5d (baseline 7.5d), Unknown-unknowns apply to the 8.0d expected baseline (+30% = 2.4d), binary-distribution applies at the mitigated +10% level (= 0.8d).
 > **16.6 days** — *worst case*: building against a mock, contract deltas surface at integration, Secondary left for last. Cache item takes its PERT-pessimistic 1.5d (baseline 8.5d), Unknowns apply to the 8.0d expected baseline (+50% = 4.0d), Secondary applies to the 3.0d UI/state/test slice (+70% = 2.1d), API-parallel applies to the 3.0d networking/repository slice (+40% = 1.2d). Binary distribution stays at its fixed +10% (= 0.8d) — the flag/kill-switch path doesn't change between scenarios.
-> **+2–7 calendar days** store review buffer on top, when a hard deadline applies — this is wall-clock waiting, not engineering days."
+> **+2–7 calendar days** release-review buffer on top, when a hard deadline applies — this is wall-clock waiting, not engineering days."
 
 If an assumption breaks, the estimate moves toward the high end — and that's expected.
 
@@ -294,7 +298,7 @@ So state confidence to tell the reader how much to trust the width, and maturity
 Engineering days are not a promise of calendar dates. If stakeholders need delivery timing, convert the engineering range into a separate delivery-calendar view:
 
 - State the focus factor or effective capacity (for example, `0.6` when one engineer has 60% focused capacity after meetings/support).
-- Add explicit external waits separately: backend/design handoff, review boards, release train cutoffs, store review.
+- Add explicit external waits separately: backend/design handoff, review boards, release train cutoffs, platform release review.
 - Do not hide the conversion inside the engineering range.
 
 ### Step 8 — Estimation self-check
@@ -308,7 +312,7 @@ Verify:
 - Each PERT item's optimistic value feeds the best-case end and its pessimistic value the worst-case end — the spread is not discarded.
 - No PERT item is also used as the justification for raising the Unknown-unknowns delta.
 - Binary distribution uses one fixed tier in both scenarios — it is not varied per scenario.
-- App/Play Store review is not included in engineering days.
+- Platform release review is not included in engineering days.
 - Delivery calendar is separated from the engineering range.
 - Secondary delta is absent when Secondary is fully scoped.
 - The dominant multiplier, if present, does not double-count unfamiliarity already covered by Unknown-unknowns.
@@ -327,7 +331,7 @@ Write into the active task's `Plan.md` under heading `## Estimation`. The exampl
 ## Estimation
 
 ### Feature type
-API-driven UI feature. Default posture: API and Secondary risks are likely scoped to Networking / Repository / UI slices; store/release risk depends on rollback path.
+API-driven UI feature. Default posture: API and Secondary risks are likely scoped to Networking / Repository / UI slices; release-review risk depends on rollback path.
 
 ### Baseline (per work item)
 | Item | Layer | Estimate method | AI leverage | Ideal days |
@@ -398,12 +402,12 @@ Conditional — see `### Estimation conditions` for the blocking conditions; no 
 | Focus factor | / 0.6 | / 0.6 | One engineer at 60% focused capacity |
 | External waits | +0 workdays | +2 workdays | Worst case assumes backend/design wait |
 | Delivery workdays before store | ~18 workdays | ~30 workdays | Engineering / focus + explicit waits; still working days — convert to calendar via the team's week before quoting a date |
-| Store review | +2–7 calendar days | +2–7 calendar days | Separate wall-clock buffer, not engineering |
+| Release review | +2–7 calendar days | +2–7 calendar days | Separate wall-clock buffer, not engineering |
 
 ### Assumptions
 1. **Best case** holds when: designer error/loading/empty mockups already delivered, backend contract frozen by end of week 1, existing `ProductRepository` reused as-is.
 2. **Worst case** assumes: building against a mock, contract deltas at integration, Secondary scoped late.
-3. No new platform support (iOS-only).
+3. No additional platform target added.
 
 ### Known unknowns blocking final estimate
 (none — remaining assumptions are tracked above and each expected swing is ≤30%)
@@ -414,7 +418,7 @@ Conditional — see `### Estimation conditions` for the blocking conditions; no 
 - [x] Cache PERT spread feeds the range: 0.5 in best case, 1.5 in worst; not discarded.
 - [x] PERT cache item is not reused to justify the Unknown-unknowns delta.
 - [x] Binary distribution fixed at +10% in both scenarios — caught and corrected an earlier draft that varied it +10%/+20% per scenario.
-- [x] App/Play Store review is not included in engineering days.
+- [x] Platform release review is not included in engineering days.
 - [x] Delivery calendar is separate from engineering range.
 - [x] Secondary delta is skipped in best case because Secondary is scoped.
 - n/a Dominant multiplier — no new-framework work this feature, so the double-count guard doesn't apply.
@@ -429,7 +433,7 @@ Before entering Execute, `Plan.md` MUST contain the **minimum viable estimate** 
 
 - `## Estimation` with `### Feature type` (one line), `### Baseline (per work item)` including concrete ops work, `### Range (engineering days)` with named best/worst scenarios, and `### Confidence` — always.
 - `### Assumptions` whenever the Range depends on any assumption (almost always).
-- Conditional sections (`### Risky item PERT`, `### Risk deltas (per scenario)`, `### Estimate maturity`, `### Estimation conditions`, `### Delivery calendar`, `### Store review buffer`, `### Known unknowns blocking final estimate`, `### Estimation self-check`) only when their trigger fired. A missing conditional section whose trigger *did* fire makes the Plan incomplete; a missing one whose trigger did not fire is correct, not a gap. The store-review buffer counts as present when it appears as a row inside `### Delivery calendar` — it does not also need a standalone `### Store review buffer` section.
+- Conditional sections (`### Risky item PERT`, `### Risk deltas (per scenario)`, `### Estimate maturity`, `### Estimation conditions`, `### Delivery calendar`, `### Release-review buffer`, `### Known unknowns blocking final estimate`, `### Estimation self-check`) only when their trigger fired. A missing conditional section whose trigger *did* fire makes the Plan incomplete; a missing one whose trigger did not fire is correct, not a gap. The release-review buffer counts as present when it appears as a row inside `### Delivery calendar` — it does not also need a standalone `### Release-review buffer` section.
 
 Gate by maturity (an absent `### Estimate maturity` section means a clean estimate — treat as Committable):
 
@@ -448,12 +452,12 @@ Independently of maturity, the Plan is also incomplete — return `ask_user` —
 - **Multiplying risk buffers.** Five compounding multipliers turn an 8-day feature into 26+ days of fiction. Risk deltas are slack on the same work — they add, they don't multiply.
 - **Globalizing scoped risk.** Applying API-in-parallel or Secondary-not-scoped to the whole baseline when only Networking or UI changes creates inflated ranges and hides the real risk owner.
 - **Min/max product as the range.** "All knobs at minimum" and "all knobs at maximum" are jointly near-impossible. Anchor each end to a coherent scenario instead.
-- **Shared estimate across platforms.** iOS and Android are not "the same work × 2 people." Each is its own decomposition, baseline, and delta set.
+- **Shared estimate across platforms.** Two platform targets are not "the same work × 2 people." Each is its own decomposition, baseline, and delta set.
 - **Point estimate without decomposition.** "Probably 2 weeks" with no work-item list is fiction. Always decompose first via `feature-landscape`.
 - **Velocity-based without breakdown.** Story points are a team-private calibration on top of decomposition — not a replacement for it.
 - **Delta without justification.** Each delta must be tied to a concrete observation. "Felt risky" is not a justification.
 - **Communicating a single number to stakeholders.** Always give a range with scenarios. If forced into a single number, give the high end.
-- **Folding store review into engineering days.** Review windows are calendar time, not engineering time. Always surface them on their own line.
+- **Folding release review into engineering days.** Review windows are calendar time, not engineering time. Always surface them on their own line.
 - **Treating engineering days as calendar promise.** Convert through focus factor and explicit waits in `### Delivery calendar`; don't imply 12 engineering days means 12 calendar days.
 - **Using PERT everywhere.** PERT is for specific high-variance rows. Using it for every row creates noise and hides decomposition problems.
 - **Skipping the spike for load-bearing unknowns.** A Known Unknown that trips the load-bearing-unknown rule (Step 4) must get a spike or resolution before final estimation.
@@ -528,14 +532,14 @@ When the log holds **≥3–5 finished features of the same posture**, the skill
 
 ## Notes by delivery form
 
-- **Library / CLI** — Skip the store-review buffer; skip OS fragmentation; binary-distribution delta is 0% unless the library ships as a prebuilt binary artifact.
-- **Desktop app** — Store-review buffer applies when it ships through a store; direct distribution skips the buffer but adds notarization / signing time (~1 hour, not days).
-- **Mobile app** — Unknown-unknowns and binary-distribution are usually in scope; choose binary risk from the rollback path (0% / +10% / +20%). Skip OS fragmentation unless the project is cross-platform Android.
+- **Library / CLI** — Skip the release-review buffer; skip platform fragmentation; binary-distribution delta is 0% unless the library ships as a prebuilt binary artifact.
+- **Desktop app** — Release-review buffer applies when it ships through a store; direct distribution skips the buffer but may add signing/notarization time — resolve via topic **release ops**.
+- **Mobile app** — Unknown-unknowns and binary-distribution are usually in scope; choose binary risk from the rollback path (0% / +10% / +20%). Resolve whether platform fragmentation applies via topic **release ops**.
 
 ## What this skill does NOT do
 
 - Does NOT produce a single number — only ranges.
-- Does NOT promise calendar dates from engineering days alone — delivery-calendar conversion is separate and must state focus factor, external waits, and store/release buffers.
+- Does NOT promise calendar dates from engineering days alone — delivery-calendar conversion is separate and must state focus factor, external waits, and release-review buffers.
 - Does NOT decide priority or scope — that's the product / planning conversation.
 - Does NOT estimate features without a landscape — return to `feature-landscape` first if no work-items list exists.
 - Does NOT fully model per-item uncertainty — PERT covers selected high-variance rows, but risk deltas are still a coarse planning tool. When per-item variance dominates many rows, decompose finer instead of leaning on one global delta.
