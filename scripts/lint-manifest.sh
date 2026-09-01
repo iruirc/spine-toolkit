@@ -4,7 +4,7 @@
 # exist, fan-out rows that core can actually match, no duplicate left-hand
 # sides) and Entrypoints content (a named skill exists). Topics content is NOT
 # checked here — a manifest may name topic skills that don't resolve within its
-# own plugin as a teaching device (see core/tests/fixtures/fixture-platform);
+# own plugin as a teaching device (see tests/fixtures/fixture-platform);
 # real platforms get their Topics checked by their own test suite. Entrypoints
 # is checked because core calls it by name at install time, where a typo is
 # indistinguishable from the legitimate '—' and surfaces only after the config
@@ -61,7 +61,7 @@ while read -r ref; do
     || { echo "manifest names an agent outside this plugin's namespace (expected $own_name:): $ref"; violations=$((violations+1)); }
   [ -f "$plugin/agents/${ref#*:}.md" ] \
     || { echo "manifest names an agent with no file: $ref"; violations=$((violations+1)); }
-done < <(grep -oE '[a-z][a-z-]*:[a-z][a-z-]*' <<<"$assignments" | sort -u)
+done < <(grep -oE '[a-z][a-z0-9-]*:[a-z][a-z0-9-]*' <<<"$assignments" | sort -u)
 
 # `## Axes` shares the `name = value` grammar, so the window is bounded the same way
 # the Roles one is. Its keys are what the fan-out checks below are decided against:
@@ -128,7 +128,10 @@ while IFS= read -r line; do
   case "$rhs" in
     "—") ;;
     *)
-      if [[ "$rhs" =~ ^[a-z][a-z-]*:[a-z][a-z-]*$ ]]; then
+      # Digits are legal in a plugin or agent name (`vue3-platform:vue3-architect`);
+      # rejecting them here also made the extraction above match the post-digit
+      # fragment, reporting an agent the manifest never named.
+      if [[ "$rhs" =~ ^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$ ]]; then
         :
       elif [ -z "$rhs" ]; then
         echo "role mapped to an empty value (write a plugin:agent reference or '—'): $role_name"

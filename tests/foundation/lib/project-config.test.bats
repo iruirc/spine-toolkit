@@ -45,15 +45,15 @@ catalog_words() {
   }
 }
 
-@test "every bare relative path core names resolves under core" {
-  # tests/fixtures/ holds a whole foreign plugin: its paths resolve against
-  # itself, not against this root.
+@test "every bare relative path core names resolves under its own plugin root" {
+  # tests/fixtures/ holds whole foreign plugins, and the contract sends strangers
+  # there to copy one — so their paths are in scope, resolved against themselves.
+  # Excluding them is how three monorepo-era paths shipped inside the copy target.
   missing=""
-  for p in $(grep -rhoE '`[A-Za-z_][A-Za-z0-9_.-]*/[^` ]*`' "$ROOT" \
-               --include='*.md' --include='*.sh' --include='*.js' \
-               --include='*.bats' --include='*.zsh' \
-               --exclude-dir=fixtures \
-             | tr -d '`' | sort -u); do
+  while IFS= read -r hit; do
+    [ -n "$hit" ] || continue
+    f="${hit%%:*}"
+    p="$(printf '%s' "${hit#*:}" | tr -d '`')"
     case "$p" in
       skills/*|agents/*|commands/*|conventions/*|templates/*|hooks/*|scripts/*|tests/*|workflows/*) ;;
       # A monorepo-root prefix is a path this plugin does not have: it resolves
@@ -61,13 +61,22 @@ catalog_words() {
       core/*) ;;
       *) continue ;;
     esac
+    base="$ROOT"
+    case "$f" in
+      "$ROOT"/tests/fixtures/*)
+        rel="${f#"$ROOT"/tests/fixtures/}"
+        base="$ROOT/tests/fixtures/${rel%%/*}" ;;
+    esac
     # bash 3.2's `compgen -G` succeeds on any pattern ending in `/`, existing or not,
     # so the trailing slash has to go before the glob is what decides.
     q="$(printf '%s' "$p" | sed 's/<[^>]*>/*/g')"
-    compgen -G "$ROOT/${q%/}" >/dev/null \
-      || missing="$missing $p"
-  done
-  [ -z "$missing" ] || { echo "path(s) that do not resolve under core:$missing"; return 1; }
+    compgen -G "$base/${q%/}" >/dev/null \
+      || missing="$missing ${f#"$ROOT"/}:$p"
+  done < <(grep -roE '`[A-Za-z_][A-Za-z0-9_.-]*/[^` ]*`' "$ROOT" \
+             --include='*.md' --include='*.sh' --include='*.js' \
+             --include='*.bats' --include='*.zsh' \
+             --exclude-dir=.git | sort -u)
+  [ -z "$missing" ] || { echo "path(s) that do not resolve under their plugin root:$missing"; return 1; }
 }
 
 @test "no file in core names the platform tree by a filesystem path" {
@@ -75,7 +84,19 @@ catalog_words() {
   # walks straight past it — which is how two of these survived twelve reviews.
   # `git filter-repo --path core` turns every one of them into a dangling path
   # with no sibling tree left to restore.
-  offenders="$(grep -rnE --exclude-dir=.git '(\.\./platform([^A-Za-z0-9_-]|$)|(^|[^A-Za-z0-9_.-])platform/)' "$ROOT" \
-    | grep -vF 'project-config.test.bats' || true)"
+  # Both namings are now wrong for core to write: the pre-split directory, and
+  # the published repo name that the first pattern's `[^A-Za-z0-9_.-]` class
+  # swallows. Core's own repo name is a monorepo-root prefix and equally wrong,
+  # but a leading slash is spared so the installed-plugin cache paths `setup`
+  # and `task-new` document stay legal.
+  pat='(\.\./(platform|swift-platform|spine-toolkit)([^A-Za-z0-9_-]|$)'
+  pat="$pat"'|(^|[^A-Za-z0-9_.-])platform/'
+  pat="$pat"'|(^|[^A-Za-z0-9_./-])(swift-platform|spine-toolkit)/)'
+  hits="$(grep -rnE --exclude-dir=.git "$pat" "$ROOT" || true)"
+  offenders="$(grep -vF 'project-config.test.bats' <<<"$hits" || true)"
   [ -z "$offenders" ] || { echo "core reference(s) to the platform tree:"; echo "$offenders"; return 1; }
+  # The self-exclusion above is otherwise unbounded — a violation added to this
+  # file would be invisible. Pin the count: a change here must be re-read.
+  n="$(grep -cF 'project-config.test.bats' <<<"$hits" || true)"
+  [ "$n" -eq 3 ] || { echo "self-excluded lines in this file: $n, expected 3"; return 1; }
 }
