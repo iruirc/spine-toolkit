@@ -25,7 +25,7 @@ Commit messages do not make this artifact redundant. `conventions/commit-message
 
 ## The switch
 
-`[WALKTHROUGH] = [on|off]` in `Task.md` → `## Reporting` → `walkthrough:` in `CLAUDE-spine-toolkit.md` → `on`. First hit wins; a missing section is not an error, it is the default.
+`[WALKTHROUGH] = [on|off]` in `Task.md` → `off` when the run's `scale` is `lite` → `## Reporting` → `walkthrough:` in `CLAUDE-spine-toolkit.md` → `on`. First hit wins; a missing section is not an error, it is the default. The axis moves the default only, so an explicit `[WALKTHROUGH] = [on]` writes this file on a `lite` run (`conventions/task-scale.md`).
 
 ## Inputs
 

@@ -343,6 +343,7 @@ agents={architect: fixture-platform:fixture-architect, developer: fixture-platfo
 need_test=true|false
 need_review=true|false
 walkthrough=on|off
+scale=lite|full
 archive_paths=[Tasks/ACTIVE/001-profile/_archive/Plan-2026-04-25T143022.md, Tasks/ACTIVE/001-profile/_archive/Research-2026-04-25T143022.md]
 ```
 
@@ -362,6 +363,38 @@ Semantics of `stage_scope`:
 `agents` — the role-to-agent map resolved in step 5.7. Always filled, always all nine roles, always in vocabulary order (`architect`, `developer`, `tester`, `reviewer`, `refactorer`, `validator`, `security`, `diagnostics`, `init`). Method B encodes it as the single line above; Method A passes the same object as real JSON, so a script reads `A.agents.architect` and gets `"fixture-platform:fixture-architect"` for the reference platform above. Keys are bare role names: the manifest's `role[axis=value]` form is resolved away in step 5.7 and never reaches the contract. A role the platform declared absent arrives as the em dash `—` in both encodings — a value a consumer checks for before dispatching, not a missing key, and the reason this field is never partial and never omitted. This is what lets a stage name its owner by role: which agent that role means is a property of the platform, not of the profile.
 
 `walkthrough` — whether the run writes `Walkthrough.md`. Resolved `Task.md` `[WALKTHROUGH]` → `CLAUDE-spine-toolkit.md` `## Reporting` → `walkthrough` → `on`; a missing section is the default, not an error. Unlike `drive_app`, this one travels in the contract because the script itself gates on it — a Method A run has no filesystem access and cannot read the value for itself. Always `off` for `profile=review` and `profile=research`, where the profile has no implementing stage and no diff of its own; if the task file sets it anyway, say once that it was not executed and why, rather than dropping it silently.
+
+`scale` — how deep this task's pipeline goes. Resolved `Task.md` `[SCALE]` →
+`CLAUDE-spine-toolkit.md` `## Scale` → `full`; a missing section is the default, not an error.
+Always filled, for every profile: `review` and `research` accept it and ignore it, having no
+implementing stage to make cheaper, and it is never omitted, so a consumer reads one shape rather
+than testing for the field first. It travels in the contract for the reason `walkthrough` does — a
+Method A script gates on it and has no filesystem to read it from. What the two values mean, which
+three levers one value moves, and what the floor is at both: `conventions/task-scale.md`.
+
+`scale` also moves the default under `walkthrough`, and loses to that field's own switch: the
+chain reads `Task.md [WALKTHROUGH]` → `off` when `scale` is `lite` → `CLAUDE-spine-toolkit.md
+## Reporting` → `on`. So `[WALKTHROUGH] = [on]` writes `Walkthrough.md` on a `lite` run, and
+`full` turns nothing back on that the user turned off.
+
+**Receiving a raise.** A stage may return `scale_escalation: {to: "full", reason: "<what it
+found>"}` — the ratchet of `conventions/task-scale.md`, which owns the two points it may fire at
+and the four criteria for firing. On receiving one:
+
+1. write `[SCALE] = [full]` into the task's `Task.md`, immediately after the `[NEED_REVIEW]` line —
+   the same write-back `[RESEARCH_AGENT]` gets, and for the same reason: a rerun must not have to
+   rediscover the finding;
+2. announce it with key `scale_escalated` (placeholders `{stage}`, `{reason}`);
+3. dispatch whatever is left of the range with `scale=full`.
+
+Nothing is re-dispatched that is already running: a Method A script that raised the value mid-range
+carried on at the new one and says so in its return, so step 3 covers only stages not yet started.
+The raise is **never lowered**, at any point, by anyone.
+
+Two cases write nothing. A run already resolved to `full` has nothing to raise. And `[SCALE] =
+[full]` already in `Task.md` is the author's own decision: report the stage's finding, change no
+file. Because the value lives in the file, a later `redo` of any stage runs at `full` as well — the
+size belongs to the task, not to one dispatch.
 
 `archive_paths` — list of paths to backups already created in `_archive/` for stages that will be overwritten (filled before handing off control). Format: `[path1, path2, path3]`. Empty list = `[]`.
 
