@@ -57,6 +57,13 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
   - `DISCUSSION` → the task stays in `Tasks/ACTIVE/`. A `Questions.md` is created (or extended) with a section `## <ISO-date> — Discussion from Review` quoting/linking the disputed points from `Review.md`.
   - Any other value, or missing first line in the required format → `{status: error, reason: "invalid or missing [REVIEW_STATUS] in Review.md"}`.
 
+## 2a. Scale
+
+`scale` arrives in the contract, filled, and this profile ignores it: REVIEW has one stage, no
+implementing stage and no artifact of its own to fold anything into. The field is documented here
+rather than omitted so that no consumer has to discover the field is only sometimes present
+(`conventions/task-scale.md`).
+
 ## 3. Manual mode
 
 After the Review stage completes, the orchestrator asks the user via the structured question mechanism using the `auto_move_prompt` key from `locales/<lang>.md`, with placeholder `{status}` (the parsed `[REVIEW_STATUS]` value).
