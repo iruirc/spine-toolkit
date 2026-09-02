@@ -1,5 +1,4 @@
 .DS_Store
 .claude/settings.local.json
-# SDD scratch. project-config.test.bats scans the working tree, not the index,
-# so an ignored file here still reddens it — keep scratch outside the repo.
+# Agent scratch. Ignoring it is enough: the suite enumerates through git.
 .superpowers/
