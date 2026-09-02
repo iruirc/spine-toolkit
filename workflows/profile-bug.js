@@ -533,7 +533,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-Judge the fix against Reproduce.md and Plan.md: does it address the root cause rather than the symptom, does the regression test lock in the real scenario, does it carry the risks the diagnosis named — Research.md, or the ## Diagnosis section of Reproduce.md on a run that folded it. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
+Judge the fix against Reproduce.md and Plan.md: does it address the root cause rather than the symptom, does the regression test lock in the real scenario, does it carry the risks the diagnosis named — Research.md, or the ## Diagnosis section of Reproduce.md on a run that folded it. When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
   )
