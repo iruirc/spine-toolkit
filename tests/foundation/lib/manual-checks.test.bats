@@ -101,8 +101,14 @@ bullet() { # $1 = SKILL.md, $2 = stage name
   [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the clause, expected 4"; return 1; }
 }
 
+# The Validation stage's brief TEXT only — from its banner to the agent() options
+# object that follows it. Stopping at the next stage banner would also capture the
+# post-agent code, and every profile's `result.notes.push(...)` there carries the
+# literal ManualChecks.md — which makes any grep for the artifact name inside this
+# range incapable of failing. The stop pattern spells the quotes as `.` so the awk
+# program can stay single-quoted.
 validation_brief() {
-  awk '/^\/\/ ── Validation ─/{p=1;next} p&&/^\/\/ ── /{exit} p' "$1"
+  awk -v stop="label: .validation." '/^\/\/ ── Validation ─/{p=1;next} p&&$0~stop{exit} p' "$1"
 }
 
 @test "every Validation brief points at the skill instead of describing the file" {
@@ -113,6 +119,9 @@ validation_brief() {
 }
 
 @test "the Validation brief still names the artifact it produces" {
+  # A preservation guard, not a gate on this task: every Validation brief already
+  # named the artifact before this plan touched it, so this passes at RED by design.
+  # What it buys is that a later rewording of the brief cannot drop the name silently.
   for p in $PROFILES; do
     validation_brief "$ROOT/workflows/profile-$p.js" | grep -q 'ManualChecks.md' \
       || { echo "profile-$p.js: the artifact fell out of the Validation brief"; return 1; }
