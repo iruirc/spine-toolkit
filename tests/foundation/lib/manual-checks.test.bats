@@ -86,10 +86,13 @@ bullet() { # $1 = SKILL.md, $2 = stage name
 }
 
 @test "BUG says where the replay comes from instead of listing it twice" {
-  plan_brief "$ROOT/workflows/profile-bug.js" | grep -q 'Reproduce.md' \
+  # Both greps target the inserted sentence itself. A bare 'Reproduce.md' matches
+  # two lines the bug Plan brief already carried, and a bare 'replay' matches three
+  # in workflow-bug/SKILL.md — either one passes before the edit it exists to check.
+  plan_brief "$ROOT/workflows/profile-bug.js" | grep -q 'reproduction replay is not' \
     || { echo "profile-bug.js: the Plan brief does not exempt the replay"; return 1; }
-  grep -q 'replay' "$ROOT/skills/workflow-bug/SKILL.md" \
-    || { echo "workflow-bug/SKILL.md: the replay exemption did not reach Method B"; return 1; }
+  bullet "$ROOT/skills/workflow-bug/SKILL.md" Plan | grep -q 'reproduction replay is not' \
+    || { echo "workflow-bug/SKILL.md: the replay exemption did not reach the Plan bullet"; return 1; }
 }
 
 @test "exactly the four profiles with a Validation stage carry the clause" {
