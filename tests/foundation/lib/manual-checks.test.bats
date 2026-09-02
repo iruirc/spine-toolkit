@@ -100,3 +100,38 @@ bullet() { # $1 = SKILL.md, $2 = stage name
   n="$(grep -l '## Manual acceptance' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
   [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the clause, expected 4"; return 1; }
 }
+
+validation_brief() {
+  awk '/^\/\/ ── Validation ─/{p=1;next} p&&/^\/\/ ── /{exit} p' "$1"
+}
+
+@test "every Validation brief points at the skill instead of describing the file" {
+  for p in $PROFILES; do
+    validation_brief "$ROOT/workflows/profile-$p.js" | grep -q 'manual-checks skill' \
+      || { echo "profile-$p.js: the Validation brief never names the manual-checks skill"; return 1; }
+  done
+}
+
+@test "the Validation brief still names the artifact it produces" {
+  for p in $PROFILES; do
+    validation_brief "$ROOT/workflows/profile-$p.js" | grep -q 'ManualChecks.md' \
+      || { echo "profile-$p.js: the artifact fell out of the Validation brief"; return 1; }
+  done
+}
+
+@test "the pointer reached the Method B skill of every profile" {
+  for p in $PROFILES; do
+    bullet "$ROOT/skills/workflow-$p/SKILL.md" Validation | grep -q 'manual-checks' \
+      || { echo "workflow-$p/SKILL.md: the Validation stage has no pointer at the skill"; return 1; }
+  done
+}
+
+@test "the platform how-to says the artifact's form belongs to core" {
+  grep -q 'manual-checks' "$ROOT/docs/building-a-platform.md" \
+    || { echo "a platform author is never told the form is not theirs to invent"; return 1; }
+}
+
+@test "the project config template points at the skill for what goes inside" {
+  grep -q 'manual-checks' "$ROOT/templates/claude-toolkit-md/en.md" \
+    || { echo "the manual_checks key documents when, and nothing documents what"; return 1; }
+}
