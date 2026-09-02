@@ -16,6 +16,18 @@ setup() {
   TPL="$ROOT/templates/claude-toolkit-md/en.md"
 }
 
+# The three scans below ask what files core HAS, and that is the index plus
+# whatever is untracked and not ignored — never a tree walk, which also reads
+# ignored scratch (a build directory, an agent's workspace) and reddens these
+# checks over a file that was never core's. Paths come back repo-relative.
+# Exit 1 is "no match"; anything above it is git failing, and a failed scan must
+# not read as a clean one.
+core_grep() {
+  local rc=0
+  git -C "$ROOT" grep --untracked --full-name "$@" || rc=$?
+  [ "$rc" -le 1 ] || { echo "git grep exited $rc — the scan did not run" >&2; return 1; }
+}
+
 @test "the config template declares every block the toolkit reads" {
   for block in Language Platform Agents Stack Mode Progress Modules EstimationDeltas Scale; do
     grep -q "^## $block\$" "$TPL" || { echo "missing block: ## $block"; return 1; }
@@ -38,8 +50,8 @@ catalog_words() {
   # `setup` migrates a project written by the pre-split toolkit, so it must name
   # the old file. Nothing else may: elsewhere the name is rot, and a consumer
   # reading it looks at a file no current install has.
-  hits="$(grep -rl --exclude-dir=.git 'CLAUDE-swift-toolkit' "$ROOT" || true)"
-  offenders="$(grep -vE "/(skills/setup/|commands/setup\.md|tests/foundation/lib/project-config\.test\.bats)" <<<"$hits" || true)"
+  hits="$(core_grep -l 'CLAUDE-swift-toolkit')"
+  offenders="$(grep -vE '^(skills/setup/|commands/setup\.md|tests/foundation/lib/project-config\.test\.bats)' <<<"$hits" || true)"
   [ -z "$offenders" ] || {
     echo "unexpected reference(s) to the pre-split config name:"; echo "$offenders"; return 1
   }
@@ -54,6 +66,8 @@ catalog_words() {
   # there to copy one — so their paths are in scope, resolved against themselves.
   # Excluding them is how three monorepo-era paths shipped inside the copy target.
   missing=""
+  scan="$(core_grep -oE '`[A-Za-z_][A-Za-z0-9_.-]*/[^` ]*`' \
+            -- '*.md' '*.sh' '*.js' '*.bats' '*.zsh')"
   while IFS= read -r hit; do
     [ -n "$hit" ] || continue
     f="${hit%%:*}"
@@ -67,19 +81,16 @@ catalog_words() {
     esac
     base="$ROOT"
     case "$f" in
-      "$ROOT"/tests/fixtures/*)
-        rel="${f#"$ROOT"/tests/fixtures/}"
+      tests/fixtures/*)
+        rel="${f#tests/fixtures/}"
         base="$ROOT/tests/fixtures/${rel%%/*}" ;;
     esac
     # bash 3.2's `compgen -G` succeeds on any pattern ending in `/`, existing or not,
     # so the trailing slash has to go before the glob is what decides.
     q="$(printf '%s' "$p" | sed 's/<[^>]*>/*/g')"
     compgen -G "$base/${q%/}" >/dev/null \
-      || missing="$missing ${f#"$ROOT"/}:$p"
-  done < <(grep -roE '`[A-Za-z_][A-Za-z0-9_.-]*/[^` ]*`' "$ROOT" \
-             --include='*.md' --include='*.sh' --include='*.js' \
-             --include='*.bats' --include='*.zsh' \
-             --exclude-dir=.git | sort -u)
+      || missing="$missing $f:$p"
+  done < <(printf '%s\n' "$scan" | sort -u)
   [ -z "$missing" ] || { echo "path(s) that do not resolve under their plugin root:$missing"; return 1; }
 }
 
@@ -97,8 +108,8 @@ catalog_words() {
   pat='(\.\./(platform|swift-platform|spine-toolkit)([^A-Za-z0-9_-]|$)'
   pat="$pat"'|(^|[^A-Za-z0-9_.-])platform/'
   pat="$pat"'|(^|[^A-Za-z0-9_-])(swift-platform|spine-toolkit)/)'
-  hits="$(grep -rnE --exclude-dir=.git "$pat" "$ROOT" \
-            | grep -vE '/\.claude/plugins/(cache|marketplaces)/' || true)"
+  raw="$(core_grep -nE "$pat")"
+  hits="$(grep -vE '(^|/)\.claude/plugins/(cache|marketplaces)/' <<<"$raw" || true)"
   offenders="$(grep -vF 'project-config.test.bats' <<<"$hits" || true)"
   [ -z "$offenders" ] || { echo "core reference(s) to the platform tree:"; echo "$offenders"; return 1; }
   # The self-exclusion above is otherwise unbounded — a violation added to this
