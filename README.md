@@ -1,5 +1,9 @@
 # spine-toolkit
 
+[![release](https://img.shields.io/github/v/tag/iruirc/spine-toolkit?sort=semver&label=release&color=0969da)](https://github.com/iruirc/spine-toolkit)
+[![license](https://img.shields.io/github/license/iruirc/spine-toolkit?color=555)](LICENSE)
+[![install from iruirc/claude-marketplace](https://img.shields.io/badge/install%20from-iruirc%2Fclaude--marketplace-6f42c1)](https://github.com/iruirc/claude-marketplace)
+
 A task lifecycle orchestrator for Claude Code: stages, the artifacts that travel between them, and
 the rules for moving from one to the next. It knows nothing about any programming language or
 framework — stack knowledge arrives from a **platform plugin** it invokes across the plugin
