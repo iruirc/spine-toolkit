@@ -514,7 +514,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION${lite() ? '' : `\n\nCross-check ${DIR}/OpsChecklist.md: every item marked Applicable must have implementation evidence visible in the diff or in the test results. An Applicable item without evidence is a finding and normally yields CHANGES_REQUESTED. Collect the Pending items under a ## Outstanding ops items section in Review.md for the user to accept or defer explicitly.`}
 
-When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable.
+When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check.
 
 Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
