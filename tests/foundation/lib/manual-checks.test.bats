@@ -183,3 +183,15 @@ review_brief() {
   r="$(grep -l 'ManualChecks.md exists, read it too' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
   [ "$r" -eq 4 ] || { echo "$r profile script(s) carry the Review clause, expected 4"; return 1; }
 }
+
+@test "Review checks the plan's half of the contract, not only the artifact" {
+  # The artifact clause fires only when the artifact exists, and manual_checks: auto
+  # may never write one — so without this, a plan that quietly skipped the section
+  # is caught by nobody.
+  for p in $PROFILES; do
+    review_brief "$ROOT/workflows/profile-$p.js" | grep -q '## Manual acceptance' \
+      || { echo "profile-$p.js: Review never looks for the plan's ## Manual acceptance"; return 1; }
+    bullet "$ROOT/skills/workflow-$p/SKILL.md" Review | grep -q '## Manual acceptance' \
+      || { echo "workflow-$p/SKILL.md: the plan-side check did not reach Method B"; return 1; }
+  done
+}

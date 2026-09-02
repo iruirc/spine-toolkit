@@ -93,10 +93,18 @@ orchestrator resolved it once before dispatch, and the script has no way to re-r
 
 ## Budgets are measured
 
-Line ceilings live in `scripts/lint-artifact-budget.sh` and nowhere else in prose. A brief may state
-the ceiling for the artifact its agent is about to write, but the ceiling is *enforced* by running
-that script — a count limit published as a directive and never checked is a limit this repository has
-already watched go unobserved for months. State it, then measure it.
+Whole-file line ceilings live in `scripts/lint-artifact-budget.sh` and nowhere else in prose. A brief
+may state the ceiling for the artifact its agent is about to write, but the ceiling is *enforced* by
+running that script — a count limit published as a directive and never checked is a limit this
+repository has already watched go unobserved for months. State it, then measure it.
+
+That instrument fits an artifact of fixed shape. It does not fit one whose length is a function of
+the work: `Walkthrough.md` carries a block per commit, `ManualChecks.md` a case per check, and a
+single number for either file would strangle a large task or mean nothing on a small one. Those two
+are budgeted **per unit** — per commit, per case, per divergence — in the skill that governs each
+(`task-walkthrough`, `manual-checks`). A per-unit budget is not something a line count can decide,
+so it is read like the rest of the artifact, by the stage that reviews it. Adding one of these to
+the lint's table would not make it measured; it would make the number arbitrary.
 
 ## What the axis does not govern
 
