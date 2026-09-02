@@ -291,7 +291,7 @@ Do **not** name that skill `setup`. It would collide with core's own in every na
 trigger — which is exactly why the binding goes through this table instead of a naming convention.
 The same applies to every other core skill name: `orchestrator`, `stack-detect`, `lang`,
 `agent-status`, `task-new`, `task-move`, `task-status`, `task-walkthrough`, `workflow-*`,
-`feature-*`, `ops-checklist`.
+`feature-*`, `ops-checklist`, `manual-checks`.
 
 ### Step 9 — check it
 
@@ -421,7 +421,8 @@ The artifact's shape is core's, not yours: `skills/manual-checks/SKILL.md` holds
 required fields of a case, and the two rules that decide whether a case is executable. Your
 validator points at that skill instead of describing the file. What stays platform-side is when a
 check is deferred and what this ecosystem measures it with — a case whose verdict comes from an
-instrument carries that instrument's exact invocation, and only your agent knows what it is.
+instrument is backed by that instrument's exact invocation, written where the `manual-checks`
+skill puts it, and only your agent knows what that invocation is.
 
 ## 5. The smallest platform that is worth installing
 

@@ -87,7 +87,7 @@ Three rules on top of the fields:
 
 An expectation is written in what a person can **see**. When the verdict comes from an instrument — a trace, a log, a parser, a profiler — that instrument has to be runnable from this file: the command in full, and the value in its output that decides.
 
-The command is written **once**, in `## Reading the verdict`. A case's `**By instrument:**` names only its own criterion — the measurement and the threshold it is judged against. Twelve cases do not repeat one invocation twelve times. When there is a single case and no such section, the command lives in the case.
+The command is written **once**, in `## Reading the verdict`. A case's `**By instrument:**` names only its own criterion — the measurement and the threshold it is judged against. Twelve cases do not repeat one invocation twelve times. When no command serves more than one case — a single case, or cases each measured differently — there is no such section and each command lives in its own case.
 
 | | |
 |---|---|
@@ -104,7 +104,7 @@ Neither `**Scene:**` nor either expectation identifies a state by the name of a 
 
 The axis decides depth, not existence: whether this file appears at all is `manual_checks` (`Task.md [MANUAL_CHECKS]` → `CLAUDE-spine-toolkit.md ## Validation`). At either value of `scale` it is written when that switch says so — it is the only record of ground nothing verified, and `conventions/task-scale.md ## The floor` keeps what carries a guarantee.
 
-`lite` halves the section ceilings and drops `## Troubleshooting`, and cuts no required field of a case. A case missing its `**Failure looks like:**` is not shorter, it is unusable. `## Manual acceptance` at `lite` is three lines, one when there is nothing to list.
+`lite` halves the section ceilings and drops `## Troubleshooting`, and cuts no required field of a case. A case missing its `**Failure looks like:**` is not shorter, it is unusable. `## Manual acceptance` at `lite` runs to about three lines, one when there is nothing to list — an expected size, not a ceiling: a task with five checks nothing can automate lists five.
 
 ## Review
 
