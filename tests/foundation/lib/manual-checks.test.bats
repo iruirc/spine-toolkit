@@ -144,3 +144,32 @@ validation_brief() {
   grep -q 'manual-checks' "$ROOT/templates/claude-toolkit-md/en.md" \
     || { echo "the manual_checks key documents when, and nothing documents what"; return 1; }
 }
+
+# The Review stage's brief TEXT only, stopping at the agent() options object the
+# same way validation_brief() does. Nothing in the post-agent code names the
+# artifact today, so a banner-to-banner range would pass — but by accident, and
+# the accident ends the day Review starts reporting manual checks.
+review_brief() {
+  awk -v stop="label: .review." '/^\/\/ ── Review ─/{p=1;next} p&&$0~stop{exit} p' "$1"
+}
+
+@test "every Review brief reads the hand-run script when there is one" {
+  for p in $PROFILES; do
+    review_brief "$ROOT/workflows/profile-$p.js" | grep -q 'ManualChecks.md' \
+      || { echo "profile-$p.js: Review never opens ManualChecks.md"; return 1; }
+  done
+}
+
+@test "Review is told what makes a case a finding, not just to look at it" {
+  for p in $PROFILES; do
+    review_brief "$ROOT/workflows/profile-$p.js" | grep -q 'manual-checks' \
+      || { echo "profile-$p.js: Review has no rule to judge a case by"; return 1; }
+  done
+}
+
+@test "the Review requirement reached Method B" {
+  for p in $PROFILES; do
+    bullet "$ROOT/skills/workflow-$p/SKILL.md" Review | grep -q 'ManualChecks.md' \
+      || { echo "workflow-$p/SKILL.md: the Review stage says nothing about the artifact"; return 1; }
+  done
+}
