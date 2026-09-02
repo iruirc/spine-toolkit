@@ -49,3 +49,51 @@ setup() {
   # and a locales/ directory would put this skill under lint-locales parity for no reader.
   [ ! -d "$ROOT/skills/manual-checks/locales" ] || { echo "manual-checks must not carry locales/"; return 1; }
 }
+
+# The Plan brief of a profile script runs from its own banner to the next stage's.
+# Grepping the whole file would pass on a mention in the Validation brief, which is
+# the one place this clause must NOT be, since by then the plan is already written.
+plan_brief() {
+  awk '/^\/\/ ── Plan ─/{p=1;next} p&&/^\/\/ ── /{exit} p' "$1"
+}
+
+# A stage's own bullet in a Method B skill, from its "- **Stage**" line to the next
+# bullet. Whole-file greps do not work here: by Task 3 the Validation bullet quotes the
+# plan-side section name, and every one of these tests would pass before its own edit.
+bullet() { # $1 = SKILL.md, $2 = stage name
+  awk -v s="- **$2**" 'index($0,s)==1{p=1;print;next} p&&/^- \*\*/{exit} p' "$1"
+}
+
+@test "every profile asks its Plan stage for the manual-acceptance list" {
+  for p in $PROFILES; do
+    plan_brief "$ROOT/workflows/profile-$p.js" | grep -q '## Manual acceptance' \
+      || { echo "profile-$p.js: the Plan brief never asks for ## Manual acceptance"; return 1; }
+  done
+}
+
+@test "the Plan brief offers the escape line for a fully automatable task" {
+  for p in $PROFILES; do
+    plan_brief "$ROOT/workflows/profile-$p.js" | grep -q 'Fully automatable' \
+      || { echo "profile-$p.js: no escape line, so an empty list has no legal form"; return 1; }
+  done
+}
+
+@test "the same requirement reached the Method B skill of every profile" {
+  for p in $PROFILES; do
+    bullet "$ROOT/skills/workflow-$p/SKILL.md" Plan | grep -q '## Manual acceptance' \
+      || { echo "workflow-$p/SKILL.md: the Plan stage says nothing about ## Manual acceptance"; return 1; }
+  done
+}
+
+@test "BUG says where the replay comes from instead of listing it twice" {
+  plan_brief "$ROOT/workflows/profile-bug.js" | grep -q 'Reproduce.md' \
+    || { echo "profile-bug.js: the Plan brief does not exempt the replay"; return 1; }
+  grep -q 'replay' "$ROOT/skills/workflow-bug/SKILL.md" \
+    || { echo "workflow-bug/SKILL.md: the replay exemption did not reach Method B"; return 1; }
+}
+
+@test "exactly the four profiles with a Validation stage carry the clause" {
+  # Vacuity guard: without it the loops above iterate over a list someone shortened.
+  n="$(grep -l '## Manual acceptance' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the clause, expected 4"; return 1; }
+}

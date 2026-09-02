@@ -456,7 +456,9 @@ if (runs('Plan')) {
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per file to edit, per acceptance criterion, per regression-test case, per verification step. Static prose (root-cause notes, decisions) stays plain bullets; only action items become checkboxes.
 
-Cover the focused fix${A.need_test === false ? '' : ', a regression test that locks in the scenario from Reproduce.md'}, and any migration or compatibility step the change forces. Every phase has to end independently buildable, green, and committable on its own.${cap('Plan.md')}${ratchet()}`,
+Cover the focused fix${A.need_test === false ? '' : ', a regression test that locks in the scenario from Reproduce.md'}, and any migration or compatibility step the change forces. Every phase has to end independently buildable, green, and committable on its own.
+
+Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, each stated as what must be true rather than as what to press, so Validation can turn it into a case a person walks. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry. The reproduction replay is not one of these lines: its steps are already in Reproduce.md, and Validation reads them from there.${cap('Plan.md')}${ratchet()}`,
     ),
     { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: withEscalation(PLAN) },
   )

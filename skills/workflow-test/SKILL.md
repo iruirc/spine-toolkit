@@ -63,6 +63,8 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   The plan decomposes tests into phases — usually by groups (one phase per testable component / module / use case). Each phase is assigned a priority `P0` (critical, blocks release) / `P1` (important) / `P2` (nice-to-have).
 
+  The tester MUST also add a `## Manual acceptance` section: one line per check this task's automation will not be able to make, stated as what must be true rather than what to press. Nothing qualifies — the single line `Fully automatable.` It is the input Validation turns into `ManualChecks.md`; the `manual-checks` skill holds both halves.
+
 - **Write** — `[tester]`. Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without a user prompt.
 
   Per-item flow inside a phase: complete one actionable item → tick its checkbox `- [ ]` → `- [x]` in the per-phase detail section of Plan.md. Per-phase flow: when all the phase's checkboxes are `- [x]` → build → run the newly added tests for that phase → flip the phase's row in the top-level progress table ⬜→✅ → `git add` the phase's files (including the Plan.md updates — both checkboxes and table) → `git commit`. Commit message format: **Conventional Commits** — `<type>(<scope>): <imperative subject>` followed by an optional body explaining WHY. For Write-stage commits the type is `test` (use `chore` for test-infrastructure-only phases — fixtures/helpers without test logic). **NEVER include the task ID, step ID, or phase number** — provenance lives in `Plan.md`, the branch name, and the PR description. Full spec + anti-examples in `conventions/commit-messages.md`. Example:
