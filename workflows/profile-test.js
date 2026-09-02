@@ -407,7 +407,9 @@ if (runs('Plan')) {
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘, plus a priority column holding P0, P1, or P2.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per test case to add, per fixture or mock to create, per assertion cluster to verify. Static prose (test-strategy notes, framework choices) stays plain bullets; only action items become checkboxes.
 
-Group phases by testable unit — one per component, module, or use case — and give each a priority: P0 critical and release-blocking, P1 important, P2 nice to have.${cap('Plan.md')}${ratchet()}`,
+Group phases by testable unit — one per component, module, or use case — and give each a priority: P0 critical and release-blocking, P1 important, P2 nice to have.
+
+Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, each stated as what must be true rather than as what to press, so Validation can turn it into a case a person walks. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}`,
     ),
     { label: 'plan', phase: 'Plan', agentType: A.agents.tester, schema: withEscalation(PLAN) },
   )
