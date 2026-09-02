@@ -173,3 +173,13 @@ review_brief() {
       || { echo "workflow-$p/SKILL.md: the Review stage says nothing about the artifact"; return 1; }
   done
 }
+
+@test "the Validation and Review clauses reached every profile with a Validation stage" {
+  # The Plan clause has a count guard; without the same for these two, shortening
+  # PROFILES and stripping one profile's Validation pointer and Review clause
+  # leaves the whole suite green.
+  v="$(grep -l 'manual-checks skill' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$v" -eq 4 ] || { echo "$v profile script(s) point Validation at the skill, expected 4"; return 1; }
+  r="$(grep -l 'ManualChecks.md exists, read it too' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$r" -eq 4 ] || { echo "$r profile script(s) carry the Review clause, expected 4"; return 1; }
+}
