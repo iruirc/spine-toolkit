@@ -87,6 +87,7 @@ For BUG the deferred check is the reproduction replay itself.
 `manual_checks` — when the validator writes `ManualChecks.md`, the hand-run script for a human:
 `auto` — only for checks it was told not to run itself; `always` — every time, so a UI-bearing task
 ships a manual pass even when the validator drove the app and covered the happy path.
+What goes inside that file is fixed by the `manual-checks` skill, not by this key.
 
 A single task overrides both with `[DRIVE_APP] = [auto|off]` and `[MANUAL_CHECKS] = [auto|always]`
 in its `Task.md`.)
