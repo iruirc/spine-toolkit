@@ -417,6 +417,12 @@ the *means* to your validator:
 A platform with no way to drive a running instance declares that deviation in its validator; the
 cases move to `ManualChecks.md` for a human, and the run continues with nothing claimed.
 
+The artifact's shape is core's, not yours: `skills/manual-checks/SKILL.md` holds the structure, the
+required fields of a case, and the two rules that decide whether a case is executable. Your
+validator points at that skill instead of describing the file. What stays platform-side is when a
+check is deferred and what this ecosystem measures it with — a case whose verdict comes from an
+instrument carries that instrument's exact invocation, and only your agent knows what it is.
+
 ## 5. The smallest platform that is worth installing
 
 Legal minimum: five tables, nine roles all set to `—`, `ecosystem` declared, no agents at all. Every
