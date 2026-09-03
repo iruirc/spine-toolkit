@@ -64,5 +64,17 @@ fi
 
 [ -n "$core_skills" ] || { echo "no skills found in $core — is that a $CORE checkout?"; exit 1; }
 
+# Rule 1 (contract: core skills are named `spine-toolkit:<skill>`). Read anywhere
+# in the file, frontmatter included — a description that names a skill is as much
+# a reference as a body sentence, and both break the same way.
+# `done < <(...)`, not a pipe: a pipe puts the counter in a subshell and every
+# violation found here would be forgotten by the exit test below.
+while IFS= read -r hit; do
+  name="${hit##*:}"
+  loc="${hit%:$CORE:$name}"
+  grep -qxF "$name" <<<"$core_skills" \
+    || { echo "$loc names $CORE:$name, which does not exist in $checked_against"; violations=$((violations+1)); }
+done < <(grep -rnoE "$CORE:[a-z][a-z0-9-]*" "$plugin/agents" "$plugin/skills" 2>/dev/null || true)
+
 [ "$violations" -eq 0 ] || { echo "checked against $checked_against"; exit 1; }
 echo "core refs OK: $plugin (checked against $checked_against)"
