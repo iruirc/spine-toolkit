@@ -258,11 +258,16 @@ A core skill is named `spine-toolkit:<skill>` wherever it appears in a platform'
 agents, skills, references, frontmatter. A bare backticked name is reserved for the platform's
 own skills.
 
-`scripts/lint-core-refs.sh <plugin-dir> --core <path> [--ref <git-ref>]` checks both halves:
-every `spine-toolkit:<skill>` resolves to a skill that exists at the declared floor, and no
-hyphenated core skill name is written bare. Core's single-word vocabulary — `lang` as a dispatch
-field, `setup` as an `## Entrypoints` row — is exempt from the second half, because it
-legitimately appears bare.
+`scripts/lint-core-refs.sh <plugin-dir> --core <path> [--ref <git-ref>]` checks both halves over
+`<plugin>/agents` and `<plugin>/skills`, and nothing else: every `spine-toolkit:<skill>` written
+there resolves to a skill that exists at the declared floor, and no hyphenated core skill name is
+written bare. The rule is wider than the lint — a reference in `templates/` or `conventions/` is
+required to be namespaced just the same, and nothing enforces it.
+
+The second half reads hyphenated names only, so a single-word core skill — `lang`, `setup`,
+`orchestrator` — written bare is never caught. Two of the three legitimately appear bare, `lang` as
+a dispatch field and `setup` as an `## Entrypoints` row, which is why the check cannot be widened;
+a *reference* to any of them is written namespaced regardless, and only review will say it was not.
 
 ## Conformance
 

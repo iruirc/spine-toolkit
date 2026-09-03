@@ -304,17 +304,20 @@ backticked name is reserved for your own skills. `scripts/lint-core-refs.sh` che
 ### Step 9 — check it
 
 ```bash
-"$core/scripts/lint-manifest.sh" /path/to/kotlin-platform
+"$core/scripts/lint-manifest.sh"  /path/to/kotlin-platform
+"$core/scripts/lint-core-refs.sh" /path/to/kotlin-platform --core "$core"
 ```
 
-Point it at your **checkout**, not the installed copy. It checks: all five tables present; the Roles
-rows cover the nine-role vocabulary and no more; every named agent has a file in your plugin and
-lives in your namespace; no role mapped to nothing; every fan-out row keys on an axis core resolves
-and a value `## Axes` lists; no two Roles rows share a left-hand side; a named `## Entrypoints` skill
-exists.
+Point them at your **checkout**, not the installed copy. `lint-manifest.sh` checks: all five tables
+present; the Roles rows cover the nine-role vocabulary and no more; every named agent has a file in
+your plugin and lives in your namespace; no role mapped to nothing; every fan-out row keys on an axis
+core resolves and a value `## Axes` lists; no two Roles rows share a left-hand side; a named
+`## Entrypoints` skill exists. `lint-core-refs.sh` checks the other direction: every
+`spine-toolkit:<skill>` under `<plugin>/agents` and `<plugin>/skills` exists in the oldest core your
+dependency range admits, and no hyphenated core skill name is written bare.
 
-It deliberately does **not** check `## Topics` — the reference fixture names placeholder skills on
-purpose, so that check belongs to your own suite. Which brings us to:
+`lint-manifest.sh` deliberately does **not** check `## Topics` — the reference fixture names
+placeholder skills on purpose, so that check belongs to your own suite. Which brings us to:
 
 ### Step 10 — your own tests
 
@@ -496,6 +499,7 @@ manifest changes because of it.
 [ ] Your suite checks that every ## Topics skill exists
 [ ] Locale parity, if you ship user-facing strings
 [ ] Adapted-fork headers carry current sha256s, if you forked core's lints
+[ ] A forked lint ships only after its core original is on core's main — the sha256 is checked there
 [ ] README says spine-toolkit is installed first, if you publish from your own marketplace
 [ ] /setup and one full task run, end to end, on a real project
 ```
