@@ -76,5 +76,21 @@ while IFS= read -r hit; do
     || { echo "$loc names $CORE:$name, which does not exist in $checked_against"; violations=$((violations+1)); }
 done < <(grep -rnoE "$CORE:[a-z][a-z0-9-]*" "$plugin/agents" "$plugin/skills" 2>/dev/null || true)
 
+# Rule 2, the drift detector: without it rule 1 holds only until the next
+# paragraph someone writes bare. Hyphenated names only — core's single-word
+# vocabulary (`lang`, `setup`, `orchestrator`) legitimately appears bare as a
+# dispatch field or an Entrypoints row, and 11 of the platform's occurrences are
+# exactly that. The cost is a known blind spot, named in the spec as D-11.
+# The pattern needs a backtick on both sides, so `spine-toolkit:ops-checklist`
+# cannot match: the colon is outside the character class.
+while IFS= read -r hit; do
+  tok="${hit##*:}"
+  loc="${hit%:$tok}"
+  name="${tok//\`/}"
+  grep -qxF "$name" <<<"$core_skills" || continue
+  echo "$loc names \`$name\` bare; core skills are written $CORE:$name"
+  violations=$((violations+1))
+done < <(grep -rnoE '`[a-z][a-z0-9]*(-[a-z0-9]+)+`' "$plugin/agents" "$plugin/skills" 2>/dev/null || true)
+
 [ "$violations" -eq 0 ] || { echo "checked against $checked_against"; exit 1; }
 echo "core refs OK: $plugin (checked against $checked_against)"

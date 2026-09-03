@@ -127,3 +127,35 @@ JSON
   [[ "$output" == *"manual-checks"* ]]
   [[ "$output" == *"spine-toolkit 1.0.0"* ]]
 }
+
+@test "fails when a hyphenated core skill is named bare in backticks" {
+  sed -i.bak 's|`spine-toolkit:ops-checklist`|`ops-checklist`|' \
+    "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
+  run "$LINT" "$TMP/p" --core "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"bare"* ]]
+  [[ "$output" == *"ops-checklist"* ]]
+}
+
+@test "a single-word core skill name stays legal bare" {
+  # `lang` is a dispatch-contract field and `setup` an Entrypoints row name.
+  # Core's own vocabulary is single-word and legitimately bare; flagging it
+  # would make the lint wrong 11 times over on the real platform.
+  printf '\nThe `lang` field and the `setup` row are core vocabulary, not references.\n' \
+    >> "$TMP/p/agents/fixture-architect.md"
+  run "$LINT" "$TMP/p" --core "$ROOT"
+  [ "$status" -eq 0 ]
+}
+
+@test "the namespaced form is not mistaken for a bare one" {
+  run "$LINT" "$TMP/p" --core "$ROOT"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"bare"* ]]
+}
+
+@test "a hyphenated name that is not a core skill is left alone" {
+  printf '\nThe package `swift-openapi-generator` is not a core skill.\n' \
+    >> "$TMP/p/agents/fixture-architect.md"
+  run "$LINT" "$TMP/p" --core "$ROOT"
+  [ "$status" -eq 0 ]
+}
