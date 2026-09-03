@@ -8,6 +8,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch tags so the core-refs tests can read core's history
       - run: brew install bats-core
       - name: bats
         run: bats tests/foundation/lib
