@@ -49,7 +49,7 @@ widget    = alpha, beta
 
 ## Heuristics
 
-How `stack-detect` resolves axis values from repo signals: a `path` pattern flags an axis as
+How `spine-toolkit:stack-detect` resolves axis values from repo signals: a `path` pattern flags an axis as
 relevant, an `import` literal pins one specific value.
 
 path:   `src/**` with no `alpha` or `beta` import → widget
