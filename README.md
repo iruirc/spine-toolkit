@@ -96,14 +96,16 @@ Check your manifest with:
 
 ```
 scripts/lint-manifest.sh <path-to-your-plugin>
+scripts/lint-core-refs.sh <path-to-your-plugin> --core <path-to-this-checkout>
 ```
 
-— pointed at your plugin's checkout, not its installed copy.
+— both pointed at your plugin's checkout, not its installed copy.
 
-A platform plugin declares `"dependencies": ["spine-toolkit"]` in its `plugin.json` and imports
-nothing from here: the two plugins share no code. The lints it needs travel as **adapted forks** —
-each recording the core file it came from and that file's sha256, so drift is visible rather than
-silent. They are not copies to be restored to match core.
+A platform plugin declares its dependency on core in `plugin.json` as
+`{ "name": "spine-toolkit", "version": ">=1.3.0 <2" }` and imports nothing from here: the two
+plugins share no code. The lints it needs travel as **adapted forks** — each recording the core
+file it came from and that file's sha256, so drift is visible rather than silent. They are not
+copies to be restored to match core.
 
 ## Project configuration
 

@@ -217,17 +217,33 @@ is a single name core calls. It exists so the binding needs neither a naming con
 named `setup` in the platform would collide with core's own in every natural-language trigger) nor a
 reserved magic string inside another table.
 
-## The plugin around it
+## Depending on core
 
 Only the manifest skill is contract, but the plugin carrying it has to be installable alongside
-core, and that is one line of its `plugin.json`:
+core, and that is one line of its `plugin.json`, in the object form with a semver range:
 
 ```json
-{ "name": "kotlin-platform", "dependencies": ["spine-toolkit"] }
+{
+  "name": "kotlin-platform",
+  "dependencies": [
+    { "name": "spine-toolkit", "version": ">=1.3.0 <2" }
+  ]
+}
 ```
 
-Without it a user can install the platform alone, and every task then dies at the orchestrator's
-first step with no core to run it.
+The string form `["spine-toolkit"]` is not permitted. It travels through the host's install
+closure but fills none of its constraint map, so it reads exactly like a deliberate absence of
+any constraint while providing none.
+
+The lower bound is the oldest core in which every skill this platform names exists. The upper
+bound is the next major. `marketplace` is not written: the resolver inherits the parent's, and
+naming it breaks a fork or a mirror of the marketplace.
+
+An unsatisfied range is not a warning. The host demotes the plugin and it does not load at all.
+A major release of core therefore takes every platform off the loader at once, and each needs
+its own release before it comes back — plan a major as a coordinated release, not a solo one.
+Missing the dependency altogether is no better: a user can install the platform alone, and every
+task then dies at the orchestrator's first step with no core to run it.
 
 Read this before publishing from your own marketplace: a marketplace declares
 `allowCrossMarketplaceDependenciesOn` — "Marketplace names whose plugins may be auto-installed as
@@ -235,6 +251,18 @@ dependencies. Only the root marketplace's allowlist applies — no transitive tr
 dependency above does **not** always pull core in: it does where the user's root marketplace
 allowlists the marketplace core is published from, and nowhere else. Ship both plugins from one
 marketplace, or say in your README that `spine-toolkit` is installed first.
+
+## Naming core's skills
+
+A core skill is named `spine-toolkit:<skill>` wherever it appears in a platform's files —
+agents, skills, references, frontmatter. A bare backticked name is reserved for the platform's
+own skills.
+
+`scripts/lint-core-refs.sh <plugin-dir> --core <path> [--ref <git-ref>]` checks both halves:
+every `spine-toolkit:<skill>` resolves to a skill that exists at the declared floor, and no
+hyphenated core skill name is written bare. Core's single-word vocabulary — `lang` as a dispatch
+field, `setup` as an `## Entrypoints` row — is exempt from the second half, because it
+legitimately appears bare.
 
 ## Conformance
 
