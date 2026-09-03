@@ -159,3 +159,17 @@ JSON
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 0 ]
 }
+
+@test "an explicitly passed --ref that resolves nowhere is exit 2" {
+  # A caller who asked for an exact check and typo'd the ref must not be handed
+  # a degraded one under a success exit code.
+  run "$LINT" "$TMP/p" --core "$ROOT" --ref no-such-thing
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"no-such-thing does not resolve"* ]]
+}
+
+@test "--ref takes any committish, not only a tag" {
+  run "$LINT" "$TMP/p" --core "$ROOT" --ref HEAD
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"spine-toolkit HEAD"* ]]
+}
