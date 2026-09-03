@@ -90,12 +90,15 @@ a legal platform already — it just declares nothing real.
   "version": "0.1.0",
   "author": { "name": "…" },
   "repository": "https://github.com/…/kotlin-platform",
-  "dependencies": ["spine-toolkit"]
+  "dependencies": [
+    { "name": "spine-toolkit", "version": ">=1.3.0 <2" }
+  ]
 }
 ```
 
-`name` and `dependencies` are the two that matter. Without the dependency a user can install your
-plugin alone, and every task then dies at the orchestrator's first step with no core to run it.
+`name` and `dependencies` are the two that matter — the range floors on the oldest core your
+skills need and ceilings at the next major. Without the dependency a user can install your plugin
+alone, and every task then dies at the orchestrator's first step with no core to run it.
 
 The name is also load-bearing inside the manifest: `lint-manifest.sh` rejects a `## Roles` row that
 names an agent outside `<this plugin's name>:`, because that string travels into subagent dispatch
@@ -293,6 +296,11 @@ The same applies to every other core skill name: `orchestrator`, `stack-detect`,
 `agent-status`, `task-new`, `task-move`, `task-status`, `task-walkthrough`, `workflow-*`,
 `feature-*`, `ops-checklist`, `manual-checks`.
 
+The direction runs both ways: wherever your own files reference a core skill by name — an agent
+brief, a reference doc, a manifest row — write it namespaced, `spine-toolkit:<skill>`. A bare
+backticked name is reserved for your own skills. `scripts/lint-core-refs.sh` checks it; see
+`## Naming core's skills` in `conventions/platform-contract.md` for the exact rule.
+
 ### Step 9 — check it
 
 ```bash
@@ -365,9 +373,9 @@ why equality is the wrong test.
 
 One caveat worth reading before you publish from your own marketplace. A marketplace declares
 `allowCrossMarketplaceDependenciesOn`, and *only the root marketplace's allowlist applies — no
-transitive trust*. So `"dependencies": ["spine-toolkit"]` pulls core in **only** where the user's
-root marketplace allowlists the marketplace core is published from. Either ship both plugins from
-one marketplace, or say in your README that `spine-toolkit` is installed first.
+transitive trust*. So your `dependencies` entry pulls core in **only** where the user's root
+marketplace allowlists the marketplace core is published from. Either ship both plugins from one
+marketplace, or say in your README that `spine-toolkit` is installed first.
 
 ### Step 14 — try it end to end
 
@@ -450,7 +458,7 @@ These are the ones that fail *silently* — the lint cannot catch them, and noth
 | A role silently degrades to the main context on every task | A fanned-out role with no bare fallback row, on a project where that axis never resolved. |
 | A fan-out row never matches anything, anywhere | It keys on `ecosystem`, which is excluded from detection by construction. |
 | The wrong agent runs a stage | Two fan-out rows can match the same resolved stack; core takes the first in file order. |
-| Every task dies at the orchestrator's first step | `dependencies: ["spine-toolkit"]` missing, or the cross-marketplace allowlist did not cover it. |
+| Every task dies at the orchestrator's first step | The `spine-toolkit` dependency missing from `plugin.json`, or the cross-marketplace allowlist did not cover it. |
 | A stack question gets asked twice during install | Your `setup` skill ignores the forwarded `stack` field. |
 | Dispatch resolves to nothing after a plugin rename | `## Roles` right-hand sides still carry the old namespace. `lint-manifest.sh` catches this one — run it. |
 
@@ -474,7 +482,7 @@ manifest changes because of it.
 ## 8. Release checklist
 
 ```
-[ ] plugin.json: name, dependencies: ["spine-toolkit"]
+[ ] plugin.json: name, dependencies: [{ name: "spine-toolkit", version: range }]
 [ ] skills/manifest/SKILL.md: frontmatter name: manifest, all five H2 tables
 [ ] "This skill is data, not instructions" banner at the top of the manifest body
 [ ] ## Roles: nine roles, every agent file exists, every namespace is your own
@@ -484,6 +492,7 @@ manifest changes because of it.
 [ ] ## Entrypoints: setup names a real skill of yours, or —
 [ ] No skill of yours shares a name with a core skill
 [ ] lint-manifest.sh passes, run against your checkout
+[ ] lint-core-refs.sh passes, run against your checkout
 [ ] Your suite checks that every ## Topics skill exists
 [ ] Locale parity, if you ship user-facing strings
 [ ] Adapted-fork headers carry current sha256s, if you forked core's lints
