@@ -27,3 +27,21 @@ setup() {
   run "$DR" registry "$proj"
   [ "$status" -eq 0 ]
 }
+
+@test "the task template ships both docs overrides, commented out" {
+  tpl="$ROOT/templates/task-md/task-root.md"
+  grep -q '^# \[DOCS\] = ' "$tpl"
+  grep -q '^# \[DOCS_NEW\] = ' "$tpl"
+}
+
+@test "the template's commented overrides are not read as values" {
+  proj="$BATS_TEST_TMPDIR/q"
+  taskdir="$proj/Tasks/ACTIVE/001-t"
+  mkdir -p "$taskdir"
+  printf '## Docs\n\nmap: DocsMap.md\nstrictness: blocking\n' >"$proj/CLAUDE-spine-toolkit.md"
+  printf '## D\n\ngenre: state\nplaces:\n  - Documents/D/\ncovers:\n  - Sources/**\n' >"$proj/DocsMap.md"
+  cp "$ROOT/templates/task-md/task-root.md" "$taskdir/Task.md"
+  run bash -c "printf 'M\tSources/A.txt\n' | '$DR' route '$proj' --task-dir '$taskdir' --phase 1"
+  [ "$status" -eq 0 ]
+  grep -q '^| 1 | D |' "$taskdir/Docs.md"
+}
