@@ -198,3 +198,133 @@ EOF
   [ "$(printf '%s\n' "$output" | grep -c .)" -eq 1 ]
   case "$output" in *Timeline*) ;; *) echo "$output"; return 1 ;; esac
 }
+
+task() {
+  TASK="$PROJ/Tasks/ACTIVE/042-a-task"
+  mkdir -p "$TASK"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$TASK/Task.md"
+}
+
+two_components() {
+  map <<'EOF'
+## Timeline
+
+genre: state
+strictness: blocking
+places:
+  - Documents/Timeline/
+covers:
+  - Sources/Timeline/**
+
+## Snapping-Progress
+
+genre: tracker
+places:
+  - Trackers/Snapping.md
+fed_by:
+  - Tasks/*/042-*
+EOF
+}
+
+@test "a changed path under covers opens a row for that component" {
+  task; two_components
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  grep -q '^| 3 | Timeline | state | blocking |  |  |$' "$TASK/Docs.md"
+}
+
+@test "a tracker is never asked — routing writes no row for it" {
+  task; two_components
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  ! grep -q 'Snapping-Progress' "$TASK/Docs.md"
+}
+
+@test "a path outside every covers opens no row at all" {
+  task; two_components
+  run bash -c "printf 'M\tSources/Export/Writer.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  ! grep -q '^| 3 |' "$TASK/Docs.md"
+}
+
+@test "a bare path with no status column is read as modified" {
+  task; two_components
+  run bash -c "printf 'Sources/Timeline/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 1"
+  [ "$status" -eq 0 ]
+  grep -q '^| 1 | Timeline |' "$TASK/Docs.md"
+}
+
+@test "a rename is routed by its destination path" {
+  task; two_components
+  run bash -c "printf 'R100\tSources/Export/Old.txt\tSources/Timeline/New.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 2"
+  [ "$status" -eq 0 ]
+  grep -q '^| 2 | Timeline |' "$TASK/Docs.md"
+}
+
+@test "routing the same phase twice does not duplicate a row" {
+  task; two_components
+  printf 'M\tSources/Timeline/Resolver.txt\n' | "$DR" route "$PROJ" --task-dir "$TASK" --phase 3
+  printf 'M\tSources/Timeline/Other.txt\n' | "$DR" route "$PROJ" --task-dir "$TASK" --phase 3
+  [ "$(grep -c '^| 3 | Timeline |' "$TASK/Docs.md")" -eq 1 ]
+}
+
+@test "the same component in a later phase is a new row" {
+  task; two_components
+  printf 'M\tSources/Timeline/Resolver.txt\n' | "$DR" route "$PROJ" --task-dir "$TASK" --phase 3
+  printf 'M\tSources/Timeline/Other.txt\n' | "$DR" route "$PROJ" --task-dir "$TASK" --phase 4
+  [ "$(grep -c '| Timeline |' "$TASK/Docs.md")" -eq 2 ]
+}
+
+@test "[DOCS] = [off] in Task.md silences routing for that task" {
+  task; two_components
+  printf '[TASK_TYPE] = [FEATURE]\n[DOCS] = [off]\n' >"$TASK/Task.md"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  [ ! -f "$TASK/Docs.md" ]
+}
+
+@test "the commented override line in the task template is not a value" {
+  task; two_components
+  printf '[TASK_TYPE] = [FEATURE]\n# [DOCS] = [off]         # on | off\n' >"$TASK/Task.md"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  grep -q '^| 3 | Timeline |' "$TASK/Docs.md"
+}
+
+@test "a checkout's diff is re-origined to the project root" {
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' reorigin Packages/Core"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(printf 'M\tPackages/Core/Sources/Timeline/Resolver.txt')" ]
+}
+
+@test "re-origining carries both path columns of a rename" {
+  run bash -c "printf 'R100\tA/Old.txt\tA/New.txt\n' | '$DR' reorigin ../shared"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(printf 'R100\t../shared/A/Old.txt\t../shared/A/New.txt')" ]
+}
+
+@test "a tracker named in DOCS_NEW is named but never asked" {
+  task; two_components
+  printf '[TASK_TYPE] = [FEATURE]\n[DOCS_NEW] = [Attach-Progress:tracker]\n' >"$TASK/Task.md"
+  run bash -c "printf 'M\tSources/Export/Writer.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  case "$output" in *"Attach-Progress"*) ;; *) echo "$output"; return 1 ;; esac
+  [ ! -f "$TASK/Docs.md" ] || ! grep -q 'Attach-Progress' "$TASK/Docs.md"
+}
+
+@test "a component named in DOCS_NEW opens a row even though nothing covers it yet" {
+  task
+  map <<'EOF'
+## Timeline
+
+genre: state
+places:
+  - Documents/Timeline/
+covers:
+  - Sources/Timeline/**
+EOF
+  printf '[TASK_TYPE] = [FEATURE]\n[DOCS_NEW] = [TrackAttachment:state]\n' >"$TASK/Task.md"
+  run bash -c "printf 'M\tSources/Export/Writer.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  grep -q '^| 3 | TrackAttachment | state | .* |  |  |$' "$TASK/Docs.md"
+}
