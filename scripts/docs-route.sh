@@ -320,10 +320,12 @@ def writable(places):
 
 def literal_prefix(pattern):
     """The part of a pattern that is a real path — everything before the first glob character.
-    A glob cannot be stat'ed, and its fixed head is what says which checkout it points into."""
+    A glob cannot be stat'ed, and its fixed head is what says which checkout it points into.
+    None when there is no fixed head at all: a pattern opening with a wildcard says nothing about
+    where it lives, and answering "the project root" would be a guess wearing a fact's clothes."""
     p = pattern.strip().lstrip('/')
     cut = min([i for i in (p.find('*'), p.find('?')) if i >= 0] or [len(p)])
-    return p[:cut].rstrip('/')
+    return p[:cut].rstrip('/') or None
 
 
 def repo_of(rel):
@@ -347,8 +349,8 @@ if CMD == 'audit':
     for c in comps:
         if c['genre'] != 'state':
             continue
-        homes = {repo_of(literal_prefix(pl)) for pl in c['places']}
-        covered = {repo_of(literal_prefix(cv)) for cv in c['covers']}
+        homes = {repo_of(h) for h in (literal_prefix(pl) for pl in c['places']) if h is not None}
+        covered = {repo_of(h) for h in (literal_prefix(cv) for cv in c['covers']) if h is not None}
         if homes and covered and not (homes & covered):
             print('%s is declared in %s and all of its coverage is in %s'
                   % (c['name'], ' and '.join(sorted(h or '<project>' for h in homes)),

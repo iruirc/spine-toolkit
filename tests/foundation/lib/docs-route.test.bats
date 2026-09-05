@@ -512,6 +512,22 @@ EOF
   ! grep -q 'Timeline' <<<"$output"
 }
 
+@test "a wildcard-led covers pattern is unresolvable, not a claim about the project root" {
+  mkdir -p "$PROJ/.git" "$PROJ/Packages/Core/.git" "$PROJ/Packages/Core/Documents/Gif"
+  map <<'EOF'
+## GifImageTrack
+
+genre: state
+places:
+  - Packages/Core/Documents/Gif/
+covers:
+  - **/Gif/**
+EOF
+  run bash -c "'$DR' audit '$PROJ' </dev/null"
+  [ "$status" -eq 0 ]
+  ! grep -q 'GifImageTrack' <<<"$output"
+}
+
 @test "new files outside every covers are named as a candidate component" {
   mkdir -p "$PROJ/.git"
   map <<'EOF'
