@@ -559,3 +559,107 @@ EOF
   [ "$status" -eq 0 ]
   ! grep -q 'Writer.txt' <<<"$output"
 }
+
+tracker_map() {
+  map <<'EOF'
+## Snapping-Progress
+
+genre: tracker
+places:
+  - Trackers/Snapping.md
+fed_by:
+  - Tasks/*/351-*
+EOF
+}
+
+step() {
+  d="$PROJ/Tasks/$1/$2"
+  mkdir -p "$d"
+  printf '**Date:** %s\n# %s\n' "$3" "$2" >"$d/Task.md"
+}
+
+@test "a tracker regenerates the rows between its markers and touches nothing outside" {
+  tracker_map
+  step DONE 351-a-snapping-step 2026-08-07
+  mkdir -p "$PROJ/Trackers"
+  cat >"$PROJ/Trackers/Snapping.md" <<'EOF'
+# Snapping
+
+Handwritten intent that no generator can produce.
+
+<!-- spine:steps:begin -->
+stale
+<!-- spine:steps:end -->
+
+Handwritten lessons.
+EOF
+  run "$DR" tracker "$PROJ"
+  [ "$status" -eq 0 ]
+  grep -q 'Handwritten intent' "$PROJ/Trackers/Snapping.md"
+  grep -q 'Handwritten lessons' "$PROJ/Trackers/Snapping.md"
+  grep -q '351-a-snapping-step' "$PROJ/Trackers/Snapping.md"
+  ! grep -q 'stale' "$PROJ/Trackers/Snapping.md"
+}
+
+@test "a task outside fed_by does not enter the tracker" {
+  tracker_map
+  step DONE 351-a-snapping-step 2026-08-07
+  step ACTIVE 410-attachment 2026-09-01
+  mkdir -p "$PROJ/Trackers"
+  printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Trackers/Snapping.md"
+  run "$DR" tracker "$PROJ"
+  [ "$status" -eq 0 ]
+  ! grep -q '410-attachment' "$PROJ/Trackers/Snapping.md"
+}
+
+@test "regenerating twice changes nothing" {
+  tracker_map
+  step DONE 351-a-snapping-step 2026-08-07
+  mkdir -p "$PROJ/Trackers"
+  printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Trackers/Snapping.md"
+  "$DR" tracker "$PROJ"
+  cp "$PROJ/Trackers/Snapping.md" "$BATS_TEST_TMPDIR/first"
+  "$DR" tracker "$PROJ"
+  diff "$BATS_TEST_TMPDIR/first" "$PROJ/Trackers/Snapping.md"
+}
+
+@test "a tracker file with no markers gets them appended, keeping what is already there" {
+  tracker_map
+  step DONE 351-a-snapping-step 2026-08-07
+  mkdir -p "$PROJ/Trackers"
+  printf '# S\n\nHandwritten only.\n' >"$PROJ/Trackers/Snapping.md"
+  run "$DR" tracker "$PROJ"
+  [ "$status" -eq 0 ]
+  grep -q 'Handwritten only' "$PROJ/Trackers/Snapping.md"
+  grep -q 'spine:steps:begin' "$PROJ/Trackers/Snapping.md"
+  grep -q '351-a-snapping-step' "$PROJ/Trackers/Snapping.md"
+}
+
+@test "a task is fed to the first tracker whose pattern matched, not to both" {
+  map <<'EOF'
+## Snapping-Progress
+
+genre: tracker
+places:
+  - Trackers/Snapping.md
+fed_by:
+  - Tasks/*/351-*
+
+## Catch-All
+
+genre: tracker
+places:
+  - Trackers/All.md
+fed_by:
+  - Tasks/*/*
+EOF
+  step DONE 351-a-snapping-step 2026-08-07
+  mkdir -p "$PROJ/Trackers"
+  for f in Snapping All; do
+    printf '# t\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Trackers/$f.md"
+  done
+  run "$DR" tracker "$PROJ"
+  [ "$status" -eq 0 ]
+  grep -q '351-a-snapping-step' "$PROJ/Trackers/Snapping.md"
+  ! grep -q '351-a-snapping-step' "$PROJ/Trackers/All.md"
+}
