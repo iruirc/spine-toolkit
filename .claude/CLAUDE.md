@@ -21,12 +21,13 @@ en
 ## Repository layout
 
 - `skills/` — `orchestrator`, `stack-detect`, `setup`, `workflow-*`, `task-*`, `feature-*`,
-  `ops-checklist`, `manual-checks`, `agent-status`, `lang`
+  `ops-checklist`, `manual-checks`, `agent-status`, `lang`, `docs-route`
 - `workflows/` — one `profile-*.js` orchestration script per profile
 - `commands/` — `/task-*`, `/setup`, `/agent-status`, `/lang`
-- `conventions/` — `i18n.md`, `stage-dispatch.md`, `platform-contract.md` and the rest
+- `conventions/` — `i18n.md`, `stage-dispatch.md`, `platform-contract.md`, `docs-components.md`
+  and the rest
 - `docs/` — `building-a-platform.md`, the how-to for platform authors
-- `templates/` — `task-md`, `claude-md-stub`, `claude-toolkit-md`
+- `templates/` — `task-md`, `claude-md-stub`, `claude-toolkit-md`, `docs-map`
 - `scripts/` — lints plus the test and telemetry runners
 - `hooks/` — plugin hooks; the only channel that reaches existing user projects on plugin update
 - `tests/foundation/` — bats suites; `tests/workflows/` — probes
@@ -39,6 +40,7 @@ en
 - `conventions/stage-dispatch.md` — the stage→agent execution contract.
 - `conventions/platform-contract.md` — what a platform plugin must declare to core.
 - `conventions/task-scale.md` — the `lite` / `full` axis: levers, floor, ratchet.
+- `conventions/docs-components.md` — the documentation-component registry format and matching.
 
 ## When working on this repo
 
