@@ -635,6 +635,68 @@ EOF
   grep -q '351-a-snapping-step' "$PROJ/Trackers/Snapping.md"
 }
 
+@test "an unclosed marker is refused, not reshaped" {
+  tracker_map
+  step DONE 351-a-snapping-step 2026-08-07
+  mkdir -p "$PROJ/Trackers"
+  printf '# S\n\n<!-- spine:steps:begin -->\nstale\n\nHandwritten lessons after the missing end marker.\n' >"$PROJ/Trackers/Snapping.md"
+  cp "$PROJ/Trackers/Snapping.md" "$BATS_TEST_TMPDIR/before"
+  run "$DR" tracker "$PROJ"
+  [ "$status" -eq 1 ]
+  case "$output" in *"malformed marker"*) ;; *) echo "$output"; return 1 ;; esac
+  diff "$BATS_TEST_TMPDIR/before" "$PROJ/Trackers/Snapping.md"
+}
+
+@test "markers in the wrong order are refused, not reshaped" {
+  tracker_map
+  step DONE 351-a-snapping-step 2026-08-07
+  mkdir -p "$PROJ/Trackers"
+  printf '# S\n\n<!-- spine:steps:end -->\nHandwritten text below a stray end marker.\n<!-- spine:steps:begin -->\n' >"$PROJ/Trackers/Snapping.md"
+  cp "$PROJ/Trackers/Snapping.md" "$BATS_TEST_TMPDIR/before"
+  run "$DR" tracker "$PROJ"
+  [ "$status" -eq 1 ]
+  diff "$BATS_TEST_TMPDIR/before" "$PROJ/Trackers/Snapping.md"
+}
+
+@test "a doubled opening marker is refused, not reshaped" {
+  tracker_map
+  step DONE 351-a-snapping-step 2026-08-07
+  mkdir -p "$PROJ/Trackers"
+  printf '# S\n\n<!-- spine:steps:begin -->\nA\n<!-- spine:steps:begin -->\nB\n<!-- spine:steps:end -->\n' >"$PROJ/Trackers/Snapping.md"
+  cp "$PROJ/Trackers/Snapping.md" "$BATS_TEST_TMPDIR/before"
+  run "$DR" tracker "$PROJ"
+  [ "$status" -eq 1 ]
+  diff "$BATS_TEST_TMPDIR/before" "$PROJ/Trackers/Snapping.md"
+}
+
+@test "one malformed tracker does not stop a well-formed one" {
+  map <<'EOF'
+## Broken
+
+genre: tracker
+places:
+  - Trackers/Broken.md
+fed_by:
+  - Tasks/*/351-*
+
+## Sound
+
+genre: tracker
+places:
+  - Trackers/Sound.md
+fed_by:
+  - Tasks/*/410-*
+EOF
+  step DONE 351-a-step 2026-08-07
+  step ACTIVE 410-b-step 2026-09-01
+  mkdir -p "$PROJ/Trackers"
+  printf '# B\n\n<!-- spine:steps:begin -->\nunclosed\n' >"$PROJ/Trackers/Broken.md"
+  printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Trackers/Sound.md"
+  run "$DR" tracker "$PROJ"
+  [ "$status" -eq 1 ]
+  grep -q '410-b-step' "$PROJ/Trackers/Sound.md"
+}
+
 @test "a task is fed to the first tracker whose pattern matched, not to both" {
   map <<'EOF'
 ## Snapping-Progress
