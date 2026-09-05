@@ -7,6 +7,7 @@ set -euo pipefail
 # eye is how a router names the wrong document with full confidence.
 #
 # Usage:
+#   scripts/docs-route.sh state    <project-root> [--task-dir <dir>]
 #   scripts/docs-route.sh registry <project-root> [--paths]
 #   scripts/docs-route.sh route    <project-root> --task-dir <dir> --phase <id>   < change set
 #   scripts/docs-route.sh check    <project-root> --task-dir <dir> [--phase <id>] < change set
@@ -493,6 +494,19 @@ if CMD == 'reorigin':
                 print('%s/%s' % (prefix, parts[0].strip().lstrip('/')))
             continue
         print('\t'.join([parts[0]] + ['%s/%s' % (prefix, c.strip().lstrip('/')) for c in parts[1:]]))
+    sys.exit(0)
+
+if CMD == 'state':
+    # Answers the one question a Method A run cannot answer for itself, since a workflow script
+    # has no filesystem access: is there anything here to route against at all?
+    task_dir = opt('--task-dir')
+    on = docs_enabled(task_dir)
+    if on:
+        comps, errors = load_registry()
+        # A malformed registry answers `on`, so the run meets the error by name instead of
+        # silently skipping a registry someone meant to be read.
+        on = bool(comps or errors)
+    print('on' if on else 'off')
     sys.exit(0)
 
 if CMD == 'registry':

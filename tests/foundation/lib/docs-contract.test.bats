@@ -73,13 +73,10 @@ setup() {
   for f in "$ROOT"/workflows/profile-*.js; do
     grep -q 'DOCS_NOTE' "$f" || { echo "no DOCS_NOTE in $f"; return 1; }
     grep -q 'docs-route.sh' "$f" || { echo "no script call in $f"; return 1; }
-    # Declaring the constant is not using it. A prelude that defines DOCS_NOTE and never
-    # interpolates it satisfies both greps above — the constant's own text contains
-    # "docs-route.sh" — while no agent ever sees a word of the note.
-    n_note="$(grep -n '^\${DOCS_NOTE}$' "$f" | cut -d: -f1)"
-    n_body="$(grep -n '^\${body}`$' "$f" | cut -d: -f1)"
-    [ -n "$n_note" ] || { echo "DOCS_NOTE never interpolated in $f"; return 1; }
-    [ "$n_note" -lt "$n_body" ] || { echo "DOCS_NOTE is not before the body in $f"; return 1; }
+    # The constant is interpolated and gated, not merely declared: a prelude that defined it and
+    # never used it would satisfy the two greps above, since its own text names the script.
+    grep -q '^\${DOCS_NOTE}\${body}`$' "$f" || { echo "DOCS_NOTE not interpolated before the body in $f"; return 1; }
+    grep -q "A.docs === 'off'" "$f" || { echo "DOCS_NOTE is not gated on the contract field in $f"; return 1; }
   done
 }
 
