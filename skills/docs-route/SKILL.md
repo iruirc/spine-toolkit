@@ -105,6 +105,7 @@ most of a mature tree is outside every component.
 | Before the commit | `check … --phase <id>` with the same change set | exit 1 means a blocking question is still open; the phase does not close |
 | Done | `audit …` with the task's change set | names the wrong homes and the uncovered new files; both advisory |
 | Done | `tracker <project-root>` | regenerate every declared tracker's step table between its markers; a malformed marker pair is refused and left untouched, its name printed, while every other tracker still regenerates — exit 1 when at least one was refused |
+| Review | `check …` with no `--phase` | name every row still open across all phases; report, do not enforce |
 
 The core root is the directory holding `workflows/` (`conventions/agent-tooling.md` → Plugin
 Roots And Templates).

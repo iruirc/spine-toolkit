@@ -140,17 +140,21 @@ the ordinary case here, not the exception.
   into the phase rows, so the obligation hangs on a phase and not on the task.
 - **End of the implementing stage, per phase** — run `route` with that phase's
   `git diff --name-status`, answer every row it opens, then run `check` with the same change set
-  before committing. A non-zero exit means a `blocking` question is still open and the phase does
-  not close.
+  before committing. Exit 1 means a `blocking` question is still open and the phase does not
+  close; exit 2 means the registry or the `Docs.md` table itself is malformed — fix that, it is
+  not a question anyone can answer.
 - **Done** — run `audit`, then `tracker`. `audit` names components living away from their
   coverage and files created outside every `covers`; both are advisory and neither stops
   anything. `tracker` regenerates the step table of every declared tracker between its markers,
   leaving everything outside them alone; a tracker whose markers are malformed is refused rather
   than reshaped, and named.
+- **Review** — run `check` with the task's whole change set and no `--phase`. It names every row
+  still open across all phases; report them, do not enforce them.
 
 All of it is skipped by a stage that changes no files, by a task whose `Task.md` carries
-`[DOCS] = [off]`, and by a project whose registry file — the one named by `## Docs` → `map`,
-`DocsMap.md` by default — is absent, so a project that declares nothing is served by silence.
+`[DOCS] = [off]`, and by a project that declares no components at all — neither in the map named
+by `## Docs` → `map`, `DocsMap.md` by default — nor in any package it holds, so a project that
+declares nothing is served by silence.
 Review reads `Docs.md` the way it reads
 `OpsChecklist.md`: a row left `Pending` is surfaced for an explicit accept or defer.
 
