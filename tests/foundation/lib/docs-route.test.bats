@@ -778,6 +778,10 @@ EOF
 @test "a project lever of off silences audit and tracker but not registry" {
   mkdir -p "$PROJ/.git" "$PROJ/Packages/Core/.git" "$PROJ/Documents/Gif"
   printf '## Docs\n\nenabled: off\nmap: DocsMap.md\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  step DONE 351-a-step 2026-08-07
+  mkdir -p "$PROJ/Trackers"
+  printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Trackers/Snapping.md"
+  cp "$PROJ/Trackers/Snapping.md" "$BATS_TEST_TMPDIR/tracker-before"
   map <<'EOF'
 ## GifImageTrack
 
@@ -786,6 +790,14 @@ places:
   - Documents/Gif/
 covers:
   - Packages/Core/Sources/Gif/**
+
+## Snapping-Progress
+
+genre: tracker
+places:
+  - Trackers/Snapping.md
+fed_by:
+  - Tasks/*/351-*
 EOF
   run bash -c "'$DR' audit '$PROJ' </dev/null"
   [ "$status" -eq 0 ]
@@ -793,6 +805,9 @@ EOF
   run "$DR" tracker "$PROJ"
   [ "$status" -eq 0 ]
   [ -z "$output" ] || { echo "$output"; return 1; }
+  # The tracker had a component, a task to feed it and a file to rewrite — its silence is the
+  # lever's doing, not the fixture's.
+  diff "$BATS_TEST_TMPDIR/tracker-before" "$PROJ/Trackers/Snapping.md"
   # registry is what a person runs to inspect what they suspended, and it still answers.
   run "$DR" registry "$PROJ"
   [ "$status" -eq 0 ]
@@ -825,4 +840,25 @@ EOF
   grep -q '^| 3 | Timeline |' "$TASK/Docs.md"
   case "$output" in *"not asked"*) ;; *) echo "$output"; return 1 ;; esac
   case "$output" in *"alter what the component asserts"*) echo "still asked: $output"; return 1 ;; *) ;; esac
+}
+
+@test "a suspended project stays quiet even when its registry is malformed" {
+  # The guard has to run before the registry is read. If it did not, a suspended project would
+  # die with exit 2 on a bad registry — louder than an unsuspended one, which is backwards.
+  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  map <<'EOF'
+## Broken
+
+genre: prose
+places:
+  - Documents/B/
+covers:
+  - Sources/**
+EOF
+  run bash -c "'$DR' audit '$PROJ' </dev/null"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "$output"; return 1; }
+  run "$DR" tracker "$PROJ"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "$output"; return 1; }
 }
