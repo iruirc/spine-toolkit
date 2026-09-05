@@ -437,3 +437,44 @@ EOF
   run bash -c "printf 'M\tSources/Export/Writer.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
   [ "$status" -eq 0 ]
 }
+
+@test "a pipe inside a note does not hide an open question" {
+  task; two_components; routed
+  verdict "Pending" "choosing X|Y next phase"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 1 ]
+}
+
+@test "an unrecognised verdict is an open question, not a closed one" {
+  task; two_components; routed
+  verdict "Aplicable" "a typo"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 1 ]
+  case "$output" in *"Aplicable"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a row that does not parse is refused, not skipped" {
+  task; two_components; routed
+  printf '| 3 | Timeline | state |\n' >>"$TASK/Docs.md"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 2 ]
+  case "$output" in *"malformed row"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a component whose strictness is off is never asked" {
+  task
+  map <<'EOF'
+## Timeline
+
+genre: state
+strictness: off
+places:
+  - Documents/Timeline/
+covers:
+  - Sources/Timeline/**
+EOF
+  routed
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "$output"; return 1; }
+}
