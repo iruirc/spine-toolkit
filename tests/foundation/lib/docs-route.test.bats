@@ -32,6 +32,9 @@ EOF
 }
 
 @test "a component that declares no strictness inherits the block default" {
+  # The block's value differs from the code's own fallback on purpose: with both at `advisory`
+  # a stub config() that never opened the file would pass this test unchanged.
+  printf '## Docs\n\nmap: DocsMap.md\nstrictness: blocking\nfreshness: on\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   map <<'EOF'
 ## Timeline
 
@@ -43,7 +46,7 @@ covers:
 EOF
   run "$DR" registry "$PROJ"
   [ "$status" -eq 0 ]
-  case "$output" in *"advisory"*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *"blocking"*) ;; *) echo "$output"; return 1 ;; esac
 }
 
 @test "an absent registry is not an error — the mechanism is simply off" {
@@ -91,4 +94,20 @@ EOF
   run "$DR" registry "$PROJ"
   [ "$status" -eq 2 ]
   case "$output" in *"fed_by"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a list value that lost its indentation is an error, not a silently dropped field" {
+  map <<'EOF'
+## Timeline
+
+genre: state
+places:
+  - Documents/Timeline/
+covers:
+  - Sources/Timeline/**
+- Packages/TimelineCore/**
+EOF
+  run "$DR" registry "$PROJ"
+  [ "$status" -eq 2 ]
+  case "$output" in *"TimelineCore"*"indented"*) ;; *) echo "$output"; return 1 ;; esac
 }

@@ -63,11 +63,11 @@ def under(prefix, path):
     return '%s/%s' % (prefix.rstrip('/'), p) if prefix else p
 
 
-def parse_map(path, prefix):
+def parse_map(path, prefix, errors):
     """One DocsMap.md, in declaration order. A package map is written relative to the package
     root and prefixed here, because everything downstream matches project-relative paths."""
     comps, cur, key = [], None, None
-    for raw in open(path, encoding='utf-8'):
+    for lineno, raw in enumerate(open(path, encoding='utf-8'), 1):
         line = raw.rstrip('\n')
         head = re.match(r'^## (.+?)\s*$', line)
         if head:
@@ -78,9 +78,17 @@ def parse_map(path, prefix):
             continue
         if cur is None:
             continue
-        item = re.match(r'^\s+-\s+(.+?)\s*$', line)
+        item = re.match(r'^(\s*)-\s+(.+?)\s*$', line)
         if item and key in LIST_KEYS:
-            cur[key].append(under(prefix, item.group(1)))
+            if not item.group(1):
+                # A value that lost its indentation reads as prose and would leave the component
+                # quietly short of what it declares, which is the divergence this whole mechanism
+                # exists to catch.
+                errors.append('%s:%d: "- %s" is not indented — a value under "%s:" takes two '
+                              'spaces, and a dash at column zero is prose'
+                              % (os.path.relpath(path, ROOT), lineno, item.group(2), key))
+                continue
+            cur[key].append(under(prefix, item.group(2)))
             continue
         field = re.match(r'^([a-z_]+):\s*(.*?)\s*$', line)
         if field:
@@ -107,17 +115,17 @@ def package_roots():
 def load_registry():
     """Every declared component, project map first, packages after in path order.
     The order is load-bearing: fed_by resolves to the first component that matched."""
-    comps = []
+    comps, errors = [], []
     top = os.path.join(ROOT, config('Docs', 'map', 'DocsMap.md'))
     if os.path.isfile(top):
-        comps += parse_map(top, '')
+        comps += parse_map(top, '', errors)
     for pkg in package_roots():
         pm = os.path.join(ROOT, pkg, 'DocsMap.md')
         if os.path.isfile(pm):
-            comps += parse_map(pm, pkg)
+            comps += parse_map(pm, pkg, errors)
 
     default_level = config('Docs', 'strictness', 'advisory')
-    errors, seen = [], {}
+    seen = {}
     for c in comps:
         where = '%s: component "%s"' % (c['source'], c['name'])
         if c['genre'] not in GENRES:
