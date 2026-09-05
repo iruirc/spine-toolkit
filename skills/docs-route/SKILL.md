@@ -119,6 +119,14 @@ A `blocking` component whose `places` cannot be written from here — another re
 checkout that is not present — degrades to `advisory` and says so. Stopping the work on a
 requirement that cannot be met where the work is happening is a trap, not discipline.
 
+## On a redo
+
+A phase that is redone must answer its questions again. `route` never reopens a row it already
+wrote — it skips any phase-and-component pair already present, whatever the verdict — so delete
+that phase's rows from `Docs.md` before routing the redo. An `Applicable` row would re-fail on its
+own, being re-checked against the fresh change set; an `N/A` would not, and a reason that was true
+of the first attempt is not evidence about the second.
+
 ## Not this skill's job
 
 - Deciding the registry's content — that is the project's, in `DocsMap.md`.
