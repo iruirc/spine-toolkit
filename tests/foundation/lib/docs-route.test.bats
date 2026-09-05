@@ -328,3 +328,112 @@ EOF
   [ "$status" -eq 0 ]
   grep -q '^| 3 | TrackAttachment | state | .* |  |  |$' "$TASK/Docs.md"
 }
+
+routed() {
+  printf 'M\tSources/Timeline/Resolver.txt\n' | "$DR" route "$PROJ" --task-dir "$TASK" --phase 3
+}
+
+verdict() {
+  python3 - "$TASK/Docs.md" "$1" "$2" <<'EOF'
+import re, sys
+p, v, n = sys.argv[1], sys.argv[2], sys.argv[3]
+t = open(p, encoding='utf-8').read()
+t = re.sub(r'^\| 3 \| Timeline \| state \| (\S+) \|  \|  \|$',
+           lambda m: '| 3 | Timeline | state | %s | %s | %s |' % (m.group(1), v, n),
+           t, flags=re.M)
+open(p, 'w', encoding='utf-8').write(t)
+EOF
+}
+
+@test "an unanswered question on a blocking component fails the check" {
+  task; two_components; routed
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 1 ]
+  case "$output" in *"Timeline"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "N/A with a reason closes the question" {
+  task; two_components; routed
+  verdict "N/A" "behaviour unchanged, refactor under tests"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+}
+
+@test "N/A with no reason does not close it" {
+  task; two_components; routed
+  verdict "N/A" ""
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 1 ]
+  case "$output" in *reason*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "Pending is an open question, not an answer" {
+  task; two_components; routed
+  verdict "Pending" "next phase"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 1 ]
+}
+
+@test "Applicable without a touched file under places does not close it" {
+  task; two_components; routed
+  verdict "Applicable" "wrote the resolution rule"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 1 ]
+  case "$output" in *"Documents/Timeline/"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "Applicable with a file under places changed in the same range closes it" {
+  task; two_components; routed
+  verdict "Applicable" "wrote the resolution rule"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\nM\tDocuments/Timeline/Resolution.md\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+}
+
+@test "an advisory component reports the same gap and does not fail" {
+  task
+  map <<'EOF'
+## Timeline
+
+genre: state
+strictness: advisory
+places:
+  - Documents/Timeline/
+covers:
+  - Sources/Timeline/**
+EOF
+  routed
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  case "$output" in *"Timeline"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a blocking component whose places cannot be written degrades to advisory, out loud" {
+  task
+  map <<'EOF'
+## Timeline
+
+genre: state
+strictness: blocking
+places:
+  - ../elsewhere/Documents/Timeline/
+covers:
+  - Sources/Timeline/**
+EOF
+  routed
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  case "$output" in *degrad*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a lite project does not lower strictness" {
+  task; two_components; routed
+  printf '## Docs\n\nmap: DocsMap.md\n\n## Scale\n\nlite\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 1 ]
+}
+
+@test "check without Docs.md is clean — nothing was routed, nothing is owed" {
+  task; two_components
+  run bash -c "printf 'M\tSources/Export/Writer.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+}
