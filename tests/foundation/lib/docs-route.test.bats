@@ -478,3 +478,68 @@ EOF
   [ "$status" -eq 0 ]
   [ -z "$output" ] || { echo "$output"; return 1; }
 }
+
+@test "a component whose covers share no repository with its places is reported" {
+  mkdir -p "$PROJ/.git" "$PROJ/Packages/Core/.git" "$PROJ/Documents/GifImageTrack"
+  printf '\n## Paths\n\n- External packages: /Packages/*\n' >>"$PROJ/CLAUDE-spine-toolkit.md"
+  map <<'EOF'
+## GifImageTrack
+
+genre: state
+places:
+  - Documents/GifImageTrack/
+covers:
+  - Packages/Core/Sources/Gif/**
+EOF
+  run bash -c "'$DR' audit '$PROJ' </dev/null"
+  [ "$status" -eq 0 ]
+  case "$output" in *"GifImageTrack"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a component living with its coverage is not reported" {
+  mkdir -p "$PROJ/.git" "$PROJ/Documents/Timeline"
+  map <<'EOF'
+## Timeline
+
+genre: state
+places:
+  - Documents/Timeline/
+covers:
+  - Sources/Timeline/**
+EOF
+  run bash -c "'$DR' audit '$PROJ' </dev/null"
+  [ "$status" -eq 0 ]
+  ! grep -q 'Timeline' <<<"$output"
+}
+
+@test "new files outside every covers are named as a candidate component" {
+  mkdir -p "$PROJ/.git"
+  map <<'EOF'
+## Timeline
+
+genre: state
+places:
+  - Documents/Timeline/
+covers:
+  - Sources/Timeline/**
+EOF
+  run bash -c "printf 'A\tSources/Attachment/Graph.txt\n' | '$DR' audit '$PROJ'"
+  [ "$status" -eq 0 ]
+  case "$output" in *"Sources/Attachment/Graph.txt"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a modified file outside every covers is not reported — coverage is knowingly partial" {
+  mkdir -p "$PROJ/.git"
+  map <<'EOF'
+## Timeline
+
+genre: state
+places:
+  - Documents/Timeline/
+covers:
+  - Sources/Timeline/**
+EOF
+  run bash -c "printf 'M\tSources/Export/Writer.txt\n' | '$DR' audit '$PROJ'"
+  [ "$status" -eq 0 ]
+  ! grep -q 'Writer.txt' <<<"$output"
+}

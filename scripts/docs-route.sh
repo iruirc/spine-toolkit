@@ -10,6 +10,7 @@ set -euo pipefail
 #   scripts/docs-route.sh registry <project-root> [--paths]
 #   scripts/docs-route.sh route    <project-root> --task-dir <dir> --phase <id>   < change set
 #   scripts/docs-route.sh check    <project-root> --task-dir <dir> [--phase <id>] < change set
+#   scripts/docs-route.sh audit    <project-root>                                 < change set
 #   scripts/docs-route.sh reorigin <prefix>                                        < change set
 #
 # The change set is `git diff --name-status` on stdin. A line with no tab is read as a modified
@@ -316,6 +317,49 @@ def writable(places):
             p = parent
     return False
 
+
+def literal_prefix(pattern):
+    """The part of a pattern that is a real path — everything before the first glob character.
+    A glob cannot be stat'ed, and its fixed head is what says which checkout it points into."""
+    p = pattern.strip().lstrip('/')
+    cut = min([i for i in (p.find('*'), p.find('?')) if i >= 0] or [len(p)])
+    return p[:cut].rstrip('/')
+
+
+def repo_of(rel):
+    """The nearest ancestor holding a .git, as a project-relative path; '' is the project's own
+    repository. A component is not split across repositories, so this is what a home means."""
+    p = os.path.normpath(os.path.join(ROOT, rel))
+    while True:
+        if os.path.isdir(os.path.join(p, '.git')):
+            rel = os.path.relpath(p, ROOT)
+            return '' if rel == '.' else rel
+        parent = os.path.dirname(p)
+        if parent == p or len(p) <= len(ROOT):
+            return ''
+        p = parent
+
+
+if CMD == 'audit':
+    comps, errors = load_registry()
+    if errors:
+        die(errors)
+    for c in comps:
+        if c['genre'] != 'state':
+            continue
+        homes = {repo_of(literal_prefix(pl)) for pl in c['places']}
+        covered = {repo_of(literal_prefix(cv)) for cv in c['covers']}
+        if homes and covered and not (homes & covered):
+            print('%s is declared in %s and all of its coverage is in %s'
+                  % (c['name'], ' and '.join(sorted(h or '<project>' for h in homes)),
+                     ' and '.join(sorted(v or '<project>' for v in covered))))
+    _changed, created = read_change_set()
+    pats = [matcher(pat) for c in comps for pat in c['covers']]
+    loose = [p for p in created if not any(m(p) for m in pats)]
+    if loose:
+        print('files created outside every covers — candidate for a new component: %s'
+              % ', '.join(loose))
+    sys.exit(0)
 
 if CMD == 'reorigin':
     # A change set speaks the language of the checkout it was taken in; the registry speaks the
