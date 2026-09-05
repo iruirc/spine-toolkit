@@ -48,3 +48,19 @@ setup() {
   # would add a second row beside the real one, which a presence check alone would never notice.
   [ "$(grep -c '^| 1 |' "$taskdir/Docs.md")" -eq 1 ]
 }
+
+@test "the docs-route skill exists and ships no locales" {
+  [ -f "$ROOT/skills/docs-route/SKILL.md" ]
+  [ ! -d "$ROOT/skills/docs-route/locales" ]
+}
+
+@test "the skill states all three verdicts and defaults to the conservative one" {
+  s="$ROOT/skills/docs-route/SKILL.md"
+  grep -q 'Applicable' "$s"
+  grep -q 'N/A' "$s"
+  grep -q 'Pending' "$s"
+}
+
+@test "the skill names no platform's stack values" {
+  [ "$(grep -icE '\b(swift|swiftui|uikit|appkit|kotlin|compose|gradle|spm|xcode)\b' "$ROOT/skills/docs-route/SKILL.md")" = "0" ]
+}
