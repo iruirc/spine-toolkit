@@ -512,6 +512,22 @@ EOF
   ! grep -q 'Ledger' <<<"$output"
 }
 
+@test "a wildcard-led covers pattern is unresolvable, not a claim about the project root" {
+  mkdir -p "$PROJ/.git" "$PROJ/Packages/Core/.git" "$PROJ/Packages/Core/Documents/Barcode"
+  map <<'EOF'
+## BarcodeScanner
+
+genre: state
+places:
+  - Packages/Core/Documents/Barcode/
+covers:
+  - **/Barcode/**
+EOF
+  run bash -c "'$DR' audit '$PROJ' </dev/null"
+  [ "$status" -eq 0 ]
+  ! grep -q 'BarcodeScanner' <<<"$output"
+}
+
 @test "new files outside every covers are named as a candidate component" {
   mkdir -p "$PROJ/.git"
   map <<'EOF'
