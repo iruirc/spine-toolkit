@@ -59,6 +59,10 @@ setup() {
   grep -q 'Applicable' "$s"
   grep -q 'N/A' "$s"
   grep -q 'Pending' "$s"
+  # The three words appear in the verdict table whatever the doctrine says, so the default has to
+  # be asserted on its own — a document that flipped it would pass on the greps above alone.
+  grep -q 'Default to \*\*Applicable\*\*' "$s"
+  grep -q 'conservative bias' "$s"
 }
 
 @test "the skill names no platform's stack values" {
