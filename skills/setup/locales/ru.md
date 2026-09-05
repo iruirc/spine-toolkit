@@ -19,7 +19,7 @@ Yes | Cancel
 Создать `Tasks/` структуру для управления задачами? [Yes / No]
 
 ## auq_create_docs_map
-Создать `DocsMap.md` — реестр документационных компонентов проекта? [Yes / No]
+Создать `DocsMap.md` — реестр компонентов документации проекта? [Yes / No]
 
 ## auq_lang_label
 Язык подсказок toolkit
@@ -100,4 +100,4 @@ DocsMap.md: {docs_map_status}
 уже существовал, не тронут
 
 ## docs_map_status_skipped
-пропущено
+пропущен
