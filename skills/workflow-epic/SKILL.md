@@ -138,6 +138,35 @@ A step that raises itself to `full` raises itself only. The raise is written int
 `Task.md`, and the epic's value is untouched — one step turning out to be large says nothing about
 the next one.
 
+## 2b. Documentation
+
+`workflows/profile-*.js` carries this in its shared prelude; here it is the same three points,
+because the two methods run the same profile.
+
+A change set is matched against the components the project declares in its registry —
+`conventions/docs-components.md` for the format, `scripts/docs-route.sh` for the matching.
+Whether a rule actually moved is not computed: it is answered per component in the task's
+`Docs.md`, in the vocabulary `ops-checklist` already uses, by applying `spine-toolkit:docs-route`.
+
+Every path is relative to the project root, which in a multi-repository project is the container
+the checkouts sit in. A diff is not: pipe each checkout's through `reorigin <checkout>` and feed
+the concatenation. A phase changing code in one repository and its documentation in another is
+the ordinary case here, not the exception.
+
+- **Plan** — run `route` with the paths the plan intends to touch; the components it names go
+  into the phase rows, so the obligation hangs on a phase and not on the task.
+- **End of the implementing stage, per phase** — run `route` with that phase's
+  `git diff --name-status`, answer every row it opens, then run `check` with the same change set
+  before committing. A non-zero exit means a `blocking` question is still open and the phase does
+  not close.
+- **Done** — run `audit`; it reports components living away from their coverage, and files
+  created outside every `covers`. Both are advisory and neither stops anything.
+
+The whole of it is skipped when `Task.md` carries `[DOCS] = [off]`, and when the registry file
+named by `## Docs` → `map` is absent — the default name being `DocsMap.md`, so a project that
+declares nothing is served by the same silence. Review reads `Docs.md` the way it reads
+`OpsChecklist.md`: a row left `Pending` is surfaced for an explicit accept or defer.
+
 ## 3. Manual mode
 
 After each stage (Research, Plan) and **after each step in Execute**, the orchestrator asks the user via the structured question mechanism using the `stage_done_prompt` key from `locales/<lang>.md`, with placeholders `{stage}` and `{step_id}`.
