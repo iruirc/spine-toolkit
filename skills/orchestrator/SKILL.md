@@ -343,6 +343,7 @@ agents={architect: fixture-platform:fixture-architect, developer: fixture-platfo
 need_test=true|false
 need_review=true|false
 walkthrough=on|off
+docs=on|off
 scale=lite|full
 archive_paths=[Tasks/ACTIVE/001-profile/_archive/Plan-2026-04-25T143022.md, Tasks/ACTIVE/001-profile/_archive/Research-2026-04-25T143022.md]
 ```
@@ -363,6 +364,8 @@ Semantics of `stage_scope`:
 `agents` — the role-to-agent map resolved in step 5.7. Always filled, always all nine roles, always in vocabulary order (`architect`, `developer`, `tester`, `reviewer`, `refactorer`, `validator`, `security`, `diagnostics`, `init`). Method B encodes it as the single line above; Method A passes the same object as real JSON, so a script reads `A.agents.architect` and gets `"fixture-platform:fixture-architect"` for the reference platform above. Keys are bare role names: the manifest's `role[axis=value]` form is resolved away in step 5.7 and never reaches the contract. A role the platform declared absent arrives as the em dash `—` in both encodings — a value a consumer checks for before dispatching, not a missing key, and the reason this field is never partial and never omitted. This is what lets a stage name its owner by role: which agent that role means is a property of the platform, not of the profile.
 
 `walkthrough` — whether the run writes `Walkthrough.md`. Resolved `Task.md` `[WALKTHROUGH]` → `CLAUDE-spine-toolkit.md` `## Reporting` → `walkthrough` → `on`; a missing section is the default, not an error. Unlike `drive_app`, this one travels in the contract because the script itself gates on it — a Method A run has no filesystem access and cannot read the value for itself. Always `off` for `profile=review` and `profile=research`, where the profile has no implementing stage and no diff of its own; if the task file sets it anyway, say once that it was not executed and why, rather than dropping it silently.
+
+`docs` — whether this run has any documentation to route. Resolved by asking `<core root>/scripts/docs-route.sh state <project root> --task-dir <task dir>`, which answers `off` when the project's `## Docs` block carries `enabled: off` with no task-level `[DOCS]` overriding it, or when neither the project's registry nor any package's declares a component. It travels in the contract for the reason `walkthrough` does — a Method A run has no filesystem access and cannot read the value for itself. The script is the single authority on the answer; do not re-derive it by reading the config, because the check spans the project's registry and one at every external package root.
 
 `scale` — how deep this task's pipeline goes. Resolved `Task.md` `[SCALE]` →
 `CLAUDE-spine-toolkit.md` `## Scale` → `full`; a missing section is the default, not an error.
