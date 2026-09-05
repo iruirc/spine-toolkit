@@ -331,16 +331,18 @@ def literal_prefix(pattern):
 
 def repo_of(rel):
     """The nearest ancestor holding a .git, as a project-relative path; '' is the project's own
-    repository. A component is not split across repositories, so this is what a home means."""
+    repository. `.git` is a directory in a plain clone and a file in a submodule or a worktree
+    checkout, and this mechanism exists for trees that hold several checkouts at once."""
     p = os.path.normpath(os.path.join(ROOT, rel))
+    if not (p == ROOT or p.startswith(ROOT + os.sep)):
+        return ''
     while True:
-        if os.path.isdir(os.path.join(p, '.git')):
-            rel = os.path.relpath(p, ROOT)
-            return '' if rel == '.' else rel
-        parent = os.path.dirname(p)
-        if parent == p or len(p) <= len(ROOT):
+        if os.path.exists(os.path.join(p, '.git')):
+            r = os.path.relpath(p, ROOT)
+            return '' if r == '.' else r
+        if p == ROOT:
             return ''
-        p = parent
+        p = os.path.dirname(p)
 
 
 BEGIN = '<!-- spine:steps:begin -->'
@@ -542,7 +544,10 @@ if CMD == 'check':
         if phase and row['phase'] != phase:
             continue
         comp = by_name.get(row['name'])
-        level = row['strictness']
+        # The registry is the authority on strictness. The row's copy is only the fallback for a
+        # component named in [DOCS_NEW] and not yet declared, since reading the row would let a
+        # value written at routing time survive a change to the lever.
+        level = comp['strictness'] if comp else row['strictness']
         if level == 'off':
             continue
         places = comp['places'] if comp else []
