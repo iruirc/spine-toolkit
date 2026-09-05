@@ -7,7 +7,18 @@ set -euo pipefail
 # eye is how a router names the wrong document with full confidence.
 #
 # Usage:
-#   scripts/docs-route.sh registry <project-root> [--paths]
+#   scripts/docs-route.sh registry <project-root>
+#   scripts/docs-route.sh route    <project-root> --task-dir <dir> --phase <id>   < change set
+#   scripts/docs-route.sh reorigin <prefix>                                        < change set
+#
+# The change set is `git diff --name-status` on stdin. A line with no tab is read as a modified
+# path, so a plan can pipe the paths it intends to touch before any of them exists. Every command
+# that takes one reads stdin unconditionally: feed it `</dev/null` when there is nothing to say.
+#
+# Paths in a change set are relative to the project root, and the registry is written the same
+# way. A diff taken inside a checkout is not: git prints paths relative to that checkout. Pipe it
+# through `reorigin <path-of-the-checkout>` first — that is what lets one phase touch code in one
+# repository and its documentation in another, which is the case this mechanism exists for.
 #
 # Exit: 0 clean, 1 something the caller must act on, 2 usage or a malformed registry.
 #
@@ -180,6 +191,102 @@ def die(errors):
     sys.exit(2)
 
 
+HEADER = ('# Docs\n\n'
+          '> Routed by spine-toolkit:docs-route. One row per phase and component. Fill Verdict\n'
+          '> with Applicable, N/A or Pending; N/A requires a reason in Note.\n\n'
+          '| Phase | Component | Genre | Strictness | Verdict | Note |\n'
+          '|---|---|---|---|---|---|\n')
+
+
+def read_change_set():
+    changed, created = [], []
+    for line in sys.stdin:
+        parts = line.rstrip('\n').split('\t')
+        if not parts or not parts[-1].strip():
+            continue
+        path = parts[-1].strip().lstrip('/')
+        status = parts[0].strip() if len(parts) > 1 else 'M'
+        changed.append(path)
+        if status.startswith('A'):
+            created.append(path)
+    return changed, created
+
+
+def task_field(task_dir, name):
+    """A bracketed Task.md field, anchored at column 0. Every task file ships the optional
+    fields commented out as documentation, and reading one of those as a value would switch
+    the mechanism off for every task in every project."""
+    if not task_dir:
+        return None
+    try:
+        fh = open(os.path.join(task_dir, 'Task.md'), encoding='utf-8')
+    except OSError:
+        return None
+    with fh:
+        for line in fh:
+            m = re.match(r'^\[%s\]\s*=\s*\[(.*?)\]' % re.escape(name), line)
+            if m:
+                return m.group(1).strip()
+    return None
+
+
+def docs_enabled(task_dir):
+    return (task_field(task_dir, 'DOCS') or 'on').lower() != 'off'
+
+
+def declared_new(task_dir):
+    """[DOCS_NEW] = [Name:genre, Other:tracker] — the one thing routing cannot derive, since a
+    subsystem being born has no covers to match against yet."""
+    raw = task_field(task_dir, 'DOCS_NEW') or ''
+    out = []
+    for item in raw.split(','):
+        item = item.strip()
+        if not item:
+            continue
+        name, _, genre = item.partition(':')
+        out.append((name.strip(), (genre.strip() or 'state')))
+    return out
+
+
+def affected(comps, changed):
+    """State components only. A tracker is fed by task folders and generated; whether a rule
+    moved is a question only a state component can be asked."""
+    hits = []
+    for c in comps:
+        if c['genre'] != 'state':
+            continue
+        ms = [matcher(pat) for pat in c['covers']]
+        if any(m(p) for p in changed for m in ms):
+            hits.append(c)
+    return hits
+
+
+def append_rows(task_dir, phase, rows):
+    path = os.path.join(task_dir, 'Docs.md')
+    text = open(path, encoding='utf-8').read() if os.path.isfile(path) else HEADER
+    for name, genre, level in rows:
+        row = '| %s | %s | %s | %s |  |  |\n' % (phase, name, genre, level)
+        if re.search(r'^\| %s \| %s \|' % (re.escape(phase), re.escape(name)), text, flags=re.M):
+            continue
+        text += row
+    with open(path, 'w', encoding='utf-8') as fh:
+        fh.write(text)
+
+
+if CMD == 'reorigin':
+    # A change set speaks the language of the checkout it was taken in; the registry speaks the
+    # language of the project root, which in a multi-repository project is a container and not a
+    # repository at all. Without this the two never meet.
+    prefix = ARGV[1].strip().strip('/')
+    for line in sys.stdin:
+        parts = line.rstrip('\n').split('\t')
+        if len(parts) < 2:
+            if parts and parts[0].strip():
+                print('%s/%s' % (prefix, parts[0].strip().lstrip('/')))
+            continue
+        print('\t'.join([parts[0]] + ['%s/%s' % (prefix, c.strip().lstrip('/')) for c in parts[1:]]))
+    sys.exit(0)
+
 if CMD == 'registry':
     comps, errors = load_registry()
     if errors:
@@ -191,6 +298,35 @@ if CMD == 'registry':
             for kind in LIST_KEYS:
                 for p in c[kind]:
                     print('\t'.join(['', kind, p]))
+    sys.exit(0)
+
+if CMD == 'route':
+    task_dir = opt('--task-dir')
+    phase = opt('--phase', '1')
+    if not task_dir:
+        print('route needs --task-dir')
+        sys.exit(2)
+    if not docs_enabled(task_dir):
+        sys.exit(0)
+    comps, errors = load_registry()
+    if errors:
+        die(errors)
+    changed, _created = read_change_set()
+    default_level = config('Docs', 'strictness', 'advisory')
+    rows = [(c['name'], c['genre'], c['strictness']) for c in affected(comps, changed)]
+    known = {c['name'] for c in comps}
+    for n, g in declared_new(task_dir):
+        if n in known:
+            continue
+        if g == 'state':
+            rows.append((n, g, default_level))
+        else:
+            print('%s: declared as a new %s — add its record to the registry; a tracker is '
+                  'generated and never asked' % (n, g))
+    if rows:
+        append_rows(task_dir, phase, rows)
+        for name, _g, level in rows:
+            print('%s (%s): does this change alter what the component asserts?' % (name, level))
     sys.exit(0)
 
 print('unknown command "%s"' % CMD)
