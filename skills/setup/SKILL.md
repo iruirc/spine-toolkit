@@ -1,7 +1,7 @@
 ---
 name: setup
 description: |
-  Configures spine-toolkit in an existing project: picks the platform plugin that serves it, creates CLAUDE-spine-toolkit.md from the template, inserts an @./ import line into CLAUDE.md, creates the Tasks/ and Docs/ structures, and hands the platform half its own blocks. Migrates projects on the legacy single-file CLAUDE.md layout and on the pre-split config name.
+  Configures spine-toolkit in an existing project: picks the platform plugin that serves it, creates CLAUDE-spine-toolkit.md from the template, inserts an @./ import line into CLAUDE.md, creates the Tasks/ structure and offers the documentation registry, and hands the platform half its own blocks. Migrates projects on the legacy single-file CLAUDE.md layout and on the pre-split config name.
   Use when (en): "set up spine-toolkit", "configure spine-toolkit", "install toolkit in project", "add spine-toolkit to project", "init toolkit here", "/setup"
   Use when (ru): "настрой spine-toolkit", "подключи spine-toolkit", "установи toolkit в проект", "добавь spine-toolkit к проекту", "инициализируй toolkit здесь", "/setup"
 ---
@@ -219,17 +219,19 @@ The skill's behavior is determined by the project state, computed from four chec
    If Tasks/ exists (folder, symlink, or file) → tasks_status = `tasks_status_already_existed`
    (existing layouts, including manual symlinks, are NEVER overwritten).
 
-6b. Optional Docs/ structure (orthogonal to state):
-   If Docs/ does not exist:
-     AUQ using key `auq_create_docs_structure`.
-     ↓ Yes → mkdir -p Docs/{architecture,api,guides,notes}; .gitkeep in each;
-       docs_status = `docs_status_created`.
-     ↓ No → skip; docs_status = `docs_status_skipped`.
-   If Docs/ exists (folder, symlink, or file) → docs_status = `docs_status_already_existed`.
+6b. Optional documentation registry (orthogonal to state):
+   If the registry named by ## Docs → map does not exist:
+     AUQ using key `auq_create_docs_map`.
+     ↓ Yes → copy templates/docs-map/DocsMap.md to that path;
+       docs_map_status = `docs_map_status_created`.
+     ↓ No → skip; docs_map_status = `docs_map_status_skipped`.
+   If it exists → docs_map_status = `docs_map_status_already_existed` (never overwritten).
+   Declaring what a project's documentation is stays the project's own work: the template ships
+   two examples to delete, not a guess at this project's components.
 
 7. Render the report:
    - States A/B/C/E → key `setup_done` with placeholders {platform}, {stack}, {mode},
-     {progress}, {lang}, {tasks_status}, {docs_status}, {notes}.
+     {progress}, {lang}, {tasks_status}, {docs_map_status}, {notes}.
    - State D → key `report_migration_success` with placeholders {moved_sections},
      {kept_sections}, {filled_default_sections}, {warnings}, {backup_path}, {notes}.
    {notes} is the platform half's returned notes, one per line, already rendered in <lang>;
@@ -358,7 +360,7 @@ In `templates/claude-md-stub/<lang>.md`:
 - **AUQ unavailable** → text fallback with numbered options.
 - **User cancels** (Cancel on the AUQ in state C, D or E) → exit, no disk changes.
 - **Tasks/ already exists** → no overwrite; report `tasks_status_already_existed`.
-- **Docs/ already exists** → no overwrite; report `docs_status_already_existed`.
+- **The registry already exists** → no overwrite; report `docs_map_status_already_existed`.
 
 ## What this skill does NOT do
 

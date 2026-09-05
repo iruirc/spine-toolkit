@@ -108,3 +108,19 @@ EOF
   section="$(awk '/^## What the axis does not govern/{f=1} f' "$ROOT/conventions/task-scale.md")"
   case "$section" in *strictness*) ;; *) echo "the claim is not in that section"; return 1 ;; esac
 }
+
+@test "the Docs/ rudiment is gone from every surface" {
+  # This file names both strings in order to search for them, so it excludes itself; without
+  # the exclusion the test can never pass and would be deleted rather than fixed.
+  self=':!tests/foundation/lib/docs-contract.test.bats'
+  hits="$(git -C "$ROOT" grep -l 'Docs/{architecture' -- . "$self" || true)"
+  [ -z "$hits" ] || { echo "$hits"; return 1; }
+  hits="$(git -C "$ROOT" grep -l 'auq_create_docs_structure' -- . "$self" || true)"
+  [ -z "$hits" ] || { echo "$hits"; return 1; }
+}
+
+@test "setup offers the registry instead" {
+  grep -q 'auq_create_docs_map' "$ROOT/skills/setup/SKILL.md"
+  grep -q '^## auq_create_docs_map$' "$ROOT/skills/setup/locales/en.md"
+  grep -q '^## auq_create_docs_map$' "$ROOT/skills/setup/locales/ru.md"
+}
