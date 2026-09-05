@@ -862,3 +862,59 @@ EOF
   [ "$status" -eq 0 ]
   [ -z "$output" ] || { echo "$output"; return 1; }
 }
+
+@test "state answers off when nothing is declared" {
+  task
+  run "$DR" state "$PROJ" --task-dir "$TASK"
+  [ "$status" -eq 0 ]
+  [ "$output" = "off" ]
+}
+
+@test "state answers on when a component is declared" {
+  task; two_components
+  run "$DR" state "$PROJ" --task-dir "$TASK"
+  [ "$status" -eq 0 ]
+  [ "$output" = "on" ]
+}
+
+@test "state answers on for a package-only registry" {
+  task; paths_block
+  pkg Core <<'EOF'
+## DSL
+
+genre: state
+places:
+  - Documents/DSL/
+covers:
+  - Sources/DSL/**
+EOF
+  run "$DR" state "$PROJ" --task-dir "$TASK"
+  [ "$status" -eq 0 ]
+  [ "$output" = "on" ]
+}
+
+@test "state follows the levers in both directions" {
+  task; two_components
+  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\nstrictness: blocking\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$DR" state "$PROJ" --task-dir "$TASK"
+  [ "$output" = "off" ]
+  printf '[TASK_TYPE] = [FEATURE]\n[DOCS] = [on]\n' >"$TASK/Task.md"
+  run "$DR" state "$PROJ" --task-dir "$TASK"
+  [ "$output" = "on" ]
+}
+
+@test "state answers on for a malformed registry, so the run meets the error by name" {
+  task
+  map <<'EOF'
+## Broken
+
+genre: prose
+places:
+  - Documents/B/
+covers:
+  - Sources/**
+EOF
+  run "$DR" state "$PROJ" --task-dir "$TASK"
+  [ "$status" -eq 0 ]
+  [ "$output" = "on" ]
+}
