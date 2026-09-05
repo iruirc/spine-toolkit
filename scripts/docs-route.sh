@@ -9,6 +9,7 @@ set -euo pipefail
 # Usage:
 #   scripts/docs-route.sh registry <project-root> [--paths]
 #   scripts/docs-route.sh route    <project-root> --task-dir <dir> --phase <id>   < change set
+#   scripts/docs-route.sh check    <project-root> --task-dir <dir> [--phase <id>] < change set
 #   scripts/docs-route.sh reorigin <prefix>                                        < change set
 #
 # The change set is `git diff --name-status` on stdin. A line with no tab is read as a modified
@@ -273,6 +274,42 @@ def append_rows(task_dir, phase, rows):
         fh.write(text)
 
 
+def read_rows(task_dir):
+    path = os.path.join(task_dir, 'Docs.md')
+    if not os.path.isfile(path):
+        return []
+    rows = []
+    for line in open(path, encoding='utf-8'):
+        if not line.startswith('|') or line.startswith('|---'):
+            continue
+        cells = [c.strip() for c in line.strip().strip('|').split('|')]
+        if len(cells) != 6 or cells[0] == 'Phase':
+            continue
+        rows.append(dict(zip(('phase', 'name', 'genre', 'strictness', 'verdict', 'note'), cells)))
+    return rows
+
+
+def writable(places):
+    """A place the run cannot write to — another repository, a checkout that is not here — is a
+    requirement that cannot be met where the work is happening. Stopping on one is a trap, not
+    discipline: the strictness degrades and says so. A place resolving outside the project root
+    is not reachable from this run by definition, which is what the multirepo case looks like."""
+    for place in places:
+        p = os.path.normpath(os.path.join(ROOT, place))
+        if not (p == ROOT or p.startswith(ROOT + os.sep)):
+            continue
+        while True:
+            if os.path.isdir(p):
+                if os.access(p, os.W_OK):
+                    return True
+                break
+            parent = os.path.dirname(p)
+            if parent == p:
+                break
+            p = parent
+    return False
+
+
 if CMD == 'reorigin':
     # A change set speaks the language of the checkout it was taken in; the registry speaks the
     # language of the project root, which in a multi-repository project is a container and not a
@@ -328,6 +365,47 @@ if CMD == 'route':
         for name, _g, level in rows:
             print('%s (%s): does this change alter what the component asserts?' % (name, level))
     sys.exit(0)
+
+if CMD == 'check':
+    task_dir = opt('--task-dir')
+    phase = opt('--phase')
+    if not task_dir:
+        print('check needs --task-dir')
+        sys.exit(2)
+    if not docs_enabled(task_dir):
+        sys.exit(0)
+    comps, errors = load_registry()
+    if errors:
+        die(errors)
+    by_name = {c['name']: c for c in comps}
+    changed, _created = read_change_set()
+    blocked = False
+    for row in read_rows(task_dir):
+        if phase and row['phase'] != phase:
+            continue
+        comp = by_name.get(row['name'])
+        level = row['strictness']
+        places = comp['places'] if comp else []
+        if level == 'blocking' and places and not writable(places):
+            print('%s: places are not writable from here — strictness degraded to advisory' % row['name'])
+            level = 'advisory'
+        gap = None
+        verdict = row['verdict']
+        if not verdict:
+            gap = 'the question is unanswered'
+        elif verdict == 'Pending':
+            gap = 'Pending is an open question, not an answer'
+        elif verdict == 'N/A' and not row['note']:
+            gap = 'N/A needs a reason'
+        elif verdict == 'Applicable':
+            ms = [matcher(pl) for pl in places]
+            if not any(m(p) for p in changed for m in ms):
+                gap = 'Applicable, but no file under %s changed in this range' % ', '.join(places)
+        if gap:
+            print('%s (%s): %s' % (row['name'], level, gap))
+            if level == 'blocking':
+                blocked = True
+    sys.exit(1 if blocked else 0)
 
 print('unknown command "%s"' % CMD)
 sys.exit(2)
