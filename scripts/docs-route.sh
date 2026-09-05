@@ -7,7 +7,7 @@ set -euo pipefail
 # eye is how a router names the wrong document with full confidence.
 #
 # Usage:
-#   scripts/docs-route.sh registry <project-root>
+#   scripts/docs-route.sh registry <project-root> [--paths]
 #
 # Exit: 0 clean, 1 something the caller must act on, 2 usage or a malformed registry.
 #
@@ -184,8 +184,13 @@ if CMD == 'registry':
     comps, errors = load_registry()
     if errors:
         die(errors)
+    paths = '--paths' in ARGV
     for c in comps:
         print('\t'.join([c['name'], c['genre'], c['strictness'], c['source']]))
+        if paths:
+            for kind in LIST_KEYS:
+                for p in c[kind]:
+                    print('\t'.join(['', kind, p]))
     sys.exit(0)
 
 print('unknown command "%s"' % CMD)
