@@ -112,6 +112,20 @@ For reference, the templates contain these placeholders:
    - `[MANUAL_CHECKS] = [<auto|always>]` — overrides `## Validation` → `manual_checks`; write `always` when the user wants a hand-run test script out of this task whether or not the agent drove the app itself.
    - `[WALKTHROUGH] = [<on|off>]` — overrides `## Reporting` → `walkthrough`; write `off` to suppress `Walkthrough.md` for this task. Never written for `REVIEW` or `RESEARCH`, where the profile has nothing to write it from.
    - `[SCALE] = [<lite|full>]` — overrides `## Scale`; write it only when the user sized the task themselves. `full` also switches off the raise a stage could otherwise perform, so writing it on a guess costs the task its cheap path; `lite` does not switch the raise off, since a declared-small task stays a hypothesis until something measures its perimeter.
+   - `[DOCS] = [<on|off>]` — overrides `## Docs`; write `off` only when the user said this task
+     changes strings, flags or tooling and raises no documentation question at all. The field is
+     a blanket lever: it silences every component for the whole task, and it stays visible in
+     `Task.md` at Review.
+   - `[DOCS_NEW] = [<name>:<state|tracker>, …]` — the components this task **creates**. Write it
+     when the user named a new subsystem or a new line of work; this is the one thing routing
+     cannot derive, since a subsystem being born has no `covers` to match against. Declaring is
+     not creating: the registry entry and the first file appear at the phase that first answers
+     Applicable, when the rule is already in the code.
+
+   Never write which **existing** components the task affects. The author does not know yet —
+   the reference epic's sub-steps `05d`–`05k` were not in its plan at all, each one raised by a
+   finding during acceptance — and a guess written here is a hand-maintained path list that
+   rots. What is affected is computed from the actual diff, at Plan and at the end of each phase.
 10. **Verify structural anchors are intact.** Read the just-written `Task.md`. Check that **every** one of the following literal strings is present (case-sensitive, byte-for-byte):
     - `**Date:**`
     - `[TASK_TYPE] = `
