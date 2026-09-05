@@ -275,18 +275,25 @@ def append_rows(task_dir, phase, rows):
 
 
 def read_rows(task_dir):
+    """Returns the parsed rows and the lines that would not parse. The Note is free text and the
+    last column, so the split stops there and lets it hold pipes of its own; a row that still does
+    not yield six cells is refused rather than dropped, because a silently discarded row is a
+    question nobody is ever asked again."""
     path = os.path.join(task_dir, 'Docs.md')
     if not os.path.isfile(path):
-        return []
-    rows = []
+        return [], []
+    rows, bad = [], []
     for line in open(path, encoding='utf-8'):
         if not line.startswith('|') or line.startswith('|---'):
             continue
-        cells = [c.strip() for c in line.strip().strip('|').split('|')]
-        if len(cells) != 6 or cells[0] == 'Phase':
+        cells = [c.strip() for c in line.strip().strip('|').split('|', 5)]
+        if cells and cells[0] == 'Phase':
+            continue
+        if len(cells) != 6:
+            bad.append(line.strip())
             continue
         rows.append(dict(zip(('phase', 'name', 'genre', 'strictness', 'verdict', 'note'), cells)))
-    return rows
+    return rows, bad
 
 
 def writable(places):
@@ -379,28 +386,36 @@ if CMD == 'check':
         die(errors)
     by_name = {c['name']: c for c in comps}
     changed, _created = read_change_set()
+    rows, bad = read_rows(task_dir)
+    if bad:
+        die(['%s: malformed row, expected six columns: %s' % (os.path.join(task_dir, 'Docs.md'), b) for b in bad])
     blocked = False
-    for row in read_rows(task_dir):
+    for row in rows:
         if phase and row['phase'] != phase:
             continue
         comp = by_name.get(row['name'])
         level = row['strictness']
+        if level == 'off':
+            continue
         places = comp['places'] if comp else []
         if level == 'blocking' and places and not writable(places):
             print('%s: places are not writable from here — strictness degraded to advisory' % row['name'])
             level = 'advisory'
         gap = None
         verdict = row['verdict']
-        if not verdict:
-            gap = 'the question is unanswered'
-        elif verdict == 'Pending':
-            gap = 'Pending is an open question, not an answer'
-        elif verdict == 'N/A' and not row['note']:
-            gap = 'N/A needs a reason'
+        if verdict == 'N/A':
+            if not row['note']:
+                gap = 'N/A needs a reason'
         elif verdict == 'Applicable':
             ms = [matcher(pl) for pl in places]
             if not any(m(p) for p in changed for m in ms):
-                gap = 'Applicable, but no file under %s changed in this range' % ', '.join(places)
+                gap = 'Applicable, but no file under %s changed in this range' % (', '.join(places) or 'its places')
+        elif not verdict:
+            gap = 'the question is unanswered'
+        elif verdict == 'Pending':
+            gap = 'Pending is an open question, not an answer'
+        else:
+            gap = 'verdict "%s" is not one of Applicable, N/A, Pending' % verdict
         if gap:
             print('%s (%s): %s' % (row['name'], level, gap))
             if level == 'blocking':
