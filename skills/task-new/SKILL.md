@@ -123,9 +123,9 @@ For reference, the templates contain these placeholders:
      Applicable, when the rule is already in the code.
 
    Never write which **existing** components the task affects. The author does not know yet —
-   the reference epic's sub-steps `05d`–`05k` were not in its plan at all, each one raised by a
-   finding during acceptance — and a guess written here is a hand-maintained path list that
-   rots. What is affected is computed from the actual diff, at Plan and at the end of each phase.
+   the steps that turn out to carry the work are usually raised by findings during it rather than
+   foreseen in the plan — and a guess written here is a hand-maintained path list that rots. What
+   is affected is computed from the actual diff, at Plan and at the end of each phase.
 10. **Verify structural anchors are intact.** Read the just-written `Task.md`. Check that **every** one of the following literal strings is present (case-sensitive, byte-for-byte):
     - `**Date:**`
     - `[TASK_TYPE] = `

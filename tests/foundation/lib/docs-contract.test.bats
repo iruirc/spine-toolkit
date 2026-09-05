@@ -44,4 +44,7 @@ setup() {
   run bash -c "printf 'M\tSources/A.txt\n' | '$DR' route '$proj' --task-dir '$taskdir' --phase 1"
   [ "$status" -eq 0 ]
   grep -q '^| 1 | D |' "$taskdir/Docs.md"
+  # The row count is what makes this test cover BOTH commented lines: a [DOCS_NEW] read as a value
+  # would add a second row beside the real one, which a presence check alone would never notice.
+  [ "$(grep -c '^| 1 |' "$taskdir/Docs.md")" -eq 1 ]
 }
