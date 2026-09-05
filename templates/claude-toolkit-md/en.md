@@ -103,6 +103,26 @@ Validation and Review, and refreshed afterwards if later commits moved past it.
 `on` — write it; `off` — never. Not applicable to RESEARCH and REVIEW, whose deliverable is the
 artifact itself. A single task overrides with `[WALKTHROUGH] = [on|off]` in its `Task.md`.)
 
+## Docs
+
+map: DocsMap.md
+strictness: advisory
+freshness: on
+
+(the documentation components this project declares, and how hard the run holds them.
+`map` — path to the registry, relative to the project root. The file is optional: without it
+the mechanism is off and the run says nothing about documentation.
+`strictness` — the default for a component that declares none: `blocking` — a phase does not
+close while the question a touched component raises is unanswered; `advisory` — the run names
+it and moves on; `off` — the component is routed and reported but never asked about.
+`freshness` — whether a component's files carry the Status / Synced / Owner / Source of truth
+header. `on` / `off`.
+
+What goes inside the registry is fixed by the `docs-route` skill and
+`conventions/docs-components.md`, not by this block — the same division `## Validation` has with
+`ManualChecks.md`. A single task overrides with `[DOCS] = [on|off]` in its `Task.md`, and names
+the components it creates in `[DOCS_NEW]`.)
+
 ## Scale
 
 lite
@@ -139,7 +159,13 @@ manual
 
 ## Paths
 
-(optional: "- Sources: /Sources", "- Tests: /Tests")
+(optional: "- Sources: /Sources", "- Tests: /Tests", "- External packages: /Packages/*"
+
+`External packages` may repeat and its value is a glob resolved from the project root. Every
+directory it resolves to is a checkout the project builds against; a checkout carrying its own
+`DocsMap.md` contributes its components to this project's registry, declared once at the
+package and read by every project that holds it. Paths inside a package's registry are written
+relative to that package's root.)
 
 ## Orchestration
 
