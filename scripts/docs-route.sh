@@ -12,6 +12,7 @@ set -euo pipefail
 #   scripts/docs-route.sh check    <project-root> --task-dir <dir> [--phase <id>] < change set
 #   scripts/docs-route.sh audit    <project-root>                                 < change set
 #   scripts/docs-route.sh reorigin <prefix>                                        < change set
+#   scripts/docs-route.sh tracker  <project-root>
 #
 # The change set is `git diff --name-status` on stdin. A line with no tab is read as a modified
 # path, so a plan can pipe the paths it intends to touch before any of them exists. Every command
@@ -341,6 +342,95 @@ def repo_of(rel):
             return ''
         p = parent
 
+
+BEGIN = '<!-- spine:steps:begin -->'
+END = '<!-- spine:steps:end -->'
+
+
+def task_folders():
+    """Every task folder, as Tasks/<status>/<id>-<slug>, in sorted order."""
+    base = os.path.join(ROOT, 'Tasks')
+    out = []
+    for status in sorted(os.listdir(base)) if os.path.isdir(base) else []:
+        d = os.path.join(base, status)
+        if not os.path.isdir(d):
+            continue
+        for name in sorted(os.listdir(d)):
+            if os.path.isdir(os.path.join(d, name)):
+                out.append('Tasks/%s/%s' % (status, name))
+    return out
+
+
+def steps_table(dirs):
+    rows = ['| Step | Status | Opened | Covers |', '|---|---|---|---|']
+    for rel in dirs:
+        parts = rel.split('/')
+        opened, covers = '', ''
+        try:
+            for line in open(os.path.join(ROOT, rel, 'Task.md'), encoding='utf-8'):
+                m = re.match(r'^\*\*Date:\*\*\s*(\S+)', line)
+                if m:
+                    opened = m.group(1)
+                    break
+        except OSError:
+            pass
+        try:
+            for line in open(os.path.join(ROOT, rel, 'Walkthrough.md'), encoding='utf-8'):
+                m = re.match(r'^\[COVERS\]\s*=\s*(\S+)', line)
+                if m:
+                    covers = m.group(1)
+                    break
+        except OSError:
+            pass
+        rows.append('| %s | %s | %s | %s |' % (parts[2], parts[1], opened or '—', covers or '—'))
+    return '\n'.join(rows)
+
+
+def regenerate(path, table):
+    """Only what lies between the markers. Everything a tracker is worth reading for — the
+    intent, the limits, the lessons, the shapes that were rejected — is outside them, because
+    no generation produces it and an attempt produces plausible text instead of true text."""
+    block = '%s\n%s\n%s' % (BEGIN, table, END)
+    if os.path.isfile(path):
+        text = open(path, encoding='utf-8').read()
+    else:
+        text = '# %s\n\n' % os.path.splitext(os.path.basename(path))[0]
+    if BEGIN in text and END in text:
+        head, _, rest = text.partition(BEGIN)
+        _, _, tail = rest.partition(END)
+        new = head + block + tail
+    else:
+        new = text.rstrip('\n') + '\n\n' + block + '\n'
+    if not os.path.isfile(path) or new != text:
+        d = os.path.dirname(path)
+        if d and not os.path.isdir(d):
+            os.makedirs(d)
+        with open(path, 'w', encoding='utf-8') as fh:
+            fh.write(new)
+        return True
+    return False
+
+
+if CMD == 'tracker':
+    comps, errors = load_registry()
+    if errors:
+        die(errors)
+    folders = task_folders()
+    claimed = set()
+    for c in comps:
+        if c['genre'] != 'tracker':
+            continue
+        mine = []
+        for rel in folders:
+            if rel in claimed:
+                continue
+            if any(matcher(pat)(rel) for pat in c['fed_by']):
+                mine.append(rel)
+                claimed.add(rel)
+        for place in c['places']:
+            if regenerate(os.path.join(ROOT, place), steps_table(mine)):
+                print('%s: regenerated %d step(s) in %s' % (c['name'], len(mine), place))
+    sys.exit(0)
 
 if CMD == 'audit':
     comps, errors = load_registry()
