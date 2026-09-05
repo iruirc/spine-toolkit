@@ -82,3 +82,26 @@ setup() {
     [ "$n_note" -lt "$n_body" ] || { echo "DOCS_NOTE is not before the body in $f"; return 1; }
   done
 }
+
+section_2b() {
+  python3 - "$1" <<'EOF'
+import re, sys
+t = open(sys.argv[1], encoding='utf-8').read()
+m = re.search(r'^## 2b\. Documentation\s*$(.*?)(?=^## )', t, flags=re.M | re.S)
+sys.stdout.write(m.group(1) if m else '')
+EOF
+}
+
+@test "every profile skill carries the documentation section, and all seven are one text" {
+  ref=""
+  for f in "$ROOT"/skills/workflow-*/SKILL.md; do
+    body="$(section_2b "$f")"
+    [ -n "$body" ] || { echo "no '## 2b. Documentation' in $f"; return 1; }
+    [ -z "$ref" ] && ref="$body"
+    [ "$body" = "$ref" ] || { echo "$f drifted from the shared text"; return 1; }
+  done
+}
+
+@test "the scale convention states that the axis does not move strictness" {
+  grep -q 'strictness' "$ROOT/conventions/task-scale.md"
+}
