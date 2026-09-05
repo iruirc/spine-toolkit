@@ -18,8 +18,8 @@ CLAUDE-spine-toolkit.md template not found. Check the spine-toolkit plugin root'
 ## auq_create_tasks_structure
 Create the `Tasks/` structure for managing tasks? [Yes / No]
 
-## auq_create_docs_structure
-Create the `Docs/` structure for project documentation? [Yes / No]
+## auq_create_docs_map
+Create `DocsMap.md`, the registry of this project's documentation components? [Yes / No]
 
 ## auq_lang_label
 Toolkit language for prompts
@@ -62,7 +62,7 @@ Migrate-and-backup | Cancel
   - Language: {lang}
 
 Tasks/ structure: {tasks_status}
-Docs/ structure: {docs_status}
+DocsMap.md: {docs_map_status}
 {notes}
 Next steps:
   - create your first task: /task-new <description>
@@ -93,11 +93,11 @@ already existed
 ## tasks_status_skipped
 skipped
 
-## docs_status_created
-created
+## docs_map_status_created
+created from the template — declare your components in it
 
-## docs_status_already_existed
-already existed
+## docs_map_status_already_existed
+already existed, left untouched
 
-## docs_status_skipped
+## docs_map_status_skipped
 skipped

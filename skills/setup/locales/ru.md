@@ -18,8 +18,8 @@ Yes | Cancel
 ## auq_create_tasks_structure
 Создать `Tasks/` структуру для управления задачами? [Yes / No]
 
-## auq_create_docs_structure
-Создать `Docs/` структуру для документации проекта? [Yes / No]
+## auq_create_docs_map
+Создать `DocsMap.md` — реестр документационных компонентов проекта? [Yes / No]
 
 ## auq_lang_label
 Язык подсказок toolkit
@@ -62,7 +62,7 @@ Migrate-and-backup | Cancel
   - Язык: {lang}
 
 Tasks/ структура: {tasks_status}
-Docs/ структура: {docs_status}
+DocsMap.md: {docs_map_status}
 {notes}
 Следующие шаги:
   - создать первую задачу: /task-new <описание>
@@ -93,11 +93,11 @@ Docs/ структура: {docs_status}
 ## tasks_status_skipped
 пропущена
 
-## docs_status_created
-создана
+## docs_map_status_created
+создан из шаблона — объявите в нём свои компоненты
 
-## docs_status_already_existed
-уже существовала
+## docs_map_status_already_existed
+уже существовал, не тронут
 
-## docs_status_skipped
-пропущена
+## docs_map_status_skipped
+пропущено
