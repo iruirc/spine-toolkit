@@ -478,3 +478,68 @@ EOF
   [ "$status" -eq 0 ]
   [ -z "$output" ] || { echo "$output"; return 1; }
 }
+
+@test "a component whose covers share no repository with its places is reported" {
+  mkdir -p "$PROJ/.git" "$PROJ/Packages/Core/.git" "$PROJ/Documents/BarcodeScanner"
+  printf '\n## Paths\n\n- External packages: /Packages/*\n' >>"$PROJ/CLAUDE-spine-toolkit.md"
+  map <<'EOF'
+## BarcodeScanner
+
+genre: state
+places:
+  - Documents/BarcodeScanner/
+covers:
+  - Packages/Core/Sources/Barcode/**
+EOF
+  run bash -c "'$DR' audit '$PROJ' </dev/null"
+  [ "$status" -eq 0 ]
+  case "$output" in *"BarcodeScanner"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a component living with its coverage is not reported" {
+  mkdir -p "$PROJ/.git" "$PROJ/Documents/Ledger"
+  map <<'EOF'
+## Ledger
+
+genre: state
+places:
+  - Documents/Ledger/
+covers:
+  - Sources/Ledger/**
+EOF
+  run bash -c "'$DR' audit '$PROJ' </dev/null"
+  [ "$status" -eq 0 ]
+  ! grep -q 'Ledger' <<<"$output"
+}
+
+@test "new files outside every covers are named as a candidate component" {
+  mkdir -p "$PROJ/.git"
+  map <<'EOF'
+## Ledger
+
+genre: state
+places:
+  - Documents/Ledger/
+covers:
+  - Sources/Ledger/**
+EOF
+  run bash -c "printf 'A\tSources/Stock/Graph.txt\n' | '$DR' audit '$PROJ'"
+  [ "$status" -eq 0 ]
+  case "$output" in *"Sources/Stock/Graph.txt"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a modified file outside every covers is not reported — coverage is knowingly partial" {
+  mkdir -p "$PROJ/.git"
+  map <<'EOF'
+## Ledger
+
+genre: state
+places:
+  - Documents/Ledger/
+covers:
+  - Sources/Ledger/**
+EOF
+  run bash -c "printf 'M\tSources/Export/Writer.txt\n' | '$DR' audit '$PROJ'"
+  [ "$status" -eq 0 ]
+  ! grep -q 'Writer.txt' <<<"$output"
+}
