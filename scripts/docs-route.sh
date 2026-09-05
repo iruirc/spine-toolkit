@@ -395,7 +395,12 @@ def regenerate(path, table):
         text = open(path, encoding='utf-8').read()
     else:
         text = '# %s\n\n' % os.path.splitext(os.path.basename(path))[0]
-    if BEGIN in text and END in text:
+    nb, ne = text.count(BEGIN), text.count(END)
+    if nb or ne:
+        # A file whose markers are missing, doubled or out of order is refused, never reshaped:
+        # one hand-editing slip must not cost the handwritten half.
+        if nb != 1 or ne != 1 or text.index(BEGIN) > text.index(END):
+            return 'markers'
         head, _, rest = text.partition(BEGIN)
         _, _, tail = rest.partition(END)
         new = head + block + tail
@@ -417,6 +422,7 @@ if CMD == 'tracker':
         die(errors)
     folders = task_folders()
     claimed = set()
+    refused = False
     for c in comps:
         if c['genre'] != 'tracker':
             continue
@@ -428,9 +434,15 @@ if CMD == 'tracker':
                 mine.append(rel)
                 claimed.add(rel)
         for place in c['places']:
-            if regenerate(os.path.join(ROOT, place), steps_table(mine)):
+            r = regenerate(os.path.join(ROOT, place), steps_table(mine))
+            if r == 'markers':
+                print('%s: %s has a malformed marker pair — one %s above one %s is what the '
+                      'format allows. Left untouched: regenerating it would reshape the '
+                      'handwritten half.' % (c['name'], place, BEGIN, END))
+                refused = True
+            elif r:
                 print('%s: regenerated %d step(s) in %s' % (c['name'], len(mine), place))
-    sys.exit(0)
+    sys.exit(1 if refused else 0)
 
 if CMD == 'audit':
     comps, errors = load_registry()
