@@ -14,6 +14,15 @@ setup() {
 
 map() { cat >"$PROJ/DocsMap.md"; }
 
+pkg() {
+  mkdir -p "$PROJ/Packages/$1"
+  cat >"$PROJ/Packages/$1/DocsMap.md"
+}
+
+paths_block() {
+  printf '\n## Paths\n\n- External packages: /Packages/*\n' >>"$PROJ/CLAUDE-spine-toolkit.md"
+}
+
 @test "a state component is read with its genre, strictness, places and covers" {
   map <<'EOF'
 ## Timeline
@@ -110,4 +119,62 @@ EOF
   run "$DR" registry "$PROJ"
   [ "$status" -eq 2 ]
   case "$output" in *"TimelineCore"*"indented"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a package registry contributes its components with package-relative paths resolved" {
+  paths_block
+  pkg Core <<'EOF'
+## DSL
+
+genre: state
+places:
+  - Documents/DSL/
+covers:
+  - Sources/DSL/**
+EOF
+  run "$DR" registry "$PROJ"
+  [ "$status" -eq 0 ]
+  case "$output" in *"DSL"*"Packages/Core/DocsMap.md"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "one name declared in two registries stops the assembly and names both files" {
+  paths_block
+  map <<'EOF'
+## DSL
+
+genre: state
+places:
+  - Documents/DSL/
+covers:
+  - Sources/**
+EOF
+  pkg Core <<'EOF'
+## DSL
+
+genre: state
+places:
+  - Documents/DSL/
+covers:
+  - Sources/DSL/**
+EOF
+  run "$DR" registry "$PROJ"
+  [ "$status" -eq 2 ]
+  case "$output" in *"DocsMap.md"*"Packages/Core/DocsMap.md"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a package without a registry contributes nothing and is not an error" {
+  paths_block
+  mkdir -p "$PROJ/Packages/Quiet"
+  map <<'EOF'
+## Timeline
+
+genre: state
+places:
+  - Documents/Timeline/
+covers:
+  - Sources/**
+EOF
+  run "$DR" registry "$PROJ"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s\n' "$output" | grep -c .)" -eq 1 ]
 }
