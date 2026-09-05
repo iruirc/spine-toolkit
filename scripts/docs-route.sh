@@ -7,7 +7,7 @@ set -euo pipefail
 # eye is how a router names the wrong document with full confidence.
 #
 # Usage:
-#   scripts/docs-route.sh registry <project-root>
+#   scripts/docs-route.sh registry <project-root> [--paths]
 #   scripts/docs-route.sh route    <project-root> --task-dir <dir> --phase <id>   < change set
 #   scripts/docs-route.sh reorigin <prefix>                                        < change set
 #
