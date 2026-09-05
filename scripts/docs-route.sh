@@ -141,7 +141,9 @@ def load_registry():
         if c['genre'] == 'tracker' and not c['fed_by']:
             errors.append('%s is a tracker and declares no fed_by' % where)
         if c['name'] in seen:
-            errors.append('name "%s" is declared twice: %s and %s' % (c['name'], seen[c['name']], c['source']))
+            errors.append('name "%s" is declared twice: %s and %s — a registry that merges them '
+                          'silently produces the divergence this mechanism exists to catch'
+                          % (c['name'], seen[c['name']], c['source']))
         else:
             seen[c['name']] = c['source']
     return comps, errors
