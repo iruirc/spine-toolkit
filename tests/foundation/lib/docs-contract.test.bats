@@ -124,3 +124,19 @@ EOF
   grep -q '^## auq_create_docs_map$' "$ROOT/skills/setup/locales/en.md"
   grep -q '^## auq_create_docs_map$' "$ROOT/skills/setup/locales/ru.md"
 }
+
+@test "Done regenerates the trackers on every surface that names the step" {
+  # Three documents describe the Done step: Method A's prelude note, Method B's section, and the
+  # skill an agent applies. A step named in two of the three is how the methods drift.
+  for f in "$ROOT"/skills/workflow-*/SKILL.md; do
+    section_2b "$f" | grep -q 'tracker' || { echo "no tracker call in $f"; return 1; }
+  done
+  for f in "$ROOT"/workflows/profile-*.js; do
+    grep -q 'DOCS_NOTE.*"tracker"' "$f" || { echo "no tracker call in $f"; return 1; }
+  done
+  grep -q '^| Done | `tracker' "$ROOT/skills/docs-route/SKILL.md"
+}
+
+@test "task-walkthrough states which half of a tracker is generated" {
+  grep -q 'spine:steps' "$ROOT/skills/task-walkthrough/SKILL.md"
+}
