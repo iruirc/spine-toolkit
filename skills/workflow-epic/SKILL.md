@@ -159,8 +159,10 @@ the ordinary case here, not the exception.
   `git diff --name-status`, answer every row it opens, then run `check` with the same change set
   before committing. A non-zero exit means a `blocking` question is still open and the phase does
   not close.
-- **Done** — run `audit`; it reports components living away from their coverage, and files
-  created outside every `covers`. Both are advisory and neither stops anything.
+- **Done** — run `audit`, then `tracker`. `audit` reports components living away from their
+  coverage and files created outside every `covers`; both are advisory and neither stops
+  anything. `tracker` regenerates the step table of every declared tracker between its markers,
+  leaving everything outside them alone.
 
 All of it is skipped by a stage that changes no files, by a task whose `Task.md` carries
 `[DOCS] = [off]`, and by a project whose registry file — the one named by `## Docs` → `map`,
