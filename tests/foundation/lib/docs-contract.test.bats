@@ -68,3 +68,10 @@ setup() {
 @test "the skill names no platform's stack values" {
   [ "$(grep -icE '\b(swift|swiftui|uikit|appkit|kotlin|compose|gradle|spm|xcode)\b' "$ROOT/skills/docs-route/SKILL.md")" = "0" ]
 }
+
+@test "every profile script carries the documentation note in its standing brief" {
+  for f in "$ROOT"/workflows/profile-*.js; do
+    grep -q 'DOCS_NOTE' "$f" || { echo "no DOCS_NOTE in $f"; return 1; }
+    grep -q 'docs-route.sh' "$f" || { echo "no script call in $f"; return 1; }
+  done
+}
