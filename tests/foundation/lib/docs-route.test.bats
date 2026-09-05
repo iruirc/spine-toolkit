@@ -137,6 +137,25 @@ EOF
   case "$output" in *"DSL"*"Packages/Core/DocsMap.md"*) ;; *) echo "$output"; return 1 ;; esac
 }
 
+@test "a package's own places and covers come back prefixed with the package path" {
+  # `source` is prefixed by relpath, not by under(), so the test above cannot see whether the
+  # list values inside a package map are prefixed at all. This one can.
+  paths_block
+  pkg Core <<'EOF'
+## DSL
+
+genre: state
+places:
+  - Documents/DSL/
+covers:
+  - Sources/DSL/**
+EOF
+  run "$DR" registry "$PROJ" --paths
+  [ "$status" -eq 0 ]
+  case "$output" in *"covers"*"Packages/Core/Sources/DSL/**"*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *"places"*"Packages/Core/Documents/DSL/"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
 @test "one name declared in two registries stops the assembly and names both files" {
   paths_block
   map <<'EOF'
@@ -177,4 +196,5 @@ EOF
   run "$DR" registry "$PROJ"
   [ "$status" -eq 0 ]
   [ "$(printf '%s\n' "$output" | grep -c .)" -eq 1 ]
+  case "$output" in *Timeline*) ;; *) echo "$output"; return 1 ;; esac
 }
