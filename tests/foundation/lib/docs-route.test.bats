@@ -757,3 +757,53 @@ EOF
   grep -q '351-a-snapping-step' "$PROJ/Trackers/Snapping.md"
   ! grep -q '351-a-snapping-step' "$PROJ/Trackers/All.md"
 }
+
+@test "a project lever of off silences routing" {
+  task; two_components
+  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\nstrictness: blocking\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "$output"; return 1; }
+  [ ! -f "$TASK/Docs.md" ]
+}
+
+@test "a project lever of off silences the lever itself" {
+  task; two_components; routed
+  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\nstrictness: blocking\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "$output"; return 1; }
+}
+
+@test "a project lever of off silences audit and tracker but not registry" {
+  mkdir -p "$PROJ/.git" "$PROJ/Packages/Core/.git" "$PROJ/Documents/Gif"
+  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  map <<'EOF'
+## GifImageTrack
+
+genre: state
+places:
+  - Documents/Gif/
+covers:
+  - Packages/Core/Sources/Gif/**
+EOF
+  run bash -c "'$DR' audit '$PROJ' </dev/null"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "$output"; return 1; }
+  run "$DR" tracker "$PROJ"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "$output"; return 1; }
+  # registry is what a person runs to inspect what they suspended, and it still answers.
+  run "$DR" registry "$PROJ"
+  [ "$status" -eq 0 ]
+  case "$output" in *GifImageTrack*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a task that says on overrides a suspended project" {
+  task; two_components
+  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\nstrictness: blocking\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [FEATURE]\n[DOCS] = [on]\n' >"$TASK/Task.md"
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  grep -q '^| 3 | Timeline |' "$TASK/Docs.md"
+}

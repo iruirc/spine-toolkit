@@ -105,11 +105,16 @@ artifact itself. A single task overrides with `[WALKTHROUGH] = [on|off]` in its 
 
 ## Docs
 
+enabled: on
 map: DocsMap.md
 strictness: advisory
 freshness: on
 
 (the documentation components this project declares, and how hard the run holds them.
+`enabled` — whether the mechanism runs at all. `off` suspends it project-wide: the four commands a
+run invokes do nothing and say nothing, while `registry` still reads the file, so a suspended
+project can still inspect what it suspended. A task that names `[DOCS]` explicitly overrides this
+in either direction.
 `map` — path to the registry, relative to the project root. The file is optional: without it
 the mechanism is off and the run says nothing about documentation.
 `strictness` — the default for a component that declares none: `blocking` — a phase does not

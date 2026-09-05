@@ -233,8 +233,18 @@ def task_field(task_dir, name):
     return None
 
 
+def project_docs_enabled():
+    return (config('Docs', 'enabled', 'on') or 'on').strip().lower() != 'off'
+
+
 def docs_enabled(task_dir):
-    return (task_field(task_dir, 'DOCS') or 'on').lower() != 'off'
+    """A task's own value first, the project's lever second. An explicit [DOCS] wins in both
+    directions, the way every per-task override in this toolkit does — so a suspended project can
+    still opt one task back in."""
+    field = task_field(task_dir, 'DOCS')
+    if field:
+        return field.strip().lower() != 'off'
+    return project_docs_enabled()
 
 
 def declared_new(task_dir):
@@ -419,6 +429,8 @@ def regenerate(path, table):
 
 
 if CMD == 'tracker':
+    if not project_docs_enabled():
+        sys.exit(0)
     comps, errors = load_registry()
     if errors:
         die(errors)
@@ -447,6 +459,8 @@ if CMD == 'tracker':
     sys.exit(1 if refused else 0)
 
 if CMD == 'audit':
+    if not project_docs_enabled():
+        sys.exit(0)
     comps, errors = load_registry()
     if errors:
         die(errors)
