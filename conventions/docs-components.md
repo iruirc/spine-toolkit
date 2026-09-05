@@ -98,6 +98,16 @@ question, answered per phase in the task's `Docs.md`, in the vocabulary `ops-che
 uses: **Applicable** / **N/A (reason)** / **Pending**, defaulting to Applicable. The criterion,
 and what makes a good reason, is the `docs-route` skill.
 
+## Suspending the mechanism
+
+`## Docs` → `enabled: off` stops the four commands a run invokes — `route`, `check`, `audit` and
+`tracker` — while leaving `registry` able to read the file. That is the difference between a pause
+and a deletion: the declarations survive, and a single task can still opt back in with
+`[DOCS] = [on]`.
+
+A registry that does not exist has the same effect and needs no lever, which is the state every
+project starts in.
+
 ## Scale
 
 `conventions/task-scale.md` does not move `strictness`. The floor is identical at both values.
