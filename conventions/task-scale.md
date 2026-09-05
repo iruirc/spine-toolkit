@@ -111,3 +111,8 @@ the lint's table would not make it measured; it would make the number arbitrary.
 Role `security` is a subject-matter question, not a size one: it is not invoked on a `lite` task
 unless the perimeter touches credentials, network, deep links, storage or authentication — and it
 is invoked on such a task at any size.
+
+Documentation `strictness` is not a size question either. `lite` writes shorter artifacts; it
+does not lower what a component demands, and `scripts/docs-route.sh` never reads this block.
+A run that documents less because it was cheaper is a run that is looser, which is the one thing
+this axis promises not to be.
