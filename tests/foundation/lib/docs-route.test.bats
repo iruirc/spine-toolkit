@@ -807,3 +807,22 @@ EOF
   [ "$status" -eq 0 ]
   grep -q '^| 3 | Ledger |' "$TASK/Docs.md"
 }
+
+@test "a component whose strictness is off is recorded but not asked" {
+  task
+  map <<'EOF'
+## Ledger
+
+genre: state
+strictness: off
+places:
+  - Documents/Ledger/
+covers:
+  - Sources/Ledger/**
+EOF
+  run bash -c "printf 'M\tSources/Ledger/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ]
+  grep -q '^| 3 | Ledger |' "$TASK/Docs.md"
+  case "$output" in *"not asked"*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *"alter what the component asserts"*) echo "still asked: $output"; return 1 ;; *) ;; esac
+}

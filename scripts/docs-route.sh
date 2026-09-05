@@ -534,7 +534,11 @@ if CMD == 'route':
     if rows:
         append_rows(task_dir, phase, rows)
         for name, _g, level in rows:
-            print('%s (%s): does this change alter what the component asserts?' % (name, level))
+            if level == 'off':
+                # Routed and recorded, per the strictness that says so — but not asked.
+                print('%s (off): routed and recorded, not asked.' % name)
+            else:
+                print('%s (%s): does this change alter what the component asserts?' % (name, level))
     sys.exit(0)
 
 if CMD == 'check':
