@@ -108,9 +108,10 @@ the ordinary case here, not the exception.
 - **Done** — run `audit`; it reports components living away from their coverage, and files
   created outside every `covers`. Both are advisory and neither stops anything.
 
-The whole of it is skipped when `Task.md` carries `[DOCS] = [off]`, and when the registry file
-named by `## Docs` → `map` is absent — the default name being `DocsMap.md`, so a project that
-declares nothing is served by the same silence. Review reads `Docs.md` the way it reads
+All of it is skipped by a stage that changes no files, by a task whose `Task.md` carries
+`[DOCS] = [off]`, and by a project whose registry file — the one named by `## Docs` → `map`,
+`DocsMap.md` by default — is absent, so a project that declares nothing is served by silence.
+Review reads `Docs.md` the way it reads
 `OpsChecklist.md`: a row left `Pending` is surfaced for an explicit accept or defer.
 
 ## 3. Manual mode

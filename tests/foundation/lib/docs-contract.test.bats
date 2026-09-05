@@ -103,5 +103,8 @@ EOF
 }
 
 @test "the scale convention states that the axis does not move strictness" {
-  grep -q 'strictness' "$ROOT/conventions/task-scale.md"
+  # The word appears in prose either way; what has to be true is that the claim sits in the
+  # section holding what the axis does NOT govern, which is where a reader looks for it.
+  section="$(awk '/^## What the axis does not govern/{f=1} f' "$ROOT/conventions/task-scale.md")"
+  case "$section" in *strictness*) ;; *) echo "the claim is not in that section"; return 1 ;; esac
 }
