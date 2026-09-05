@@ -359,6 +359,19 @@ EOF
   [ "$status" -eq 0 ]
 }
 
+@test "the registry, not the routed row, is the authority on strictness" {
+  task; two_components; routed
+  # Raise the lever after the row was written, the way a project would mid-task.
+  python3 - "$TASK/Docs.md" <<'EOF'
+import re, sys
+p = sys.argv[1]
+t = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(t.replace('| Timeline | state | blocking |', '| Timeline | state | advisory |'))
+EOF
+  run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 1 ]
+}
+
 @test "N/A with no reason does not close it" {
   task; two_components; routed
   verdict "N/A" ""
@@ -494,6 +507,25 @@ EOF
   run bash -c "'$DR' audit '$PROJ' </dev/null"
   [ "$status" -eq 0 ]
   case "$output" in *"GifImageTrack"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a checkout whose .git is a file is still a repository" {
+  # A submodule and a worktree checkout both carry .git as a file, and this mechanism exists for
+  # trees holding several checkouts at once.
+  mkdir -p "$PROJ/.git" "$PROJ/Packages/Core" "$PROJ/Documents/Gif"
+  printf 'gitdir: ../../.git/modules/Core\n' >"$PROJ/Packages/Core/.git"
+  map <<'EOF'
+## GifImageTrack
+
+genre: state
+places:
+  - Documents/Gif/
+covers:
+  - Packages/Core/Sources/Gif/**
+EOF
+  run bash -c "'$DR' audit '$PROJ' </dev/null"
+  [ "$status" -eq 0 ]
+  case "$output" in *"GifImageTrack"*"Packages/Core"*) ;; *) echo "$output"; return 1 ;; esac
 }
 
 @test "a component living with its coverage is not reported" {
