@@ -1,7 +1,7 @@
 # setup — en
 
 ## error_no_platform_installed
-No platform plugin is installed. spine-toolkit needs one to know your stack — install swift-platform (or another platform plugin) and run `/setup` again.
+No platform plugin is installed. spine-toolkit needs one to know your stack — install one (swift-platform for Swift, kotlin-platform for Kotlin, or another platform plugin) and run `/setup` again.
 
 ## platform_choice_question
 Several platform plugins are installed. Which one serves this project?
