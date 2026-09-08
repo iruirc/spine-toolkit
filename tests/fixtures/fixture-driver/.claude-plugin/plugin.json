@@ -1,0 +1,9 @@
+{
+  "name": "fixture-driver",
+  "description": "Reference driver plugin for spine-toolkit: the executable copy of conventions/driver-contract.md, bound by core's own suite.",
+  "version": "1.0.0",
+  "author": { "name": "Dmitry Nuzhin" },
+  "dependencies": [
+    { "name": "spine-toolkit", "version": ">=1.7.0 <2" }
+  ]
+}

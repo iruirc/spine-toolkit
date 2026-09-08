@@ -58,3 +58,21 @@ record_replay multi_device"
   hits="$(grep -ioE 'agent-device|claude-in-mobile|mcp__[a-z_]+' "$DOC" | sort -u | tr '\n' ' ')"
   [ -z "$hits" ] || { echo "the convention names a concrete server: $hits"; return 1; }
 }
+
+@test "the fixture driver uses only vocabulary the convention declares" {
+  fixture="$ROOT/tests/fixtures/fixture-driver/skills/manifest/SKILL.md"
+  [ -f "$fixture" ] || { echo "no fixture manifest at $fixture"; return 1; }
+  # Every token of every capabilities block, against the list this file owns.
+  bad=""
+  while IFS= read -r tok; do
+    [ -n "$tok" ] || continue
+    grep -qw "$tok" <<<"$ALL_CAPS" || bad="$bad $tok"
+  done < <(awk '/^## Capabilities:/{c=1;next} /^## /{c=0} c' "$fixture" | tr -s ' \t' '\n')
+  [ -z "$bad" ] || { echo "fixture names capabilities outside the vocabulary:$bad"; return 1; }
+}
+
+@test "the fixture driver names no real MCP server" {
+  fixture="$ROOT/tests/fixtures/fixture-driver/skills/manifest/SKILL.md"
+  hits="$(grep -ioE 'agent-device|claude-in-mobile|mcp__[a-z_]+' "$fixture" | sort -u | tr '\n' ' ')"
+  [ -z "$hits" ] || { echo "the fixture names a concrete server: $hits"; return 1; }
+}
