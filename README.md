@@ -92,6 +92,9 @@ Three things to read, in this order:
 - **`tests/fixtures/fixture-platform/`** — a complete, minimal platform plugin. Core's own test suite
   binds against it, so it cannot go stale without the build going red. Copy it and fill it in.
 
+A driver plugin is a separate category — see **`docs/building-a-driver.md`**, how to write a driver
+plugin: what drives a running app during Validation.
+
 Check your manifest with:
 
 ```
