@@ -24,15 +24,17 @@ en
   `ops-checklist`, `manual-checks`, `agent-status`, `lang`, `docs-route`
 - `workflows/` — one `profile-*.js` orchestration script per profile
 - `commands/` — `/task-*`, `/setup`, `/agent-status`, `/lang`
-- `conventions/` — `i18n.md`, `stage-dispatch.md`, `platform-contract.md`, `docs-components.md`
-  and the rest
-- `docs/` — `building-a-platform.md`, the how-to for platform authors
+- `conventions/` — `i18n.md`, `stage-dispatch.md`, `platform-contract.md`, `driver-contract.md`,
+  `docs-components.md` and the rest
+- `docs/` — `building-a-platform.md`, `building-a-driver.md`, the how-tos for platform and driver
+  authors
 - `templates/` — `task-md`, `claude-md-stub`, `claude-toolkit-md`, `docs-map`
 - `scripts/` — lints plus the test and telemetry runners
 - `hooks/` — plugin hooks; the only channel that reaches existing user projects on plugin update
 - `tests/foundation/` — bats suites; `tests/workflows/` — probes
 - `tests/fixtures/fixture-platform/` — a complete minimal platform plugin. Core's suite binds
   against it, and it doubles as the reference implementation of the contract.
+- `tests/fixtures/fixture-driver/` — the same, for the driver contract.
 
 ## Conventions
 
@@ -55,3 +57,8 @@ en
   `tests/fixtures/fixture-platform/` in the same commit. The fixture is the contract's only
   executable copy, and a contract that disagrees with it is worse than no contract. Check
   `docs/building-a-platform.md` too — it is the third copy, and the one platform authors read first.
+- Changing the contract in `conventions/driver-contract.md`: update `tests/fixtures/fixture-driver/`
+  in the same commit, for the same reason the platform contract carries that rule — the fixture is
+  the contract's only executable copy. `docs/building-a-driver.md` is the third copy, and the one
+  driver authors read first. The capability vocabulary exists in three places (convention, lint,
+  fixture) and `tests/foundation/lib/driver-contract.test.bats` is what holds them together.
