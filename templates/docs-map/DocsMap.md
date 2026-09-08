@@ -16,11 +16,11 @@ places:
 covers:
   - Sources/Example/**
 
-## Example-Tracker
+## Example-Progress
 
-genre: tracker
+genre: progress
 strictness: advisory
 places:
-  - Trackers/Example-Progress.md
+  - Progress/Example-Progress.md
 fed_by:
   - Tasks/*/*-example-*

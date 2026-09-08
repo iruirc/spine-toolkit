@@ -12,7 +12,7 @@ setup() {
 
 @test "the convention names both declarable genres and no third one" {
   grep -q '`state`' "$CONV"
-  grep -q '`tracker`' "$CONV"
+  grep -q '`progress`' "$CONV"
 }
 
 @test "the convention names no platform's stack values" {

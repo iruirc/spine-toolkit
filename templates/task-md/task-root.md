@@ -12,7 +12,7 @@
 # [WALKTHROUGH] = [off]       # on | off
 # [SCALE] = [full]            # lite | full
 # [DOCS] = [off]              # on | off
-# [DOCS_NEW] = [Name:state]   # components this task creates: <name>:<state|tracker>, comma-separated
+# [DOCS_NEW] = [Name:state]   # components this task creates: <name>:<state|progress>, comma-separated
 
 ## 1. [Files]
 
