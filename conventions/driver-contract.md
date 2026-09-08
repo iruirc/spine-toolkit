@@ -136,7 +136,7 @@ acting on them belongs to whoever drives.
 | State | When | Consequence |
 |---|---|---|
 | `ok` | resolved, tools present in the session, ecosystem matched | drive, within the declared capabilities |
-| `none` | the resolution chain produced `—` | defer to a human |
+| `none` | the resolution chain produced `—` on a platform inside the driver contract | defer to a human |
 | `unavailable` | declared, but no tool carries its `namespace` prefix in this session | defer, naming the missing prefix |
 | `incompatible` | no target's ecosystem matches the platform's | defer, naming both sides |
 
