@@ -137,3 +137,19 @@ EOF
 @test "task-walkthrough states which half of a progress component is generated" {
   grep -q 'spine:steps' "$ROOT/skills/task-walkthrough/SKILL.md"
 }
+
+@test "the driver how-to exists and its every step names a real file" {
+  DOC="$ROOT/docs/building-a-driver.md"
+  [ -f "$DOC" ] || { echo "no $DOC"; return 1; }
+  # Every path the how-to tells an author to copy has to exist, or step one of
+  # the instructions fails on the reader's machine and not ours.
+  for p in tests/fixtures/fixture-driver scripts/lint-driver-manifest.sh conventions/driver-contract.md; do
+    grep -qF "$p" "$DOC" || { echo "the how-to does not name $p"; return 1; }
+    [ -e "$ROOT/$p" ] || { echo "the how-to names a path that does not exist: $p"; return 1; }
+  done
+}
+
+@test "the repository layout lists the driver convention and fixture" {
+  grep -q 'driver-contract' "$ROOT/.claude/CLAUDE.md" || { echo "convention missing from the layout"; return 1; }
+  grep -q 'fixture-driver' "$ROOT/.claude/CLAUDE.md" || { echo "fixture missing from the layout"; return 1; }
+}
