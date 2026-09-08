@@ -193,3 +193,30 @@ teardown() { rm -rf "$TMP"; }
   [ "$status" -eq 1 ]
   [[ "$output" == *"developer[widget=beta]"* ]]
 }
+
+@test "passes when the optional Driver block is absent" {
+  # Five tables stay five for a platform that declares no driver. This is the
+  # compatibility claim of the whole release, so it is a test and not a sentence.
+  awk '/^## Driver$/{skip=1} /^## Roles$/{skip=0} !skip' \
+    "$TMP/p/skills/manifest/SKILL.md" > "$TMP/p/skills/manifest/SKILL.md.new"
+  mv "$TMP/p/skills/manifest/SKILL.md.new" "$TMP/p/skills/manifest/SKILL.md"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when the Driver default is malformed" {
+  sed -i.bak 's|^default = fixture-driver$|default = Fixture_Driver!|' \
+    "$TMP/p/skills/manifest/SKILL.md" && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"default"* ]]
+}
+
+@test "fails when the Driver block declares an unknown key" {
+  awk '{ print } /^default = fixture-driver$/{ print "fallback = other-driver" }' \
+    "$TMP/p/skills/manifest/SKILL.md" > "$TMP/p/skills/manifest/SKILL.md.new"
+  mv "$TMP/p/skills/manifest/SKILL.md.new" "$TMP/p/skills/manifest/SKILL.md"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"fallback"* ]]
+}
