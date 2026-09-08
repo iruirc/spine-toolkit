@@ -73,6 +73,10 @@ is worse than declaring nothing.
 Positive lists: named means supported, absent means not. Absence is the safe default — an unclaimed
 capability is handed to a human, never silently skipped.
 
+**Capability names and nothing else in the block.** The lint reads every token under the heading as
+a capability, so a sentence there is reported word by word; explanations go above the block or into
+`## Procedure`.
+
 **Declare per target, honestly.** This is where most of the value is. A simulator that cannot deliver
 a push and a device that can are the same driver with two different answers, and a single flat list
 would be a lie in half its rows. Support depth varying by backend is the normal case, not an edge

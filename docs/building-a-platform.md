@@ -22,8 +22,9 @@ an ecosystem arrives by **invoking one skill**:
 <your-plugin>/skills/manifest/SKILL.md   →   invoked as   <your-plugin>:manifest
 ```
 
-That skill is data: five H2 tables and no procedure. Core never opens the host's plugin cache, never
-reads your `plugin.json`, and never infers anything from the repository it is working in.
+That skill is data: five required H2 tables, an optional sixth, and no procedure. Core never opens
+the host's plugin cache, never reads your `plugin.json`, and never infers anything from the
+repository it is working in.
 
 | Core owns | Your platform owns |
 |---|---|
@@ -79,7 +80,8 @@ cd kotlin-platform
 ```
 
 You now have `.claude-plugin/plugin.json`, `<plugin>/skills/manifest/SKILL.md`, and two stub agents. That is
-a legal platform already — it just declares nothing real.
+a legal platform already — it just declares nothing real. It also copies a `## Driver` block naming a
+driver plugin that exists only inside core's test suite; Step 9 says what to do with it.
 
 ### Step 2 — `plugin.json`
 
@@ -206,9 +208,10 @@ baseline     = API 26+, API 24+, JVM 17
 tests        = JUnit5, Kotest
 ```
 
-- **`ecosystem` is mandatory** and is the one axis whose meaning core fixes. Nothing in core reads
-  its value today — a project names its platform outright in `## Platform` — but declare it: it is
-  reserved for install-time discovery and for repositories holding two ecosystems.
+- **`ecosystem` is mandatory** and is the one axis whose meaning core fixes. A driver's `## Targets`
+  rows are matched against your value, and a driver that covers none of your ecosystems drives
+  nothing — beyond that match core reads it nowhere yet, a project naming its platform outright in
+  `## Platform` instead.
 - **Values are proper nouns and are never localized.** The option list is rendered in the user's
   language; an ordinary-word value like `manual`, translated into Russian, matches no catalog entry
   when the answer comes back.
@@ -301,25 +304,49 @@ brief, a reference doc, a manifest row — write it namespaced, `spine-toolkit:<
 backticked name is reserved for your own skills. `scripts/lint-core-refs.sh` checks it; see
 `## Naming core's skills` in `conventions/platform-contract.md` for the exact rule.
 
-### Step 9 — check it
+### Step 9 — `## Driver`, if you recommend one
+
+Optional, and the only block you may leave out entirely: a manifest with five tables is complete.
+One row.
+
+```
+default = my-driver
+```
+
+It names the driver plugin your platform recommends for driving a running app during Validation.
+Core resolves `Task.md [DRIVER]` → the project's `driver:` → this row → `—`, so what you write here
+is what a project that never chose one gets. That is the block's whole purpose: a platform whose
+validator already drives an app unconditionally names the driver it uses, and its installed projects
+keep behaving exactly as they did.
+
+**The fixture you copied ships `default = fixture-driver`, which nobody has installed.** Replace the
+name with a real driver, or delete the block — left as copied, every one of your users gets a
+missing-driver warning on every run.
+
+What that driver can actually do — its targets, its capabilities — is never declared here; that is
+the driver's own manifest. See `conventions/driver-contract.md`, and `docs/building-a-driver.md` if
+you are writing the driver too.
+
+### Step 10 — check it
 
 ```bash
 "$core/scripts/lint-manifest.sh"  /path/to/kotlin-platform
 "$core/scripts/lint-core-refs.sh" /path/to/kotlin-platform --core "$core"
 ```
 
-Point them at your **checkout**, not the installed copy. `lint-manifest.sh` checks: all five tables
-present; the Roles rows cover the nine-role vocabulary and no more; every named agent has a file in
-your plugin and lives in your namespace; no role mapped to nothing; every fan-out row keys on an axis
+Point them at your **checkout**, not the installed copy. `lint-manifest.sh` checks: all five
+required tables present; the Roles rows cover the nine-role vocabulary and no more; every named
+agent has a file in your plugin and lives in your namespace; no role mapped to nothing; every fan-out row keys on an axis
 core resolves and a value `## Axes` lists; no two Roles rows share a left-hand side; a named
-`## Entrypoints` skill exists. `lint-core-refs.sh` checks the other direction: every
+`## Entrypoints` skill exists; a `## Driver` block, if you wrote one, carries nothing but a
+well-formed `default` row. `lint-core-refs.sh` checks the other direction: every
 `spine-toolkit:<skill>` under `<plugin>/agents` and `<plugin>/skills` exists in the oldest core your
 dependency range admits, and no hyphenated core skill name is written bare.
 
 `lint-manifest.sh` deliberately does **not** check `## Topics` — the reference fixture names
 placeholder skills on purpose, so that check belongs to your own suite. Which brings us to:
 
-### Step 10 — your own tests
+### Step 11 — your own tests
 
 Core's suite cannot reach into your tree, and yours must not reach into core's. What is worth
 covering on your side:
@@ -330,7 +357,7 @@ covering on your side:
   renamed skill.
 - **The ten topic names are spelled right** — grep for them literally.
 - **Agents exist for every non-em-dash role** (the lint does this, but a local test fails faster).
-- **Locale parity**, if you ship localized strings (Step 11).
+- **Locale parity**, if you ship localized strings (Step 12).
 
 `swift-platform` runs core's lint by cloning core in CI rather than vendoring it:
 
@@ -341,7 +368,7 @@ covering on your side:
     /tmp/upstream/scripts/lint-manifest.sh .
 ```
 
-### Step 11 — internationalization (only if you ship user-facing strings)
+### Step 12 — internationalization (only if you ship user-facing strings)
 
 English is the source of truth. A skill with user-facing strings puts them in
 `<plugin>/skills/<name>/locales/en.md` with a key-for-key `ru.md` beside it, and references them from the
@@ -352,7 +379,7 @@ The convention is `conventions/i18n.md`, and the lints are `lint-i18n.sh` and `l
 A platform with no user-facing strings of its own — agents and topic skills only — needs none of
 this.
 
-### Step 12 — adapted forks, if you take core's lints
+### Step 13 — adapted forks, if you take core's lints
 
 Core's lints are useful to a platform, and the plugins share no code. `swift-platform` takes them as
 **adapted forks**: each records the core file it came from and that file's sha256 in its header.
@@ -367,7 +394,7 @@ build goes red and a human decides whether the change belongs downstream. These 
 restored to match core — some differ in comments only, others differ in logic on purpose, which is
 why equality is the wrong test.
 
-### Step 13 — publish
+### Step 14 — publish
 
 ```
 /plugin marketplace add <you>/<your-marketplace>
@@ -380,7 +407,7 @@ transitive trust*. So your `dependencies` entry pulls core in **only** where the
 marketplace allowlists the marketplace core is published from. Either ship both plugins from one
 marketplace, or say in your README that `spine-toolkit` is installed first.
 
-### Step 14 — try it end to end
+### Step 15 — try it end to end
 
 ```bash
 cd /some/kotlin/project
@@ -437,8 +464,8 @@ skill puts it, and only your agent knows what that invocation is.
 
 ## 5. The smallest platform that is worth installing
 
-Legal minimum: five tables, nine roles all set to `—`, `ecosystem` declared, no agents at all. Every
-stage then runs in the main context and announces it. That passes the lint and teaches core nothing.
+Legal minimum: the five required tables, nine roles all set to `—`, `ecosystem` declared, no agents
+at all. Every stage then runs in the main context and announces it. That passes the lint and teaches core nothing.
 
 The smallest *useful* platform is roughly:
 
@@ -486,13 +513,14 @@ nothing in your manifest changes because of it.
 
 ```
 [ ] plugin.json: name, dependencies: [{ name: "spine-toolkit", version: range }]
-[ ] skills/manifest/SKILL.md: frontmatter name: manifest, all five H2 tables
+[ ] skills/manifest/SKILL.md: frontmatter name: manifest, all five required H2 tables
 [ ] "This skill is data, not instructions" banner at the top of the manifest body
 [ ] ## Roles: nine roles, every agent file exists, every namespace is your own
 [ ] ## Axes: ecosystem declared; every value a proper noun
 [ ] ## Heuristics: every pinned value exists in ## Axes; rows are mutually exclusive
 [ ] ## Topics: the ten core names spelled literally
 [ ] ## Entrypoints: setup names a real skill of yours, or —
+[ ] ## Driver: names the driver you recommend, or is gone — never the fixture's
 [ ] No skill of yours shares a name with a core skill
 [ ] lint-manifest.sh passes, run against your checkout
 [ ] lint-core-refs.sh passes, run against your checkout
