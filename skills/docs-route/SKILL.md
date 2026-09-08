@@ -11,7 +11,7 @@ to write when it did.
 
 > **Related skills:**
 > - `ops-checklist` — the same three-state vocabulary, at a different question
-> - `task-walkthrough` — the per-task account that feeds a tracker
+> - `task-walkthrough` — the per-task account that feeds a progress component
 > - `manual-checks` — the other artifact whose shape a skill owns and a config block only levers
 
 ## The criterion
@@ -65,7 +65,7 @@ behaviour is a forecast that reads as a fact and is wrong from its first day.
 
 ## Freshness header
 
-When `## Docs` → `freshness` is `on`, every file of a `state` or `tracker` component opens with:
+When `## Docs` → `freshness` is `on`, every file of a `state` or `progress` component opens with:
 
 ```
 > **Status:** LIVE | SNAPSHOT | ARCHIVE
@@ -83,7 +83,7 @@ responsible, a status without a date does not say when it went stale.
 
 **`Synced` is a date, not a journal.** Replace the value; never append to it. Left to grow, this
 field becomes a recursive chain of previous dates — which is history, and history has its own
-home in the tracker.
+home in the progress component.
 
 ## New components
 
@@ -104,7 +104,7 @@ most of a mature tree is outside every component.
 | End of an implementing phase | `route … --phase <id>` with `git diff --name-status` for the phase | answer every row before the phase's commit |
 | Before the commit | `check … --phase <id>` with the same change set | exit 1 means a blocking question is still open and the phase does not close; exit 2 means the registry or the table itself is malformed — fix that, it is not a question anyone can answer |
 | Done | `audit …` with the task's change set | names the wrong homes and the uncovered new files; both advisory |
-| Done | `tracker <project-root>` | regenerate every declared tracker's step table between its markers; a malformed marker pair is refused and left untouched, its name printed, while every other tracker still regenerates — exit 1 when at least one was refused |
+| Done | `progress <project-root>` | regenerate every declared progress component's step table between its markers; a malformed marker pair is refused and left untouched, its name printed, while every other progress component still regenerates — exit 1 when at least one was refused |
 | Review | `check …` with no `--phase` | name every row still open across all phases; report, do not enforce |
 
 The core root is the directory holding `workflows/` (`conventions/agent-tooling.md` → Plugin

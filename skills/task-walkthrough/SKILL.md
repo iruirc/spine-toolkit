@@ -89,13 +89,13 @@ A diagram only where prose is genuinely worse than a picture. One file changed d
 | A state machine, a lifecycle | `stateDiagram-v2` |
 | Schema or migration shape | `erDiagram` |
 
-## Feeding a tracker
+## Feeding a progress component
 
-A project may declare a `tracker` component whose `fed_by` matches this task's folder
+A project may declare a `progress` component whose `fed_by` matches this task's folder
 (`conventions/docs-components.md`). Then this file is one entry in a longer line of work, and
-the tracker is regenerated at Done from every task folder that matched.
+the progress component is regenerated at Done from every task folder that matched.
 
-The split is fixed and worth stating, because getting it wrong is what makes a tracker rot:
+The split is fixed and worth stating, because getting it wrong is what makes a progress file rot:
 
 - **Between `<!-- spine:steps:begin -->` and `<!-- spine:steps:end -->`** — generated: which
   steps exist, their status, when they opened, which commits they cover. Never hand-edited; the
@@ -104,7 +104,7 @@ The split is fixed and worth stating, because getting it wrong is what makes a t
   the lessons, the shapes that were tried and rejected, the cost of finishing. `## Plan vs.
   outcome` here is where the material for it comes from; a generator can produce neither.
 
-Nothing in this skill changes because a tracker exists. Write the walkthrough the same way; the
+Nothing in this skill changes because a progress component exists. Write the walkthrough the same way; the
 aggregation reads it.
 
 ## Refreshing
