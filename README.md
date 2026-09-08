@@ -80,8 +80,9 @@ declared by the platform plugin, in a single skill the orchestrator **invokes**:
 ```
 
 That skill is data, not instructions: five H2 tables (`## Roles`, `## Axes`, `## Heuristics`,
-`## Topics`, `## Entrypoints`) and no procedure. Invoking a skill is the only channel between the two
-plugins — core never reads the host's plugin cache from disk.
+`## Topics`, `## Entrypoints`), an optional sixth (`## Driver`, the driver plugin this platform
+recommends), and no procedure. Invoking a skill is the only channel between the two plugins — core
+never reads the host's plugin cache from disk.
 
 Three things to read, in this order:
 
@@ -100,9 +101,10 @@ Check your manifest with:
 ```
 scripts/lint-manifest.sh <path-to-your-plugin>
 scripts/lint-core-refs.sh <path-to-your-plugin> --core <path-to-this-checkout>
+scripts/lint-driver-manifest.sh <path-to-your-driver-plugin>
 ```
 
-— both pointed at your plugin's checkout, not its installed copy.
+— each pointed at the plugin's own checkout, not its installed copy.
 
 A platform plugin declares its dependency on core in `plugin.json` as
 `{ "name": "spine-toolkit", "version": ">=1.3.0 <2" }` and imports nothing from here: the two
