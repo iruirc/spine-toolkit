@@ -127,11 +127,13 @@ catalog_words() {
     || { echo "'driver:' is outside the ## Validation block"; return 1; }
 }
 
-@test "the config template names no concrete driver plugin" {
-  # The placeholder is the point: a real name here is core knowing an ecosystem.
+@test "the config template ships auto and names no concrete driver plugin" {
+  # `auto` is the shipped value, and it has to be: an explicit `—` means none, so a
+  # template shipping it would opt every new project out of driving. A real plugin
+  # name here would be core knowing an ecosystem.
   awk '/^## Validation$/{v=1} /^## Reporting$/{v=0} v' "$TPL" \
-    | grep -E '^driver: ' | grep -qE '^driver: (—|<[a-z-]+>)$' \
-    || { echo "'driver:' must default to '—' or a placeholder"; return 1; }
+    | grep -E '^driver: ' | grep -qE '^driver: (auto|<[a-z-]+>)$' \
+    || { echo "'driver:' must ship 'auto' or a placeholder"; return 1; }
 }
 
 @test "both task templates offer the DRIVER override" {
