@@ -92,8 +92,14 @@ subagent dispatch verbatim, and the agent it names must exist as `<plugin>/agent
 
 Core's stage briefs say what a role must accomplish and never how: "a build and a full test run are
 mandatory", never the name of a build tool. Only the agent behind the role knows how this ecosystem's
-projects get built, tested and driven, and it brings that knowledge itself — which is why nothing
-here asks a platform to declare its tooling.
+projects get built and tested, and it brings that knowledge itself — which is why nothing here asks a
+platform to declare how it builds or how it tests.
+
+Driving a running app is the one exception, and it is narrow. The tool that does it is not the
+platform's private business: a project may want a different one, and the person writing that one may
+have nothing to do with this platform. So a platform may name a **recommended default** in
+`## Driver` below — a plugin name, overridable by the project, not a tool this platform uses. What
+that driver can do is the driver's own declaration: `conventions/driver-contract.md`.
 
 What core makes of the table: it resolves one agent per role before any stage starts, and hands the
 finished map to every executor. An em dash survives that resolution as itself, not as a missing key:
@@ -217,6 +223,27 @@ is a single name core calls. It exists so the binding needs neither a naming con
 named `setup` in the platform would collide with core's own in every natural-language trigger) nor a
 reserved magic string inside another table.
 
+## `## Driver`
+
+Optional — the only block of the six a platform may leave out entirely, and a manifest with five
+tables is complete. One row:
+
+```
+default = <driver plugin name>
+```
+
+The driver plugin this platform recommends. Core resolves the chain `Task.md [DRIVER]` →
+`CLAUDE-spine-toolkit.md ## Validation → driver:` → this row → `—`, so what is written here is the
+value a project gets when it never chose one. That is what the row is for: a platform that used to
+drive an app unconditionally names the driver it used, and its installed projects keep behaving as
+they did.
+
+An unknown key here is rejected by the lint: core reads `default` and nothing else, so any other row
+is one that will never be read, which looks exactly like a typo in the one that is.
+
+What the named driver can actually do — its targets, its capabilities — is not declared here and
+never is. That belongs to the driver's own manifest, described in `conventions/driver-contract.md`.
+
 ## Depending on core
 
 Only the manifest skill is contract, but the plugin carrying it has to be installable alongside
@@ -278,7 +305,8 @@ scripts/lint-manifest.sh <plugin-dir>
 checks that all five tables are present, that the Roles rows cover the nine-role vocabulary and no
 more, that every named agent has a file in the plugin, that no role is mapped to nothing, that every
 fan-out row keys on an axis core resolves and a value `## Axes` lists, that no two Roles rows share a
-left-hand side, and that a `## Entrypoints` skill other than `—` exists in the plugin. What it deliberately does not check:
+left-hand side, and that a `## Entrypoints` skill other than `—` exists in the plugin, and that a
+`## Driver` block, if present, carries only a well-formed `default` row. What it deliberately does not check:
 whether the skills named under `## Topics` exist — the reference fixture names placeholders on
 purpose, so that check belongs to each real platform's own test suite. `## Entrypoints` is checked
 and `## Topics` is not because core calls the one by name and merely lists the other: a typo in an

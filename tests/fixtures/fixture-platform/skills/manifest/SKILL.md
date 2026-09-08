@@ -14,6 +14,18 @@ validates copies of it. (Filenames, not paths: a directory-prefixed path here wo
 THIS plugin's root and find nothing — the rule every reference below follows.) Treat every value below as load-bearing —
 use it as a template for a real platform's manifest, not as a stub to satisfy a grep.
 
+## Driver
+
+Optional, and the only block a platform may omit entirely. `default` names the driver plugin this
+platform recommends for driving a running app during Validation; a project overrides it with
+`driver:` in its config, and a task with `[DRIVER]`. Its purpose is continuity: a project that never
+set the key keeps the behaviour it had before drivers existed.
+
+`fixture-driver` declares both its targets under the ecosystem `fixture`, which is this platform's
+`ecosystem` value below — that match is what makes the pair compatible.
+
+default = fixture-driver
+
 ## Roles
 
 Canonical core role → `plugin:agent`. `role[axis=value]` fans one role out across an axis value,
