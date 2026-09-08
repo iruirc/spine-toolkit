@@ -24,6 +24,27 @@ for section in Roles Axes Heuristics Topics Entrypoints; do
   grep -q "^## $section\$" "$manifest" || { echo "missing table: $section"; violations=$((violations+1)); }
 done
 
+# `## Driver` is optional — a platform that declares no driver has five tables, and
+# that must stay a passing manifest. Checked only when present, and then strictly:
+# an unknown key here is a row core will never read, indistinguishable from a typo
+# in the one key it does.
+if grep -q '^## Driver$' "$manifest"; then
+  driver_block=$(sed -n '/^## Driver/,/^## /p' "$manifest")
+  while IFS= read -r line; do
+    [[ "$line" =~ ^([a-z][a-z-]*)[[:space:]]*=[[:space:]]*(.*)$ ]] || continue
+    key="${BASH_REMATCH[1]}"
+    rhs="${BASH_REMATCH[2]}"
+    rhs="${rhs%"${rhs##*[![:space:]]}"}"
+    if [ "$key" != "default" ]; then
+      echo "unknown key in '## Driver' (core reads only 'default'): $key"
+      violations=$((violations+1))
+      continue
+    fi
+    [[ "$rhs" =~ ^[a-z][a-z0-9-]*$ ]] \
+      || { echo "malformed '## Driver' default '$rhs' (expected a plugin name)"; violations=$((violations+1)); }
+  done <<<"$driver_block"
+fi
+
 roles_block=$(sed -n '/^## Roles/,/^## /p' "$manifest")
 
 # Restrict parsing to actual "role[axis=value]? = value" lines, not the prose
