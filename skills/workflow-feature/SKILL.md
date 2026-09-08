@@ -156,11 +156,11 @@ the ordinary case here, not the exception.
   before committing. Exit 1 means a `blocking` question is still open and the phase does not
   close; exit 2 means the registry or the `Docs.md` table itself is malformed — fix that, it is
   not a question anyone can answer.
-- **Done** — run `audit`, then `tracker`. `audit` names components living away from their
+- **Done** — run `audit`, then `progress`. `audit` names components living away from their
   coverage and files created outside every `covers`; both are advisory and neither stops
-  anything. `tracker` regenerates the step table of every declared tracker between its markers,
-  leaving everything outside them alone; a tracker whose markers are malformed is refused rather
-  than reshaped, and named.
+  anything. `progress` regenerates the step table of every declared progress component
+  between its markers, leaving everything outside them alone; a progress file whose markers
+  are malformed is refused rather than reshaped, and named.
 - **Review** — run `check` with the task's whole change set and no `--phase`. It names every row
   still open across all phases; report them, do not enforce them.
 
