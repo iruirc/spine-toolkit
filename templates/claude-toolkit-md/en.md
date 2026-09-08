@@ -96,8 +96,7 @@ default is used, which is what keeps a project that never set this key behaving 
 Set it to name a different driver. What a driver can and cannot do is its own declaration, and what
 it cannot do becomes a manual check automatically.
 
-A single task overrides both with `[DRIVE_APP] = [auto|off]` and `[MANUAL_CHECKS] = [auto|always]`
-in its `Task.md`.)
+A single task overrides all three with `[DRIVE_APP] = [auto|off]`, `[MANUAL_CHECKS] = [auto|always]`, and `[DRIVER] = [<driver-plugin>|—]` in its `Task.md`.)
 
 ## Reporting
 
