@@ -98,3 +98,15 @@ record_replay multi_device"
     [ -z "$hits" ] || { echo "workflow-$wf spells out a state: $hits"; return 1; }
   done
 }
+
+@test "every profile script with a driving Validation stage points at the driver contract" {
+  # Method A (the workflow script) carries the prose that actually reaches the validator agent
+  # on a scripted run. Method B naming the four causes and Method A staying on the old two-cause
+  # story is a silent split: lint-workflows.sh only checks structural parity, and this is a text
+  # difference that structural parity cannot see.
+  for wf in feature bug refactor test; do
+    f="$ROOT/workflows/profile-$wf.js"
+    grep -q 'driver-contract' "$f" || { echo "profile-$wf.js does not reference the driver contract"; return 1; }
+    grep -q 'driver_status' "$f" || { echo "profile-$wf.js does not name driver_status"; return 1; }
+  done
+}
