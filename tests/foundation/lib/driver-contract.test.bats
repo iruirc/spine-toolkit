@@ -77,3 +77,24 @@ record_replay multi_device"
   hits="$(grep -ioE 'agent-device|claude-in-mobile|mcp__[a-z_]+' "$fixture" | sort -u | tr '\n' ' ')"
   [ -z "$hits" ] || { echo "the fixture names a concrete server: $hits"; return 1; }
 }
+
+@test "every workflow with a driving stage points at the driver contract" {
+  # Four profiles have a Validation stage that may drive; each has to say what a
+  # non-working driver means, and none may say it in its own words — that is how
+  # four paragraphs drift into four different rules.
+  for wf in feature bug refactor test; do
+    f="$ROOT/skills/workflow-$wf/SKILL.md"
+    grep -q 'driver-contract' "$f" || { echo "workflow-$wf does not reference the driver contract"; return 1; }
+    grep -q 'driver_status' "$f" || { echo "workflow-$wf does not name driver_status"; return 1; }
+  done
+}
+
+@test "no workflow names an individual driver state" {
+  # The states live in the convention and in the validator's digest. A workflow
+  # spelling them out is a fifth copy that no test binds to the other four.
+  for wf in feature bug refactor test; do
+    f="$ROOT/skills/workflow-$wf/SKILL.md"
+    hits="$(grep -oE '\bdriver_status: (ok|none|unavailable|incompatible)\b' "$f" | sort -u | tr '\n' ' ')"
+    [ -z "$hits" ] || { echo "workflow-$wf spells out a state: $hits"; return 1; }
+  done
+}
