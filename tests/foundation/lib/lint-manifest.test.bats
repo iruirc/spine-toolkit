@@ -213,10 +213,17 @@ teardown() { rm -rf "$TMP"; }
 }
 
 @test "fails when the Driver block declares an unknown key" {
-  awk '{ print } /^default = fixture-driver$/{ print "fallback = other-driver" }' \
-    "$TMP/p/skills/manifest/SKILL.md" > "$TMP/p/skills/manifest/SKILL.md.new"
-  mv "$TMP/p/skills/manifest/SKILL.md.new" "$TMP/p/skills/manifest/SKILL.md"
-  run "$LINT" "$TMP/p"
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"fallback"* ]]
+  # Three spellings, because the key matcher decides which of them is even seen: a
+  # `default_plugin` typo that parses as prose disables the migration default in
+  # silence, which is the one outcome this block cannot afford.
+  for key in fallback default_plugin Default; do
+    cp "$ROOT/tests/fixtures/fixture-platform/skills/manifest/SKILL.md" \
+      "$TMP/p/skills/manifest/SKILL.md"
+    awk -v k="$key" '{ print } /^default = fixture-driver$/{ print k " = other-driver" }' \
+      "$TMP/p/skills/manifest/SKILL.md" > "$TMP/p/skills/manifest/SKILL.md.new"
+    mv "$TMP/p/skills/manifest/SKILL.md.new" "$TMP/p/skills/manifest/SKILL.md"
+    run "$LINT" "$TMP/p"
+    [ "$status" -eq 1 ] || { echo "$key accepted"; return 1; }
+    [[ "$output" == *"$key"* ]] || { echo "$key not named in: $output"; return 1; }
+  done
 }
