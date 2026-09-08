@@ -23,8 +23,8 @@ never reads the host's plugin cache from disk (host internals, not a public cont
 back.
 
 The body is **data**: five required H2 tables, an optional sixth, and no procedure. It says so in
-its own first lines, so the agent that invokes it reads the tables instead of executing them. Prose between tables is for
-humans; only the rows are parsed.
+its own first lines, so the agent that invokes it reads the tables instead of executing them. Prose
+between tables is for humans; only the rows are parsed.
 
 **"Table" here means plain `name = value` lines under an H2, not Markdown pipe-table syntax** (the
 `## Topics` rows use `name → value` instead, and the `## Heuristics` rows `signal → axes`). A row
