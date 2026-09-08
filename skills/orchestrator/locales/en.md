@@ -183,3 +183,13 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 
 ## budget_over_limit
 `{artifact}` runs to {actual} lines against a `lite` ceiling of {cap}. Trimming it to the ceiling — logs and dumps by reference rather than pasted inline.
+
+## warn_driver_plugin_missing
+Driver `{driver}` is named in this project's configuration, but its manifest does not resolve — the
+plugin is not installed. Validation will hand its UI checks to you instead of driving the app. Install
+the plugin, or set `driver: —` in `## Validation` to say so deliberately.
+
+## warn_driver_server_missing
+Driver `{driver}` is installed, but no tool with the prefix `mcp__{namespace}__` is available in this
+session — its MCP server is not connected. Validation will hand its UI checks to you instead of
+driving the app. Start the server, or set `driver: —` in `## Validation` to say so deliberately.

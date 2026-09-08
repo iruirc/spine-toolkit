@@ -66,6 +66,18 @@ The orchestrator does not activate on every user request — light commands bypa
    - No → run `task-new`, then continue.
    - Determine the profile from `[TASK_TYPE]` (see Dispatch).
    - Confirmation/skip is governed in Resolution Algorithm, step 6 (single source of truth).
+   - **Driver pre-flight.** Run this only when the resolved stage range includes Validation **and**
+     `drive_app` does not resolve to `off` — on a run that never reaches validation, or one told not
+     to drive, none of it is needed and the driver's manifest is not invoked at all. Resolve the
+     driver: `Task.md [DRIVER]` → `CLAUDE-spine-toolkit.md ## Validation → driver:` → the platform
+     manifest's `## Driver → default` → `—`. On `—`, say nothing: no driver is a supported
+     configuration, not a problem. Otherwise invoke `<driver>:manifest`. If it does not resolve,
+     report with key `warn_driver_plugin_missing`. If it resolves but no tool named
+     `mcp__<namespace>__*` is present in this session, report with key `warn_driver_server_missing`,
+     substituting the `namespace` its `## Driver` block declares. **Both are warnings, not stops** —
+     the run proceeds, the build and the tests still produce their evidence, and the validator
+     defers the UI checks to a human on its own. The warning exists so that this is learned before
+     the implementing stage rather than after it.
 
 ## State Detection
 

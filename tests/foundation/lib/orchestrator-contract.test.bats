@@ -66,3 +66,36 @@ setup() {
       || { echo "workflow-$p says nothing about scale"; return 1; }
   done
 }
+
+@test "the orchestrator documents the driver pre-flight and both its keys" {
+  SK="$ROOT/skills/orchestrator/SKILL.md"
+  grep -q 'warn_driver_plugin_missing' "$SK" || { echo "key not referenced from the body"; return 1; }
+  grep -q 'warn_driver_server_missing' "$SK" || { echo "key not referenced from the body"; return 1; }
+  # The check must be conditional, or every run pays for a manifest it will not use.
+  # Scoped to the Routing window on purpose: SKILL.md already names drive_app around
+  # line 366, explaining why walkthrough travels in the contract and it does not. An
+  # unscoped grep is therefore green before this task's edit and tests nothing.
+  routing="$(awk '/^## Routing$/{r=1;next} /^## State Detection$/{r=0} r' "$SK")"
+  grep -q 'drive_app' <<<"$routing" \
+    || { echo "the pre-flight does not name its gate inside ## Routing"; return 1; }
+}
+
+@test "the driver does not travel in the Outbound Contract" {
+  # D-10 of the spec, as a guard: core holds the driver's name to warn about it and
+  # for nothing else. The moment it rides the contract, a workflow script starts
+  # gating on it, and core owns a decision that belongs to whoever drives. drive_app
+  # is absent for the same reason and stays the reference for this shape.
+  SK="$ROOT/skills/orchestrator/SKILL.md"
+  contract="$(awk '/^## Outbound Contract$/{c=1;next} /^## Dispatch$/{c=0} c' "$SK")"
+  ! grep -qE '\bdriver\b' <<<"$contract" \
+    || { echo "the Outbound Contract names the driver; it must not"; return 1; }
+}
+
+@test "both driver warning keys exist in both locales with parity" {
+  for lang in en ru; do
+    L="$ROOT/skills/orchestrator/locales/$lang.md"
+    for key in warn_driver_plugin_missing warn_driver_server_missing; do
+      grep -q "^## $key\$" "$L" || { echo "$key missing from $lang.md"; return 1; }
+    done
+  done
+}
