@@ -140,6 +140,11 @@ acting on them belongs to whoever drives.
 | `unavailable` | declared, but no tool carries its `namespace` prefix in this session | defer, naming the missing prefix |
 | `incompatible` | no target's ecosystem matches the platform's | defer, naming both sides |
 
+Deferring on `none` reaches only a platform that takes part in the driver contract: a platform whose
+manifest declares no `## Driver` block drives with its own tooling exactly as it did before this
+contract existed, and the state fires for it only when it has no tooling to drive a running instance
+at all, which its validator announces as a declared deviation.
+
 All three non-working states take the existing "deferred, not dropped" branch: the checks go to
 `ManualChecks.md`, the matching `OpsChecklist.md` items become Pending, and **the verdict is not
 lowered**. Distinguishing them is required because the user's next action differs in each: install a
