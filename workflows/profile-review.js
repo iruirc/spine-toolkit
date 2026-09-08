@@ -159,6 +159,7 @@ const VALIDATION = {
     ops_checklist_path: { type: 'string' },
     manual_checks_path: { type: 'string' },
     manual_checks: { type: 'array', items: { type: 'string' }, description: 'case titles from ManualChecks.md' },
+    driver_status: { type: 'string', enum: ['ok', 'none', 'unavailable', 'incompatible'], description: 'the driver state, per conventions/driver-contract.md' },
     summary: { type: 'string' },
   },
 }

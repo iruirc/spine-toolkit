@@ -166,6 +166,7 @@ const VALIDATION = {
     ops_checklist_path: { type: 'string' },
     manual_checks_path: { type: 'string' },
     manual_checks: { type: 'array', items: { type: 'string' }, description: 'case titles from ManualChecks.md' },
+    driver_status: { type: 'string', enum: ['ok', 'none', 'unavailable', 'incompatible'], description: 'the driver state, per conventions/driver-contract.md' },
     summary: { type: 'string' },
   },
 }
@@ -495,7 +496,7 @@ if (runs('Validation')) {
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
-For FEATURE a build and a full test run are both mandatory, through whatever build and test tooling this platform prescribes. Driving a running instance of the app is mandatory when the feature has a UI layer — views, screens, navigation — and skipped for a purely domain or infrastructure feature; say which case this is and why. Four things can suspend it, and all four hand it over the same way: drive_app resolving to off — Task.md [DRIVE_APP] first, then CLAUDE-spine-toolkit.md ## Validation — no driver resolving at all, a driver whose server is not connected in this session, or a driver whose targets do not cover this platform's ecosystem. The second of those reaches only a platform that takes part in the driver contract: a platform whose manifest declares no ## Driver block drives with its own tooling exactly as it did before this contract existed, and that cause fires for it only when it has no tooling to drive a running instance at all, which you announce as a declared deviation. Announce which one applies as driver_status in your first message; conventions/driver-contract.md has the full vocabulary and what each one means for the user. Whichever it is, you drive nothing: write the UI cases a human has to run into ${DIR}/ManualChecks.md and return their titles in manual_checks${lite() ? '' : ', and mark the matching OpsChecklist items Pending rather than Applicable'}. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the two rules that decide whether a case can be executed at all. Its input is Plan.md ## Manual acceptance; when the plan carries no such section, say so in ## Scope and derive the cases yourself. Independently of that, manual_checks: always in the same two sources means you write ManualChecks.md on every UI-bearing run, covering what the happy path did not reach and what driving the app cannot do at all.${lite() ? '' : `\n\nAlso apply the ops-checklist skill and write ${DIR}/OpsChecklist.md, marking every item Applicable with its verification evidence (file path, test name, commit ref), N/A with a reason, or Pending. A Pending item is not by itself a FAILED verdict — Pending items go to Review, which decides.`}
+For FEATURE a build and a full test run are both mandatory, through whatever build and test tooling this platform prescribes. Driving a running instance of the app is mandatory when the feature has a UI layer — views, screens, navigation — and skipped for a purely domain or infrastructure feature; say which case this is and why. Four things can suspend it, and all four hand it over the same way: drive_app resolving to off — Task.md [DRIVE_APP] first, then CLAUDE-spine-toolkit.md ## Validation — no driver resolving at all, a driver whose server is not connected in this session, or a driver whose targets do not cover this platform's ecosystem. The second of those reaches only a platform that takes part in the driver contract: a platform whose manifest declares no ## Driver block drives with its own tooling exactly as it did before this contract existed, and that cause fires for it only when it has no tooling to drive a running instance at all, which you announce as a declared deviation. Which of the four it was comes back in driver_status; conventions/driver-contract.md has the full vocabulary and what each one means for the user. Whichever it is, you drive nothing: write the UI cases a human has to run into ${DIR}/ManualChecks.md and return their titles in manual_checks${lite() ? '' : ', and mark the matching OpsChecklist items Pending rather than Applicable'}. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the two rules that decide whether a case can be executed at all. Its input is Plan.md ## Manual acceptance; when the plan carries no such section, say so in ## Scope and derive the cases yourself. Independently of that, manual_checks: always in the same two sources means you write ManualChecks.md on every UI-bearing run, covering what the happy path did not reach and what driving the app cannot do at all.${lite() ? '' : `\n\nAlso apply the ops-checklist skill and write ${DIR}/OpsChecklist.md, marking every item Applicable with its verification evidence (file path, test name, commit ref), N/A with a reason, or Pending. A Pending item is not by itself a FAILED verdict — Pending items go to Review, which decides.`}
 
 Change no production code and no tests. Return the same status you wrote on the first line.${cap('Validation.md')}`,
     ),
@@ -506,6 +507,12 @@ Change no production code and no tests. Return the same status you wrote on the 
 
   if (validation.manual_checks && validation.manual_checks.length) {
     result.notes.push(`hand-run checks in ${validation.manual_checks_path || 'ManualChecks.md'}: ${validation.manual_checks.join('; ')}`)
+  }
+
+  // The four-way distinction is the whole point of the state, and prose in the digest's
+  // summary is not the stage report. Nothing else carries it on a scripted run.
+  if (validation.driver_status) {
+    result.notes.push(`driver_status: ${validation.driver_status}`)
   }
 
   if (validation.validation_status !== 'PASSED') {

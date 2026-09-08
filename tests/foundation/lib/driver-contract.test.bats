@@ -143,3 +143,28 @@ record_replay multi_device"
     done
   done
 }
+
+@test "every driving profile's VALIDATION schema declares driver_status" {
+  # additionalProperties: false — a field the prose asks for and the schema omits is
+  # rejected on the scripted path, so the four-way distinction never leaves the agent.
+  for wf in feature bug refactor test; do
+    f="$ROOT/workflows/profile-$wf.js"
+    schema="$(awk '/^const VALIDATION = \{/,/^\}$/' "$f")"
+    grep -q 'driver_status' <<<"$schema" \
+      || { echo "profile-$wf.js: VALIDATION has no driver_status property"; return 1; }
+    for state in ok none unavailable incompatible; do
+      grep -qF "'$state'" <<<"$schema" \
+        || { echo "profile-$wf.js: the driver_status enum omits $state"; return 1; }
+    done
+  done
+}
+
+@test "every driving profile pushes driver_status into the stage report" {
+  # Returned and then dropped is the same as never returned, which is how manual_checks
+  # earned its own push.
+  for wf in feature bug refactor test; do
+    f="$ROOT/workflows/profile-$wf.js"
+    grep -q 'result.notes.push(`driver_status' "$f" \
+      || { echo "profile-$wf.js: driver_status never reaches result.notes"; return 1; }
+  done
+}
