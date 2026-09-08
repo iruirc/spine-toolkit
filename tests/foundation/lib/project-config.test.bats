@@ -133,3 +133,14 @@ catalog_words() {
     | grep -E '^driver: ' | grep -qE '^driver: (—|<[a-z-]+>)$' \
     || { echo "'driver:' must default to '—' or a placeholder"; return 1; }
 }
+
+@test "both task templates offer the DRIVER override" {
+  # Both, not one: a field in the root template and not the step template is a
+  # field an epic's steps silently cannot use, which surfaces only as a step that
+  # drove the app when its parent said not to.
+  for t in task-root task-step; do
+    f="$ROOT/templates/task-md/$t.md"
+    grep -q '\[DRIVER\]' "$f" || { echo "no [DRIVER] in $t.md"; return 1; }
+    grep -q '\[DRIVE_APP\]' "$f" || { echo "no [DRIVE_APP] in $t.md — the anchor moved"; return 1; }
+  done
+}

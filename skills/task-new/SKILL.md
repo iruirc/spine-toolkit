@@ -109,6 +109,10 @@ For reference, the templates contain these placeholders:
 9. **Optional override lines** — append via Edit immediately after the `[NEED_REVIEW]` line, one per line, only where the user explicitly asked for something other than the project default in `CLAUDE-spine-toolkit.md`. Otherwise leave the template as is (the commented-out lines stay as documentation).
    - `[WORKFLOW_MODE] = [<manual|auto>]` — overrides `## Mode`.
    - `[DRIVE_APP] = [<auto|off>]` — overrides `## Validation` → `drive_app`; write `off` when the user says the UI check of this particular task has to be done by hand.
+   - `[DRIVER] = [<plugin>|—]` — overrides `## Validation` → `driver:`; write it only when this one
+     task must be driven by a different driver than the project's, or by none. Do not ask about it:
+     the project default is right for nearly every task, and a field the user has to decline is a
+     field that costs more than it saves.
    - `[MANUAL_CHECKS] = [<auto|always>]` — overrides `## Validation` → `manual_checks`; write `always` when the user wants a hand-run test script out of this task whether or not the agent drove the app itself.
    - `[WALKTHROUGH] = [<on|off>]` — overrides `## Reporting` → `walkthrough`; write `off` to suppress `Walkthrough.md` for this task. Never written for `REVIEW` or `RESEARCH`, where the profile has nothing to write it from.
    - `[SCALE] = [<lite|full>]` — overrides `## Scale`; write it only when the user sized the task themselves. `full` also switches off the raise a stage could otherwise perform, so writing it on a guess costs the task its cheap path; `lite` does not switch the raise off, since a declared-small task stays a hypothesis until something measures its perimeter.
