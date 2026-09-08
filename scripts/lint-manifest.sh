@@ -31,7 +31,10 @@ done
 if grep -q '^## Driver$' "$manifest"; then
   driver_block=$(sed -n '/^## Driver/,/^## /p' "$manifest")
   while IFS= read -r line; do
-    [[ "$line" =~ ^([a-z][a-z-]*)[[:space:]]*=[[:space:]]*(.*)$ ]] || continue
+    # Deliberately wider than the key core accepts: a `default_plugin` or `Default` typo
+    # has to be *reported*, and a class narrow enough to exclude it lets the row through
+    # unread, which is the failure this check exists to name.
+    [[ "$line" =~ ^([A-Za-z][A-Za-z0-9_-]*)[[:space:]]*=[[:space:]]*(.*)$ ]] || continue
     key="${BASH_REMATCH[1]}"
     rhs="${BASH_REMATCH[2]}"
     rhs="${rhs%"${rhs##*[![:space:]]}"}"
