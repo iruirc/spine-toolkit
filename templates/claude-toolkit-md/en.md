@@ -76,6 +76,7 @@ unaffected by it.)
 
 drive_app: auto
 manual_checks: auto
+driver: —
 
 (`drive_app` — whether the Validation stage may drive the running app through this platform's own tooling: `auto` — the profile
 decides (FEATURE: when the feature has a UI layer; BUG: always, to replay the reproduction;
@@ -88,6 +89,12 @@ For BUG the deferred check is the reproduction replay itself.
 `auto` — only for checks it was told not to run itself; `always` — every time, so a UI-bearing task
 ships a manual pass even when the validator drove the app and covered the happy path.
 What goes inside that file is fixed by the `manual-checks` skill, not by this key.
+`driver` — which driver plugin drives the running app: a plugin name, or `—` for none. `—` is not
+a failure: the checks that needed driving are handed to a human exactly as `drive_app: off` hands
+them over, and the verdict is not lowered. Leave it as `—` and the platform's own recommended
+default is used, which is what keeps a project that never set this key behaving as it always did.
+Set it to name a different driver. What a driver can and cannot do is its own declaration, and what
+it cannot do becomes a manual check automatically.
 
 A single task overrides both with `[DRIVE_APP] = [auto|off]` and `[MANUAL_CHECKS] = [auto|always]`
 in its `Task.md`.)
