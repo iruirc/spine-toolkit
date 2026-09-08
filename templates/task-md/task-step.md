@@ -9,7 +9,7 @@
 # Optional (only if overriding project default from CLAUDE-spine-toolkit.md):
 # [WORKFLOW_MODE] = [auto]    # manual | auto
 # [DRIVE_APP] = [off]         # auto | off
-# [DRIVER] = [—]              # <driver-plugin> | —
+# [DRIVER] = [auto]           # <driver-plugin> | auto | —
 # [MANUAL_CHECKS] = [always]  # auto | always
 # [WALKTHROUGH] = [off]       # on | off
 # [SCALE] = [full]            # lite | full

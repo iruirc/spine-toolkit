@@ -96,7 +96,7 @@ the checks that needed driving are handed to a human exactly as `drive_app: off`
 the verdict is not lowered. What a driver can and cannot do is its own declaration, and what it
 cannot do becomes a manual check automatically.
 
-A single task overrides all three with `[DRIVE_APP] = [auto|off]`, `[MANUAL_CHECKS] = [auto|always]`, and `[DRIVER] = [<driver-plugin>|—]` in its `Task.md`.)
+A single task overrides all three with `[DRIVE_APP] = [auto|off]`, `[MANUAL_CHECKS] = [auto|always]`, and `[DRIVER] = [<driver-plugin>|auto|—]` in its `Task.md`.)
 
 ## Reporting
 
