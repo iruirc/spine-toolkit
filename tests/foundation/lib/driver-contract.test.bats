@@ -1,12 +1,14 @@
 #!/usr/bin/env bats
 # The driver contract is prose, and prose drifts from the lint that enforces it.
-# These tests bind the two: the vocabulary the convention prints is the vocabulary
-# the lint accepts, and the fixture is a document that obeys both. Without this the
-# three copies diverge silently and the first symptom is a legal driver rejected.
+# These tests bind the two: one compares the convention's vocabulary block against
+# the lint's VOCAB literal directly, and the rest check the fixture against the
+# vocabulary this file owns. Without this the three copies diverge silently and the
+# first symptom is a legal driver rejected, or an illegal one accepted.
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   DOC="$ROOT/conventions/driver-contract.md"
+  LINT="$ROOT/scripts/lint-driver-manifest.sh"
 }
 
 # The 32 capabilities, in the six groups the convention declares. Written out here
@@ -38,6 +40,24 @@ record_replay multi_device"
   n="$(sed -n '/^<!-- vocabulary:start -->$/,/^<!-- vocabulary:end -->$/p' "$DOC" \
        | grep -oE '`[a-z][a-z0-9_]*`' | sort -u | wc -l | tr -d ' ')"
   [ "$n" -eq 32 ] || { echo "vocabulary block holds $n capabilities, expected 32"; return 1; }
+}
+
+@test "the convention's vocabulary and the lint's VOCAB are the same set" {
+  # The lint deliberately hardcodes VOCAB rather than parsing the convention (see the
+  # lint's own header comment) — so nothing but a test that reads both sides catches
+  # them drifting apart. Fails in both directions: a name only in one file is real
+  # duplication rotting, not a formatting difference this diff would smooth over.
+  conv_caps="$(sed -n '/^<!-- vocabulary:start -->$/,/^<!-- vocabulary:end -->$/p' "$DOC" \
+       | grep -oE '`[a-z][a-z0-9_]*`' | tr -d '`' | sort -u)"
+  lint_caps="$(sed -n '/^VOCAB = set("""$/,/^"""\.split())$/p' "$LINT" \
+       | sed '1d;$d' | tr -s ' \t\n' '\n' | grep -v '^$' | sort -u)"
+  only_convention="$(comm -23 <(echo "$conv_caps") <(echo "$lint_caps") | tr '\n' ' ')"
+  only_lint="$(comm -13 <(echo "$conv_caps") <(echo "$lint_caps") | tr '\n' ' ')"
+  if [ -n "$only_convention" ] || [ -n "$only_lint" ]; then
+    echo "in the convention but not the lint's VOCAB: ${only_convention:-none}"
+    echo "in the lint's VOCAB but not the convention: ${only_lint:-none}"
+    return 1
+  fi
 }
 
 @test "the convention names all four blocks of a driver manifest" {
