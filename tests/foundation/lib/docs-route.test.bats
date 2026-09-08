@@ -92,13 +92,13 @@ EOF
   case "$output" in *"covers"*) ;; *) echo "$output"; return 1 ;; esac
 }
 
-@test "a tracker with no fed_by is a registry error" {
+@test "a progress component with no fed_by is a registry error" {
   map <<'EOF'
 ## Snapping-Progress
 
-genre: tracker
+genre: progress
 places:
-  - Trackers/Snapping.md
+  - Progress/Snapping.md
 EOF
   run "$DR" registry "$PROJ"
   [ "$status" -eq 2 ]
@@ -218,9 +218,9 @@ covers:
 
 ## Snapping-Progress
 
-genre: tracker
+genre: progress
 places:
-  - Trackers/Snapping.md
+  - Progress/Snapping.md
 fed_by:
   - Tasks/*/042-*
 EOF
@@ -233,7 +233,7 @@ EOF
   grep -q '^| 3 | Timeline | state | blocking |  |  |$' "$TASK/Docs.md"
 }
 
-@test "a tracker is never asked — routing writes no row for it" {
+@test "a progress component is never asked — routing writes no row for it" {
   task; two_components
   run bash -c "printf 'M\tSources/Timeline/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
   [ "$status" -eq 0 ]
@@ -303,9 +303,9 @@ EOF
   [ "$output" = "$(printf 'R100\t../shared/A/Old.txt\t../shared/A/New.txt')" ]
 }
 
-@test "a tracker named in DOCS_NEW is named but never asked" {
+@test "a progress component named in DOCS_NEW is named but never asked" {
   task; two_components
-  printf '[TASK_TYPE] = [FEATURE]\n[DOCS_NEW] = [Attach-Progress:tracker]\n' >"$TASK/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n[DOCS_NEW] = [Attach-Progress:progress]\n' >"$TASK/Task.md"
   run bash -c "printf 'M\tSources/Export/Writer.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
   [ "$status" -eq 0 ]
   case "$output" in *"Attach-Progress"*) ;; *) echo "$output"; return 1 ;; esac
@@ -592,13 +592,13 @@ EOF
   ! grep -q 'Writer.txt' <<<"$output"
 }
 
-tracker_map() {
+progress_map() {
   map <<'EOF'
 ## Snapping-Progress
 
-genre: tracker
+genre: progress
 places:
-  - Trackers/Snapping.md
+  - Progress/Snapping.md
 fed_by:
   - Tasks/*/351-*
 EOF
@@ -610,11 +610,11 @@ step() {
   printf '**Date:** %s\n# %s\n' "$3" "$2" >"$d/Task.md"
 }
 
-@test "a tracker regenerates the rows between its markers and touches nothing outside" {
-  tracker_map
+@test "a progress component regenerates the rows between its markers and touches nothing outside" {
+  progress_map
   step DONE 351-a-snapping-step 2026-08-07
-  mkdir -p "$PROJ/Trackers"
-  cat >"$PROJ/Trackers/Snapping.md" <<'EOF'
+  mkdir -p "$PROJ/Progress"
+  cat >"$PROJ/Progress/Snapping.md" <<'EOF'
 # Snapping
 
 Handwritten intent that no generator can produce.
@@ -625,137 +625,137 @@ stale
 
 Handwritten lessons.
 EOF
-  run "$DR" tracker "$PROJ"
+  run "$DR" progress "$PROJ"
   [ "$status" -eq 0 ]
-  grep -q 'Handwritten intent' "$PROJ/Trackers/Snapping.md"
-  grep -q 'Handwritten lessons' "$PROJ/Trackers/Snapping.md"
-  grep -q '351-a-snapping-step' "$PROJ/Trackers/Snapping.md"
-  ! grep -q 'stale' "$PROJ/Trackers/Snapping.md"
+  grep -q 'Handwritten intent' "$PROJ/Progress/Snapping.md"
+  grep -q 'Handwritten lessons' "$PROJ/Progress/Snapping.md"
+  grep -q '351-a-snapping-step' "$PROJ/Progress/Snapping.md"
+  ! grep -q 'stale' "$PROJ/Progress/Snapping.md"
 }
 
-@test "a task outside fed_by does not enter the tracker" {
-  tracker_map
+@test "a task outside fed_by does not enter the progress component" {
+  progress_map
   step DONE 351-a-snapping-step 2026-08-07
   step ACTIVE 410-attachment 2026-09-01
-  mkdir -p "$PROJ/Trackers"
-  printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Trackers/Snapping.md"
-  run "$DR" tracker "$PROJ"
+  mkdir -p "$PROJ/Progress"
+  printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Progress/Snapping.md"
+  run "$DR" progress "$PROJ"
   [ "$status" -eq 0 ]
-  ! grep -q '410-attachment' "$PROJ/Trackers/Snapping.md"
+  ! grep -q '410-attachment' "$PROJ/Progress/Snapping.md"
 }
 
 @test "regenerating twice changes nothing" {
-  tracker_map
+  progress_map
   step DONE 351-a-snapping-step 2026-08-07
-  mkdir -p "$PROJ/Trackers"
-  printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Trackers/Snapping.md"
-  "$DR" tracker "$PROJ"
-  cp "$PROJ/Trackers/Snapping.md" "$BATS_TEST_TMPDIR/first"
-  "$DR" tracker "$PROJ"
-  diff "$BATS_TEST_TMPDIR/first" "$PROJ/Trackers/Snapping.md"
+  mkdir -p "$PROJ/Progress"
+  printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Progress/Snapping.md"
+  "$DR" progress "$PROJ"
+  cp "$PROJ/Progress/Snapping.md" "$BATS_TEST_TMPDIR/first"
+  "$DR" progress "$PROJ"
+  diff "$BATS_TEST_TMPDIR/first" "$PROJ/Progress/Snapping.md"
 }
 
-@test "a tracker file with no markers gets them appended, keeping what is already there" {
-  tracker_map
+@test "a progress file with no markers gets them appended, keeping what is already there" {
+  progress_map
   step DONE 351-a-snapping-step 2026-08-07
-  mkdir -p "$PROJ/Trackers"
-  printf '# S\n\nHandwritten only.\n' >"$PROJ/Trackers/Snapping.md"
-  run "$DR" tracker "$PROJ"
+  mkdir -p "$PROJ/Progress"
+  printf '# S\n\nHandwritten only.\n' >"$PROJ/Progress/Snapping.md"
+  run "$DR" progress "$PROJ"
   [ "$status" -eq 0 ]
-  grep -q 'Handwritten only' "$PROJ/Trackers/Snapping.md"
-  grep -q 'spine:steps:begin' "$PROJ/Trackers/Snapping.md"
-  grep -q '351-a-snapping-step' "$PROJ/Trackers/Snapping.md"
+  grep -q 'Handwritten only' "$PROJ/Progress/Snapping.md"
+  grep -q 'spine:steps:begin' "$PROJ/Progress/Snapping.md"
+  grep -q '351-a-snapping-step' "$PROJ/Progress/Snapping.md"
 }
 
 @test "an unclosed marker is refused, not reshaped" {
-  tracker_map
+  progress_map
   step DONE 351-a-snapping-step 2026-08-07
-  mkdir -p "$PROJ/Trackers"
-  printf '# S\n\n<!-- spine:steps:begin -->\nstale\n\nHandwritten lessons after the missing end marker.\n' >"$PROJ/Trackers/Snapping.md"
-  cp "$PROJ/Trackers/Snapping.md" "$BATS_TEST_TMPDIR/before"
-  run "$DR" tracker "$PROJ"
+  mkdir -p "$PROJ/Progress"
+  printf '# S\n\n<!-- spine:steps:begin -->\nstale\n\nHandwritten lessons after the missing end marker.\n' >"$PROJ/Progress/Snapping.md"
+  cp "$PROJ/Progress/Snapping.md" "$BATS_TEST_TMPDIR/before"
+  run "$DR" progress "$PROJ"
   [ "$status" -eq 1 ]
   case "$output" in *"malformed marker"*) ;; *) echo "$output"; return 1 ;; esac
-  diff "$BATS_TEST_TMPDIR/before" "$PROJ/Trackers/Snapping.md"
+  diff "$BATS_TEST_TMPDIR/before" "$PROJ/Progress/Snapping.md"
 }
 
 @test "markers in the wrong order are refused, not reshaped" {
-  tracker_map
+  progress_map
   step DONE 351-a-snapping-step 2026-08-07
-  mkdir -p "$PROJ/Trackers"
-  printf '# S\n\n<!-- spine:steps:end -->\nHandwritten text below a stray end marker.\n<!-- spine:steps:begin -->\n' >"$PROJ/Trackers/Snapping.md"
-  cp "$PROJ/Trackers/Snapping.md" "$BATS_TEST_TMPDIR/before"
-  run "$DR" tracker "$PROJ"
+  mkdir -p "$PROJ/Progress"
+  printf '# S\n\n<!-- spine:steps:end -->\nHandwritten text below a stray end marker.\n<!-- spine:steps:begin -->\n' >"$PROJ/Progress/Snapping.md"
+  cp "$PROJ/Progress/Snapping.md" "$BATS_TEST_TMPDIR/before"
+  run "$DR" progress "$PROJ"
   [ "$status" -eq 1 ]
-  diff "$BATS_TEST_TMPDIR/before" "$PROJ/Trackers/Snapping.md"
+  diff "$BATS_TEST_TMPDIR/before" "$PROJ/Progress/Snapping.md"
 }
 
 @test "a doubled opening marker is refused, not reshaped" {
-  tracker_map
+  progress_map
   step DONE 351-a-snapping-step 2026-08-07
-  mkdir -p "$PROJ/Trackers"
-  printf '# S\n\n<!-- spine:steps:begin -->\nA\n<!-- spine:steps:begin -->\nB\n<!-- spine:steps:end -->\n' >"$PROJ/Trackers/Snapping.md"
-  cp "$PROJ/Trackers/Snapping.md" "$BATS_TEST_TMPDIR/before"
-  run "$DR" tracker "$PROJ"
+  mkdir -p "$PROJ/Progress"
+  printf '# S\n\n<!-- spine:steps:begin -->\nA\n<!-- spine:steps:begin -->\nB\n<!-- spine:steps:end -->\n' >"$PROJ/Progress/Snapping.md"
+  cp "$PROJ/Progress/Snapping.md" "$BATS_TEST_TMPDIR/before"
+  run "$DR" progress "$PROJ"
   [ "$status" -eq 1 ]
-  diff "$BATS_TEST_TMPDIR/before" "$PROJ/Trackers/Snapping.md"
+  diff "$BATS_TEST_TMPDIR/before" "$PROJ/Progress/Snapping.md"
 }
 
-@test "one malformed tracker does not stop a well-formed one" {
+@test "one malformed progress component does not stop a well-formed one" {
   map <<'EOF'
 ## Broken
 
-genre: tracker
+genre: progress
 places:
-  - Trackers/Broken.md
+  - Progress/Broken.md
 fed_by:
   - Tasks/*/351-*
 
 ## Sound
 
-genre: tracker
+genre: progress
 places:
-  - Trackers/Sound.md
+  - Progress/Sound.md
 fed_by:
   - Tasks/*/410-*
 EOF
   step DONE 351-a-step 2026-08-07
   step ACTIVE 410-b-step 2026-09-01
-  mkdir -p "$PROJ/Trackers"
-  printf '# B\n\n<!-- spine:steps:begin -->\nunclosed\n' >"$PROJ/Trackers/Broken.md"
-  printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Trackers/Sound.md"
-  run "$DR" tracker "$PROJ"
+  mkdir -p "$PROJ/Progress"
+  printf '# B\n\n<!-- spine:steps:begin -->\nunclosed\n' >"$PROJ/Progress/Broken.md"
+  printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Progress/Sound.md"
+  run "$DR" progress "$PROJ"
   [ "$status" -eq 1 ]
-  grep -q '410-b-step' "$PROJ/Trackers/Sound.md"
+  grep -q '410-b-step' "$PROJ/Progress/Sound.md"
 }
 
-@test "a task is fed to the first tracker whose pattern matched, not to both" {
+@test "a task is fed to the first progress component whose pattern matched, not to both" {
   map <<'EOF'
 ## Snapping-Progress
 
-genre: tracker
+genre: progress
 places:
-  - Trackers/Snapping.md
+  - Progress/Snapping.md
 fed_by:
   - Tasks/*/351-*
 
 ## Catch-All
 
-genre: tracker
+genre: progress
 places:
-  - Trackers/All.md
+  - Progress/All.md
 fed_by:
   - Tasks/*/*
 EOF
   step DONE 351-a-snapping-step 2026-08-07
-  mkdir -p "$PROJ/Trackers"
+  mkdir -p "$PROJ/Progress"
   for f in Snapping All; do
-    printf '# t\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Trackers/$f.md"
+    printf '# t\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Progress/$f.md"
   done
-  run "$DR" tracker "$PROJ"
+  run "$DR" progress "$PROJ"
   [ "$status" -eq 0 ]
-  grep -q '351-a-snapping-step' "$PROJ/Trackers/Snapping.md"
-  ! grep -q '351-a-snapping-step' "$PROJ/Trackers/All.md"
+  grep -q '351-a-snapping-step' "$PROJ/Progress/Snapping.md"
+  ! grep -q '351-a-snapping-step' "$PROJ/Progress/All.md"
 }
 
 @test "a project lever of off silences routing" {
@@ -775,13 +775,13 @@ EOF
   [ -z "$output" ] || { echo "$output"; return 1; }
 }
 
-@test "a project lever of off silences audit and tracker but not registry" {
+@test "a project lever of off silences audit and progress but not registry" {
   mkdir -p "$PROJ/.git" "$PROJ/Packages/Core/.git" "$PROJ/Documents/Gif"
   printf '## Docs\n\nenabled: off\nmap: DocsMap.md\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   step DONE 351-a-step 2026-08-07
-  mkdir -p "$PROJ/Trackers"
-  printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Trackers/Snapping.md"
-  cp "$PROJ/Trackers/Snapping.md" "$BATS_TEST_TMPDIR/tracker-before"
+  mkdir -p "$PROJ/Progress"
+  printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Progress/Snapping.md"
+  cp "$PROJ/Progress/Snapping.md" "$BATS_TEST_TMPDIR/progress-before"
   map <<'EOF'
 ## GifImageTrack
 
@@ -793,21 +793,21 @@ covers:
 
 ## Snapping-Progress
 
-genre: tracker
+genre: progress
 places:
-  - Trackers/Snapping.md
+  - Progress/Snapping.md
 fed_by:
   - Tasks/*/351-*
 EOF
   run bash -c "'$DR' audit '$PROJ' </dev/null"
   [ "$status" -eq 0 ]
   [ -z "$output" ] || { echo "$output"; return 1; }
-  run "$DR" tracker "$PROJ"
+  run "$DR" progress "$PROJ"
   [ "$status" -eq 0 ]
   [ -z "$output" ] || { echo "$output"; return 1; }
-  # The tracker had a component, a task to feed it and a file to rewrite — its silence is the
+  # The progress run had a component, a task to feed it and a file to rewrite — its silence is the
   # lever's doing, not the fixture's.
-  diff "$BATS_TEST_TMPDIR/tracker-before" "$PROJ/Trackers/Snapping.md"
+  diff "$BATS_TEST_TMPDIR/progress-before" "$PROJ/Progress/Snapping.md"
   # registry is what a person runs to inspect what they suspended, and it still answers.
   run "$DR" registry "$PROJ"
   [ "$status" -eq 0 ]
@@ -858,7 +858,7 @@ EOF
   run bash -c "'$DR' audit '$PROJ' </dev/null"
   [ "$status" -eq 0 ]
   [ -z "$output" ] || { echo "$output"; return 1; }
-  run "$DR" tracker "$PROJ"
+  run "$DR" progress "$PROJ"
   [ "$status" -eq 0 ]
   [ -z "$output" ] || { echo "$output"; return 1; }
 }

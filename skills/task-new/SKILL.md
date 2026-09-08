@@ -116,7 +116,7 @@ For reference, the templates contain these placeholders:
      changes strings, flags or tooling and raises no documentation question at all. The field is
      a blanket lever: it silences every component for the whole task, and it stays visible in
      `Task.md` at Review.
-   - `[DOCS_NEW] = [<name>:<state|tracker>, …]` — the components this task **creates**. Write it
+   - `[DOCS_NEW] = [<name>:<state|progress>, …]` — the components this task **creates**. Write it
      when the user named a new subsystem or a new line of work; this is the one thing routing
      cannot derive, since a subsystem being born has no `covers` to match against. Declaring is
      not creating: the registry entry and the first file appear at the phase that first answers
