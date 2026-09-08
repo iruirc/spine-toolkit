@@ -13,7 +13,7 @@ set -euo pipefail
 #   scripts/docs-route.sh check    <project-root> --task-dir <dir> [--phase <id>] < change set
 #   scripts/docs-route.sh audit    <project-root>                                 < change set
 #   scripts/docs-route.sh reorigin <prefix>                                        < change set
-#   scripts/docs-route.sh tracker  <project-root>
+#   scripts/docs-route.sh progress <project-root>
 #
 # The change set is `git diff --name-status` on stdin. A line with no tab is read as a modified
 # path, so a plan can pipe the paths it intends to touch before any of them exists. Every command
@@ -42,7 +42,7 @@ ARGV = sys.argv[1:]
 CMD = ARGV[0]
 ROOT = os.path.abspath(ARGV[1])
 
-GENRES = ('state', 'tracker')
+GENRES = ('state', 'progress')
 LEVELS = ('blocking', 'advisory', 'off')
 LIST_KEYS = ('places', 'covers', 'fed_by')
 
@@ -153,8 +153,8 @@ def load_registry():
             errors.append('%s declares no places' % where)
         if c['genre'] == 'state' and not c['covers']:
             errors.append('%s is a state component and declares no covers' % where)
-        if c['genre'] == 'tracker' and not c['fed_by']:
-            errors.append('%s is a tracker and declares no fed_by' % where)
+        if c['genre'] == 'progress' and not c['fed_by']:
+            errors.append('%s is a progress component and declares no fed_by' % where)
         if c['name'] in seen:
             errors.append('name "%s" is declared twice: %s and %s — a registry that merges them '
                           'silently produces the divergence this mechanism exists to catch'
@@ -249,7 +249,7 @@ def docs_enabled(task_dir):
 
 
 def declared_new(task_dir):
-    """[DOCS_NEW] = [Name:genre, Other:tracker] — the one thing routing cannot derive, since a
+    """[DOCS_NEW] = [Name:genre, Other:progress] — the one thing routing cannot derive, since a
     subsystem being born has no covers to match against yet."""
     raw = task_field(task_dir, 'DOCS_NEW') or ''
     out = []
@@ -263,7 +263,7 @@ def declared_new(task_dir):
 
 
 def affected(comps, changed):
-    """State components only. A tracker is fed by task folders and generated; whether a rule
+    """State components only. A progress component is fed by task folders and generated; whether a rule
     moved is a question only a state component can be asked."""
     hits = []
     for c in comps:
@@ -400,7 +400,7 @@ def steps_table(dirs):
 
 
 def regenerate(path, table):
-    """Only what lies between the markers. Everything a tracker is worth reading for — the
+    """Only what lies between the markers. Everything a progress file is worth reading for — the
     intent, the limits, the lessons, the shapes that were rejected — is outside them, because
     no generation produces it and an attempt produces plausible text instead of true text."""
     block = '%s\n%s\n%s' % (BEGIN, table, END)
@@ -429,7 +429,7 @@ def regenerate(path, table):
     return False
 
 
-if CMD == 'tracker':
+if CMD == 'progress':
     if not project_docs_enabled():
         sys.exit(0)
     comps, errors = load_registry()
@@ -439,7 +439,7 @@ if CMD == 'tracker':
     claimed = set()
     refused = False
     for c in comps:
-        if c['genre'] != 'tracker':
+        if c['genre'] != 'progress':
             continue
         mine = []
         for rel in folders:
@@ -543,7 +543,7 @@ if CMD == 'route':
         if g == 'state':
             rows.append((n, g, default_level))
         else:
-            print('%s: declared as a new %s — add its record to the registry; a tracker is '
+            print('%s: declared as a new %s — add its record to the registry; a progress component is '
                   'generated and never asked' % (n, g))
     if rows:
         append_rows(task_dir, phase, rows)

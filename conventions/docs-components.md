@@ -20,16 +20,16 @@ covers:
 | Field | Meaning |
 |---|---|
 | H2 | the component's name, unique across the project and every package it holds |
-| `genre` | `state` or `tracker` |
+| `genre` | `state` or `progress` |
 | `strictness` | `blocking`, `advisory` or `off`; absent means the `## Docs` default |
 | `places` | where the files are, one or more paths |
 | `covers` | what a `state` component describes: code paths, globs or exact files |
-| `fed_by` | what a `tracker` aggregates: task-folder patterns |
+| `fed_by` | what a `progress` component aggregates: task-folder patterns |
 
 ## Two genres, and why not three
 
 `state` — how it works now and what must not break. It lives next to the code and is versioned
-with it. `tracker` — what was done and in what order; a derived layer fed by task folders.
+with it. `progress` — what was done and in what order; a derived layer fed by task folders.
 
 The third genre — the history of decisions, what was considered and rejected and why at the
 time — is **not declarable**, because it is `Tasks/`, which the toolkit already owns. Two
@@ -75,9 +75,9 @@ the checkouts are called there.
 ## Declaration order
 
 The registry is assembled project map first, then each package map in path order, and that
-order is load-bearing: a task is fed to the **first** tracker whose `fed_by` pattern matched.
-A catch-all tracker is declared last. There is no exception syntax — it would be a second way
-to say the same thing.
+order is load-bearing: a task is fed to the **first** progress component whose `fed_by` pattern
+matched. A catch-all progress component is declared last. There is no exception syntax — it
+would be a second way to say the same thing.
 
 ## Patterns
 
@@ -101,7 +101,7 @@ and what makes a good reason, is the `docs-route` skill.
 ## Suspending the mechanism
 
 `## Docs` → `enabled: off` stops the four commands a run invokes — `route`, `check`, `audit` and
-`tracker` — while leaving `registry` able to read the file. That is the difference between a pause
+`progress` — while leaving `registry` able to read the file. That is the difference between a pause
 and a deletion: the declarations survive, and a single task can still opt back in with
 `[DOCS] = [on]`.
 
