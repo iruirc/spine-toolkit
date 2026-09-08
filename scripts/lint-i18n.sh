@@ -72,7 +72,7 @@ PY
       ;;
   esac
 done < <(find . -type f \( -name '*.md' -o -name '*.json' -o -name '*.yml' -o -name '*.yaml' \
-  -o -name '*.js' -o -name '*.sh' -o -name '*.bats' -o -name '*.zsh' \) -print0)
+  -o -name '*.js' -o -name '*.sh' -o -name '*.bats' -o -name '*.zsh' \) ! -path './.superpowers/*' -print0)
 
 if [ "$violations" -gt 0 ]; then
   echo
