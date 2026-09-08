@@ -24,11 +24,12 @@ record_replay multi_device"
 }
 
 @test "the convention names every capability of the vocabulary" {
+  block="$(sed -n '/^<!-- vocabulary:start -->$/,/^<!-- vocabulary:end -->$/p' "$DOC")"
   missing=""
   for cap in $ALL_CAPS; do
-    grep -qF "\`$cap\`" "$DOC" || missing="$missing $cap"
+    grep -qF "\`$cap\`" <<<"$block" || missing="$missing $cap"
   done
-  [ -z "$missing" ] || { echo "capabilities the convention does not name:$missing"; return 1; }
+  [ -z "$missing" ] || { echo "capabilities the vocabulary block does not name:$missing"; return 1; }
 }
 
 @test "the convention declares exactly 32 capabilities and no more" {
