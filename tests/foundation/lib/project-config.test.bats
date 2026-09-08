@@ -117,3 +117,19 @@ catalog_words() {
   n="$(grep -cF 'project-config.test.bats' <<<"$hits" || true)"
   [ "$n" -eq 3 ] || { echo "self-excluded lines in this file: $n, expected 3"; return 1; }
 }
+
+@test "the config template declares the driver key" {
+  # The block is where drive_app and manual_checks already live; a third key that
+  # the template does not carry is a key no project ever has, and every reader of
+  # it silently takes the absent branch.
+  grep -q '^driver: ' "$TPL" || { echo "no 'driver:' key in the template"; return 1; }
+  awk '/^## Validation$/{v=1} /^## Reporting$/{v=0} v' "$TPL" | grep -q '^driver: ' \
+    || { echo "'driver:' is outside the ## Validation block"; return 1; }
+}
+
+@test "the config template names no concrete driver plugin" {
+  # The placeholder is the point: a real name here is core knowing an ecosystem.
+  awk '/^## Validation$/{v=1} /^## Reporting$/{v=0} v' "$TPL" \
+    | grep -E '^driver: ' | grep -qE '^driver: (—|<[a-z-]+>)$' \
+    || { echo "'driver:' must default to '—' or a placeholder"; return 1; }
+}
