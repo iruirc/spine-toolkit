@@ -22,8 +22,8 @@ never reads the host's plugin cache from disk (host internals, not a public cont
 `plugin.json`'s `metadata` field is not an alternative: the host preserves it but does not hand it
 back.
 
-The body is **data**: five H2 tables and no procedure. It says so in its own first lines, so the
-agent that invokes it reads the tables instead of executing them. Prose between tables is for
+The body is **data**: five required H2 tables, an optional sixth, and no procedure. It says so in
+its own first lines, so the agent that invokes it reads the tables instead of executing them. Prose between tables is for
 humans; only the rows are parsed.
 
 **"Table" here means plain `name = value` lines under an H2, not Markdown pipe-table syntax** (the
@@ -122,11 +122,13 @@ into it, matches no catalog entry when the answer comes back.
 
 `ecosystem` is the one axis core requires every platform to declare, and the only axis whose meaning
 core fixes: it names the ecosystem this platform serves (`apple`, `android`, `jvm`). Declare it —
-but know that **nothing in core reads its value today**. A project names its platform outright in
-the config's `## Platform` block; `ecosystem` is there for the parts that will have to reason about
-ecosystems rather than plugin names, such as installation-time discovery or a repository holding two
-of them. Reserved, not load-bearing: `stack-detect` excludes it from detection, so no `## Heuristics`
-row may pin it and no `## Roles` row may fan out on it.
+and know it is read: a driver's `## Targets` rows are matched against this value, and a driver
+covering no ecosystem of this platform resolves to `incompatible` and drives nothing
+(`conventions/driver-contract.md`). Nothing else in core reads it — a project names its platform
+outright in the config's `## Platform` block, and the axis is otherwise there for the parts that will
+have to reason about ecosystems rather than plugin names, such as installation-time discovery or a
+repository holding two of them. It stays out of detection either way: `stack-detect` excludes it, so
+no `## Heuristics` row may pin it and no `## Roles` row may fan out on it.
 
 Every other axis and every value is the platform's own choice; core recommends but does not impose
 `ui`, `async`, `di`, `architecture`, `baseline`, `tests`.
