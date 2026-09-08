@@ -130,3 +130,16 @@ record_replay multi_device"
     grep -q 'driver_status' "$f" || { echo "profile-$wf.js does not name driver_status"; return 1; }
   done
 }
+
+@test "every driving surface scopes cause two to a platform inside the driver contract" {
+  # No platform declares a `## Driver` block yet, so "no driver resolving at all" is true
+  # everywhere: without this clause the release stops driving on every installed project.
+  # Method A and Method B both carry it, or the two halves disagree about the release's
+  # central compatibility claim.
+  for wf in feature bug refactor test; do
+    for f in "$ROOT/skills/workflow-$wf/SKILL.md" "$ROOT/workflows/profile-$wf.js"; do
+      grep -qE 'declares no .?## Driver.? block' "$f" \
+        || { echo "$f: no clause exempting a platform that declares no ## Driver block"; return 1; }
+    done
+  done
+}
