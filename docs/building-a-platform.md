@@ -536,6 +536,7 @@ nothing in your manifest changes because of it.
 [ ] ## Topics: the ten core names spelled literally
 [ ] ## Entrypoints: setup names a real skill of yours, or —
 [ ] ## Driver: names the driver you recommend, or is gone — never the fixture's
+[ ] ## Driver: surfaces lists what your projects run on, from core's vocabulary
 [ ] No skill of yours shares a name with a core skill
 [ ] lint-manifest.sh passes, run against your checkout
 [ ] lint-core-refs.sh passes, run against your checkout
