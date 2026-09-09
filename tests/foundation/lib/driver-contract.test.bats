@@ -168,3 +168,39 @@ record_replay multi_device"
       || { echo "profile-$wf.js: driver_status never reaches result.notes"; return 1; }
   done
 }
+
+# The eight drivable surfaces. Written out here rather than parsed from the
+# convention: a test that reads its subject cannot catch the subject losing a line.
+ALL_SURFACES="ios-simulator ios-device
+android-emulator android-device
+macos windows linux
+browser"
+
+@test "the convention declares exactly the eight surfaces" {
+  block="$(sed -n '/^<!-- surfaces:start -->$/,/^<!-- surfaces:end -->$/p' "$DOC")"
+  [ -n "$block" ] || { echo "no surfaces block in the convention"; return 1; }
+  missing=""
+  for s in $ALL_SURFACES; do
+    grep -qF "\`$s\`" <<<"$block" || missing="$missing $s"
+  done
+  [ -z "$missing" ] || { echo "surfaces the convention does not name:$missing"; return 1; }
+  n="$(grep -oE '`[a-z][a-z0-9-]*`' <<<"$block" | sort -u | wc -l | tr -d ' ')"
+  [ "$n" -eq 8 ] || { echo "surfaces block holds $n names, expected 8"; return 1; }
+}
+
+@test "the convention's surfaces and the driver lint's SURFACES are the same set" {
+  # Third copy of a list, bound the way the capability vocabulary already is: the
+  # lint hardcodes rather than parsing its own specification, so only a test that
+  # reads both sides catches them drifting.
+  conv="$(sed -n '/^<!-- surfaces:start -->$/,/^<!-- surfaces:end -->$/p' "$DOC" \
+       | grep -oE '`[a-z][a-z0-9-]*`' | tr -d '`' | sort -u)"
+  lint="$(sed -n '/^SURFACES = set("""$/,/^"""\.split())$/p' "$LINT" \
+       | sed '1d;$d' | tr -s ' \t\n' '\n' | grep -v '^$' | sort -u)"
+  only_conv="$(comm -23 <(echo "$conv") <(echo "$lint") | tr '\n' ' ')"
+  only_lint="$(comm -13 <(echo "$conv") <(echo "$lint") | tr '\n' ' ')"
+  if [ -n "$only_conv" ] || [ -n "$only_lint" ]; then
+    echo "in the convention but not the lint's SURFACES: ${only_conv:-none}"
+    echo "in the lint's SURFACES but not the convention: ${only_lint:-none}"
+    return 1
+  fi
+}

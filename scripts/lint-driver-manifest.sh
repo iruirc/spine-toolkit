@@ -30,6 +30,16 @@ a11y_audit visual_baseline performance
 record_replay multi_device
 """.split())
 
+# The eight drivable surfaces. A second literal, hardcoded for the same reason VOCAB
+# is: a lint that parses its own specification accepts whatever the specification
+# drifted into. driver-contract.test.bats binds this copy to the convention's.
+SURFACES = set("""
+ios-simulator ios-device
+android-emulator android-device
+macos windows linux
+browser
+""".split())
+
 violations = []
 def bad(msg): violations.append(msg)
 
