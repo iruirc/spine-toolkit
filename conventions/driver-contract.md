@@ -119,6 +119,42 @@ whole. `locale` — switching the app's language, which the operational checklis
 and nothing can currently answer. `alerts` separately from `permissions` — a grant is given once,
 while a modal is caught in the middle of a scenario.
 
+## Surfaces
+
+A **surface** is a place an application runs and can be driven: a simulator, a physical device, a
+desktop process, a browser page. Both sides of the contract name surfaces from one closed list, and
+that shared naming is the whole of how a driver and a platform decide they fit.
+
+A platform declares which surfaces it produces, in the `## Driver` block of its own manifest
+(`conventions/platform-contract.md`). A driver declares which it can drive, in `## Targets`. They
+are compatible when the two sets intersect; a driver covering none of a platform's surfaces resolves
+to `incompatible`.
+
+<!-- surfaces:start -->
+
+| Surface | What it is |
+|---|---|
+| `ios-simulator` | an iOS simulator |
+| `ios-device` | a physical iOS device |
+| `android-emulator` | an Android emulator |
+| `android-device` | a physical Android device |
+| `macos` | a macOS application, as a process |
+| `windows` | a Windows application, as a process |
+| `linux` | a Linux application, as a process |
+| `browser` | a page in a browser |
+
+<!-- surfaces:end -->
+
+Closed, and core's, for the same reason the capability vocabulary is: a driver written against one
+platform has to be legible to another platform's validator, and that holds only if both read one
+list. A name outside it is rejected by the lint. Extending the list is a minor release of core.
+
+Eight is what the platforms that exist produce and the servers that exist drive. Televisions,
+HarmonyOS and Aurora are supported by real servers today and named here by none, because no platform
+produces them — declaring a surface nobody can be on is a vocabulary written against nothing. **A
+driver whose server reaches more than this list simply does not declare the excess**, and that is
+not an error to work around: the list grows when a platform arrives that needs it.
+
 ## `## Procedure`
 
 Free prose, and the only place a driver speaks in its own words: how a target is selected, in what
