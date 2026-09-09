@@ -148,9 +148,9 @@ connected, the orchestrator says so before the run starts rather than after the 
 
 ## 10. Failure modes worth knowing
 
-- **Declared but not connected.** The manifest promises; the session has no tools with your prefix.
-  The run continues, the UI checks go to a human, and the digest names your missing prefix. This is
-  not a failed validation — it is a broken setup, and it says so.
+- **Declared but not connected.** The manifest promises; the session has no tools under any of your
+  prefixes. The run continues, the UI checks go to a human, and the digest names every prefix that
+  was tried. This is not a failed validation — it is a broken setup, and it says so.
 - **No shared surface.** None of your `## Targets` is a surface the platform produces. Nothing is
   driven, and the build and tests still run. Both sets are named in the message, so the mismatch is
   visible rather than mysterious.
