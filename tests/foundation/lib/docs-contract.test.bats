@@ -153,3 +153,19 @@ EOF
   grep -q 'driver-contract' "$ROOT/.claude/CLAUDE.md" || { echo "convention missing from the layout"; return 1; }
   grep -q 'fixture-driver' "$ROOT/.claude/CLAUDE.md" || { echo "fixture missing from the layout"; return 1; }
 }
+
+@test "the driver how-to teaches the prefix list and the surfaces" {
+  DOC="$ROOT/docs/building-a-driver.md"
+  grep -q 'namespace = ' "$DOC" || { echo "no namespace example"; return 1; }
+  grep -qE 'namespace = [a-z][a-z0-9_-]*, ' "$DOC" \
+    || { echo "the namespace example is not a list"; return 1; }
+  grep -q 'surface' "$DOC" || { echo "surfaces are not taught"; return 1; }
+  grep -q 'ecosystem' "$DOC" \
+    && { echo "the how-to still talks about ecosystem matching"; return 1; }
+  return 0
+}
+
+@test "the platform how-to teaches the surfaces row" {
+  grep -q 'surfaces = ' "$ROOT/docs/building-a-platform.md" \
+    || { echo "the platform how-to does not teach the surfaces row"; return 1; }
+}
