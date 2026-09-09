@@ -74,23 +74,41 @@ ns_rows = [l for l in driver if re.match(r"^namespace\s*=", l)]
 if len(ns_rows) != 1:
     bad(f"expected exactly one 'namespace =' row in ## Driver, found {len(ns_rows)}")
 else:
-    ns = ns_rows[0].split("=", 1)[1].strip()
-    if not re.fullmatch(r"[a-z][a-z0-9_-]*", ns):
-        bad(f"malformed namespace '{ns}' (expected lowercase, starting with a letter)")
+    names = [p.strip() for p in ns_rows[0].split("=", 1)[1].split(",")]
+    if not any(names):
+        bad("namespace row lists no name")
+    seen_ns = set()
+    for n in names:
+        if not n:
+            bad("empty element in the namespace list")
+            continue
+        if not re.fullmatch(r"[a-z][a-z0-9_-]*", n):
+            bad(f"malformed namespace '{n}' (expected lowercase, starting with a letter)")
+        if n in seen_ns:
+            bad(f"namespace listed twice: {n}")
+        seen_ns.add(n)
 
-# A candidate row is an anchored `name =` line and nothing else. Prose in these blocks
-# wraps, and a continuation line beginning with a lowercase word — the fixture has one,
-# and it quotes a `key = value` mid-sentence — otherwise reads as a malformed row.
-# lint-manifest.sh documents this same class; this is the same guard.
+# Bare surface names, one per line. Order matters here: a row in the retired
+# `target = ecosystem` grammar is caught first and reported, because silently taking
+# its left half would let a manifest written against the old contract pass while
+# meaning something else. Everything with whitespace after that is prose — a surface
+# name is a single token, so this needs no rule about how prose may be capitalised.
 declared = []
 for l in targets:
-    if not re.match(r"^[a-z][a-z0-9-]*[ \t]*=", l):
+    t = l.strip()
+    if not t:
         continue
-    m = re.fullmatch(r"([a-z][a-z0-9-]*)[ \t]*=[ \t]*([a-z][a-z0-9-]*)[ \t]*", l)
-    if not m:
-        bad(f"malformed ## Targets row (expected 'target = ecosystem'): {l.strip()}")
+    if re.match(r"^[a-z][a-z0-9-]*[ \t]*=", t):
+        bad(f"## Targets row carries a right-hand side (the retired 'target = ecosystem' "
+            f"grammar); write the surface alone: {t}")
         continue
-    t = m.group(1)
+    if re.search(r"\s", t):
+        continue
+    if not re.fullmatch(r"[a-z][a-z0-9-]*", t):
+        continue
+    if t not in SURFACES:
+        bad(f"target outside the surface vocabulary: {t}")
+        continue
     if t in declared:
         bad(f"target declared twice (the second row is dead): {t}")
     declared.append(t)
