@@ -283,3 +283,22 @@ browser"
   done
   [ -z "$bad" ] || { echo "cause-3/4 clause missing a cause in:$bad"; return 1; }
 }
+
+@test "every reference copy of the core dependency names the current core floor" {
+  # Nothing pinned this floor and all three copies sat a release behind: a driver copied
+  # from them loaded on a core whose lint rejected its own grammar, and the user was told
+  # the MCP server was not connected. Equality, so forgetting to raise it fails here.
+  core="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' \
+          "$ROOT/.claude-plugin/plugin.json")"
+  want=">=$core <$(( ${core%%.*} + 1 ))"
+  bad=""
+  for f in "$ROOT/tests/fixtures/fixture-driver/.claude-plugin/plugin.json" \
+           "$ROOT/conventions/driver-contract.md" \
+           "$ROOT/docs/building-a-driver.md"; do
+    got="$(grep -oE '"name": "spine-toolkit", "version": "[^"]*"' "$f" \
+           | sed 's/.*"version": "//; s/"$//' | sort -u | tr '\n' ' ')"
+    got="${got% }"
+    [ "$got" = "$want" ] || bad="$bad ${f#"$ROOT/"}:[${got:-none}]"
+  done
+  [ -z "$bad" ] || { echo "expected '$want', found:$bad"; return 1; }
+}
