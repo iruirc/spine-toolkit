@@ -220,3 +220,17 @@ browser"
     return 1
   fi
 }
+
+@test "the states table defines unavailable by surface, not by server" {
+  # The whole point of broadening it: a server that is connected but lacks the module
+  # for this run's surface used to fall into `ok` and fail mid-scenario.
+  row="$(grep -E '^\| `unavailable` \|' "$DOC")"
+  [ -n "$row" ] || { echo "no unavailable row in the states table"; return 1; }
+  grep -q 'surface' <<<"$row" \
+    || { echo "the unavailable row still speaks only of the server: $row"; return 1; }
+}
+
+@test "the convention says the table is a ceiling" {
+  grep -qiE 'never (widen|adds)|only narrow|ceiling' "$DOC" \
+    || { echo "the convention does not state that runtime may only narrow"; return 1; }
+}
