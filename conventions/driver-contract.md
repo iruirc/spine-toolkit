@@ -86,19 +86,28 @@ matching on it gave a false negative on a platform that read the word as a langu
 One block per target, holding whitespace-separated capability names from the vocabulary below, in
 any order, across as many lines as reads well — **and nothing else. No prose.** Every token in the
 block is read as a capability, so a sentence here is reported word by word. Explanations belong
-above the block or in `## Procedure`. **Positive lists only: named means supported, absent means
-not.**
+above the block or in `## Procedure`. **Positive lists only: named means supported where the surface is reachable, absent means not.**
 
 Absence as "no" is the safe default. An unclaimed capability is deferred to a human rather than
 silently skipped, which is the failure this whole contract exists to stop. There is no `partial`:
 "partly supported" is indistinguishable from "unsupported" at the moment someone decides whether a
 check can be driven.
 
+The table describes the driver, not the machine. A server may be installed in parts — one of the two
+this contract was designed against ships a modular edition whose platforms are opt-in, defaulting to
+none — so a surface you declare may be absent on a given install. That is expected and is not a
+defect in your manifest: what you declare is what your server can do when fully installed.
+
+**The table is a ceiling, never a floor.** If your driver can report its own composition at run time,
+name that call in `## Procedure`; the answer may narrow what this table declares and may never widen
+it. A capability you did not declare stays unsupported even if the server turns out to offer it —
+otherwise a validator would plan around something its author never promised.
+
 Every target of `## Targets` needs a block, and every block needs a target — a target with no
 capabilities declares nothing, and a block for an undeclared target is never read.
 
 ```
-## Capabilities: alpha-emulator
+## Capabilities: android-emulator
 
 launch stop install reset_state
 ui_tree find assert screenshot logs
@@ -187,10 +196,10 @@ acting on them belongs to whoever drives.
 
 | State | When | Consequence |
 |---|---|---|
-| `ok` | resolved, tools present in the session, ecosystem matched | drive, within the declared capabilities |
+| `ok` | resolved, reachable for this run's surface | drive, within the declared capabilities |
 | `none` | the resolution chain produced `—` on a platform inside the driver contract | defer to a human |
-| `unavailable` | declared, but no tool carries its `namespace` prefix in this session | defer, naming the missing prefix |
-| `incompatible` | no target's ecosystem matches the platform's | defer, naming both sides |
+| `unavailable` | resolved, but the driver cannot be reached for this run's surface | defer, naming what was tried |
+| `incompatible` | no target of the driver is a surface this platform produces | defer, naming both sets |
 
 Deferring on `none` reaches only a platform that takes part in the driver contract: a platform whose
 manifest declares no `## Driver` block drives with its own tooling exactly as it did before this
@@ -201,6 +210,12 @@ All three non-working states take the existing "deferred, not dropped" branch: t
 `ManualChecks.md`, the matching `OpsChecklist.md` items become Pending, and **the verdict is not
 lowered**. Distinguishing them is required because the user's next action differs in each: install a
 driver, connect the server, pick a different one, or nothing at all.
+
+`unavailable` covers three situations with one consequence and three different causes: no tool
+carries any of the driver's prefixes, so the server is not connected at all; the server is connected
+but the module for this surface is not installed; the surface is declared by the driver and absent
+from this machine. The message names which — the prefixes tried, or the surface that could not be
+reached — because the user's next action differs in each.
 
 `incompatible` deliberately does not stop the stage. Driving with a mismatched driver is invented
 evidence, which is worse than a deferred check — but the build and the test run still produce theirs,
