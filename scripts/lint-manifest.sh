@@ -60,7 +60,10 @@ if grep -q '^## Driver$' "$manifest"; then
         # An empty row leaves the array empty, and "${surfs[@]}" would abort here under
         # `set -u`, before a single check past this block gets to run.
         for s in ${surfs[@]+"${surfs[@]}"}; do
-          s="$(tr -d '[:space:]' <<<"$s")"
+          # Ends only: stripping every space turns `mac os` into a name in the
+          # vocabulary and the malformed spelling lints clean.
+          s="${s#"${s%%[![:space:]]*}"}"
+          s="${s%"${s##*[![:space:]]}"}"
           [ -n "$s" ] || { echo "empty element in the '## Driver' surfaces list"; violations=$((violations+1)); continue; }
           # Exact membership, not `grep -w`: a hyphen is not a word character, so
           # `grep -qw ios` matches the list entry `ios-simulator` and a truncated

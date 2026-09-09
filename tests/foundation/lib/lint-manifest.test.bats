@@ -253,6 +253,16 @@ teardown() { rm -rf "$TMP"; }
   [[ "$output" == *"ios"* ]]
 }
 
+@test "fails when a surface name carries internal whitespace" {
+  # The element trim is leading/trailing only: stripping every space instead made
+  # `mac os` arrive as `macos`, so a misspelled vocabulary name linted clean.
+  sed -i.bak 's/^surfaces = .*/surfaces = mac os/' "$TMP/p/skills/manifest/SKILL.md" \
+    && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"mac os"* ]]
+}
+
 @test "fails when the surfaces row is empty, and keeps checking past it" {
   # An empty row leaves the array empty, and the unguarded "${surfs[@]}" aborted the
   # whole run under `set -u`: the row was reported and every check after the ## Driver
