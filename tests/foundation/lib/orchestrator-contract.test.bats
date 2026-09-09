@@ -99,3 +99,23 @@ setup() {
     done
   done
 }
+
+@test "the pre-flight tries every declared namespace" {
+  SK="$ROOT/skills/orchestrator/SKILL.md"
+  # Scoped to the Driver pre-flight bullet, not the whole ## Routing section: "every"
+  # and "first" both occur elsewhere in Routing already, which would make this pass
+  # vacuously even if the pre-flight sentence itself never mentioned trying more than
+  # one name. Word-bounded too — "reaches" contains "each".
+  preflight="$(awk '/Driver pre-flight\./{r=1} /^## State Detection$/{r=0} r' "$SK")"
+  grep -qiE '\beach\b|\bevery\b|first .* present' <<<"$preflight" \
+    || { echo "the pre-flight does not say it tries more than one name"; return 1; }
+}
+
+@test "the server-missing string names the prefixes tried, plural" {
+  for lang in en ru; do
+    L="$ROOT/skills/orchestrator/locales/$lang.md"
+    body="$(awk '/^## warn_driver_server_missing$/{p=1;next} /^## /{p=0} p' "$L")"
+    grep -q '{namespaces}' <<<"$body" \
+      || { echo "$lang.md still substitutes a single {namespace}"; return 1; }
+  done
+}
