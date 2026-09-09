@@ -57,7 +57,9 @@ if grep -q '^## Driver$' "$manifest"; then
         [ -n "$(tr -d '[:space:]' <<<"$rhs")" ] \
           || { echo "'## Driver' surfaces row is empty"; violations=$((violations+1)); }
         IFS=',' read -ra surfs <<<"$rhs"
-        for s in "${surfs[@]}"; do
+        # An empty row leaves the array empty, and "${surfs[@]}" would abort here under
+        # `set -u`, before a single check past this block gets to run.
+        for s in ${surfs[@]+"${surfs[@]}"}; do
           s="$(tr -d '[:space:]' <<<"$s")"
           [ -n "$s" ] || { echo "empty element in the '## Driver' surfaces list"; violations=$((violations+1)); continue; }
           # Exact membership, not `grep -w`: a hyphen is not a word character, so

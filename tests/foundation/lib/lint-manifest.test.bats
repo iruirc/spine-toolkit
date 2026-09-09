@@ -253,10 +253,18 @@ teardown() { rm -rf "$TMP"; }
   [[ "$output" == *"ios"* ]]
 }
 
-@test "fails when the surfaces row is empty" {
+@test "fails when the surfaces row is empty, and keeps checking past it" {
+  # An empty row leaves the array empty, and the unguarded "${surfs[@]}" aborted the
+  # whole run under `set -u`: the row was reported and every check after the ## Driver
+  # block silently skipped. The second violation is what pins that, not the exit code.
+  awk '{ print } /^architect /{ print "plumber = fixture-platform:fixture-developer" }' \
+    "$TMP/p/skills/manifest/SKILL.md" > "$TMP/p/skills/manifest/SKILL.md.new"
+  mv "$TMP/p/skills/manifest/SKILL.md.new" "$TMP/p/skills/manifest/SKILL.md"
   sed -i.bak 's/^surfaces = .*/surfaces = /' "$TMP/p/skills/manifest/SKILL.md" \
     && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
   [[ "$output" == *"surfaces"* ]]
+  [[ "$output" == *"plumber"* ]]
+  [[ "$output" != *"unbound variable"* ]]
 }
