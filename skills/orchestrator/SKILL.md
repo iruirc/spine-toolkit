@@ -74,9 +74,11 @@ The orchestrator does not activate on every user request — light commands bypa
      through to the platform default; an explicit `—` is the project choosing none, and ends the
      chain there. On `—`, say nothing: no driver is a supported configuration, not a problem.
      Otherwise invoke `<driver>:manifest`. If it does not resolve, report with key
-     `warn_driver_plugin_missing`. If it resolves but no tool named
-     `mcp__<namespace>__*` is present in this session, report with key `warn_driver_server_missing`,
-     substituting the `namespace` its `## Driver` block declares. **Both are warnings, not stops** —
+     `warn_driver_plugin_missing`. If it resolves, read the `namespace` row of its `## Driver`
+     block — it lists one or more prefixes — and look for a tool named `mcp__<prefix>__*` for each
+     in turn. The first prefix with tools present is the one this session uses. If none of them
+     has any, report with key `warn_driver_server_missing`, substituting the full list into
+     `{namespaces}`. **Both are warnings, not stops** —
      the run proceeds, the build and the tests still produce their evidence, and the validator
      defers the UI checks to a human on its own. The warning exists so that this is learned before
      the implementing stage rather than after it.
