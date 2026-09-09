@@ -231,6 +231,11 @@ browser"
 }
 
 @test "the convention says the table is a ceiling" {
-  grep -qiE 'never (widen|adds)|only narrow|ceiling' "$DOC" \
-    || { echo "the convention does not state that runtime may only narrow"; return 1; }
+  # Extract only the Capabilities section from its heading to the next ### section.
+  # The rule is: runtime answers may narrow but may never widen.
+  section="$(awk '/^## .*Capabilities:/{flag=1} /^### /{if(flag) exit} flag' "$DOC")"
+  grep -q 'may narrow' <<<"$section" \
+    || { echo "the Capabilities section does not state that runtime may narrow"; return 1; }
+  grep -q 'may never widen' <<<"$section" \
+    || { echo "the Capabilities section does not state that runtime may never widen"; return 1; }
 }

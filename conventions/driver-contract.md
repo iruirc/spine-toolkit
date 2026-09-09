@@ -214,8 +214,9 @@ driver, connect the server, pick a different one, or nothing at all.
 `unavailable` covers three situations with one consequence and three different causes: no tool
 carries any of the driver's prefixes, so the server is not connected at all; the server is connected
 but the module for this surface is not installed; the surface is declared by the driver and absent
-from this machine. The message names which — the prefixes tried, or the surface that could not be
-reached — because the user's next action differs in each.
+from this machine. The message must name which — the prefixes that were tried, the surface and that
+the server lacks the module for it, or the surface and that it is unavailable on this machine —
+because the user's next action differs in each.
 
 `incompatible` deliberately does not stop the stage. Driving with a mismatched driver is invented
 evidence, which is worse than a deferred check — but the build and the test run still produce theirs,
