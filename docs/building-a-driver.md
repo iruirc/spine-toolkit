@@ -45,7 +45,9 @@ Everything below is editing them.
 Object form, never `["spine-toolkit"]` — the string form travels through the host's install closure
 while filling none of its constraint map, so it reads as a deliberate absence of any constraint. The
 upper bound is the next major: a major release of core takes every dependent plugin off the loader
-at once.
+at once. The lower bound is the oldest core whose grammar you have actually linted against; keep the
+current core unless you have checked an older one, because too high refuses to load and says why,
+while too low loads and misreads you.
 
 ## 4. `## Driver` — the prefixes
 
