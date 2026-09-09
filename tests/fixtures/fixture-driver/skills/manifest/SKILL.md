@@ -14,28 +14,30 @@ vocabulary. Treat every value below as load-bearing — use it as a template for
 a stub to satisfy a grep.
 
 The two targets differ on purpose, and the difference is the whole point of declaring capabilities
-per target rather than per driver: `beta-device` reaches the hardware that `alpha-emulator` only
+per target rather than per driver: `android-device` reaches the hardware that `android-emulator` only
 simulates, so it carries `push`, `biometrics` and `camera`, and the emulator does not. A validator
 planning a run reads that difference and hands a human what the emulator cannot show.
 
 ## Driver
 
-`namespace` is the prefix the server's tools carry in a session's tool list. Named `neutral` and not
+`namespace` lists the prefixes this server's tools plausibly carry in a session's tool list — the
+key a user writes in their MCP configuration is arbitrary, so a driver names the ones it is likely
+registered under and the resolver takes the first that is actually present. Named neutrally and not
 after any real server: core ships no ecosystem knowledge, and a fixture is read as part of the
 contract.
 
-namespace = neutral
+namespace = neutral, neutral-devices
 
 ## Targets
 
-Each target, and the ecosystem it belongs to. The ecosystem is matched against the `ecosystem` axis
-of the platform manifest — `fixture-platform` declares `ecosystem = fixture`, which is what makes
-this driver compatible with it.
+The surfaces this driver drives, bare, from core's surface vocabulary. `android-emulator` and
+`android-device` differ in exactly the way the per-surface shape exists for: the emulator simulates
+what the device has in hardware.
 
-alpha-emulator = fixture
-beta-device    = fixture
+android-emulator
+android-device
 
-## Capabilities: alpha-emulator
+## Capabilities: android-emulator
 
 launch stop install reset_state
 ui_tree find assert screenshot video logs
@@ -44,7 +46,7 @@ deeplink background permissions alerts viewport locale webview
 a11y_audit visual_baseline performance
 record_replay multi_device
 
-## Capabilities: beta-device
+## Capabilities: android-device
 
 launch stop install reset_state
 ui_tree find assert screenshot video logs

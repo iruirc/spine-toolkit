@@ -38,32 +38,48 @@ other. Whoever drives reads it from the schemas at the moment of use.
 
 ## `## Driver`
 
-One row, `namespace = <prefix>`. It is the prefix under which the server's tools appear in a
-session's tool list, so that a validator can tell whether the server is connected at all before
-planning around it. Lowercase, may contain digits, hyphens and underscores, must start with a
+One row, `namespace = <prefix>[, <prefix>…]`. A prefix is the string under which the server's tools
+appear in a session's tool list, so that a validator can tell whether the server is connected at all
+before planning around it. Lowercase, may contain digits, hyphens and underscores, must start with a
 letter.
 
 ```
 ## Driver
 
-namespace = neutral
+namespace = mobile, mcp-devices
 ```
+
+**Several names, because the name is not yours to choose.** The prefix comes from the key the user
+wrote in their MCP configuration, and that key is arbitrary — a server whose package is called one
+thing is commonly registered under another, and two users register the same server differently. List
+the names your server is plausibly registered under: the one its own documentation prints, the
+package name, the names it used to have. The resolver takes **the first one for which tools are
+actually present**, so order the list by preference.
+
+A user who invented a name outside your list gets the "unreachable" state and a message naming every
+prefix that was tried, which is enough to fix it in one edit. That is the rare case, and it is why
+this is a list rather than a key the user must set in every project.
 
 ## `## Targets`
 
-One row per target the driver reaches, `target = ecosystem`. The ecosystem is matched against the
-`ecosystem` axis of the platform's manifest — the first consumer of an axis the platform contract
-has so far kept reserved.
-
-The ecosystem is declared exactly once, per target. There is deliberately no second row holding the
-union: a union written by hand is a second copy of a derivable fact, and it drifts.
+One surface per line, bare — no right-hand side. Every name must be from the surface vocabulary
+below.
 
 ```
 ## Targets
 
-alpha-emulator = fixture
-beta-device    = fixture
+ios-simulator
+ios-device
+android-emulator
 ```
+
+These are the surfaces this driver can drive. The platform declares the surfaces it produces, and
+the two are compatible when the sets intersect. Declare only what you genuinely reach: a surface you
+list but cannot drive produces invented evidence, which is worse than declaring nothing.
+
+The old grammar paired each target with an ecosystem. It is gone, and a row carrying `=` is rejected
+rather than half-read: the ecosystem axis meant different kinds of thing on different platforms, and
+matching on it gave a false negative on a platform that read the word as a language.
 
 ## `## Capabilities: <target>`
 
