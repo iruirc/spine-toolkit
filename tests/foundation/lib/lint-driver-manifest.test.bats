@@ -119,14 +119,14 @@ teardown() { rm -rf "$TMP"; }
   sed -i.bak 's/^namespace = .*/namespace = alpha, , beta/' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"namespace"* ]]
+  [[ "$output" == *"empty element"* ]]
 }
 
 @test "fails when a target is not a known surface" {
   sed -i.bak 's/^android-emulator$/toaster/' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"toaster"* ]]
+  [[ "$output" == *"outside the surface vocabulary: toaster"* ]]
 }
 
 @test "fails when a target row carries a right-hand side" {
@@ -135,7 +135,7 @@ teardown() { rm -rf "$TMP"; }
   sed -i.bak 's/^android-emulator$/android-emulator = fixture/' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"android-emulator"* ]]
+  [[ "$output" == *"retired 'target = ecosystem'"* ]]
 }
 
 @test "fails when the core dependency uses the string form" {
