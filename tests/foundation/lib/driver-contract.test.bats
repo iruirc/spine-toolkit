@@ -239,3 +239,29 @@ browser"
   grep -q 'may never widen' <<<"$section" \
     || { echo "the Capabilities section does not state that runtime may never widen"; return 1; }
 }
+
+@test "no operative place still describes the third cause as a server-only condition" {
+  # Task 4 broadened the verdict; the eight places that tell the validator what it
+  # means have to say the same thing, or the reference and the briefs disagree —
+  # which is the exact defect a whole fix wave was spent on last release.
+  bad=""
+  for f in "$ROOT"/skills/workflow-{feature,bug,refactor,test}/SKILL.md \
+           "$ROOT"/workflows/profile-{feature,bug,refactor,test}.js; do
+    grep -q 'whose server is not connected in this session' "$f" \
+      && bad="$bad ${f#"$ROOT/"}"
+  done
+  [ -z "$bad" ] || { echo "still on the old wording:$bad"; return 1; }
+}
+
+@test "all eight operative places describe the third cause by surface" {
+  # Not a bare 'surface' grep: that word already occurs in five of the eight files
+  # before any edit (workflow-feature x5, workflow-test x3, workflow-bug and
+  # workflow-refactor x2 each, profile-feature.js x1), so it would pass reverted.
+  # This pins the exact cause-3 phrasing instead, which nothing else here can satisfy.
+  bad=""
+  for f in "$ROOT"/skills/workflow-{feature,bug,refactor,test}/SKILL.md \
+           "$ROOT"/workflows/profile-{feature,bug,refactor,test}.js; do
+    grep -qF "cannot be reached for this run's surface" "$f" || bad="$bad ${f#"$ROOT/"}"
+  done
+  [ -z "$bad" ] || { echo "no cause-3 surface wording in:$bad"; return 1; }
+}
