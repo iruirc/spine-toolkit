@@ -205,7 +205,7 @@ teardown() { rm -rf "$TMP"; }
 }
 
 @test "fails when the Driver default is malformed" {
-  sed -i.bak 's|^default = fixture-driver$|default = Fixture_Driver!|' \
+  sed -i.bak 's|^default  = fixture-driver$|default = Fixture_Driver!|' \
     "$TMP/p/skills/manifest/SKILL.md" && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
@@ -219,11 +219,44 @@ teardown() { rm -rf "$TMP"; }
   for key in fallback default_plugin Default; do
     cp "$ROOT/tests/fixtures/fixture-platform/skills/manifest/SKILL.md" \
       "$TMP/p/skills/manifest/SKILL.md"
-    awk -v k="$key" '{ print } /^default = fixture-driver$/{ print k " = other-driver" }' \
+    awk -v k="$key" '{ print } /^default  = fixture-driver$/{ print k " = other-driver" }' \
       "$TMP/p/skills/manifest/SKILL.md" > "$TMP/p/skills/manifest/SKILL.md.new"
     mv "$TMP/p/skills/manifest/SKILL.md.new" "$TMP/p/skills/manifest/SKILL.md"
     run "$LINT" "$TMP/p"
     [ "$status" -eq 1 ] || { echo "$key accepted"; return 1; }
     [[ "$output" == *"$key"* ]] || { echo "$key not named in: $output"; return 1; }
   done
+}
+
+@test "accepts a surfaces row in the Driver block" {
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 0 ]
+  grep -q '^surfaces = ' "$TMP/p/skills/manifest/SKILL.md" \
+    || { echo "the fixture does not declare surfaces; this test guards nothing"; return 1; }
+}
+
+@test "fails when a surface is not in the vocabulary" {
+  sed -i.bak 's/^surfaces = .*/surfaces = toaster/' "$TMP/p/skills/manifest/SKILL.md" \
+    && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"toaster"* ]]
+}
+
+@test "fails when a surface is a truncated prefix of a real one" {
+  # `grep -w ios` matches `ios-simulator` because a hyphen is not a word character.
+  # This pins the membership test as exact rather than substring.
+  sed -i.bak 's/^surfaces = .*/surfaces = ios/' "$TMP/p/skills/manifest/SKILL.md" \
+    && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"ios"* ]]
+}
+
+@test "fails when the surfaces row is empty" {
+  sed -i.bak 's/^surfaces = .*/surfaces = /' "$TMP/p/skills/manifest/SKILL.md" \
+    && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"surfaces"* ]]
 }
