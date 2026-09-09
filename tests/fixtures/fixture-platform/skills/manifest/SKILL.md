@@ -21,10 +21,13 @@ platform recommends for driving a running app during Validation; a project overr
 `driver:` in its config, and a task with `[DRIVER]`. Its purpose is continuity: a project that never
 set the key keeps the behaviour it had before drivers existed.
 
-`fixture-driver` declares both its targets under the ecosystem `fixture`, which is this platform's
-`ecosystem` value below — that match is what makes the pair compatible.
+`surfaces` names what this platform's projects run on, from core's surface vocabulary
+(`spine-toolkit: conventions/driver-contract.md`). A driver is compatible when its `## Targets`
+intersect this list. The fixture driver declares `android-emulator` and `android-device`, so the two
+fit.
 
-default = fixture-driver
+default  = fixture-driver
+surfaces = android-emulator, android-device
 
 ## Roles
 

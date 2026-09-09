@@ -18,6 +18,16 @@ ROLES="architect developer tester reviewer refactorer validator security diagnos
 ENTRYPOINTS="setup"
 violations=0
 
+# The eight drivable surfaces — third copy of a list core owns; the other two are in
+# conventions/driver-contract.md and scripts/lint-driver-manifest.sh, and
+# tests/foundation/lib/driver-contract.test.bats binds all three.
+SURFACES="
+ios-simulator ios-device
+android-emulator android-device
+macos windows linux
+browser
+"
+
 [ -f "$manifest" ] || { echo "no manifest skill at $manifest"; exit 1; }
 
 for section in Roles Axes Heuristics Topics Entrypoints; do
@@ -38,13 +48,32 @@ if grep -q '^## Driver$' "$manifest"; then
     key="${BASH_REMATCH[1]}"
     rhs="${BASH_REMATCH[2]}"
     rhs="${rhs%"${rhs##*[![:space:]]}"}"
-    if [ "$key" != "default" ]; then
-      echo "unknown key in '## Driver' (core reads only 'default'): $key"
-      violations=$((violations+1))
-      continue
-    fi
-    [[ "$rhs" =~ ^[a-z][a-z0-9-]*$ ]] \
-      || { echo "malformed '## Driver' default '$rhs' (expected a plugin name)"; violations=$((violations+1)); }
+    case "$key" in
+      default)
+        [[ "$rhs" =~ ^[a-z][a-z0-9-]*$ ]] \
+          || { echo "malformed '## Driver' default '$rhs' (expected a plugin name)"; violations=$((violations+1)); }
+        ;;
+      surfaces)
+        [ -n "$(tr -d '[:space:]' <<<"$rhs")" ] \
+          || { echo "'## Driver' surfaces row is empty"; violations=$((violations+1)); }
+        IFS=',' read -ra surfs <<<"$rhs"
+        for s in "${surfs[@]}"; do
+          s="$(tr -d '[:space:]' <<<"$s")"
+          [ -n "$s" ] || { echo "empty element in the '## Driver' surfaces list"; violations=$((violations+1)); continue; }
+          # Exact membership, not `grep -w`: a hyphen is not a word character, so
+          # `grep -qw ios` matches the list entry `ios-simulator` and a truncated
+          # typo would pass unreported — which is the failure this check exists for.
+          case " $(tr -s '[:space:]' ' ' <<<"$SURFACES") " in
+            *" $s "*) ;;
+            *) echo "surface outside core's vocabulary: $s"; violations=$((violations+1)) ;;
+          esac
+        done
+        ;;
+      *)
+        echo "unknown key in '## Driver' (core reads 'default' and 'surfaces'): $key"
+        violations=$((violations+1))
+        ;;
+    esac
   done <<<"$driver_block"
 fi
 
