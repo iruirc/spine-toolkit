@@ -122,12 +122,12 @@ into it, matches no catalog entry when the answer comes back.
 
 `ecosystem` is the one axis core requires every platform to declare, and the only axis whose meaning
 core fixes: it names the ecosystem this platform serves (`apple`, `android`, `jvm`). Declare it —
-but know that **nothing in core reads its value today**. A project names its platform outright in the
-config's `## Platform` block, and driver compatibility is decided by `surfaces` above, not by this
-axis: one value cannot describe a platform that serves several kinds of target, and the word means a
-language to one platform author and a device family to another. Reserved, not load-bearing. It stays
-out of detection either way: `stack-detect` excludes it, so no `## Heuristics` row may pin it and no
-`## Roles` row may fan out on it.
+but know that **nothing in core reads its value today**. A project names its platform outright in
+the config's `## Platform` block, and driver compatibility is decided by the `surfaces` row of
+`## Driver` below, not by this axis: one value cannot describe a platform that serves several kinds
+of target, and the word means a language to one platform author and a device family to another.
+Reserved, not load-bearing. It stays out of detection either way: `stack-detect` excludes it, so no
+`## Heuristics` row may pin it and no `## Roles` row may fan out on it.
 
 Every other axis and every value is the platform's own choice; core recommends but does not impose
 `ui`, `async`, `di`, `architecture`, `baseline`, `tests`.
