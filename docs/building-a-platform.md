@@ -352,8 +352,9 @@ Point them at your **checkout**, not the installed copy. `lint-manifest.sh` chec
 required tables present; the Roles rows cover the nine-role vocabulary and no more; every named
 agent has a file in your plugin and lives in your namespace; no role mapped to nothing; every fan-out row keys on an axis
 core resolves and a value `## Axes` lists; no two Roles rows share a left-hand side; a named
-`## Entrypoints` skill exists; a `## Driver` block, if you wrote one, carries nothing but a
-well-formed `default` row. `lint-core-refs.sh` checks the other direction: every
+`## Entrypoints` skill exists; a `## Driver` block, if you wrote one, carries only well-formed
+`default` and `surfaces` rows, every surface drawn from core's vocabulary. `lint-core-refs.sh`
+checks the other direction: every
 `spine-toolkit:<skill>` under `<plugin>/agents` and `<plugin>/skills` exists in the oldest core your
 dependency range admits, and no hyphenated core skill name is written bare.
 
