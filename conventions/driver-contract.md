@@ -245,7 +245,8 @@ providing none.
 scripts/lint-driver-manifest.sh <plugin-dir>
 ```
 
-checks that the required blocks are present, that `namespace` is a single well-formed row, that every
-target has a capabilities block and every capabilities block a target, that no target is declared
-twice, that every capability is in the vocabulary, and that `plugin.json` carries a name and an
-object-form dependency on core.
+checks that the required blocks are present, that one `namespace` row lists well-formed names, that
+every `## Targets` row is a bare surface from core's vocabulary declared once and a row carrying `=`
+is rejected as the retired grammar, that every target has a capabilities block and every capabilities
+block a target, that every capability is in the vocabulary, and that `plugin.json` carries a name and
+an object-form dependency on core.
