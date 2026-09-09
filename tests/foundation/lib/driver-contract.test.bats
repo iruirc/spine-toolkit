@@ -265,3 +265,21 @@ browser"
   done
   [ -z "$bad" ] || { echo "no cause-3 surface wording in:$bad"; return 1; }
 }
+
+@test "all eight operative places name all three causes of unreachable" {
+  # Scoped to the cause-3/4 clause itself, not the whole file: a bare grep for
+  # "surface" or "not connected" over the whole paragraph would pass on
+  # unrelated sentences nearby. The convention (driver-contract.md:214-219)
+  # gives three causes; this pins that the aside names all three, not two.
+  bad=""
+  for f in "$ROOT"/skills/workflow-{feature,bug,refactor,test}/SKILL.md \
+           "$ROOT"/workflows/profile-{feature,bug,refactor,test}.js; do
+    clause="$(grep -o "a driver that cannot be reached for this run's surface[^.]*\." "$f")"
+    missing=""
+    grep -qF 'server not connected' <<<"$clause" || missing="$missing server"
+    grep -qF 'module for that surface not installed' <<<"$clause" || missing="$missing module"
+    grep -qF 'surface absent from this machine' <<<"$clause" || missing="$missing absent-surface"
+    [ -z "$missing" ] || bad="$bad ${f#"$ROOT/"}(missing:$missing)"
+  done
+  [ -z "$bad" ] || { echo "cause-3/4 clause missing a cause in:$bad"; return 1; }
+}
