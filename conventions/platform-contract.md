@@ -239,8 +239,8 @@ value a project gets when it never chose one. That is what the row is for: a pla
 drive an app unconditionally names the driver it used, and its installed projects keep behaving as
 they did.
 
-An unknown key here is rejected by the lint: core reads `default` and nothing else, so any other row
-is one that will never be read, which looks exactly like a typo in the one that is.
+An unknown key here is rejected by the lint: core reads `default` and `surfaces`, and nothing else,
+so any other row is one that will never be read, which looks exactly like a typo in one that is.
 
 And one more, optional alongside it:
 
