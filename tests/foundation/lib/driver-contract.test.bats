@@ -284,6 +284,19 @@ browser"
   [ -z "$bad" ] || { echo "cause-3/4 clause missing a cause in:$bad"; return 1; }
 }
 
+@test "all eight operative places gloss driver_status with the same three conditions" {
+  # The three causes of unreachable are pinned above; the gloss that introduces the whole
+  # vocabulary was not, and it was reworded twice in one release. Anchored to
+  # `driver_status` and matched as a literal phrase, so no stray word can satisfy it.
+  bad=""
+  for f in "$ROOT"/skills/workflow-{feature,bug,refactor,test}/SKILL.md \
+           "$ROOT"/workflows/profile-{feature,bug,refactor,test}.js; do
+    grep -qE 'driver_status.? — no driver, one that cannot be reached, or a mismatched one' "$f" \
+      || bad="$bad ${f#"$ROOT/"}"
+  done
+  [ -z "$bad" ] || { echo "driver_status gloss missing or reworded in:$bad"; return 1; }
+}
+
 @test "every reference copy of the core dependency names the current core floor" {
   # Nothing pinned this floor and all three copies sat a release behind: a driver copied
   # from them loaded on a core whose lint rejected its own grammar, and the user was told
