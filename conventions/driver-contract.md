@@ -235,6 +235,12 @@ One line of `plugin.json`, the object form with a semver range, exactly as a pla
 }
 ```
 
+The floor is the oldest core whose driver grammar your manifest is written against, not the core you
+happen to be running. The example names the current core because that is the safe direction: a floor
+set too high refuses to load and says so, while one set too low loads and is then misread — core
+looks for a prefix your manifest never meant, and the user is told their MCP server is missing when
+it is connected. Name an older core only if you have run that core's lint against your manifest.
+
 The string form `["spine-toolkit"]` is not permitted: it travels through the host's install closure
 but fills none of its constraint map, reading as a deliberate absence of any constraint while
 providing none.
