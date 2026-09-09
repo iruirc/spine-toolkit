@@ -62,17 +62,17 @@ teardown() { rm -rf "$TMP"; }
 }
 
 @test "prose inside a block is not read as a row" {
-  # The fixture's ## Targets prose wraps onto a line that starts with a lowercase word
-  # and quotes a `key = value` mid-sentence. An unanchored parser reports it as a
-  # malformed row, and the lint then rejects the very manifest it is the copy of.
-  grep -q '^of the platform manifest' "$M" \
+  # The fixture's ## Targets prose wraps onto a line that starts with a lowercase word.
+  # An unanchored parser reports it as a malformed row, and the lint then rejects the
+  # very manifest it is the copy of.
+  grep -q '^what the device has in hardware' "$M" \
     || { echo "the fixture's wrapped prose line moved; this test guards nothing now"; return 1; }
   run "$LINT" "$TMP/d"
   [ "$status" -eq 0 ]
 }
 
 @test "fails when a capabilities block names an undeclared target" {
-  sed -i.bak 's/^## Capabilities: beta-device$/## Capabilities: gamma-tv/' "$M" && rm -f "$M.bak"
+  sed -i.bak 's/^## Capabilities: android-device$/## Capabilities: gamma-tv/' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
   [[ "$output" == *"gamma-tv"* ]]
@@ -81,10 +81,10 @@ teardown() { rm -rf "$TMP"; }
 @test "fails when a declared target has no capabilities block" {
   # The target row stays; its block is what goes. A target that declares nothing
   # is indistinguishable at runtime from one that supports nothing.
-  awk '/^## Capabilities: beta-device$/{skip=1} /^## Procedure$/{skip=0} !skip' "$M" > "$M.new" && mv "$M.new" "$M"
+  awk '/^## Capabilities: android-device$/{skip=1} /^## Procedure$/{skip=0} !skip' "$M" > "$M.new" && mv "$M.new" "$M"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"beta-device"* ]]
+  [[ "$output" == *"android-device"* ]]
 }
 
 @test "fails when a capability is outside the vocabulary" {
@@ -95,10 +95,47 @@ teardown() { rm -rf "$TMP"; }
 }
 
 @test "fails when a target is declared twice" {
-  awk '{ print } /^beta-device/{ print "beta-device = fixture" }' "$M" > "$M.new" && mv "$M.new" "$M"
+  awk '{ print } /^android-device$/{ print "android-device" }' "$M" > "$M.new" && mv "$M.new" "$M"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"beta-device"* ]]
+  [[ "$output" == *"android-device"* ]]
+}
+
+@test "accepts a namespace list" {
+  # The fixture ships a list; this asserts the grammar rather than the fixture.
+  sed -i.bak 's/^namespace = .*/namespace = alpha, beta, gamma/' "$M" && rm -f "$M.bak"
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when a namespace list repeats a name" {
+  sed -i.bak 's/^namespace = .*/namespace = alpha, alpha/' "$M" && rm -f "$M.bak"
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"alpha"* ]]
+}
+
+@test "fails when a namespace list has an empty element" {
+  sed -i.bak 's/^namespace = .*/namespace = alpha, , beta/' "$M" && rm -f "$M.bak"
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"namespace"* ]]
+}
+
+@test "fails when a target is not a known surface" {
+  sed -i.bak 's/^android-emulator$/toaster/' "$M" && rm -f "$M.bak"
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"toaster"* ]]
+}
+
+@test "fails when a target row carries a right-hand side" {
+  # The old grammar was `target = ecosystem`. A manifest written against it must be
+  # rejected loudly rather than half-read, or its author debugs a silent mismatch.
+  sed -i.bak 's/^android-emulator$/android-emulator = fixture/' "$M" && rm -f "$M.bak"
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"android-emulator"* ]]
 }
 
 @test "fails when the core dependency uses the string form" {
