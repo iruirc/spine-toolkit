@@ -56,7 +56,7 @@ the names your server is plausibly registered under: the one its own documentati
 package name, the names it used to have. The resolver takes **the first one for which tools are
 actually present**, so order the list by preference.
 
-A user who invented a name outside your list gets the "unreachable" state and a message naming every
+A user who invented a name outside your list gets the `unavailable` state and a message naming every
 prefix that was tried, which is enough to fix it in one edit. That is the rare case, and it is why
 this is a list rather than a key the user must set in every project.
 
