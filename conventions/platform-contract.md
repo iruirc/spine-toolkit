@@ -122,13 +122,12 @@ into it, matches no catalog entry when the answer comes back.
 
 `ecosystem` is the one axis core requires every platform to declare, and the only axis whose meaning
 core fixes: it names the ecosystem this platform serves (`apple`, `android`, `jvm`). Declare it —
-and know it is read: a driver's `## Targets` rows are matched against this value, and a driver
-covering no ecosystem of this platform resolves to `incompatible` and drives nothing
-(`conventions/driver-contract.md`). Nothing else in core reads it — a project names its platform
-outright in the config's `## Platform` block, and the axis is otherwise there for the parts that will
-have to reason about ecosystems rather than plugin names, such as installation-time discovery or a
-repository holding two of them. It stays out of detection either way: `stack-detect` excludes it, so
-no `## Heuristics` row may pin it and no `## Roles` row may fan out on it.
+but know that **nothing in core reads its value today**. A project names its platform outright in the
+config's `## Platform` block, and driver compatibility is decided by `surfaces` above, not by this
+axis: one value cannot describe a platform that serves several kinds of target, and the word means a
+language to one platform author and a device family to another. Reserved, not load-bearing. It stays
+out of detection either way: `stack-detect` excludes it, so no `## Heuristics` row may pin it and no
+`## Roles` row may fan out on it.
 
 Every other axis and every value is the platform's own choice; core recommends but does not impose
 `ui`, `async`, `di`, `architecture`, `baseline`, `tests`.
@@ -243,8 +242,22 @@ they did.
 An unknown key here is rejected by the lint: core reads `default` and nothing else, so any other row
 is one that will never be read, which looks exactly like a typo in the one that is.
 
-What the named driver can actually do — its targets, its capabilities — is not declared here and
-never is. That belongs to the driver's own manifest, described in `conventions/driver-contract.md`.
+And one more, optional alongside it:
+
+```
+surfaces = <surface>[, <surface>…]
+```
+
+The surfaces this platform's projects run on, from the vocabulary core owns
+(`conventions/driver-contract.md`). A driver is compatible with this platform when its `## Targets`
+intersect this list; a driver covering none of them resolves to `incompatible` and drives nothing.
+
+A platform whose projects produce no drivable surface — a server, a command-line tool — declares no
+`## Driver` block at all, and none of this applies to it.
+
+What the named driver can actually do — which of your surfaces it reaches, and with which
+capabilities — is not declared here and never is. That belongs to the driver's own manifest,
+described in `conventions/driver-contract.md`.
 
 ## Depending on core
 
@@ -308,7 +321,8 @@ checks that all five tables are present, that the Roles rows cover the nine-role
 more, that every named agent has a file in the plugin, that no role is mapped to nothing, that every
 fan-out row keys on an axis core resolves and a value `## Axes` lists, that no two Roles rows share a
 left-hand side, and that a `## Entrypoints` skill other than `—` exists in the plugin, and that a
-`## Driver` block, if present, carries only a well-formed `default` row. What it deliberately does not check:
+`## Driver` block, if present, carries only `default` and `surfaces` rows, with every surface drawn
+from core's vocabulary. What it deliberately does not check:
 whether the skills named under `## Topics` exist — the reference fixture names placeholders on
 purpose, so that check belongs to each real platform's own test suite. `## Entrypoints` is checked
 and `## Topics` is not because core calls the one by name and merely lists the other: a typo in an

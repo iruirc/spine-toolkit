@@ -204,3 +204,19 @@ browser"
     return 1
   fi
 }
+
+@test "the platform lint's surface list matches the convention" {
+  # Third copy. Same reasoning as the driver lint's: hardcoded on purpose, bound by test.
+  PLINT="$ROOT/scripts/lint-manifest.sh"
+  conv="$(sed -n '/^<!-- surfaces:start -->$/,/^<!-- surfaces:end -->$/p' "$DOC" \
+       | grep -oE '`[a-z][a-z0-9-]*`' | tr -d '`' | sort -u)"
+  plint="$(sed -n '/^SURFACES="/,/"$/p' "$PLINT" | sed '1d;$d' | tr -s ' \t\n' '\n' \
+       | grep -v '^$' | sort -u)"
+  only_conv="$(comm -23 <(echo "$conv") <(echo "$plint") | tr '\n' ' ')"
+  only_plint="$(comm -13 <(echo "$conv") <(echo "$plint") | tr '\n' ' ')"
+  if [ -n "$only_conv" ] || [ -n "$only_plint" ]; then
+    echo "in the convention but not lint-manifest.sh: ${only_conv:-none}"
+    echo "in lint-manifest.sh but not the convention: ${only_plint:-none}"
+    return 1
+  fi
+}
