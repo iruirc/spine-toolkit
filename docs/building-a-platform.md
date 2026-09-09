@@ -208,10 +208,11 @@ baseline     = API 26+, API 24+, JVM 17
 tests        = JUnit5, Kotest
 ```
 
-- **`ecosystem` is mandatory** and is the one axis whose meaning core fixes. A driver's `## Targets`
-  rows are matched against your value, and a driver that covers none of your ecosystems drives
-  nothing — beyond that match core reads it nowhere yet, a project naming its platform outright in
-  `## Platform` instead.
+- **`ecosystem` is mandatory** and is the one axis whose meaning core fixes. Declare it, but nothing
+  in core reads its value today — a project names its platform outright in `## Platform`. Driver
+  compatibility is decided by the `surfaces` row of `## Driver` (Step 9), not by this axis: one value
+  cannot describe a platform that serves several kinds of target, and the word means a language to
+  one platform author and a device family to another.
 - **Values are proper nouns and are never localized.** The option list is rendered in the user's
   language; an ordinary-word value like `manual`, translated into Russian, matches no catalog entry
   when the answer comes back.
