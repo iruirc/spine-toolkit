@@ -47,26 +47,46 @@ while filling none of its constraint map, so it reads as a deliberate absence of
 upper bound is the next major: a major release of core takes every dependent plugin off the loader
 at once.
 
-## 4. `## Driver` — the namespace
+## 4. `## Driver` — the prefixes
 
 ```
-namespace = mine
+namespace = mine, my-package
 ```
 
-The prefix the server's tools carry in a session's tool list. It is how a validator tells, before
-planning anything, whether the server is connected at all. Get it from the name the server is
-registered under, not from the package name — they are frequently different.
+The prefixes the server's tools carry in a session's tool list. **Give more than one, and here is
+why:** the prefix comes from the key the user typed into their MCP configuration, and that key is
+theirs to choose. A server whose package is named one thing is routinely registered under another —
+one of the two servers this contract was designed against renamed its package and kept printing the
+old key in its own install instructions. List the name your documentation prints, the package name,
+and any name the server used to have. The resolver takes the first prefix with tools actually
+present, so order the list by preference.
 
-## 5. `## Targets` — what you reach, and where it belongs
+A user who invented a name outside your list gets a message naming every prefix that was tried.
+That is a one-edit fix for them and no work for you — which is why this is a list rather than a
+setting every project has to carry.
+
+## 5. `## Targets` — which surfaces you drive
 
 ```
-ios-simulator = apple
-android-emulator = android
+ios-simulator
+android-emulator
 ```
 
-The right-hand side is matched against the `ecosystem` axis of the platform manifest. Declare every
-target you genuinely support; a target you list but cannot reach produces invented evidence, which
-is worse than declaring nothing.
+Bare names, one per line, from core's surface vocabulary — the closed list in
+`conventions/driver-contract.md`. A **surface** is a place an application runs and can be driven: a
+simulator, a physical device, a desktop process, a browser page.
+
+The platform declares the surfaces its projects run on; you declare the ones you drive; you fit when
+the two sets intersect. There is no axis to match against any more — that mechanism meant a
+different thing on every platform, and it gave a false negative wherever an author read it as
+naming a language.
+
+**Declare only what you genuinely reach.** A surface you list but cannot drive produces invented
+evidence, which is worse than declaring nothing.
+
+**If your server reaches surfaces the vocabulary has no name for** — a television, another mobile
+OS — you simply do not declare them, and that is not an error to work around. The list grows by a
+minor release of core when a platform arrives that produces them.
 
 ## 6. `## Capabilities: <target>` — one block per target
 
@@ -81,6 +101,12 @@ a capability, so a sentence there is reported word by word; explanations go abov
 a push and a device that can are the same driver with two different answers, and a single flat list
 would be a lie in half its rows. Support depth varying by backend is the normal case, not an edge
 one.
+
+What you declare is what your server can do **when fully installed**. If it ships in parts — one of
+the two servers here has a modular edition whose platforms default to none — a surface you declare
+may be absent on a given machine, and that is expected. If your server can report its own
+composition at run time, name that call in `## Procedure`: the answer may narrow what your table
+says and may never widen it.
 
 The vocabulary is closed and it is core's — see `conventions/driver-contract.md`. A name outside it
 is rejected by the lint. If your server does something the vocabulary has no row for, that is either
@@ -124,8 +150,11 @@ connected, the orchestrator says so before the run starts rather than after the 
 - **Declared but not connected.** The manifest promises; the session has no tools with your prefix.
   The run continues, the UI checks go to a human, and the digest names your missing prefix. This is
   not a failed validation — it is a broken setup, and it says so.
-- **Ecosystem mismatch.** No target of yours covers the platform's ecosystem. Nothing is driven, and
-  the build and tests still run. A typo in `## Targets` produces exactly this, and no lint can catch
-  it: it has nothing to compare against.
+- **No shared surface.** None of your `## Targets` is a surface the platform produces. Nothing is
+  driven, and the build and tests still run. Both sets are named in the message, so the mismatch is
+  visible rather than mysterious.
+- **Surface present in your table, absent on the machine.** The server is connected, but the module
+  for that surface is not installed. Same handling: the check goes to a human, and the message names
+  the surface.
 - **Over-declaring.** The expensive one. A capability you list but cannot deliver turns a check that
   would have been handed to a human into a check nobody performed.

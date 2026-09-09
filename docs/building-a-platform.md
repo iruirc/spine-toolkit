@@ -323,6 +323,19 @@ keep behaving exactly as they did.
 name with a real driver, or delete the block — left as copied, every one of your users gets a
 missing-driver warning on every run.
 
+Alongside it, declare what your projects run on:
+
+```
+surfaces = ios-simulator, ios-device, macos
+```
+
+Names come from core's surface vocabulary (`conventions/driver-contract.md`). A driver fits your
+platform when its `## Targets` intersect this list. Declare the surfaces your projects genuinely
+produce — a platform that also builds servers or command-line tools does not list a surface for
+those, because there is nothing to drive there.
+
+A platform whose projects produce no drivable surface at all declares no `## Driver` block.
+
 What that driver can actually do — its targets, its capabilities — is never declared here; that is
 the driver's own manifest. See `conventions/driver-contract.md`, and `docs/building-a-driver.md` if
 you are writing the driver too.
