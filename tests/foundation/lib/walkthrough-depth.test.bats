@@ -155,3 +155,17 @@ NAMES
       || { echo "first miss — $(basename "$p"): the off gate moved or changed shape"; return 1; }
   done
 }
+
+@test "every implementing stage tells its agent the value is a depth" {
+  for p in feature bug refactor test; do
+    S="$ROOT/skills/workflow-$p/SKILL.md"
+    grep -qF 'the depth the contract carries' "$S" \
+      || { echo "workflow-$p: the stage does not say the value is a depth"; return 1; }
+  done
+}
+
+@test "the epic's own chain ends at the new default" {
+  S="$ROOT/skills/workflow-epic/SKILL.md"
+  grep -qF 'in `CLAUDE-spine-toolkit.md`, else `deep`' "$S" \
+    || { echo "workflow-epic still defaults to the pre-depth value"; return 1; }
+}
