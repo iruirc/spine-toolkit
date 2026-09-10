@@ -130,7 +130,7 @@ No call signatures — that is the one rule of this file.
 Clean output is `driver manifest OK: my-driver`. The lint checks the required blocks, one `namespace`
 row of well-formed names, `## Targets` rows that are bare surfaces from core's vocabulary (a row
 carrying `=` is the retired grammar and is rejected), targets and capability blocks covering each
-other exactly, capabilities inside the vocabulary, and the dependency form.
+other exactly, capabilities inside the vocabulary and named once, and the dependency form.
 
 Copy the lint into your own repo and run it in CI: plugins share no code, so update both or neither,
 and record the source in a header comment the way platform authors do.
