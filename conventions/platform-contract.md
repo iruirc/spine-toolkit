@@ -33,7 +33,7 @@ starts at column one; whitespace around `=` and `→` is free, so the rows may b
 ```
 ## Roles
 
-architect = kotlin-platform:kotlin-architect
+architect = spine-platform-kotlin:kotlin-architect
 ```
 
 Plugin and agent names on the right-hand side are lowercase, may contain digits and hyphens, and
@@ -68,9 +68,9 @@ lint rejects it.
 A role may fan out across an axis with `role[axis=value]`, once per value:
 
 ```
-developer[ui=Compose] = kotlin-platform:kotlin-compose-developer
-developer[ui=Views]   = kotlin-platform:kotlin-views-developer
-developer             = kotlin-platform:kotlin-developer
+developer[ui=Compose] = spine-platform-kotlin:kotlin-compose-developer
+developer[ui=Views]   = spine-platform-kotlin:kotlin-views-developer
+developer             = spine-platform-kotlin:kotlin-developer
 ```
 
 The axis has to be one core resolves: an axis of `## Axes` other than `ecosystem`, and the value one
@@ -105,7 +105,7 @@ What core makes of the table: it resolves one agent per role before any stage st
 finished map to every executor. An em dash survives that resolution as itself, not as a missing key:
 
 ```
-agents={architect: kotlin-platform:kotlin-architect, …, validator: —, security: —}
+agents={architect: spine-platform-kotlin:kotlin-architect, …, validator: —, security: —}
 ```
 
 in the newline-separated encoding, and `{"validator": "—"}` in the JSON one. Either way it is a
@@ -272,7 +272,7 @@ core, and that is one line of its `plugin.json`, in the object form with a semve
 
 ```json
 {
-  "name": "kotlin-platform",
+  "name": "spine-platform-kotlin",
   "dependencies": [
     { "name": "spine-toolkit", "version": ">=1.3.0 <2" }
   ]
