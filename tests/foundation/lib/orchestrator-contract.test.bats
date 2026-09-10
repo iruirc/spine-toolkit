@@ -133,7 +133,15 @@ setup() {
     grep -qF "$token" <<<"$para" \
       || { echo "the walkthrough paragraph never mentions $token"; return 1; }
   done
-  grep -qF 'pre-1.8 value' <<<"$para" \
+  # Tokens alone leave the chain unpinned: `deep` occurs four times in this
+  # paragraph, so each link is asserted in place rather than by presence.
+  grep -qF '`off` when `scale` is `lite`' <<<"$para" \
+    || { echo "the paragraph's own chain omits the lite step"; return 1; }
+  grep -qF '`## Reporting` → `walkthrough` → `deep`' <<<"$para" \
+    || { echo "the paragraph's chain does not end at the deep default"; return 1; }
+  grep -qF 'Always filled' <<<"$para" \
+    || { echo "the paragraph never says the field can be read unconditionally"; return 1; }
+  grep -qF 'pre-depth value' <<<"$para" \
     || { echo "the paragraph does not say how a legacy on resolves"; return 1; }
   grep -qF 'Any other value resolves to `deep`' <<<"$para" \
     || { echo "the vocabulary is open: nothing says what an unrecognised value does"; return 1; }
@@ -142,4 +150,16 @@ setup() {
 @test "scale still moves the walkthrough default, and to deep" {
   grep -qF '`off` when `scale` is `lite` → `CLAUDE-spine-toolkit.md ## Reporting` → `deep`' "$SKILL" \
     || { echo "the scale-to-walkthrough chain still ends at the old default"; return 1; }
+}
+
+@test "the unrecognised-value announcement names a key both locales carry" {
+  para="$(awk '/^`walkthrough` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  grep -qF 'warn_walkthrough_unrecognised' <<<"$para" \
+    || { echo "the paragraph asks for an announcement but names no locale key"; return 1; }
+  for lang in en ru; do
+    L="$ROOT/skills/orchestrator/locales/$lang.md"
+    body="$(awk '/^## warn_walkthrough_unrecognised$/{p=1;next} /^## /{p=0} p' "$L")"
+    grep -q '{value}' <<<"$body" \
+      || { echo "$lang.md has no warn_walkthrough_unrecognised string substituting {value}"; return 1; }
+  done
 }

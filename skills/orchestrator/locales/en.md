@@ -184,6 +184,9 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 ## budget_over_limit
 `{artifact}` runs to {actual} lines against a `lite` ceiling of {cap}. Trimming it to the ceiling — logs and dumps by reference rather than pasted inline.
 
+## warn_walkthrough_unrecognised
+`{value}` is not one of the three walkthrough depths, so this run writes the `deep` one. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]` in `Task.md`, or under `walkthrough` in `## Reporting` in `CLAUDE-spine-toolkit.md`.
+
 ## warn_driver_plugin_missing
 Driver `{driver}` is the driver resolved for this run, but its manifest does not resolve — the
 plugin is not installed. Validation will hand its UI checks to you instead of driving the app. Install
