@@ -1,7 +1,7 @@
 # setup — ru
 
 ## error_no_platform_installed
-Ни один платформенный плагин не установлен. spine-toolkit не может узнать твой стек без него — установи один (swift-platform для Swift, kotlin-platform для Kotlin или другой платформенный плагин) и запусти `/setup` снова.
+Ни один платформенный плагин не установлен. spine-toolkit не может узнать твой стек без него — установи один (spine-platform-swift для Swift, spine-platform-kotlin для Kotlin или другой платформенный плагин) и запусти `/setup` снова.
 
 ## platform_choice_question
 Установлено несколько платформенных плагинов. Какой обслуживает этот проект?

@@ -9,7 +9,7 @@ The normative reference for every table and every cell is
 [`../conventions/platform-contract.md`](../conventions/platform-contract.md) — read this document for
 the shape, that one for the letter. A complete working example that core's own test suite binds
 against lives in [`../tests/fixtures/fixture-platform/`](../tests/fixtures/fixture-platform/), and
-the first real platform is [`swift-platform`](https://github.com/iruirc/swift-platform).
+the first real platform is [`spine-platform-swift`](https://github.com/iruirc/spine-platform-swift).
 
 ---
 
@@ -75,8 +75,8 @@ Nothing between "invoke" and "dispatch" is yours to implement. You declare; core
 
 ```bash
 core=/path/to/your/checkout/of/core      # the repo holding workflows/ and skills/orchestrator/
-cp -r "$core/tests/fixtures/fixture-platform" kotlin-platform
-cd kotlin-platform
+cp -r "$core/tests/fixtures/fixture-platform" spine-platform-kotlin
+cd spine-platform-kotlin
 ```
 
 You now have `.claude-plugin/plugin.json`, `<plugin>/skills/manifest/SKILL.md`, and two stub agents. That is
@@ -87,11 +87,11 @@ driver plugin that exists only inside core's test suite; Step 9 says what to do 
 
 ```json
 {
-  "name": "kotlin-platform",
+  "name": "spine-platform-kotlin",
   "description": "Kotlin/JVM knowledge for spine-toolkit: …",
   "version": "0.1.0",
   "author": { "name": "…" },
-  "repository": "https://github.com/…/kotlin-platform",
+  "repository": "https://github.com/…/spine-platform-kotlin",
   "dependencies": [
     { "name": "spine-toolkit", "version": ">=1.3.0 <2" }
   ]
@@ -157,15 +157,15 @@ All nine role names must appear. Map each to `plugin:agent`, or to an em dash fo
 implement:
 
 ```
-architect   = kotlin-platform:kotlin-architect
-developer   = kotlin-platform:kotlin-developer
-tester      = kotlin-platform:kotlin-tester
-reviewer    = kotlin-platform:kotlin-reviewer
-refactorer  = kotlin-platform:kotlin-refactorer
-validator   = kotlin-platform:kotlin-validator
+architect   = spine-platform-kotlin:kotlin-architect
+developer   = spine-platform-kotlin:kotlin-developer
+tester      = spine-platform-kotlin:kotlin-tester
+reviewer    = spine-platform-kotlin:kotlin-reviewer
+refactorer  = spine-platform-kotlin:kotlin-refactorer
+validator   = spine-platform-kotlin:kotlin-validator
 security    = —
-diagnostics = kotlin-platform:kotlin-diagnostics
-init        = kotlin-platform:kotlin-init
+diagnostics = spine-platform-kotlin:kotlin-diagnostics
+init        = spine-platform-kotlin:kotlin-init
 ```
 
 `—` is a **declared absence**, not a hole. Core dispatches around it: the stage runs in the main
@@ -175,9 +175,9 @@ neither, and the lint rejects it.
 Where a role differs by stack, fan it out — one row per axis value, plus a bare fallback row:
 
 ```
-developer[ui=Compose] = kotlin-platform:kotlin-compose-developer
-developer[ui=Views]   = kotlin-platform:kotlin-views-developer
-developer             = kotlin-platform:kotlin-developer
+developer[ui=Compose] = spine-platform-kotlin:kotlin-compose-developer
+developer[ui=Views]   = spine-platform-kotlin:kotlin-views-developer
+developer             = spine-platform-kotlin:kotlin-developer
 ```
 
 Rules the lint enforces, and the reasons they exist:
@@ -235,7 +235,7 @@ path:   `ui/`, `*Screen.kt`                       → ui, architecture # flags a
   that is what `stack-detect` returns.
 - A signal whose value must be *computed* (a deployment target read out of a build file) pins
   nothing. Write it as a flagging `path:` row and let the config or the user supply the catalog
-  value. `swift-platform` does exactly this for `baseline`, and says so in a note under the table.
+  value. `spine-platform-swift` does exactly this for `baseline`, and says so in a note under the table.
 - Write rows so a repository signal matches **exactly one** of them. Nothing in the contract states
   an evaluation order, and a reader who assumes one will be wrong half the time.
 - Explicit non-detection is a legitimate row: `import: more than one of Compose/Views → ui
@@ -349,8 +349,8 @@ you are writing the driver too.
 ### Step 10 — check it
 
 ```bash
-"$core/scripts/lint-manifest.sh"  /path/to/kotlin-platform
-"$core/scripts/lint-core-refs.sh" /path/to/kotlin-platform --core "$core"
+"$core/scripts/lint-manifest.sh"  /path/to/spine-platform-kotlin
+"$core/scripts/lint-core-refs.sh" /path/to/spine-platform-kotlin --core "$core"
 ```
 
 Point them at your **checkout**, not the installed copy. `lint-manifest.sh` checks: all five
@@ -379,7 +379,7 @@ covering on your side:
 - **Agents exist for every non-em-dash role** (the lint does this, but a local test fails faster).
 - **Locale parity**, if you ship localized strings (Step 12).
 
-`swift-platform` runs core's lint by cloning core in CI rather than vendoring it:
+`spine-platform-swift` runs core's lint by cloning core in CI rather than vendoring it:
 
 ```yaml
 - name: manifest contract, checked by core's own lint
@@ -401,7 +401,7 @@ this.
 
 ### Step 13 — adapted forks, if you take core's lints
 
-Core's lints are useful to a platform, and the plugins share no code. `swift-platform` takes them as
+Core's lints are useful to a platform, and the plugins share no code. `spine-platform-swift` takes them as
 **adapted forks**: each records the core file it came from and that file's sha256 in its header.
 
 ```bash
@@ -418,7 +418,7 @@ why equality is the wrong test.
 
 ```
 /plugin marketplace add <you>/<your-marketplace>
-/plugin install kotlin-platform
+/plugin install spine-platform-kotlin
 ```
 
 One caveat worth reading before you publish from your own marketplace. A marketplace declares
