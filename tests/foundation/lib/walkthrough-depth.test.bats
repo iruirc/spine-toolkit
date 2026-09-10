@@ -21,7 +21,9 @@ setup() {
   grep -qF 'walkthrough:` in `CLAUDE-spine-toolkit.md` → `deep`' <<<"$sw" \
     || { echo "the chain does not end at deep"; return 1; }
   grep -qF '`on` is deprecated and resolves to `deep`' <<<"$sw" \
-    || { echo "the pre-1.8 value is not resolved"; return 1; }
+    || { echo "the pre-depth value is not resolved"; return 1; }
+  grep -qF 'a project that wanted the old shape says `brief`' <<<"$sw" \
+    || { echo "the notice does not tell an owner how to get the old shape back"; return 1; }
 }
 
 @test "the skill names its reader before it names any budget" {
@@ -104,9 +106,9 @@ NAMES
   for v in '^`deep` — ' '^`brief` — ' '^`off` — '; do
     grep -q "$v" <<<"$rep" || { echo "## Reporting does not enumerate $v"; return 1; }
   done
-  grep -qF '`on` is the pre-1.8 spelling and is read as `deep`' <<<"$rep" \
+  grep -qF '`on` is the pre-depth value and is read as `deep`' <<<"$rep" \
     || { echo "the template does not say what happens to on"; return 1; }
-  grep -qF '`[WALKTHROUGH] = [brief|deep|off]` in its `Task.md`' <<<"$rep" \
+  grep -qF '`[WALKTHROUGH] = [brief|deep|off]`' <<<"$rep" \
     || { echo "the template's override spelling drifted from task-md and task-new"; return 1; }
   # the value shipped above and the value the prose calls the default must be one value
   shipped="$(sed -n 's/^walkthrough: //p' <<<"$rep")"

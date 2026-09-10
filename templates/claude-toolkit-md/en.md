@@ -113,7 +113,7 @@ This is the value that makes the file worth opening a year later, and it is the 
 `brief` — summary, divergences and a one-bullet-per-commit log, for a reader who already knows the
 area.
 `off` — never written.
-`on` is the pre-1.8 spelling and is read as `deep` — more than it used to write; a project that
+`on` is the pre-depth value and is read as `deep` — more than it used to write; a project that
 wants the old shape says `brief`.
 Not applicable to RESEARCH and REVIEW, whose deliverable is the artifact itself. A `lite` task
 writes nothing unless it says otherwise. A single task overrides with

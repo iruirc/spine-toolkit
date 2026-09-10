@@ -41,7 +41,7 @@ Every rule below is derived from that one sentence, and it settles the arguments
 | `brief` | Summary, divergences and a commit log of one bullet each. The account for that reader when the area is already familiar. |
 | `off` | Not written. |
 
-`on` is deprecated and resolves to `deep` — it said *whether*, never *how deep*, and the depth this artifact needs to be worth reading is the deep one. Note the substitution in the header prose of the file this run writes; the next run starts with no memory of this one, so that file is the only place the notice survives.
+`on` is deprecated and resolves to `deep` — it said *whether*, never *how deep*, and the depth this artifact needs to be worth reading is the deep one; a project that wanted the old shape says `brief`. Note the substitution in the header prose of the file this run writes; the next run starts with no memory of this one, so that file is the only place the notice survives.
 
 The value applies to the whole file. There is no per-section override: a document half-explained is worse than either consistent depth, because the reader cannot tell which half to trust.
 
