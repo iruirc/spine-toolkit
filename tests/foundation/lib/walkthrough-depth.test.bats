@@ -94,3 +94,31 @@ setup() {
 #### What is deliberately absent
 NAMES
 }
+
+@test "the config template ships the deep default and explains all three values" {
+  T="$ROOT/templates/claude-toolkit-md/en.md"
+  rep="$(awk '/^## Reporting$/{f=1;next} /^## /{f=0} f' "$T")"
+  grep -qxF 'walkthrough: deep' <<<"$rep" \
+    || { echo "the template does not ship deep"; return 1; }
+  for v in '`deep`' '`brief`' '`off`'; do
+    grep -qF "$v" <<<"$rep" || { echo "## Reporting does not explain $v"; return 1; }
+  done
+  grep -qF '`on` is the pre-1.8 spelling and is read as `deep`' <<<"$rep" \
+    || { echo "the template does not say what happens to on"; return 1; }
+}
+
+@test "both task templates offer the three values in the optional block" {
+  for f in task-root task-step; do
+    grep -qF '# [WALKTHROUGH] = [off]       # brief | deep | off' \
+      "$ROOT/templates/task-md/$f.md" \
+      || { echo "$f.md does not offer the three values"; return 1; }
+  done
+}
+
+@test "task-new tells the author when brief is the right choice" {
+  N="$ROOT/skills/task-new/SKILL.md"
+  grep -qF '`[WALKTHROUGH] = [<brief|deep|off>]`' "$N" \
+    || { echo "task-new still documents a two-value axis"; return 1; }
+  grep -qF 'readers already know the area' "$N" \
+    || { echo "task-new does not say when to pick brief"; return 1; }
+}

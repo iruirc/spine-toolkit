@@ -114,7 +114,7 @@ For reference, the templates contain these placeholders:
      by none. Do not ask about it: the project default is right for nearly every task, and a field
      the user has to decline is a field that costs more than it saves.
    - `[MANUAL_CHECKS] = [<auto|always>]` — overrides `## Validation` → `manual_checks`; write `always` when the user wants a hand-run test script out of this task whether or not the agent drove the app itself.
-   - `[WALKTHROUGH] = [<on|off>]` — overrides `## Reporting` → `walkthrough`; write `off` to suppress `Walkthrough.md` for this task. Never written for `REVIEW` or `RESEARCH`, where the profile has nothing to write it from.
+   - `[WALKTHROUGH] = [<brief|deep|off>]` — overrides `## Reporting` → `walkthrough`; write `off` to suppress `Walkthrough.md` for this task, or `brief` when its readers already know the area and a section per commit would be ceremony. Never written for `REVIEW` or `RESEARCH`, where the profile has nothing to write it from.
    - `[SCALE] = [<lite|full>]` — overrides `## Scale`; write it only when the user sized the task themselves. `full` also switches off the raise a stage could otherwise perform, so writing it on a guess costs the task its cheap path; `lite` does not switch the raise off, since a declared-small task stays a hypothesis until something measures its perimeter.
    - `[DOCS] = [<on|off>]` — overrides `## Docs`; write `off` only when the user said this task
      changes strings, flags or tooling and raises no documentation question at all. The field is

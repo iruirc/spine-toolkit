@@ -10,7 +10,7 @@
 # [DRIVE_APP] = [off]         # auto | off
 # [DRIVER] = [auto]           # <driver-plugin> | auto | —
 # [MANUAL_CHECKS] = [always]  # auto | always
-# [WALKTHROUGH] = [off]       # on | off
+# [WALKTHROUGH] = [off]       # brief | deep | off
 # [SCALE] = [full]            # lite | full
 # [DOCS] = [off]              # on | off
 # [DOCS_NEW] = [Name:state]   # components this task creates: <name>:<state|progress>, comma-separated
