@@ -119,3 +119,27 @@ setup() {
       || { echo "$lang.md still substitutes a single {namespace}"; return 1; }
   done
 }
+
+@test "the outbound contract carries the three-value walkthrough, filled" {
+  grep -qxF 'walkthrough=brief|deep|off' "$SKILL" || {
+    echo "no filled three-value walkthrough= line in the Outbound Contract block"; return 1
+  }
+}
+
+@test "the walkthrough field documents the whole resolution chain" {
+  para="$(awk '/^`walkthrough` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`walkthrough\` paragraph in the Outbound Contract"; return 1; }
+  for token in '[WALKTHROUGH]' '## Reporting' '`deep`' '`brief`' '`off`'; do
+    grep -qF "$token" <<<"$para" \
+      || { echo "the walkthrough paragraph never mentions $token"; return 1; }
+  done
+  grep -qF 'pre-1.8 value' <<<"$para" \
+    || { echo "the paragraph does not say how a legacy on resolves"; return 1; }
+  grep -qF 'Any other value resolves to `deep`' <<<"$para" \
+    || { echo "the vocabulary is open: nothing says what an unrecognised value does"; return 1; }
+}
+
+@test "scale still moves the walkthrough default, and to deep" {
+  grep -qF '`off` when `scale` is `lite` → `CLAUDE-spine-toolkit.md ## Reporting` → `deep`' "$SKILL" \
+    || { echo "the scale-to-walkthrough chain still ends at the old default"; return 1; }
+}
