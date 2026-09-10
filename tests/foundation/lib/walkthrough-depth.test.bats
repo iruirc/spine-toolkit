@@ -169,3 +169,17 @@ NAMES
   grep -qF 'in `CLAUDE-spine-toolkit.md`, else `deep`' "$S" \
     || { echo "workflow-epic still defaults to the pre-depth value"; return 1; }
 }
+
+@test "the scale convention's worked example uses a value that still exists" {
+  C="$ROOT/conventions/task-scale.md"
+  grep -qF '`[WALKTHROUGH] = [deep]` in `Task.md` writes `Walkthrough.md` on a `lite` run' "$C" \
+    || { echo "the worked example still sets a value the axis no longer has"; return 1; }
+  ! grep -qF '[WALKTHROUGH] = [on]' "$C" \
+    || { echo "the pre-depth value survives in the convention"; return 1; }
+}
+
+@test "the per-unit budget note describes both depths" {
+  C="$ROOT/conventions/task-scale.md"
+  grep -qF 'a section per commit at `deep` and a bullet at `brief`' "$C" \
+    || { echo "the budget note still describes one shape"; return 1; }
+}
