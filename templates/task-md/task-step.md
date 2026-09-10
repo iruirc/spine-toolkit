@@ -11,7 +11,7 @@
 # [DRIVE_APP] = [off]         # auto | off
 # [DRIVER] = [auto]           # <driver-plugin> | auto | —
 # [MANUAL_CHECKS] = [always]  # auto | always
-# [WALKTHROUGH] = [off]       # on | off
+# [WALKTHROUGH] = [off]       # brief | deep | off
 # [SCALE] = [full]            # lite | full
 
 ## 1. [Files]
