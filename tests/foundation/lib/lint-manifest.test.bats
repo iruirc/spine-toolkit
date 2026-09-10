@@ -263,6 +263,28 @@ teardown() { rm -rf "$TMP"; }
   [[ "$output" == *"mac os"* ]]
 }
 
+@test "fails when the Driver block declares a default and no surfaces" {
+  # The two rows are required together: with no list to intersect, the compatibility
+  # test the contract defines has no answer, so no driver is compatible or incompatible.
+  sed -i.bak '/^surfaces = /d' "$TMP/p/skills/manifest/SKILL.md" \
+    && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"no surfaces row"* ]]
+}
+
+@test "the surfaces requirement does not reach a manifest with no Driver block" {
+  # The block stays optional. Deleting it whole is the supported shape for a platform
+  # whose projects produce nothing drivable, and it must not acquire a required row.
+  python3 - "$TMP/p/skills/manifest/SKILL.md" <<'PY'
+import sys
+p = sys.argv[1]; s = open(p).read()
+open(p, "w").write(s[:s.index("## Driver")] + s[s.index("## Roles"):])
+PY
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
 @test "fails when the surfaces row is empty, and keeps checking past it" {
   # An empty row leaves the array empty, and the unguarded "${surfs[@]}" aborted the
   # whole run under `set -u`: the row was reported and every check after the ## Driver

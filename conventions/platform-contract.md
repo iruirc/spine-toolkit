@@ -242,7 +242,7 @@ they did.
 An unknown key here is rejected by the lint: core reads `default` and `surfaces`, and nothing else,
 so any other row is one that will never be read, which looks exactly like a typo in one that is.
 
-And one more, optional alongside it:
+And one more, required alongside it:
 
 ```
 surfaces = <surface>[, <surface>…]
@@ -251,6 +251,12 @@ surfaces = <surface>[, <surface>…]
 The surfaces this platform's projects run on, from the vocabulary core owns
 (`conventions/driver-contract.md`). A driver is compatible with this platform when its `## Targets`
 intersect this list; a driver covering none of them resolves to `incompatible` and drives nothing.
+
+The two rows are required together, and the lint rejects the block that carries only `default`. The
+compatibility test above is the whole reason: with no list to intersect, no driver can be found
+compatible **or** incompatible, and the state the four-verdict vocabulary exists to distinguish has
+no answer. A platform that recommends a driver knows what its projects run on; one that does not
+declares no block at all, which stays a passing manifest.
 
 A platform whose projects produce no drivable surface — a server, a command-line tool — declares no
 `## Driver` block at all, and none of this applies to it.
@@ -321,8 +327,8 @@ checks that all five tables are present, that the Roles rows cover the nine-role
 more, that every named agent has a file in the plugin, that no role is mapped to nothing, that every
 fan-out row keys on an axis core resolves and a value `## Axes` lists, that no two Roles rows share a
 left-hand side, and that a `## Entrypoints` skill other than `—` exists in the plugin, and that a
-`## Driver` block, if present, carries only `default` and `surfaces` rows, with `default` well-formed
-as a plugin name and every surface drawn from core's vocabulary. What it deliberately does not check:
+`## Driver` block, if present, carries both a `default` and a `surfaces` row and no other, with
+`default` well-formed as a plugin name and every surface drawn from core's vocabulary. What it deliberately does not check:
 whether the skills named under `## Topics` exist — the reference fixture names placeholders on
 purpose, so that check belongs to each real platform's own test suite. `## Entrypoints` is checked
 and `## Topics` is not because core calls the one by name and merely lists the other: a typo in an

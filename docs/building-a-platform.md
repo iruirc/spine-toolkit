@@ -335,6 +335,11 @@ platform when its `## Targets` intersect this list. Declare the surfaces your pr
 produce — a platform that also builds servers or command-line tools does not list a surface for
 those, because there is nothing to drive there.
 
+This row is **not** optional once you write the block: `default` and `surfaces` are required
+together. Without a list to intersect, no driver can be called compatible or incompatible, and a
+validator has no way to tell "wrong driver" from "right driver, unreachable" — which is the
+distinction the whole four-state vocabulary exists for.
+
 A platform whose projects produce no drivable surface at all declares no `## Driver` block.
 
 What that driver can actually do — its targets, its capabilities — is never declared here; that is
@@ -352,7 +357,7 @@ Point them at your **checkout**, not the installed copy. `lint-manifest.sh` chec
 required tables present; the Roles rows cover the nine-role vocabulary and no more; every named
 agent has a file in your plugin and lives in your namespace; no role mapped to nothing; every fan-out row keys on an axis
 core resolves and a value `## Axes` lists; no two Roles rows share a left-hand side; a named
-`## Entrypoints` skill exists; a `## Driver` block, if you wrote one, carries only well-formed
+`## Entrypoints` skill exists; a `## Driver` block, if you wrote one, carries both its rows and only well-formed
 `default` and `surfaces` rows, every surface drawn from core's vocabulary. `lint-core-refs.sh`
 checks the other direction: every
 `spine-toolkit:<skill>` under `<plugin>/agents` and `<plugin>/skills` exists in the oldest core your
