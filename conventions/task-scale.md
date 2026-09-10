@@ -85,7 +85,7 @@ task, not of one dispatch.
 ## Explicit beats the axis
 
 `scale` sets the default for an artifact that has its own switch, and loses to that switch when it
-is set. `[WALKTHROUGH] = [on]` in `Task.md` writes `Walkthrough.md` on a `lite` run. The reverse
+is set. `[WALKTHROUGH] = [deep]` in `Task.md` writes `Walkthrough.md` on a `lite` run. The reverse
 does not hold: `full` turns nothing back on that the user turned off. An axis that silently
 overrode an addressed decision would be the opacity this design exists to avoid. The same one-shot
 resolution means a mid-run raise to `full` does not turn `walkthrough` back on either: the
@@ -99,7 +99,8 @@ running that script — a count limit published as a directive and never checked
 repository has already watched go unobserved for months. State it, then measure it.
 
 That instrument fits an artifact of fixed shape. It does not fit one whose length is a function of
-the work: `Walkthrough.md` carries a block per commit, `ManualChecks.md` a case per check, and a
+the work: `Walkthrough.md` carries a section per commit at `deep` and a bullet at `brief`,
+`ManualChecks.md` a case per check, and a
 single number for either file would strangle a large task or mean nothing on a small one. Those two
 are budgeted **per unit** — per commit, per case, per divergence — in the skill that governs each
 (`task-walkthrough`, `manual-checks`). A per-unit budget is not something a line count can decide,
