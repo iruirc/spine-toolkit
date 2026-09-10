@@ -334,10 +334,13 @@ const writeWalkthrough = async (stage, extra) => {
     result.notes.push(`No agent implements the "${WALKTHROUGH_AGENT}" role on this platform, so Walkthrough.md was not written.`)
     return
   }
+  // 'on' is the pre-1.8 spelling of the axis and carried no depth; both it and an
+  // absent value resolve to the default the skill documents.
+  const depth = A.walkthrough === 'brief' ? 'brief' : 'deep'
   const w = await agent(
     brief(
       stage,
-      `Write or refresh ${DIR}/Walkthrough.md by applying the spine-toolkit:task-walkthrough skill, which owns the section list, the per-section length budgets and the refresh rules. Read it first.
+      `Write or refresh ${DIR}/Walkthrough.md at depth ${depth} by applying the spine-toolkit:task-walkthrough skill, which owns the section list, the per-section length budgets and the refresh rules. Read it first — its ## The switch section says what ${depth} changes, and its ## Reader section says who the file is for.
 
 Derive the account from git — the task's own commits, git log over the range and git show for what each one carries — reconciled against ${DIR}/Plan.md. The plan is intent, the commits are fact, and the divergences between them, each labelled with its trigger, are what this artifact exists for. The second line is required to be exactly:
 
