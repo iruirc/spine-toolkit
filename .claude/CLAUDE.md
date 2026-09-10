@@ -57,6 +57,18 @@ en
   `tests/fixtures/fixture-platform/` in the same commit. The fixture is the contract's only
   executable copy, and a contract that disagrees with it is worse than no contract. Check
   `docs/building-a-platform.md` too — it is the third copy, and the one platform authors read first.
+- Bumping `version` in `.claude-plugin/plugin.json`: raise the driver floor in the same commit.
+  `tests/foundation/lib/driver-contract.test.bats` asserts that all three reference copies —
+  `tests/fixtures/fixture-driver/.claude-plugin/plugin.json`, `conventions/driver-contract.md`,
+  `docs/building-a-driver.md` — equal the version just written, so a release commit touching only
+  `plugin.json` leaves the suite red, and a floor raised without the version leaves it red the other
+  way. They move together or one of the two commits is broken.
+- Changing anything the platforms vendor — `scripts/lint-manifest.sh`, `scripts/lint-i18n.sh`,
+  `scripts/lint-locales.sh`, `scripts/lint-core-refs.sh`, `scripts/test-foundation.sh`,
+  `conventions/i18n.md`: every platform's `forks.test.bats` pins the sha256 of the file it copied, so
+  their suites turn red the moment this one lands and stay red until they re-vendor. Core cannot do
+  that for them and should not try, but the release notes should say which of the six moved —
+  otherwise each platform discovers it by failing.
 - Changing the contract in `conventions/driver-contract.md`: update `tests/fixtures/fixture-driver/`
   in the same commit, for the same reason the platform contract carries that rule — the fixture is
   the contract's only executable copy. `docs/building-a-driver.md` is the third copy, and the one
