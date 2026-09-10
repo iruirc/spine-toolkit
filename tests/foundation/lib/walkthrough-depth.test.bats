@@ -29,8 +29,11 @@ setup() {
   reader="$(awk '/^## Reader$/{f=1;next} /^## /{f=0} f' "$SKILL")"
   grep -q 'did not write this code and was not on this task' <<<"$reader" \
     || { echo "## Reader does not name the reader"; return 1; }
-  [ "$(grep -n '^## Reader$' "$SKILL" | cut -d: -f1)" \
-    -lt "$(grep -n '^## Structure$' "$SKILL" | cut -d: -f1)" ] \
+  reader_at="$(grep -n '^## Reader$' "$SKILL" | head -1 | cut -d: -f1)"
+  budgets_at="$(grep -n '^## Structure$' "$SKILL" | head -1 | cut -d: -f1)"
+  [ -n "$reader_at" ] || { echo "no ## Reader heading to locate"; return 1; }
+  [ -n "$budgets_at" ] || { echo "no ## Structure heading to locate; it was renamed"; return 1; }
+  [ "$reader_at" -lt "$budgets_at" ] \
     || { echo "the reader is named after the budgets that are supposed to derive from it"; return 1; }
 }
 
@@ -68,4 +71,26 @@ setup() {
   # this repository, and a redacted example is unreadable rather than general.
   ! grep -qiE 'vsdc|ios_ve|MediaTime|TrackAttachment|hostSourceTime' "$SKILL" \
     || { echo "a downstream project's names are in the skill"; return 1; }
+}
+
+@test "the resolution chain is pinned link by link, not just at its tail" {
+  sw="$(awk '/^## The switch$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  grep -qF '`[WALKTHROUGH] = [brief|deep|off]` in `Task.md`' <<<"$sw" \
+    || { echo "the first link of the chain is not pinned"; return 1; }
+  grep -qF '`off` when the run'"'"'s `scale` is `lite`' <<<"$sw" \
+    || { echo "the lite step of the chain is not pinned"; return 1; }
+}
+
+@test "every section name later tasks cite exists under its exact spelling" {
+  grep -q '^### `## Out of scope` (`deep`)$' "$SKILL" \
+    || { echo "no out-of-scope section"; return 1; }
+  while IFS= read -r h; do
+    grep -qF "$h" "$SKILL" || { echo "sub-heading missing or renamed: $h"; return 1; }
+  done <<'NAMES'
+#### What appeared
+#### What failure this is written against
+#### How it is closed
+#### Why <X> and not <Y>
+#### What is deliberately absent
+NAMES
 }
