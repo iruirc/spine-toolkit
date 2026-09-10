@@ -105,9 +105,9 @@ catalog_words() {
   # the installed-plugin cache paths `setup` and `task-new` document are the one
   # legitimate use, excluded by that prefix rather than by sparing a leading dot
   # or slash — which spared every absolute and dot-relative sibling path too.
-  pat='(\.\./(platform|swift-platform|spine-toolkit)([^A-Za-z0-9_-]|$)'
+  pat='(\.\./(platform|swift-platform|spine-platform-swift|spine-platform-kotlin|spine-toolkit)([^A-Za-z0-9_-]|$)'
   pat="$pat"'|(^|[^A-Za-z0-9_.-])platform/'
-  pat="$pat"'|(^|[^A-Za-z0-9_-])(swift-platform|spine-toolkit)/)'
+  pat="$pat"'|(^|[^A-Za-z0-9_-])(swift-platform|spine-platform-swift|spine-platform-kotlin|spine-toolkit)/)'
   raw="$(core_grep -nE "$pat")"
   hits="$(grep -vE '(^|/)\.claude/plugins/(cache|marketplaces)/' <<<"$raw" || true)"
   offenders="$(grep -vF 'project-config.test.bats' <<<"$hits" || true)"
