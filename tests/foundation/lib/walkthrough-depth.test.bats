@@ -20,8 +20,8 @@ setup() {
   sw="$(awk '/^## The switch$/{f=1;next} /^## /{f=0} f' "$SKILL")"
   grep -qF 'walkthrough:` in `CLAUDE-spine-toolkit.md` → `deep`' <<<"$sw" \
     || { echo "the chain does not end at deep"; return 1; }
-  grep -qF '`on` is accepted as a deprecated spelling of `deep`' <<<"$sw" \
-    || { echo "the pre-1.8 spelling is not resolved"; return 1; }
+  grep -qF '`on` is deprecated and resolves to `deep`' <<<"$sw" \
+    || { echo "the pre-1.8 value is not resolved"; return 1; }
 }
 
 @test "the skill names its reader before it names any budget" {
@@ -100,11 +100,22 @@ NAMES
   rep="$(awk '/^## Reporting$/{f=1;next} /^## /{f=0} f' "$T")"
   grep -qxF 'walkthrough: deep' <<<"$rep" \
     || { echo "the template does not ship deep"; return 1; }
-  for v in '`deep`' '`brief`' '`off`'; do
-    grep -qF "$v" <<<"$rep" || { echo "## Reporting does not explain $v"; return 1; }
+  # anchored: the migration sentence names every value too, and would satisfy a bare token
+  for v in '^`deep` — ' '^`brief` — ' '^`off` — '; do
+    grep -q "$v" <<<"$rep" || { echo "## Reporting does not enumerate $v"; return 1; }
   done
   grep -qF '`on` is the pre-1.8 spelling and is read as `deep`' <<<"$rep" \
     || { echo "the template does not say what happens to on"; return 1; }
+  grep -qF '`[WALKTHROUGH] = [brief|deep|off]` in its `Task.md`' <<<"$rep" \
+    || { echo "the template's override spelling drifted from task-md and task-new"; return 1; }
+  # the value shipped above and the value the prose calls the default must be one value
+  shipped="$(sed -n 's/^walkthrough: //p' <<<"$rep")"
+  para="$(awk -v lead="\`$shipped\` — " '
+    index($0, lead) == 1 { f = 1 }
+    f && substr($0, 1, 1) == "`" && index($0, lead) != 1 { exit }
+    f { print }' <<<"$rep")"
+  grep -qF 'it is the default' <<<"$para" \
+    || { echo "the shipped value $shipped is not the one the prose calls the default"; return 1; }
 }
 
 @test "both task templates offer the three values in the optional block" {
