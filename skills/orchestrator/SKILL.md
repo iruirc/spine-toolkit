@@ -358,7 +358,7 @@ stack=alpha
 agents={architect: fixture-platform:fixture-architect, developer: fixture-platform:fixture-developer, tester: fixture-platform:fixture-developer, reviewer: fixture-platform:fixture-architect, refactorer: fixture-platform:fixture-developer, validator: —, security: —, diagnostics: —, init: —}
 need_test=true|false
 need_review=true|false
-walkthrough=on|off
+walkthrough=brief|deep|off
 docs=on|off
 scale=lite|full
 archive_paths=[Tasks/ACTIVE/001-profile/_archive/Plan-2026-04-25T143022.md, Tasks/ACTIVE/001-profile/_archive/Research-2026-04-25T143022.md]
@@ -379,7 +379,7 @@ Semantics of `stage_scope`:
 
 `agents` — the role-to-agent map resolved in step 5.7. Always filled, always all nine roles, always in vocabulary order (`architect`, `developer`, `tester`, `reviewer`, `refactorer`, `validator`, `security`, `diagnostics`, `init`). Method B encodes it as the single line above; Method A passes the same object as real JSON, so a script reads `A.agents.architect` and gets `"fixture-platform:fixture-architect"` for the reference platform above. Keys are bare role names: the manifest's `role[axis=value]` form is resolved away in step 5.7 and never reaches the contract. A role the platform declared absent arrives as the em dash `—` in both encodings — a value a consumer checks for before dispatching, not a missing key, and the reason this field is never partial and never omitted. This is what lets a stage name its owner by role: which agent that role means is a property of the platform, not of the profile.
 
-`walkthrough` — whether the run writes `Walkthrough.md`. Resolved `Task.md` `[WALKTHROUGH]` → `CLAUDE-spine-toolkit.md` `## Reporting` → `walkthrough` → `on`; a missing section is the default, not an error. Unlike `drive_app`, this one travels in the contract because the script itself gates on it — a Method A run has no filesystem access and cannot read the value for itself. Always `off` for `profile=review` and `profile=research`, where the profile has no implementing stage and no diff of its own; if the task file sets it anyway, say once that it was not executed and why, rather than dropping it silently.
+`walkthrough` — whether the run writes `Walkthrough.md`, and at what depth. Resolved `Task.md` `[WALKTHROUGH]` → `CLAUDE-spine-toolkit.md` `## Reporting` → `walkthrough` → `deep`; a missing section is the default, not an error. Three values: `deep` writes a glossary, the commit order and a section per commit; `brief` writes a summary and a one-bullet-per-commit log; `off` writes nothing. `on` is the pre-1.8 value and resolves to `deep`. It declared whether, never how deep, so there is no prior depth to preserve — but say what that costs rather than calling it a rename: `on` used to produce what `brief` now produces, so a config left alone writes more than it did. Any other value resolves to `deep` as well, and the run says once which value it did not recognise; a silent fallback would hide a typo in a project's config for as long as nobody compared two walkthroughs. Unlike `drive_app`, this one travels in the contract because the script itself gates on it — a Method A run has no filesystem access and cannot read the value for itself. Always `off` for `profile=review` and `profile=research`, where the profile has no implementing stage and no diff of its own; if the task file sets it anyway, say once that it was not executed and why, rather than dropping it silently.
 
 `docs` — whether this run has any documentation to route. Resolved by asking `<core root>/scripts/docs-route.sh state <project root> --task-dir <task dir>`, which walks the same chain the mechanism itself walks, in order: the task's own `[DOCS]` decides alone when it is present, in either direction; failing that the project's `## Docs` block decides through `enabled`; and only if the run is on at all does the answer depend on whether anything is declared, in the project's registry or in one at any external package root. A registry that exists but does not parse answers `on`, deliberately — the run then meets the error by name instead of skipping a registry someone meant to be read. It travels in the contract for the reason `walkthrough` does — a Method A run has no filesystem access and cannot read the value for itself. The script is the single authority on the answer; do not re-derive it by reading the config, because the check spans the project's registry and one at every external package root.
 
@@ -393,7 +393,7 @@ three levers one value moves, and what the floor is at both: `conventions/task-s
 
 `scale` also moves the default under `walkthrough`, and loses to that field's own switch
 (`conventions/task-scale.md` → Explicit beats the axis): the chain reads `Task.md [WALKTHROUGH]` →
-`off` when `scale` is `lite` → `CLAUDE-spine-toolkit.md ## Reporting` → `on`.
+`off` when `scale` is `lite` → `CLAUDE-spine-toolkit.md ## Reporting` → `deep`.
 
 **Receiving a raise.** A stage may return `scale_escalation: {to: "full", reason: "<what it
 found>"}` — the ratchet of `conventions/task-scale.md`, which owns the two points it may fire at
