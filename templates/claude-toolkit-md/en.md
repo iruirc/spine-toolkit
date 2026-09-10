@@ -100,14 +100,22 @@ A single task overrides all three with `[DRIVE_APP] = [auto|off]`, `[MANUAL_CHEC
 
 ## Reporting
 
-walkthrough: on
+walkthrough: deep
 
-(whether a task writes `Walkthrough.md` — the human-facing account of what actually landed:
-summary, plan-vs-outcome divergences with their trigger, a commit-by-commit log, diagrams where
-they help, follow-ups. Written at the end of the implementing stage, so it is readable before
-Validation and Review, and refreshed afterwards if later commits moved past it.
-`on` — write it; `off` — never. Not applicable to RESEARCH and REVIEW, whose deliverable is the
-artifact itself. A single task overrides with `[WALKTHROUGH] = [on|off]` in its `Task.md`.)
+(whether a task writes `Walkthrough.md`, and at what depth. The artifact is the human-facing
+account of what actually landed, written for an engineer who did not write the code and was not on
+the task. Written at the end of the implementing stage, so it is readable before Validation and
+Review, and refreshed afterwards if later commits moved past it.
+`deep` — a glossary of the terms it uses, the commit order and why, then a section per commit: what
+appeared, the failure it is written against, how that is closed, which alternative was rejected.
+This is the value that makes the file worth opening a year later, and it is the default.
+`brief` — summary, divergences and a one-bullet-per-commit log, for a reader who already knows the
+area.
+`off` — never written.
+`on` is the pre-1.8 spelling and is read as `deep`.
+Not applicable to RESEARCH and REVIEW, whose deliverable is the artifact itself. A `lite` task
+writes nothing unless it says otherwise. A single task overrides with
+`[WALKTHROUGH] = [brief|deep|off]` in its `Task.md`.)
 
 ## Docs
 
