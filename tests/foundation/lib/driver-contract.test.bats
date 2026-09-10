@@ -313,5 +313,9 @@ browser"
     got="${got% }"
     [ "$got" = "$want" ] || bad="$bad ${f#"$ROOT/"}:[${got:-none}]"
   done
-  [ -z "$bad" ] || { echo "expected '$want', found:$bad"; return 1; }
+  [ -z "$bad" ] || {
+    echo "expected '$want', found:$bad"
+    echo "raise all three in the same commit as the version: apart, one of the two commits is red"
+    return 1
+  }
 }
