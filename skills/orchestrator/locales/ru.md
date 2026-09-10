@@ -184,6 +184,9 @@ security; OWASP; vulnerability; certificate pinning; безопасность
 ## budget_over_limit
 `{artifact}` — {actual} строк при потолке `lite` в {cap}. Сокращаю до потолка: логи и дампы идут ссылкой, а не вставленным текстом.
 
+## warn_walkthrough_unrecognised
+`{value}` — не одна из трёх глубин walkthrough, поэтому этот прогон пишет `deep`. Глубины такие: `brief`, `deep` и `off` — исправьте значение в `[WALKTHROUGH]` в `Task.md` или в `walkthrough` в разделе `## Reporting` файла `CLAUDE-spine-toolkit.md`.
+
 ## warn_driver_plugin_missing
 Драйвер `{driver}` разрешён для этого прогона, но его манифест не резолвится — плагин не
 установлен. Валидация отдаст свои UI-проверки вам вместо того, чтобы гнать приложение. Поставьте
