@@ -139,16 +139,19 @@ NAMES
 @test "every profile script hands the resolved depth to the writing agent" {
   for p in "$ROOT"/workflows/profile-*.js; do
     grep -qF "const depth = A.walkthrough === 'brief' ? 'brief' : 'deep'" "$p" \
-      || { echo "$(basename "$p"): does not normalise the axis to a depth"; return 1; }
+      || { echo "first miss — $(basename "$p"): does not normalise the axis to a depth"; return 1; }
     grep -qF 'Walkthrough.md at depth ${depth}' "$p" \
-      || { echo "$(basename "$p"): the depth never reaches the brief"; return 1; }
+      || { echo "first miss — $(basename "$p"): the depth never reaches the brief"; return 1; }
+    grep -qF 'its ## The switch section says what ${depth} changes, and its ## Reader section' "$p" \
+      || { echo "first miss — $(basename "$p"): the brief drops where depth is defined"; return 1; }
   done
 }
 
 @test "the off gate still short-circuits before any agent is dispatched" {
-  # brief and deep must both fall through it; only off and the legacy false stop.
+  # brief and deep must both fall through it; only off and the legacy false stop. Anchored at both
+  # ends, so an appended limb that stops brief goes red instead of still containing the substring.
   for p in "$ROOT"/workflows/profile-*.js; do
-    grep -qF "A.walkthrough === 'off' || A.walkthrough === false" "$p" \
-      || { echo "$(basename "$p"): the off gate moved or changed shape"; return 1; }
+    grep -qF "if (!WALKTHROUGH_AGENT || A.walkthrough === 'off' || A.walkthrough === false) return" "$p" \
+      || { echo "first miss — $(basename "$p"): the off gate moved or changed shape"; return 1; }
   done
 }

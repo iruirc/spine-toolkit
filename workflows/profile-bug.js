@@ -342,8 +342,8 @@ const writeWalkthrough = async (stage, extra) => {
     result.notes.push(`No agent implements the "${WALKTHROUGH_AGENT}" role on this platform, so Walkthrough.md was not written.`)
     return
   }
-  // 'on' is the pre-1.8 spelling of the axis and carried no depth; both it and an
-  // absent value resolve to the default the skill documents.
+  // The contract delivers brief|deep|off and off already returned above; anything
+  // else the orchestrator has normalised to deep, so a non-brief value is deep here.
   const depth = A.walkthrough === 'brief' ? 'brief' : 'deep'
   const w = await agent(
     brief(
