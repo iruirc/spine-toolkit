@@ -36,10 +36,11 @@ done
 
 # `## Driver` is optional — a platform that declares no driver has five tables, and
 # that must stay a passing manifest. Checked only when present, and then strictly:
-# an unknown key here is a row core will never read, indistinguishable from a typo
-# in the one key it does.
+# both rows are required together, and an unknown key here is a row core will never
+# read, indistinguishable from a typo in the one key it does.
 if grep -q '^## Driver$' "$manifest"; then
   driver_block=$(sed -n '/^## Driver/,/^## /p' "$manifest")
+  saw_surfaces=0
   while IFS= read -r line; do
     # Deliberately wider than the key core accepts: a `default_plugin` or `Default` typo
     # has to be *reported*, and a class narrow enough to exclude it lets the row through
@@ -54,6 +55,7 @@ if grep -q '^## Driver$' "$manifest"; then
           || { echo "malformed '## Driver' default '$rhs' (expected a plugin name)"; violations=$((violations+1)); }
         ;;
       surfaces)
+        saw_surfaces=1
         [ -n "$(tr -d '[:space:]' <<<"$rhs")" ] \
           || { echo "'## Driver' surfaces row is empty"; violations=$((violations+1)); }
         IFS=',' read -ra surfs <<<"$rhs"
@@ -80,6 +82,12 @@ if grep -q '^## Driver$' "$manifest"; then
         ;;
     esac
   done <<<"$driver_block"
+  # A platform that recommends a driver has to say what its projects run on. The
+  # compatibility test the contract defines is the intersection of this list with the
+  # driver's targets, so without it no driver can be found compatible or incompatible,
+  # and the verdict the four states exist to distinguish is unanswerable.
+  [ "$saw_surfaces" -eq 1 ] \
+    || { echo "'## Driver' declares no surfaces row"; violations=$((violations+1)); }
 fi
 
 roles_block=$(sed -n '/^## Roles/,/^## /p' "$manifest")
