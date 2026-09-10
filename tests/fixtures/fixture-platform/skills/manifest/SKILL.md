@@ -24,7 +24,8 @@ set the key keeps the behaviour it had before drivers existed.
 `surfaces` names what this platform's projects run on, from core's surface vocabulary
 (`spine-toolkit: conventions/driver-contract.md`). A driver is compatible when its `## Targets`
 intersect this list. The fixture driver declares `android-emulator` and `android-device`, so the two
-fit.
+fit. The block is optional; its two rows are not optional within it, because a `default` with no list
+to intersect leaves every driver neither compatible nor incompatible.
 
 default  = fixture-driver
 surfaces = android-emulator, android-device
