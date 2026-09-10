@@ -29,6 +29,8 @@ Commit messages do not make this artifact redundant. `conventions/commit-message
 
 Every rule below is derived from that one sentence, and it settles the arguments the budgets cannot. A term this reader does not know gets defined. An alternative this reader would ask about gets named. A sentence this reader cannot parse without opening the repository gets a second, plainer sentence after it. Writing for the author's own future self is the failure mode: it produces a file that is accurate, short, and useless to everyone else.
 
+`brief` addresses the same reader with the area already known — the depth choice is an assumption about the reader's starting knowledge, not a second reader.
+
 ## The switch
 
 `[WALKTHROUGH] = [brief|deep|off]` in `Task.md` → `off` when the run's `scale` is `lite` → `## Reporting` → `walkthrough:` in `CLAUDE-spine-toolkit.md` → `deep`. First hit wins; a missing section is not an error, it is the default. The axis moves the default only, so an explicit `[WALKTHROUGH] = [deep]` writes this file on a `lite` run (`conventions/task-scale.md`).
@@ -36,10 +38,10 @@ Every rule below is derived from that one sentence, and it settles the arguments
 | Value | Meaning |
 |---|---|
 | `deep` | A section per commit: what appeared, the failure it is written against, how that is closed, which alternative was rejected. Plus a glossary and a commit order. The default. |
-| `brief` | Summary, divergences and a commit log of one bullet each. The account for a reader who already knows the area. |
+| `brief` | Summary, divergences and a commit log of one bullet each. The account for that reader when the area is already familiar. |
 | `off` | Not written. |
 
-`on` is accepted as a deprecated spelling of `deep` — it said *whether*, never *how deep*, and the depth this artifact needs to be worth reading is the deep one. Report the substitution once; do not silently accept it forever.
+`on` is accepted as a deprecated spelling of `deep` — it said *whether*, never *how deep*, and the depth this artifact needs to be worth reading is the deep one. Note the substitution in the header prose of the file this run writes; the next run starts with no memory of this one, so that file is the only place the notice survives.
 
 The value applies to the whole file. There is no per-section override: a document half-explained is worse than either consistent depth, because the reader cannot tell which half to trust.
 
@@ -62,7 +64,7 @@ Short shas of the task's own commits. This is what makes a refresh decidable wit
 
 ## Structure
 
-Header line points at the sibling artifacts (`Done.md`, `Validation.md`, `Review.md`) instead of restating them. The build verdict has one home and this is not it.
+The file opens with a header block rather than a title line: the perimeter of the work — which repositories and files it touched, ±lines, the range of commits — and then a pointer to the sibling artifacts (`Done.md`, `Validation.md`, `Review.md`) instead of a restatement of them. Its size is the `header` row of the table below. The build verdict has one home and this is not it.
 
 | Section | Content | `brief` | `deep` |
 |---|---|---|---|
@@ -76,7 +78,13 @@ Header line points at the sibling artifacts (`Done.md`, `Validation.md`, `Review
 | `## Out of scope` | What was deliberately left out, and where it went instead | absent | ≤ 5 bullets |
 | `## Follow-ups` | Deferred work, each pointing at the task that carries it, or `none` | ≤ 5 bullets | ≤ 5 bullets |
 
-The budgets bound **scope**, not comprehension. A section that hits its ceiling drops a claim; it never compresses three claims into one sentence to fit. See `## Style`.
+The budgets bound **scope**, not comprehension. When a section is at its ceiling and one more claim still belongs in it, the three moves are ranked, and the order is what decides:
+
+1. **Never compress.** Packing two or three claims into one sentence so they fit the count is the wrong move at either depth, always. It buys back a line and charges the reader a re-read for it.
+2. **Go over rather than drop.** A line or two past the ceiling costs less than a claim the reader needed and did not get. The ceiling is what yields first.
+3. **Consistently far over means the scope is wrong.** Not one line on one section — half again, section after section. Then the section is covering more than it should, and the fix is to drop claims until what remains fits, never to shrink the sentences that remain.
+
+See `## Style`.
 
 ### `## Glossary` (`deep`)
 
@@ -125,7 +133,7 @@ One `###` section per commit. Three parts are always present: the heading, which
 
 `feat(domain): sanitise untrusted cart payloads deterministically`
 
-**Files:** `CartSanitizer.swift` (+140), `CartStore.swift` (+12), tests (+310).
+**Files:** `CartSanitizer` (+140), `CartStore` (+12), tests (+310).
 ```
 
 Below that the sub-headings are a **menu, not a checklist**:
@@ -165,8 +173,8 @@ What the task could plausibly have contained and deliberately did not, with wher
 The budgets say how much. This says how, and it is the half that decides whether the file gets read twice.
 
 - **One claim per sentence.** Three facts stacked into one sentence with subordinate clauses fit the line count and cost the reader a re-read each. Prefer three sentences over the line you saved.
-- **Define before use, or link to `## Glossary`.** An identifier appearing for the first time in the middle of an explanation stops the reader dead.
-- **After any sentence that needs the repository open to parse, write a plainer one.** "Put simply: …". This is not padding; it is the difference between a document that transfers understanding and one that proves the author had it.
+- **Define before use.** An identifier appearing for the first time in the middle of an explanation stops the reader dead. At `deep`, define it where it appears or link it to `## Glossary`; at `brief`, where that section is absent, name what the identifier is and move on.
+- **After any sentence that needs the repository open to parse, write a plainer one.** "Put simply: …". This is not padding; it is the difference between a document that transfers understanding and one that proves the author had it. At `brief` this one does not apply — a commit bullet of one to three sentences has no room for a second pass at the same sentence.
 - **Name the alternative.** Every non-obvious decision is written as "X and not Y, because …". A decision presented without its rejected sibling reads as arbitrary, and gets undone by the next person.
 - **A failure is a causal chain, then its consequence.** See `## Commits` — `deep`.
 - **Code excerpts are allowed and are not diff-restating.** A signature, a doc comment, or the one line that carries the invariant — ≤ 12 lines, and only when the shape *is* the point. A hunk-by-hunk retelling is a different thing and is banned below.
@@ -195,7 +203,7 @@ The file is living, not append-once. On a stage that runs it when the file alrea
 
 1. Read `[COVERS]`. Its end already at the task's last commit → change nothing, report that.
 2. Otherwise refresh, and treat the sections differently:
-   - `## Commits` — **append only**, at both depths. It is a log; a rework commit arrives with its own reason (`addresses Review finding 2`) and does not overwrite its predecessors.
+   - `## Commits` — **append only**, at both depths, except when the resolved depth changed — see below. It is a log; a rework commit arrives with its own reason (`addresses Review finding 2`) and does not overwrite its predecessors.
    - `## Plan vs. outcome` — **accumulates**, each new row carrying its trigger. A round of fixes after Review is precisely the divergence worth keeping.
    - `## Glossary`, `## Summary`, `## Commit order`, `## How it works`, `## Out of scope`, `## Follow-ups` — **rewritten** to the current state. The reader needs what is true now, not archaeology.
 3. Update `[COVERS]`.
@@ -216,9 +224,14 @@ An epic makes no commits of its own; its steps do, each writing its own `Walkthr
 
 The depth switch reads the same, with the step standing in for the commit: at `deep`, `## Commit order` becomes the order of the steps and their dependencies, and `## Commits` becomes a section per step — what that step made possible for the next one, and which of the epic's intentions moved while it ran. The glossary belongs here more than anywhere: an epic is where a reader meets the domain vocabulary first.
 
+## Language
+
+Prose in the project's language, structure in English — headings, the `[COVERS]` anchor, the trigger values. The English half covers `## Glossary`, `## Commit order`, `## Out of scope` and the five `####` sub-headings of a `deep` commit section: later tasks cite them by their exact spelling, and a translated heading breaks that citation.
+`conventions/i18n.md`, Artifact authoring rule.
+
 ## Anti-patterns to avoid
 
-- **Telegraphic compression.** Packing three claims into one sentence to stay inside a budget. The budget bounds how much this section may cover, never how hard it may be to read; go a line over rather than a comprehension short. This is the failure that makes an accurate file useless.
+- **Telegraphic compression.** Packing three claims into one sentence to stay inside a budget. The budget bounds how much this section may cover, never how hard it may be to read; go a line over rather than a comprehension short, and when a section runs far over line after line, follow the ranked rule under the `## Structure` table — the answer there is fewer claims, never shorter sentences. This is the failure that makes an accurate file useless.
 - **Restating the diff.** A hunk-by-hunk retelling. The diff is readable and does not rot; prose about it does. Quoting a signature or a doc comment is not this — see `## Style`. The test: does the excerpt carry the *why*, or is it there because it was in the change?
 - **Deep by reflex.** A five-part section for a commit that renamed a constant. The sub-headings are a menu; an empty one filled to look complete is noise the reader has to wade through.
 - **A glossary of unused terms.** Entries earn their place by appearing later in the document.
