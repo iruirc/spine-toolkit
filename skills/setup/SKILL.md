@@ -21,18 +21,23 @@ The skill creates no source files, modifies no code, and starts no workflow. Gen
 
 Normally invoked by the user with nothing. It also accepts answers a caller has already collected —
 a platform's `init` agent, which asks the same stack questions before scaffolding a project, is the
-case this exists for:
+case this exists for; a platform command that writes a config into a repository holding no code yet
+is the other:
 
 ```
 lang     = en | ru                    # skips q0
 mode     = manual | auto              # skips qM
 progress = quiet | normal | live      # skips qP
 platform = plugin name                # skips Platform Discovery
-stack    = {axis: value, …}           # forwarded to the platform half in step 5
+stack    = {axis: value, …} | —       # forwarded to the platform half in step 5; — skips step 5
+tasks    = create | skip              # skips step 6's question
+docs_map = create | skip              # skips step 6b's question
 ```
 
 Every field is optional; an absent one means the question is asked as usual, so an empty input is
-the ordinary `/setup` run. `stack` values must be spelled as the platform's `## Axes` catalog spells
+the ordinary `/setup` run. A caller that fills every field is asked nothing about the config — a
+batch run relies on that; the overwrite and migration confirmations of states C, D and E are consent,
+not config, and have no field. `stack` values must be spelled as the platform's `## Axes` catalog spells
 them — the platform half matches them against that catalog and asks for whatever it cannot place, so
 a value in the caller's own vocabulary costs one re-asked question, never a wrong config.
 
@@ -209,22 +214,24 @@ The skill's behavior is determined by the project state, computed from four chec
    ↓ the row is `—`, or absent → leave ## Stack and ## Modules as the template's placeholders and
      report `stack_status_deferred`; the orchestrator's per-axis AUQ fills them later, one task
      at a time. A platform without a setup skill is a supported shape, not an error.
+   ↓ the input's `stack` is `—` → do not invoke it either: same placeholders, reported as
+     `stack_status_deferred_by_caller` — the caller's repository has no stack to ask about yet.
 
 6. Optional Tasks/ structure (orthogonal to state):
    If Tasks/ does not exist:
-     AUQ using key `auq_create_tasks_structure`.
-     ↓ Yes → mkdir -p Tasks/{TODO,ACTIVE,DONE,BACKLOG,RESEARCH,CHECK,UNABLE_FIX}; .gitkeep in
-       each; tasks_status = `tasks_status_created`.
-     ↓ No → skip; tasks_status = `tasks_status_skipped`.
+     AUQ using key `auq_create_tasks_structure`, unless the input's `tasks` already answers it.
+     ↓ Yes, or `tasks = create` → mkdir -p Tasks/{TODO,ACTIVE,DONE,BACKLOG,RESEARCH,CHECK,UNABLE_FIX};
+       .gitkeep in each; tasks_status = `tasks_status_created`.
+     ↓ No, or `tasks = skip` → skip; tasks_status = `tasks_status_skipped`.
    If Tasks/ exists (folder, symlink, or file) → tasks_status = `tasks_status_already_existed`
    (existing layouts, including manual symlinks, are NEVER overwritten).
 
 6b. Optional documentation registry (orthogonal to state):
    If the registry named by ## Docs → map does not exist:
-     AUQ using key `auq_create_docs_map`.
-     ↓ Yes → copy templates/docs-map/DocsMap.md to that path;
+     AUQ using key `auq_create_docs_map`, unless the input's `docs_map` already answers it.
+     ↓ Yes, or `docs_map = create` → copy templates/docs-map/DocsMap.md to that path;
        docs_map_status = `docs_map_status_created`.
-     ↓ No → skip; docs_map_status = `docs_map_status_skipped`.
+     ↓ No, or `docs_map = skip` → skip; docs_map_status = `docs_map_status_skipped`.
    If it exists → docs_map_status = `docs_map_status_already_existed` (never overwritten).
    Declaring what a project's documentation is stays the project's own work: the template ships
    two examples to delete, not a guess at this project's components.

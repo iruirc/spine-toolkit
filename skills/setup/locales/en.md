@@ -84,6 +84,9 @@ To roll back: `mv {backup_path} CLAUDE.md && rm CLAUDE-spine-toolkit.md`
 ## stack_status_deferred
 not set — this platform ships no setup skill; the orchestrator will ask per axis on the first task that needs one
 
+## stack_status_deferred_by_caller
+not set — the caller deferred it; the orchestrator will ask per axis on the first task that needs one
+
 ## tasks_status_created
 created
 
