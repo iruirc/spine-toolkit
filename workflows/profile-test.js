@@ -311,7 +311,7 @@ const runPhases = async (stage, agents, phases, guidance) => {
         `Implement phase ${ph.id} — ${ph.title} — from ${DIR}/Plan.md. Only that phase.
 
 Per item: complete it, then tick its checkbox "- [ ]" → "- [x]" in the phase's detail section of Plan.md.
-When every checkbox in the phase is ticked: build, run the tests for the touched scope, flip the phase's row in the top-level table ⬜ → ✅, git add the phase's files including the Plan.md updates, and commit. Commit autonomously — do not ask.
+When every checkbox in the phase is ticked: build, run the checks its **Verification:** line names, flip the phase's row in the top-level table ⬜ → ✅, git add the phase's files including the Plan.md updates, and commit. Commit autonomously — do not ask. A phase with no such line, or whose diff reaches further than its line says, gets the line written or raised by applying the phase-verification skill before the checks run; a rung is never lowered.
 
 ${guidance}
 
@@ -445,7 +445,7 @@ if (runs('Write')) {
     'Write',
     { code: A.agents.tester, test: A.agents.tester },
     fromStartPhase(plan.phases || []),
-    'Commit type: test for a phase that adds test logic, chore for a test-infrastructure-only phase (fixtures and helpers with no test logic of their own). Run the phase\'s new tests before committing it — a phase whose tests were never run is not green, it is unknown.',
+    'Commit type: test for a phase that adds test logic, chore for a test-infrastructure-only phase (fixtures and helpers with no test logic of their own). A phase whose checks were never run is not green, it is unknown.',
   )
   if (!phasesDone) return finish('ask_user', { status: 'interrupted' })
   record('Write', { artifact_path: plan.artifact_path, summary: phasesDone })

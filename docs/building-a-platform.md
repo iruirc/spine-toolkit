@@ -141,7 +141,10 @@ Three things every role agent needs:
 2. **Know it is being dispatched into a stage** and that its output becomes a named artifact
    (`Research.md`, `Plan.md`, `Validation.md`, `Review.md`, `Done.md`, `Walkthrough.md`).
 3. **Bring the tooling.** Core's brief says "run a full test run"; only your agent knows this
-   ecosystem's test runner, and only your validator can drive a running instance of the app.
+   ecosystem's test runner, and only your validator can drive a running instance of the app. The
+   same split holds per phase: core names a `**Verification:**` rung — `surface` means a build of
+   every dependent — and your agent turns it into the narrowest command that covers it
+   (`skills/phase-verification/SKILL.md`).
 
 Two artifacts have a machine-read first line — a contract shared between your agent, every
 `workflow-*`, and the orchestrator. Get them wrong and the run stalls:
