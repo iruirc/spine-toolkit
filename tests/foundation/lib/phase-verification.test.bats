@@ -155,8 +155,11 @@ bullet() { # $1 = SKILL.md, $2 = stage name
 @test "the Method B implementing stage runs what the line names" {
   for pair in feature:Execute bug:Fix refactor:Refactor test:Write; do
     p="${pair%%:*}"; s="${pair#*:}"
-    bullet "$ROOT/skills/workflow-$p/SKILL.md" "$s" | grep -qF '`**Verification:**` line names' \
+    b="$(bullet "$ROOT/skills/workflow-$p/SKILL.md" "$s")"
+    grep -qF '`**Verification:**` line names' <<<"$b" \
       || { echo "workflow-$p/SKILL.md: $s does not run what the line names"; return 1; }
+    grep -qF 'a rung is never lowered' <<<"$b" \
+      || { echo "workflow-$p/SKILL.md: $s lets a phase lower its rung"; return 1; }
   done
 }
 
