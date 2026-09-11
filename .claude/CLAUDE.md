@@ -21,7 +21,7 @@ en
 ## Repository layout
 
 - `skills/` — `orchestrator`, `stack-detect`, `setup`, `workflow-*`, `task-*`, `feature-*`,
-  `ops-checklist`, `manual-checks`, `agent-status`, `lang`, `docs-route`
+  `ops-checklist`, `manual-checks`, `phase-verification`, `agent-status`, `lang`, `docs-route`
 - `workflows/` — one `profile-*.js` orchestration script per profile
 - `commands/` — `/task-*`, `/setup`, `/agent-status`, `/lang`
 - `conventions/` — `i18n.md`, `stage-dispatch.md`, `platform-contract.md`, `driver-contract.md`,
