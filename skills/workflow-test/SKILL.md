@@ -63,6 +63,8 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   The plan decomposes tests into phases — usually by groups (one phase per testable component / module / use case). Each phase is assigned a priority `P0` (critical, blocks release) / `P1` (important) / `P2` (nice-to-have).
 
+  Every phase's detail section opens with a `**Verification:**` line and one checkbox per check it names; the rung comes from the `phase-verification` skill, which holds the rungs, the questions that pick one, and when the line says `full`. The full regression belongs to Validation — a phase checks what it can break, and a phase repeating the whole suite at `proportional` is a defect of the plan.
+
   The tester MUST also add a `## Manual acceptance` section: one line per check this task's automation will not be able to make, stated as what must be true rather than what to press. Nothing qualifies — the single line `Fully automatable.` It is the input Validation turns into `ManualChecks.md`; the `manual-checks` skill holds both halves.
 
 - **Write** — `[tester]`. Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without a user prompt.

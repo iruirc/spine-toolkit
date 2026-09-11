@@ -437,6 +437,8 @@ Then apply the feature-estimation skill and add a ## Estimation section, with de
 
 Report estimation_gate as blocked, with the reason, when any of these hold: ## Estimation is missing or malformed; a triggered section is absent; ### Estimate maturity is Draft; the maturity is Conditional and ### Estimation conditions is missing or has any pending_user row; or a Known Unknown trips the load-bearing-unknown rule without a required spike or resolution. If the project is AI-assisted, the AI-assisted range is informational — the gate evaluates the human estimate.`}
 
+Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation: a phase checks what it can break, and a phase repeating the whole suite at proportional is a defect of this plan.
+
 Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, each stated as what must be true rather than as what to press, so Validation can turn it into a case a person walks. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}${lite() ? '\n\nIf you raise the scale, the plan you write is a full-depth one: apply the feature-estimation skill, add the ## Estimation section, and report estimation_gate, exactly as a full run would. That skill holds what the section carries and when the gate blocks.' : ''}`,
     ),
     {

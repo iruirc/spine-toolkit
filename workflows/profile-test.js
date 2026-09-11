@@ -424,6 +424,8 @@ if (runs('Plan')) {
 
 Group phases by testable unit — one per component, module, or use case — and give each a priority: P0 critical and release-blocking, P1 important, P2 nice to have.
 
+Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation: a phase checks what it can break, and a phase repeating the whole suite at proportional is a defect of this plan.
+
 Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, each stated as what must be true rather than as what to press, so Validation can turn it into a case a person walks. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}`,
     ),
     { label: 'plan', phase: 'Plan', agentType: A.agents.tester, schema: withEscalation(PLAN) },
