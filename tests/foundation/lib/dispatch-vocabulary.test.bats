@@ -98,3 +98,12 @@ offenders_in() {
   offenders="$(offenders_in "${files[@]}")"
   [ -z "$offenders" ] || { echo "single-ecosystem vocabulary in an agent manifest:"; echo "$offenders"; return 1; }
 }
+
+@test "the phase-verification skill names one ecosystem's tooling nowhere" {
+  # Its rungs reach every platform's planner verbatim; a build tool named here is
+  # one ecosystem's command handed to all of them.
+  f="$ROOT/skills/phase-verification/SKILL.md"
+  [ -f "$f" ] || { echo "no $f — the scan would run over nothing"; return 1; }
+  offenders="$(offenders_in "$f")"
+  [ -z "$offenders" ] || { echo "single-ecosystem vocabulary in phase-verification:"; echo "$offenders"; return 1; }
+}

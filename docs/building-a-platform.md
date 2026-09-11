@@ -298,7 +298,7 @@ Do **not** name that skill `setup`. It would collide with core's own in every na
 trigger — which is exactly why the binding goes through this table instead of a naming convention.
 The same applies to every other core skill name: `orchestrator`, `stack-detect`, `lang`,
 `agent-status`, `task-new`, `task-move`, `task-status`, `task-walkthrough`, `workflow-*`,
-`feature-*`, `ops-checklist`, `manual-checks`.
+`feature-*`, `ops-checklist`, `manual-checks`, `phase-verification`.
 
 The direction runs both ways: wherever your own files reference a core skill by name — an agent
 brief, a reference doc, a manifest row — write it namespaced, `spine-toolkit:<skill>`. A bare
