@@ -130,3 +130,42 @@ bullet() { # $1 = SKILL.md, $2 = stage name
   n="$(grep -l "Open every phase's detail section with a" "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
   [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the Plan clause, expected 4"; return 1; }
 }
+
+@test "every profile script runs what the phase's line names" {
+  n="$(ls "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 7 ] || { echo "scanned $n script(s), expected 7"; return 1; }
+  for f in "$ROOT"/workflows/profile-*.js; do
+    grep -qF 'run the checks its **Verification:** line names' "$f" \
+      || { echo "$(basename "$f"): the prelude still picks its own checks"; return 1; }
+    grep -qF 'a rung is never lowered' "$f" \
+      || { echo "$(basename "$f"): the prelude lets a phase lower its rung"; return 1; }
+  done
+}
+
+@test "the old names for a phase's checks are gone from both dispatch forms" {
+  [ -d "$ROOT/workflows" ] && [ -f "$ROOT/skills/workflow-test/SKILL.md" ] \
+    || { echo "the scan would run over nothing"; return 1; }
+  hits="$(grep -rnF \
+    -e 'touched scope' -e 'targeted tests' -e 'newly added tests for that phase' \
+    -e "Run the phase\\'s new tests" -e 'Where possible, runs local tests' \
+    "$ROOT/workflows" "$ROOT"/skills/workflow-* || true)"
+  [ -z "$hits" ] || { echo "$hits"; return 1; }
+}
+
+@test "the Method B implementing stage runs what the line names" {
+  for pair in feature:Execute bug:Fix refactor:Refactor test:Write; do
+    p="${pair%%:*}"; s="${pair#*:}"
+    bullet "$ROOT/skills/workflow-$p/SKILL.md" "$s" | grep -qF '`**Verification:**` line names' \
+      || { echo "workflow-$p/SKILL.md: $s does not run what the line names"; return 1; }
+  done
+}
+
+@test "TEST still calls a phase whose checks never ran unknown, not green" {
+  grep -qF 'A phase whose checks were never run is not green, it is unknown.' "$ROOT/workflows/profile-test.js" \
+    || { echo "profile-test.js lost the invariant along with the old wording"; return 1; }
+}
+
+@test "the platform how-to leaves the rung's command to the platform" {
+  grep -qF 'your agent turns it into the narrowest command that covers it' "$ROOT/docs/building-a-platform.md" \
+    || { echo "a platform author is never told the rung's command is theirs"; return 1; }
+}
