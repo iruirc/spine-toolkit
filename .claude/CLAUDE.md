@@ -57,12 +57,12 @@ en
   `tests/fixtures/fixture-platform/` in the same commit. The fixture is the contract's only
   executable copy, and a contract that disagrees with it is worse than no contract. Check
   `docs/building-a-platform.md` too — it is the third copy, and the one platform authors read first.
-- Bumping `version` in `.claude-plugin/plugin.json`: raise the driver floor in the same commit.
-  `tests/foundation/lib/driver-contract.test.bats` asserts that all three reference copies —
+- Releasing: never bump `version` in `.claude-plugin/plugin.json` by hand; a release is
+  `spine-ops: scripts/release.sh`. It moves the driver floor's three reference copies —
   `tests/fixtures/fixture-driver/.claude-plugin/plugin.json`, `conventions/driver-contract.md`,
-  `docs/building-a-driver.md` — equal the version just written, so a release commit touching only
-  `plugin.json` leaves the suite red, and a floor raised without the version leaves it red the other
-  way. They move together or one of the two commits is broken.
+  `docs/building-a-driver.md` — in the release commit, because
+  `tests/foundation/lib/driver-contract.test.bats` holds them equal to the version: a commit that
+  moves one without the others leaves the suite red.
 - Changing anything the platforms vendor — `scripts/lint-manifest.sh`, `scripts/lint-i18n.sh`,
   `scripts/lint-locales.sh`, `scripts/lint-core-refs.sh`, `scripts/test-foundation.sh`,
   `conventions/i18n.md`: every platform's `forks.test.bats` pins the sha256 of the file it copied, so
