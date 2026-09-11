@@ -93,3 +93,40 @@ section() { # $1 = file, $2 = heading text without "## "
   grep -qF 'phase_verification' <<<"$gov" \
     || { echo "a lite task could read as licence for a lower rung"; return 1; }
 }
+
+# Same extractors as manual-checks.test.bats: a stage's brief in a profile script,
+# and a stage's own bullet in a Method B skill.
+plan_brief() {
+  awk '/^\/\/ ── Plan ─/{p=1;next} p&&/^\/\/ ── /{exit} p' "$1"
+}
+bullet() { # $1 = SKILL.md, $2 = stage name
+  awk -v s="- **$2**" 'index($0,s)==1{p=1;print;next} p&&/^- \*\*/{exit} p' "$1"
+}
+
+@test "every phased profile's Plan brief asks for the line and points at the skill" {
+  for p in $PROFILES; do
+    b="$(plan_brief "$ROOT/workflows/profile-$p.js")"
+    grep -qF 'with a **Verification:** line' <<<"$b" \
+      || { echo "profile-$p.js: the Plan brief never asks for the line"; return 1; }
+    grep -qF 'phase-verification skill' <<<"$b" \
+      || { echo "profile-$p.js: the Plan brief does not point at the skill"; return 1; }
+    grep -qF 'The full regression belongs to Validation' <<<"$b" \
+      || { echo "profile-$p.js: the Plan brief does not hand the full run to Validation"; return 1; }
+  done
+}
+
+@test "the Plan requirement reached the Method B skill of every phased profile" {
+  for p in $PROFILES; do
+    b="$(bullet "$ROOT/skills/workflow-$p/SKILL.md" Plan)"
+    grep -qF 'opens with a `**Verification:**` line' <<<"$b" \
+      || { echo "workflow-$p/SKILL.md: the Plan stage says nothing about the line"; return 1; }
+    grep -qF '`phase-verification` skill' <<<"$b" \
+      || { echo "workflow-$p/SKILL.md: the Plan stage does not point at the skill"; return 1; }
+  done
+}
+
+@test "exactly the four phased profiles carry the Plan clause" {
+  # Vacuity guard: without it the loops above iterate over a list someone shortened.
+  n="$(grep -l "Open every phase's detail section with a" "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the Plan clause, expected 4"; return 1; }
+}

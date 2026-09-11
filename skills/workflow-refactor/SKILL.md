@@ -65,6 +65,8 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   Each phase MUST be **independently buildable, test-passing, AND physically committed by the Refactor stage** — that is the requirement of incremental refactoring. "Commit-ready" is NOT enough — an interrupt or rollback destroys all uncommitted work. The Refactor stage produces one git commit per green phase (see Refactor below).
 
+  Every phase's detail section opens with a `**Verification:**` line and one checkbox per check it names; the rung comes from the `phase-verification` skill, which holds the rungs, the questions that pick one, and when the line says `full`. The full regression belongs to Validation — a phase checks what it can break, and a phase repeating the whole suite at `proportional` is a defect of the plan.
+
   The architect MUST also add a `## Manual acceptance` section: one line per check this task's automation will not be able to make, stated as what must be true rather than what to press. Nothing qualifies — the single line `Fully automatable.` It is the input Validation turns into `ManualChecks.md`; the `manual-checks` skill holds both halves.
 
 - **Refactor** — `[refactorer]`, or `[tester]` for a phase that only adds or changes tests. Applies the refactor phase by phase from `Plan.md`, updating both progress layers as work proceeds. Where possible, runs local tests after each phase. **MUST create one git commit per green phase** — autonomously, without a user prompt.
