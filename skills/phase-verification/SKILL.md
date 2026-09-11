@@ -48,7 +48,7 @@ The first line of every phase's detail section in `Plan.md`:
 **Verification:** <internal|surface|behaviour|full> — <what this phase changes for its dependents, one clause>
 ```
 
-Under it, one checkbox per check the line names; the platform agent writes the commands. The line is *what*, the checkbox is *how*. The line is written at `full` too, so a phase without one always means the plan predates this rule, never a project's choice.
+Under it, one checkbox per check the line names; the platform agent writes the commands. The line is *what*, the checkbox is *how*. The line is written at `full` too, so a phase without one means the plan predates this rule or was written outside the pipeline — never a project's choice.
 
 ## Who does what
 
