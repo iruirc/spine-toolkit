@@ -172,3 +172,34 @@ bullet() { # $1 = SKILL.md, $2 = stage name
   grep -qF 'your agent turns it into the narrowest command that covers it' "$ROOT/docs/building-a-platform.md" \
     || { echo "a platform author is never told the rung's command is theirs"; return 1; }
 }
+
+# The Review brief's text only, stopping at the agent() options object — same
+# extractor as manual-checks.test.bats.
+review_brief() {
+  awk -v stop="label: .review." '/^\/\/ ── Review ─/{p=1;next} p&&$0~stop{exit} p' "$1"
+}
+
+@test "every phased profile's Review judges the line without blocking on it" {
+  for p in $PROFILES; do
+    b="$(review_brief "$ROOT/workflows/profile-$p.js")"
+    grep -qF "the way the phase-verification skill's ## Review section does" <<<"$b" \
+      || { echo "profile-$p.js: Review never judges the verification line"; return 1; }
+    grep -qF 'none of them blocks' <<<"$b" \
+      || { echo "profile-$p.js: Review may block on a plan finding"; return 1; }
+  done
+}
+
+@test "the Review clause reached the Method B skill of every phased profile" {
+  for p in $PROFILES; do
+    b="$(bullet "$ROOT/skills/workflow-$p/SKILL.md" Review)"
+    grep -qF 'judged by the `phase-verification` skill' <<<"$b" \
+      || { echo "workflow-$p/SKILL.md: the Review stage does not judge the line"; return 1; }
+    grep -qF 'none of them blocking' <<<"$b" \
+      || { echo "workflow-$p/SKILL.md: the Review stage may block on a plan finding"; return 1; }
+  done
+}
+
+@test "exactly the four phased profiles carry the Review clause" {
+  n="$(grep -l "the way the phase-verification skill's ## Review section does" "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the Review clause, expected 4"; return 1; }
+}
