@@ -117,3 +117,7 @@ Documentation `strictness` is not a size question either. `lite` writes shorter 
 does not lower what a component demands, and `scripts/docs-route.sh` never reads this block.
 A run that documents less because it was cheaper is a run that is looser, which is the one thing
 this axis promises not to be.
+
+Per-phase verification is not a size question either. `phase_verification` weighs what a full
+regression costs against what a wrong rung costs, and a `lite` task that changes what other modules
+observe needs the same rung a `full` one does (`skills/phase-verification/SKILL.md`).

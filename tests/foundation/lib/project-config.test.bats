@@ -146,3 +146,23 @@ catalog_words() {
     grep -q '\[DRIVE_APP\]' "$f" || { echo "no [DRIVE_APP] in $t.md — the anchor moved"; return 1; }
   done
 }
+
+@test "the config template declares the phase_verification key" {
+  awk '/^## Validation$/{v=1} /^## Reporting$/{v=0} v' "$TPL" | grep -q '^phase_verification: ' \
+    || { echo "'phase_verification:' is missing from the ## Validation block"; return 1; }
+}
+
+@test "the config template ships proportional and says off does not exist" {
+  block="$(awk '/^## Validation$/{v=1} /^## Reporting$/{v=0} v' "$TPL")"
+  grep -qx 'phase_verification: proportional' <<<"$block" \
+    || { echo "'phase_verification:' must ship proportional"; return 1; }
+  grep -qF 'There is no `off`' <<<"$block" \
+    || { echo "the template leaves a project guessing whether off exists"; return 1; }
+}
+
+@test "both task templates offer the PHASE_VERIFICATION override" {
+  for t in task-root task-step; do
+    grep -qF '# [PHASE_VERIFICATION] = [full] # proportional | full' "$ROOT/templates/task-md/$t.md" \
+      || { echo "no [PHASE_VERIFICATION] in $t.md"; return 1; }
+  done
+}

@@ -11,6 +11,7 @@
 # [DRIVE_APP] = [off]         # auto | off
 # [DRIVER] = [auto]           # <driver-plugin> | auto | —
 # [MANUAL_CHECKS] = [always]  # auto | always
+# [PHASE_VERIFICATION] = [full] # proportional | full
 # [WALKTHROUGH] = [off]       # brief | deep | off
 # [SCALE] = [full]            # lite | full
 
