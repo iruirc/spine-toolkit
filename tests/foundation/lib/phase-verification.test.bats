@@ -203,3 +203,15 @@ review_brief() {
   n="$(grep -l "the way the phase-verification skill's ## Review section does" "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
   [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the Review clause, expected 4"; return 1; }
 }
+
+@test "a phase runs its verification checks once, not again after ticking them" {
+  for f in "$ROOT"/workflows/profile-*.js; do
+    grep -qF 'every checkbox in the phase except its verification checks is ticked' "$f" \
+      || { echo "$(basename "$f"): ticked checks would run a second time"; return 1; }
+  done
+  for pair in feature:Execute bug:Fix refactor:Refactor test:Write; do
+    p="${pair%%:*}"; s="${pair#*:}"
+    bullet "$ROOT/skills/workflow-$p/SKILL.md" "$s" | grep -qF 'checkboxes except its verification checks are' \
+      || { echo "workflow-$p/SKILL.md: $s would run ticked checks a second time"; return 1; }
+  done
+}
