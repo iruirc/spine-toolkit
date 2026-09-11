@@ -311,7 +311,7 @@ const runPhases = async (stage, agents, phases, guidance) => {
         `Implement phase ${ph.id} — ${ph.title} — from ${DIR}/Plan.md. Only that phase.
 
 Per item: complete it, then tick its checkbox "- [ ]" → "- [x]" in the phase's detail section of Plan.md.
-When every checkbox in the phase is ticked: build, run the tests for the touched scope, flip the phase's row in the top-level table ⬜ → ✅, git add the phase's files including the Plan.md updates, and commit. Commit autonomously — do not ask.
+When every checkbox in the phase is ticked: build, run the checks its **Verification:** line names, flip the phase's row in the top-level table ⬜ → ✅, git add the phase's files including the Plan.md updates, and commit. Commit autonomously — do not ask. A phase with no such line, or whose diff reaches further than its line says, gets the line written or raised by applying the phase-verification skill before the checks run; a rung is never lowered.
 
 ${guidance}
 
@@ -419,7 +419,7 @@ if (runs('Refactor')) {
     'Refactor',
     { code: A.agents.refactorer, test: A.agents.tester },
     fromStartPhase(plan.phases || []),
-    'Commit type: refactor for a structural phase, test for a test-only phase, chore for build or config only. Run the targeted tests after each phase. External behaviour does not change — if a pre-existing test needs editing to pass, that is a signal you changed behaviour, so stop and say so rather than editing the test.',
+    'Commit type: refactor for a structural phase, test for a test-only phase, chore for build or config only. External behaviour does not change — if a pre-existing test needs editing to pass, that is a signal you changed behaviour, so stop and say so rather than editing the test.',
   )
   if (!phasesDone) return finish('ask_user', { status: 'interrupted' })
   record('Refactor', { artifact_path: plan.artifact_path, summary: phasesDone })
