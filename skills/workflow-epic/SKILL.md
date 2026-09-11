@@ -117,7 +117,7 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
   - Objections (aggregated from each step's `Done.md` if the user insisted on a contested decision in any of them).
   - For branch B (pure_research) — Done.md is short, points at `Research.md` as the final artifact; the steps section is empty; no estimate retrospective is required.
 
-  On branch A, and only for a walk with no failed, cancelled or pending steps, also apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else `deep`. At `deep` the step stands in for the commit — a glossary, the order of the steps, and a section per step. An epic has no commits of its own: the file sits a layer above the steps, linking to each step's own walkthrough rather than restating it. Branch B gets none — there is no implementation to walk through.
+  On branch A, and only for a walk with no failed, cancelled or pending steps, also apply `spine-toolkit:task-walkthrough` and write `Walkthrough.md` — governed by `[WALKTHROUGH]` in `Task.md`, else `## Reporting` → `walkthrough` in `CLAUDE-spine-toolkit.md`, else `deep`. The value is the depth the contract carries — `brief` or `deep` — and `task-walkthrough` `## The switch` says what each one changes. At `deep` the step stands in for the commit — a glossary, the order of the steps, and a section per step. An epic has no commits of its own: the file sits a layer above the steps, linking to each step's own walkthrough rather than restating it. Branch B gets none — there is no implementation to walk through.
 
 ## 2a. Scale
 

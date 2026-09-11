@@ -163,3 +163,21 @@ setup() {
       || { echo "$lang.md has no warn_walkthrough_unrecognised string substituting {value}"; return 1; }
   done
 }
+
+@test "the pre-depth substitution is announced from the one place that sees it" {
+  # The writing agent is handed a depth, never the raw value; the orchestrator is
+  # the only component that can say a substitution happened at all.
+  para="$(awk '/^`walkthrough` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  grep -qF 'warn_walkthrough_pre_depth' <<<"$para" \
+    || { echo "nothing announces the pre-depth substitution, so it happens silently"; return 1; }
+  for lang in en ru; do
+    L="$ROOT/skills/orchestrator/locales/$lang.md"
+    body="$(awk '/^## warn_walkthrough_pre_depth$/{p=1;next} /^## /{p=0} p' "$L")"
+    [ -n "${body//[[:space:]]/}" ] \
+      || { echo "$lang.md carries no warn_walkthrough_pre_depth string"; return 1; }
+    for token in '`on`' '`deep`' '`brief`'; do
+      grep -qF "$token" <<<"$body" \
+        || { echo "$lang.md: the announcement does not name $token"; return 1; }
+    done
+  done
+}
