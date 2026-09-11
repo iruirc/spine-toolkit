@@ -215,3 +215,11 @@ review_brief() {
       || { echo "workflow-$p/SKILL.md: $s would run ticked checks a second time"; return 1; }
   done
 }
+
+@test "the Method B loops cover every phased profile" {
+  # The script-side count guards cannot see PROFILES; shortening it would drop
+  # Method B coverage for the removed profiles without a single red test.
+  for p in feature bug refactor test; do
+    [[ " $PROFILES " == *" $p "* ]] || { echo "PROFILES lost $p"; return 1; }
+  done
+}
