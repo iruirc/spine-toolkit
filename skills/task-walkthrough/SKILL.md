@@ -1,6 +1,6 @@
 ---
 name: task-walkthrough
-description: "Use at the end of an implementing stage (Execute / Fix / Refactor / Write), and again at Done, to write or refresh `Walkthrough.md` — the human-facing account of what a task actually landed, at one of two depths: `brief`, a summary with a commit log, or `deep`, a section per commit with the failure each one is written against. Governed by `[WALKTHROUGH]` in Task.md and `## Reporting` in CLAUDE-spine-toolkit.md."
+description: "Use at the end of an implementing stage (Execute / Fix / Refactor / Write), and again at Done, to write or refresh `Walkthrough.md` — the human-facing account of what a task actually landed, at the depth the axis resolves to: `deep`, a section per commit with the failure each one is written against; `brief`, a summary with a commit log; or `off`, not written at all. Governed by `[WALKTHROUGH]` in Task.md and `## Reporting` in CLAUDE-spine-toolkit.md."
 ---
 
 # Task Walkthrough
@@ -27,7 +27,7 @@ Commit messages do not make this artifact redundant. `conventions/commit-message
 
 **An engineer who did not write this code and was not on this task.** Not a reviewer, who has the diff; not the author, who has the context. Someone who arrives months later with a question about this area and finds this file.
 
-Every rule below is derived from that one sentence, and it settles the arguments the budgets cannot. A term this reader does not know gets defined. An alternative this reader would ask about gets named. A sentence this reader cannot parse without opening the repository gets a second, plainer sentence after it. Writing for the author's own future self is the failure mode: it produces a file that is accurate, short, and useless to everyone else.
+Every rule below is derived from that one sentence, and it settles the arguments the budgets cannot. A term this reader does not know gets defined. An alternative this reader would ask about gets named. A sentence this reader cannot parse without opening the repository gets a second, plainer sentence after it — at `deep`; see `## Style`. Writing for the author's own future self is the failure mode: it produces a file that is accurate, short, and useless to everyone else.
 
 `brief` addresses the same reader with the area already known — the depth choice is an assumption about the reader's starting knowledge, not a second reader.
 
@@ -41,7 +41,7 @@ Every rule below is derived from that one sentence, and it settles the arguments
 | `brief` | Summary, divergences and a commit log of one bullet each. The account for that reader when the area is already familiar. |
 | `off` | Not written. |
 
-`on` is deprecated and resolves to `deep` — it said *whether*, never *how deep*, and the depth this artifact needs to be worth reading is the deep one; a project that wanted the old shape says `brief`. Note the substitution in the header prose of the file this run writes; the next run starts with no memory of this one, so that file is the only place the notice survives.
+`on` is the pre-depth value and resolves to `deep` — it said *whether*, never *how deep*, and the depth this artifact needs to be worth reading is the deep one; a project that wanted the old shape says `brief`. The substitution is announced by the orchestrator, which is the only component that sees the raw value.
 
 The value applies to the whole file. There is no per-section override: a document half-explained is worse than either consistent depth, because the reader cannot tell which half to trust.
 
@@ -64,7 +64,7 @@ Short shas of the task's own commits. This is what makes a refresh decidable wit
 
 ## Structure
 
-The file opens with a header block rather than a title line: the perimeter of the work — which repositories and files it touched, ±lines, the range of commits — and then a pointer to the sibling artifacts (`Done.md`, `Validation.md`, `Review.md`) instead of a restatement of them. Its size is the `header` row of the table below. The build verdict has one home and this is not it.
+The file opens with a header block rather than a title line: the perimeter of the work — which repositories and files it touched, ±lines, the range of commits — and then a pointer to the sibling artifacts (`Done.md`, `Validation.md`, `Review.md`) instead of a restatement of them. Its size is the `header` row of the table below, and the `[COVERS]` anchor is its second line — inside the block, not after it. The build verdict has one home and this is not it.
 
 | Section | Content | `brief` | `deep` |
 |---|---|---|---|
@@ -222,7 +222,7 @@ In these three, `[WALKTHROUGH]` set by hand is reported once and not executed, n
 
 An epic makes no commits of its own; its steps do, each writing its own `Walkthrough.md`. It is written at `Done` rather than at the end of Execute: the epic has no Validation or Review to precede, and a walk that stopped on a failed, cancelled or pending step has no delivery to describe yet. The epic-level file sits a layer above: how the steps compose into one delivery, in what order and why, what changed in the intent along the way — linking to the steps' walkthroughs rather than restating them.
 
-The depth switch reads the same, with the step standing in for the commit: at `deep`, `## Commit order` becomes the order of the steps and their dependencies, and `## Commits` becomes a section per step — what that step made possible for the next one, and which of the epic's intentions moved while it ran. The glossary belongs here more than anywhere: an epic is where a reader meets the domain vocabulary first.
+The depth switch reads the same, with the step standing in for the commit: at `deep`, `## Commit order` becomes the order of the steps and their dependencies, and `## Commits` becomes a section per step — what that step made possible for the next one, and which of the epic's intentions moved while it ran. Both headings keep their names: what the section holds changes, not what it is called. The glossary belongs here more than anywhere: an epic is where a reader meets the domain vocabulary first.
 
 ## Language
 
@@ -238,7 +238,7 @@ Prose in the project's language, structure in English — headings, the `[COVERS
 - **Feeding it to the Review stage.** The `reviewer` agent exists to read the diff independently; the author's narrative anchors it. `OpsChecklist.md` is fine as its input — that is evidence, not story. The reader of this file is a person.
 - **Copying the validation verdict in.** It lives in `Validation.md` and `Done.md`. Link, do not duplicate.
 - **A diagram per commit.** Two diagrams is the ceiling in `## How it works`, plus the one in `## Commit order`, and most tasks want fewer.
-- **Rewriting `## Commits` on refresh.** That erases the rework, which is the part worth having.
+- **Rewriting `## Commits` on refresh.** That erases the rework, which is the part worth having. The one exception is a refresh at a depth the file was not written at — see `## Refreshing`.
 
 ## What this skill does NOT do
 

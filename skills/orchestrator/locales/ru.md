@@ -184,6 +184,9 @@ security; OWASP; vulnerability; certificate pinning; безопасность
 ## budget_over_limit
 `{artifact}` — {actual} строк при потолке `lite` в {cap}. Сокращаю до потолка: логи и дампы идут ссылкой, а не вставленным текстом.
 
+## warn_walkthrough_pre_depth
+`on` — значение, оставшееся от времён до оси глубины, поэтому этот прогон пишет `Walkthrough.md` на глубине `deep`: словарь терминов, порядок коммитов и раздел на каждый коммит, тогда как `on` давал сводку и журнал по буллету на коммит. Чтобы сохранить прежнюю форму, напишите `brief` — в `[WALKTHROUGH]` в `Task.md` или в `walkthrough` в разделе `## Reporting` файла `CLAUDE-spine-toolkit.md`.
+
 ## warn_walkthrough_unrecognised
 `{value}` — не одна из трёх глубин walkthrough, поэтому этот прогон пишет `deep`. Глубины такие: `brief`, `deep` и `off` — исправьте значение в `[WALKTHROUGH]` в `Task.md` или в `walkthrough` в разделе `## Reporting` файла `CLAUDE-spine-toolkit.md`.
 

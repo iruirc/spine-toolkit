@@ -184,6 +184,9 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 ## budget_over_limit
 `{artifact}` runs to {actual} lines against a `lite` ceiling of {cap}. Trimming it to the ceiling — logs and dumps by reference rather than pasted inline.
 
+## warn_walkthrough_pre_depth
+`on` is the pre-depth value, so this run writes `Walkthrough.md` at `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. To keep the older shape, write `brief` — in `[WALKTHROUGH]` in `Task.md`, or under `walkthrough` in `## Reporting` in `CLAUDE-spine-toolkit.md`.
+
 ## warn_walkthrough_unrecognised
 `{value}` is not one of the three walkthrough depths, so this run writes the `deep` one. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]` in `Task.md`, or under `walkthrough` in `## Reporting` in `CLAUDE-spine-toolkit.md`.
 

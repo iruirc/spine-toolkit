@@ -39,6 +39,16 @@ offenders_in() {
   [ -z "$offenders" ] || { echo "single-ecosystem vocabulary in a workflow skill:"; echo "$offenders"; return 1; }
 }
 
+@test "no task skill names one ecosystem's tooling either" {
+  # The globs above stop at workflow-*, so nothing read these while a file name
+  # carrying one ecosystem's extension sat in task-walkthrough, green, for two
+  # commits.
+  files=("$ROOT"/skills/task-*/SKILL.md "$ROOT"/skills/task-*/locales/*.md)
+  [ "${#files[@]}" -ge 10 ] || { echo "scanned ${#files[@]} file(s); a glob went vacuous"; return 1; }
+  offenders="$(offenders_in "${files[@]}")"
+  [ -z "$offenders" ] || { echo "single-ecosystem vocabulary in a task skill:"; echo "$offenders"; return 1; }
+}
+
 @test "no profile script names one ecosystem's tooling" {
   files=("$ROOT"/workflows/profile-*.js)
   [ "${#files[@]}" -eq 7 ] || { echo "scanned ${#files[@]} script(s), expected 7"; return 1; }

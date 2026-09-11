@@ -20,10 +20,14 @@ setup() {
   sw="$(awk '/^## The switch$/{f=1;next} /^## /{f=0} f' "$SKILL")"
   grep -qF 'walkthrough:` in `CLAUDE-spine-toolkit.md` → `deep`' <<<"$sw" \
     || { echo "the chain does not end at deep"; return 1; }
-  grep -qF '`on` is deprecated and resolves to `deep`' <<<"$sw" \
-    || { echo "the pre-depth value is not resolved"; return 1; }
+  grep -qF '`on` is the pre-depth value and resolves to `deep`' <<<"$sw" \
+    || { echo "the pre-depth value is not resolved, or is named in a second vocabulary"; return 1; }
   grep -qF 'a project that wanted the old shape says `brief`' <<<"$sw" \
     || { echo "the notice does not tell an owner how to get the old shape back"; return 1; }
+  # The writing agent is handed a depth, never the raw value, so it cannot know a
+  # substitution happened; the skill must not ask it to say one did.
+  grep -qF 'announced by the orchestrator, which is the only component that sees the raw value' <<<"$sw" \
+    || { echo "the skill does not say who announces the substitution"; return 1; }
 }
 
 @test "the skill names its reader before it names any budget" {
@@ -45,6 +49,31 @@ setup() {
     || { echo "the budget note does not say what it bounds"; return 1; }
   grep -qF '**Telegraphic compression.**' "$SKILL" \
     || { echo "the anti-pattern that produced the problem is not listed"; return 1; }
+}
+
+@test "the depth table still carries both columns and the sections brief drops" {
+  # This table is the axis. Without it the two depths are the same document.
+  grep -qF '| Section | Content | `brief` | `deep` |' "$SKILL" \
+    || { echo "the ## Structure table lost its header row, or one of its depth columns"; return 1; }
+  grep -qE '^\| header \|.*\| ≤ 6 lines \| ≤ 10 lines \|$' "$SKILL" \
+    || { echo "the header row no longer budgets both depths"; return 1; }
+  for s in '`## Glossary`' '`## Commit order`' '`## Out of scope`'; do
+    # `|| true`: a bare failing grep inside $() aborts the test before the echo.
+    row="$(grep -F "| $s |" "$SKILL" || true)"
+    grep -qF '| absent |' <<<"$row" \
+      || { echo "the table no longer marks $s absent at brief"; return 1; }
+  done
+}
+
+@test "the three moves at a ceiling are ranked, and ranked in that order" {
+  grep -qF 'the three moves are ranked, and the order is what decides' "$SKILL" \
+    || { echo "the moves are listed but nothing says the order decides"; return 1; }
+  grep -qF '1. **Never compress.**' "$SKILL" \
+    || { echo "the highest-ranked move is gone: compression is what this branch exists to stop"; return 1; }
+  grep -qF '2. **Go over rather than drop.**' "$SKILL" \
+    || { echo "nothing says the ceiling yields before a claim does"; return 1; }
+  grep -qF '3. **Consistently far over means the scope is wrong.**' "$SKILL" \
+    || { echo "nothing says a section far over should shed claims, not sentences"; return 1; }
 }
 
 @test "the deep form carries the two sections it exists for" {
@@ -95,6 +124,16 @@ setup() {
 #### Why <X> and not <Y>
 #### What is deliberately absent
 NAMES
+}
+
+@test "the section that holds those headings in English is still there" {
+  # Deleted once on this branch with the whole suite green. Later tasks cite the
+  # headings verbatim, and a translated one breaks the citation.
+  grep -q '^## Language$' "$SKILL" \
+    || { echo "## Language is gone; nothing keeps the structure untranslated"; return 1; }
+  lang="$(awk '/^## Language$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  grep -qF "Prose in the project's language, structure in English" <<<"$lang" \
+    || { echo "## Language no longer states the split it exists for"; return 1; }
 }
 
 @test "the config template ships the deep default and explains all three values" {
@@ -156,8 +195,8 @@ NAMES
   done
 }
 
-@test "every implementing stage tells its agent the value is a depth" {
-  for p in feature bug refactor test; do
+@test "every profile that writes the file tells its agent the value is a depth" {
+  for p in feature bug refactor test epic; do
     S="$ROOT/skills/workflow-$p/SKILL.md"
     grep -qF 'the depth the contract carries' "$S" \
       || { echo "workflow-$p: the stage does not say the value is a depth"; return 1; }
