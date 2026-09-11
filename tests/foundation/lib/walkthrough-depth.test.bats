@@ -203,6 +203,17 @@ NAMES
   done
 }
 
+@test "all five stage chains spell the lite step in the canonical position" {
+  # Three different chains for one field used to live here: epic named no `scale`
+  # step at all, the four siblings named it last. The spec's order puts the lite
+  # gate second, before the project config, and precedence is what the order means.
+  for p in feature bug refactor test epic; do
+    S="$ROOT/skills/workflow-$p/SKILL.md"
+    grep -qF 'in `Task.md`, else `off` when this run'"'"'s `scale` is `lite` (§2a), else `## Reporting`' "$S" \
+      || { echo "first miss — workflow-$p: the chain omits the lite step or orders it wrong"; return 1; }
+  done
+}
+
 @test "the epic's own chain ends at the new default" {
   S="$ROOT/skills/workflow-epic/SKILL.md"
   grep -qF 'in `CLAUDE-spine-toolkit.md`, else `deep`' "$S" \
