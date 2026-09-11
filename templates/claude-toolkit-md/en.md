@@ -77,6 +77,7 @@ unaffected by it.)
 drive_app: auto
 manual_checks: auto
 driver: auto
+phase_verification: proportional
 
 (`drive_app` — whether the Validation stage may drive the running app through this platform's own tooling: `auto` — the profile
 decides (FEATURE: when the feature has a UI layer; BUG: always, to replay the reproduction;
@@ -95,8 +96,13 @@ that one instead of the recommendation; `—` — none at all. `—` is a delibe
 the checks that needed driving are handed to a human exactly as `drive_app: off` hands them over, and
 the verdict is not lowered. What a driver can and cannot do is its own declaration, and what it
 cannot do becomes a manual check automatically.
+`phase_verification` — how much each phase checks before it commits: `proportional` — only what
+the phase can break, at the rung its `**Verification:**` line in `Plan.md` names, with the full
+regression left to Validation; `full` — the full regression in every phase, for a project whose
+whole suite is cheap enough that repeating it costs nothing. There is no `off`. The rungs and how
+a planner picks one are fixed by the `phase-verification` skill, not by this key.
 
-A single task overrides all three with `[DRIVE_APP] = [auto|off]`, `[MANUAL_CHECKS] = [auto|always]`, and `[DRIVER] = [<driver-plugin>|auto|—]` in its `Task.md`.)
+A single task overrides all four with `[DRIVE_APP] = [auto|off]`, `[MANUAL_CHECKS] = [auto|always]`, `[DRIVER] = [<driver-plugin>|auto|—]`, and `[PHASE_VERIFICATION] = [proportional|full]` in its `Task.md`.)
 
 ## Reporting
 
