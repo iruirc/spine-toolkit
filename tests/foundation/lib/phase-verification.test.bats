@@ -79,3 +79,17 @@ section() { # $1 = file, $2 = heading text without "## "
   [ "$n" -le 90 ] || { echo "SKILL.md is $n lines, budget 90"; return 1; }
   [ ! -d "$ROOT/skills/phase-verification/locales" ] || { echo "phase-verification must not carry locales/"; return 1; }
 }
+
+@test "task-new says when a task should run the full regression in every phase" {
+  N="$ROOT/skills/task-new/SKILL.md"
+  grep -qF '`[PHASE_VERIFICATION] = [<proportional|full>]`' "$N" \
+    || { echo "task-new does not offer the override"; return 1; }
+  grep -qF 'a wrong rung would cost more than the builds' "$N" \
+    || { echo "task-new does not say when full is the right call"; return 1; }
+}
+
+@test "the scale convention says the axis does not move the rung" {
+  gov="$(section "$ROOT/conventions/task-scale.md" 'What the axis does not govern')"
+  grep -qF 'phase_verification' <<<"$gov" \
+    || { echo "a lite task could read as licence for a lower rung"; return 1; }
+}
