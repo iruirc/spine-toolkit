@@ -371,7 +371,7 @@ const STEP = {
     step_id: { type: 'string', description: 'the subfolder name, including the .step suffix' },
     task_id: { type: 'string' },
     task_type: { type: 'string', enum: ['FEATURE', 'BUG', 'REFACTOR', 'TEST', 'RESEARCH', 'REVIEW', 'EPIC'] },
-    status: { type: 'string', enum: ['TODO', 'ACTIVE', 'DONE', 'DEFERRED', 'BLOCKED', 'SKIPPED'] },
+    status: { type: 'string', enum: ['PENDING', 'IN_PROGRESS', 'DONE', 'DEFERRED', 'BLOCKED', 'SKIPPED'] },
     title: { type: 'string' },
     stack: { type: 'string', description: 'only when the step declares its own ## 4. [Stack]' },
     mode: { type: 'string', enum: ['manual', 'auto'], description: 'only when the step declares its own [WORKFLOW_MODE]' },
@@ -458,7 +458,7 @@ if (runs('Plan')) {
 If the verdict is DECOMPOSITION:
 Write ${DIR}/Plan.md with a progress table of the steps, in execution order, with the columns: Done? | step_id | TASK_TYPE | [STATUS] | short description | artifact. The Done? column renders as a markdown checkbox, "- [ ]" for every step that is not yet DONE.
 Seed the steps from Research.md ### Work items, grouped along layer or feature boundaries — typically one step per major layer (Domain / Repository / Networking / UI) or per self-contained sub-feature.
-Then create the step folders physically by invoking spine-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE], [STATUS] = TODO, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
+Then create the step folders physically by invoking spine-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE], [STATUS] = PENDING, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
 Apply feature-estimation at epic level and write ## Estimation into Plan.md: the aggregate is the SUM of the per-step ranges, reported as a named best/worst epic range, and it carries both the human and the AI-assisted range when the project is AI-assisted. Per-step ranges are written later by each step's own Plan stage; this roll-up is informational, it does NOT gate Execute, but it has to be present before the first step runs.
 Return every step you created in the steps array, in execution order.
 
@@ -510,7 +510,7 @@ if (runs('Execute')) {
     const read = await agent(
       brief(
         'Execute',
-        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE] and [STATUS] from its own Task.md, plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own and its [SCALE] where it declares one. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
+        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE] and [STATUS] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own and its [SCALE] where it declares one. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
       { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, effort: 'low' },
     )
