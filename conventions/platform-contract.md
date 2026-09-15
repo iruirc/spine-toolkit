@@ -93,8 +93,9 @@ subagent dispatch verbatim, and the agent it names must exist as `<plugin>/agent
 That file's frontmatter carries no `effort`, and no `model` other than `sonnet` or `haiku` — those
 two only where the agent's work is mechanical, such as reading build logs. Which model and effort a
 stage runs on belongs to the session and to the project's `## Models` and `## Effort`
-(`conventions/stage-dispatch.md` → Model and effort); a heavier model pinned here outranks both,
-whatever the user chose. `lint-manifest.sh` rejects either.
+(`conventions/stage-dispatch.md` → Model and effort); a heavier model pinned here decides for every
+project that leaves the role at `platform`, whatever model its session runs. `lint-manifest.sh`
+rejects either.
 
 Core's stage briefs say what a role must accomplish and never how: "a build and a full test run are
 mandatory", never the name of a build tool. Only the agent behind the role knows how this ecosystem's
