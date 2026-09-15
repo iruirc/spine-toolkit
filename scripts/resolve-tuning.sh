@@ -32,17 +32,18 @@ AXES = (
 
 
 def task_entries(path, name):
-    """The entries of [NAME] = [...], anchored at column 0: every template ships the same line
-    commented out as documentation, and that one is not a value."""
+    """The entries of every [NAME] = [...] line, anchored at column 0 (a template's commented-out
+    line does not match), concatenated in file order."""
+    out = []
     try:
         with open(path, encoding='utf-8') as fh:
             for line in fh:
                 m = re.match(r'^\[%s\]\s*=\s*\[([^\]]*)\]' % name, line)
                 if m:
-                    return [e.strip() for e in m.group(1).split(',') if e.strip()]
+                    out.extend(e.strip() for e in m.group(1).split(',') if e.strip())
     except OSError:
         pass
-    return []
+    return out
 
 
 def config(start):
@@ -83,7 +84,7 @@ def sources(field, block_name):
     """(label, entries), nearest first."""
     task_md = os.path.join(TASK_DIR, 'Task.md')
     found = [('%s [%s]' % (task_md, field), task_entries(task_md, field))]
-    if os.path.basename(os.path.normpath(TASK_DIR)).endswith('.step'):
+    if os.path.basename(os.path.normpath(os.path.abspath(TASK_DIR))).endswith('.step'):
         epic_md = os.path.join(os.path.dirname(os.path.abspath(TASK_DIR)), 'Task.md')
         if os.path.isfile(epic_md):
             found.append(('%s [%s]' % (epic_md, field), task_entries(epic_md, field)))
@@ -95,12 +96,17 @@ def sources(field, block_name):
 for name, field, block_name, keys, values, defaults in AXES:
     resolved, decided = dict(defaults), set()
     for label, entries in sources(field, block_name):
+        # Last valid entry for a key wins within this source; an invalid one is reported
+        # and skipped, never overriding a valid one already seen in the same source.
+        source_values = {}
         for entry in entries:
             m = re.fullmatch(r'([A-Za-z]+)\s*:\s*([A-Za-z]+)', entry)
             key, value = (m.group(1).lower(), m.group(2).lower()) if m else (None, None)
             if key not in keys or value not in values:
                 print("%s: '%s' not recognized, skipped" % (label, entry), file=sys.stderr)
                 continue
+            source_values[key] = value
+        for key, value in source_values.items():
             if key not in decided:
                 resolved[key] = value
                 decided.add(key)

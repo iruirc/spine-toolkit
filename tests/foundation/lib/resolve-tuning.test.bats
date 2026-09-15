@@ -105,3 +105,36 @@ DEFAULT_EFFORT='effort={architect: session, developer: session, tester: session,
   run "$RESOLVE" "$BATS_TEST_TMPDIR/missing"
   [ "$status" -eq 2 ]
 }
+
+@test "the config's last entry for a repeated key wins, not the first" {
+  cp "$ROOT/templates/claude-toolkit-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
+  awk '{print} /^architect: platform$/ && !done {print "architect: opus"; done=1}' \
+    "$PROJ/CLAUDE-spine-toolkit.md" >"$PROJ/CLAUDE-spine-toolkit.md.new"
+  mv "$PROJ/CLAUDE-spine-toolkit.md.new" "$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { echo "unexpected stderr:"; cat "$ERR"; return 1; }
+  grep -qF 'architect: opus' <<<"$out" || { echo "$out"; return 1; }
+}
+
+@test "a Task.md MODELS line's last entry for a repeated key wins" {
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [developer: opus, developer: sonnet]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" "$TASK")"
+  grep -qF 'developer: sonnet' <<<"$out" || { echo "$out"; return 1; }
+  ! grep -qF 'developer: opus' <<<"$out" || { echo "kept the first entry: $out"; return 1; }
+}
+
+@test "two EFFORT lines in one Task.md fold in file order, last wins per key" {
+  printf '[TASK_TYPE] = [BUG]\n[EFFORT] = [reviewer: low, developer: medium]\n[EFFORT] = [reviewer: high]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" "$TASK")"
+  grep -qF 'reviewer: high' <<<"$out" || { echo "$out"; return 1; }
+  grep -qF 'developer: medium' <<<"$out" || { echo "the first line's other key was lost: $out"; return 1; }
+}
+
+@test "resolve-tuning.sh . inside a step folder still reaches the epic's Task.md" {
+  printf '[TASK_TYPE] = [EPIC]\n[MODELS] = [architect: opus]\n' >"$TASK/Task.md"
+  STEP="$TASK/1.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  out="$(cd "$STEP" && "$RESOLVE" .)"
+  grep -qF 'architect: opus' <<<"$out" || { echo "the epic's key did not reach the step via '.': $out"; return 1; }
+}
