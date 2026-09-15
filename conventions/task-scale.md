@@ -107,6 +107,13 @@ are budgeted **per unit** — per commit, per case, per divergence — in the sk
 so it is read like the rest of the artifact, by the stage that reviews it. Adding one of these to
 the lint's table would not make it measured; it would make the number arbitrary.
 
+A project may move a ceiling in its config's `## Budgets` block. The number still reaches an agent
+only through the script: the orchestrator asks `lint-artifact-budget.sh --budgets` and ships the
+answer as the contract's `budgets` field, so there is one reader of that block, not two. A budget
+moves a number, never which scale an artifact is measured at. A step's `Task.md` is the one artifact
+measured at every scale, with `--task-docs`: its ceiling and its three anchors hold the what-and-why
+layer of `skills/task-documents/SKILL.md`, and that layer does not depend on the task's size.
+
 ## What the axis does not govern
 
 Role `security` is a subject-matter question, not a size one: it is not invoked on a `lite` task

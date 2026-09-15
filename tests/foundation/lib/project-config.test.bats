@@ -29,7 +29,7 @@ core_grep() {
 }
 
 @test "the config template declares every block the toolkit reads" {
-  for block in Language Platform Agents Stack Mode Progress Modules EstimationDeltas Scale Docs; do
+  for block in Language Platform Agents Stack Mode Progress Modules EstimationDeltas Scale Budgets Docs; do
     grep -q "^## $block\$" "$TPL" || { echo "missing block: ## $block"; return 1; }
   done
 }
@@ -165,4 +165,11 @@ catalog_words() {
     grep -qF '# [PHASE_VERIFICATION] = [full] # proportional | full' "$ROOT/templates/task-md/$t.md" \
       || { echo "no [PHASE_VERIFICATION] in $t.md"; return 1; }
   done
+}
+
+@test "the Budgets block ships guidance and no ceiling" {
+  block="$(awk '/^## Budgets$/{f=1;next} f&&/^## /{exit} f' "$TPL")"
+  [ -n "$block" ] || { echo "no ## Budgets block"; return 1; }
+  ! grep -qE '^[A-Za-z]+\.md *:' <<<"$block" || { echo "the template ships a ceiling a project did not choose"; return 1; }
+  grep -qF 'not when the lint turns red' <<<"$block" || { echo "nothing warns against raising a ceiling to silence the lint"; return 1; }
 }

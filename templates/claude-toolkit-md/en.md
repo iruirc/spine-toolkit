@@ -166,6 +166,17 @@ there also switches the raise off, the author having already decided.
 A project without this block runs `full`, which is what every project did before the block
 existed.)
 
+## Budgets
+
+(optional: per-artifact line ceilings overriding the defaults in the toolkit's
+`scripts/lint-artifact-budget.sh`, one `<artifact>: <lines>` line each — for example `Task.md: 120`.
+The artifacts are a step's `Task.md`, measured at every scale, and `Reproduce.md`, `Plan.md`,
+`Validation.md`, `Review.md`, `Done.md`, measured on a `lite` task. A line here moves a number,
+never which scale an artifact is measured at. Change a ceiling when a measurement of this project's
+documents says the default does not fit, not when the lint turns red: a ceiling raised to silence
+the lint measures nothing. A name the lint does not know, or a value that is not a positive whole
+number, keeps the default and is reported.)
+
 ## Modules
 
 (optional: list of modules with a per-module stack overriding `## Stack` for the paths it names, e.g.: "- Core: /Packages/Core — <axis>: <value>, <axis>: <value>")

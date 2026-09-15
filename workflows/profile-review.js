@@ -195,7 +195,7 @@ const escalate = (stage, r) => {
 // Line ceilings for a lite task's artifacts. scripts/lint-artifact-budget.sh carries the same table
 // and is what measures against it; artifact-budget.test.bats fails when the two disagree. First
 // draft, taken from the shape of existing artifacts rather than from a measurement.
-const CAP = { 'Reproduce.md': 120, 'Plan.md': 200, 'Validation.md': 100, 'Review.md': 120, 'Done.md': 80 }
+const CAP = { 'Reproduce.md': 120, 'Plan.md': 200, 'Validation.md': 100, 'Review.md': 120, 'Done.md': 80, 'Task.md': 100 }
 const cap = (file) => (lite() && CAP[file] ? `\n\nKeep ${file} to ${CAP[file]} lines or fewer. Logs, dumps and long tool output go in by reference, never pasted inline.` : '')
 
 const ESCALATION = {
