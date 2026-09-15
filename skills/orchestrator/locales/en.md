@@ -196,6 +196,12 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 ## warn_walkthrough_unrecognised
 `{value}` is not one of the three walkthrough depths, so this run writes the `deep` one. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]` in `Task.md`, or under `walkthrough` in `## Reporting` in `CLAUDE-spine-toolkit.md`.
 
+## warn_tuning_unrecognised
+`{entry}` in {source} is not a key and value this run can use, so it was skipped and the next setting down applies. Model keys are `light` and the eight roles, with `opus`, `sonnet`, `haiku`, `fable` or `platform`; effort keys are the eight roles, with `low`, `medium`, `high`, `xhigh`, `max` or `session`.
+
+## warn_effort_method_b
+The effort set for {roles} does not apply on this run: the profile runs through its skill, and a dispatch from a skill cannot carry an effort, so every stage runs at this session's effort. The model choices still apply.
+
 ## warn_driver_plugin_missing
 Driver `{driver}` is the driver resolved for this run, but its manifest does not resolve — the
 plugin is not installed. Validation will hand its UI checks to you instead of driving the app. Install

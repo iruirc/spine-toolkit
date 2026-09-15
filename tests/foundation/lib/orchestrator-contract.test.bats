@@ -185,8 +185,8 @@ setup() {
 @test "the outbound contract carries budgets as a filled brace map" {
   grep -qxF 'budgets={Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100}' "$SKILL" \
     || { echo "no filled budgets= line in the Outbound Contract block"; return 1; }
-  grep -qF 'The two map-valued fields (`agents`, `budgets`)' "$SKILL" \
-    || { echo "the encoding rule still names one map-valued field"; return 1; }
+  grep -qF 'The four map-valued fields (`agents`, `budgets`, `models`, `effort`)' "$SKILL" \
+    || { echo "the encoding rule does not name all four map-valued fields"; return 1; }
 }
 
 @test "the budgets field is resolved by the script, not by reading the config" {
@@ -217,5 +217,43 @@ setup() {
     for l in en ru; do
       grep -qx "## $key" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no $key"; return 1; }
     done
+  done
+}
+
+@test "the outbound contract carries models and effort as filled brace maps" {
+  grep -qxF 'models={light: sonnet, architect: platform, developer: platform, tester: platform, reviewer: platform, refactorer: platform, validator: platform, security: platform, diagnostics: platform}' "$SKILL" \
+    || { echo "no filled models= line in the Outbound Contract block"; return 1; }
+  grep -qxF 'effort={architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}' "$SKILL" \
+    || { echo "no filled effort= line in the Outbound Contract block"; return 1; }
+}
+
+@test "models and effort are resolved by the script, not by reading the config" {
+  para="$(awk '/^`models` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`models\` paragraph in the Outbound Contract"; return 1; }
+  for token in 'resolve-tuning.sh' '## Models' '[MODELS]' '.step/' 'warn_tuning_unrecognised' 'Always filled' 'real JSON' 'Model and effort'; do
+    grep -qF "$token" <<<"$para" || { echo "the models paragraph does not name $token"; return 1; }
+  done
+  para="$(awk '/^`effort` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`effort\` paragraph in the Outbound Contract"; return 1; }
+  for token in 'resolve-tuning.sh' '## Effort' '[EFFORT]' 'Always filled' '**Dispatch**'; do
+    grep -qF "$token" <<<"$para" || { echo "the effort paragraph does not name $token"; return 1; }
+  done
+}
+
+@test "a Method B run announces once that effort does not travel" {
+  para="$(awk '/^Under Method B, when the contract.s `effort`/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "Dispatch never says what a Method B run does with effort"; return 1; }
+  grep -qF '`warn_effort_method_b`' <<<"$para" || { echo "the paragraph names no key"; return 1; }
+  grep -qF '{roles}' <<<"$para" || { echo "the paragraph names no placeholder"; return 1; }
+}
+
+@test "both locales carry the two tuning keys with their placeholders" {
+  for l in en ru; do
+    L="$ROOT/skills/orchestrator/locales/$l.md"
+    body="$(awk '/^## warn_tuning_unrecognised$/{p=1;next} /^## /{p=0} p' "$L")"
+    grep -qF '{source}' <<<"$body" || { echo "$l: warn_tuning_unrecognised lacks {source}"; return 1; }
+    grep -qF '{entry}' <<<"$body" || { echo "$l: warn_tuning_unrecognised lacks {entry}"; return 1; }
+    body="$(awk '/^## warn_effort_method_b$/{p=1;next} /^## /{p=0} p' "$L")"
+    grep -qF '{roles}' <<<"$body" || { echo "$l: warn_effort_method_b lacks {roles}"; return 1; }
   done
 }
