@@ -177,6 +177,48 @@ documents says the default does not fit, not when the lint turns red: a ceiling 
 the lint measures nothing. A name the lint does not know, or a value that is not a positive whole
 number, keeps the default and is reported.)
 
+## Models
+
+light: sonnet
+architect: platform
+developer: platform
+tester: platform
+reviewer: platform
+refactorer: platform
+validator: platform
+security: platform
+diagnostics: platform
+
+(which model a subagent runs on; the rule is `conventions/stage-dispatch.md` → Model and effort in
+the toolkit. A role's key covers every stage its agent runs. `light` covers the calls whose work
+the script's own prompt defines — writing `Walkthrough.md` and `Done.md`, reading `Plan.md` back,
+ticking an epic step, moving a reviewed task — and falls back to the role's key when it says
+`platform`. Values: `opus`, `sonnet`, `haiku`, `fable`, or `platform`, which passes no model, so the
+platform agent's own `model`, then `CLAUDE_CODE_SUBAGENT_MODEL`, then the session's model decide.
+`haiku` has a 200k context and no effort setting, too small for a phase or a walkthrough. On Amazon
+Bedrock, Google Cloud's Agent Platform and Microsoft Foundry `sonnet` means Sonnet 4.5. The
+orchestrator and any stage it runs in the main context stay on the session's model. A single task
+overrides any key with `[MODELS] = [<key>: <value>, …]` in its `Task.md`, and an epic's keys reach
+its steps.)
+
+## Effort
+
+architect: session
+developer: session
+tester: session
+reviewer: session
+refactorer: session
+validator: session
+security: session
+diagnostics: session
+
+(the reasoning effort a subagent runs at, per role. Values: `low`, `medium`, `high`, `xhigh`, `max`,
+or `session`, which passes none, so the session's level applies. The mechanical calls always run at
+`low`; the walkthrough runs at its writer's level. A level the model does not support drops to the
+nearest one it does. When the Workflow tool is unavailable and a profile runs through its skill, no
+effort can travel with a dispatch: every stage runs at the session's level, and the run says so
+once. A single task overrides any role with `[EFFORT] = [<role>: <value>, …]` in its `Task.md`.)
+
 ## Modules
 
 (optional: list of modules with a per-module stack overriding `## Stack` for the paths it names, e.g.: "- Core: /Packages/Core — <axis>: <value>, <axis>: <value>")

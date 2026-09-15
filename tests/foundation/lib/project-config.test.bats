@@ -29,7 +29,7 @@ core_grep() {
 }
 
 @test "the config template declares every block the toolkit reads" {
-  for block in Language Platform Agents Stack Mode Progress Modules EstimationDeltas Scale Budgets Docs; do
+  for block in Language Platform Agents Stack Mode Progress Modules EstimationDeltas Scale Budgets Models Effort Docs; do
     grep -q "^## $block\$" "$TPL" || { echo "missing block: ## $block"; return 1; }
   done
 }

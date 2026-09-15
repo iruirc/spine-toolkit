@@ -42,3 +42,35 @@ so it ends the range at that stage and hands it back for the orchestrator to run
 
 A panel stage (two agents on one stage) may run its agents in parallel or sequentially — that choice
 is the orchestrator's and needs no announcement.
+
+## Model and effort
+
+Every dispatch runs on the model and at the effort the contract's `models` and `effort` maps give
+it, through one rule. A dispatch is one of three kinds:
+
+- `stage` — the work a stage exists for: investigation, plan, a phase, validation, review.
+- `light` — work the script's own prompt defines that still takes judgement: `walkthrough`.
+- `mechanical` — reading a file back, ticking a box, moving a task, writing the final report:
+  `<stage>:read-plan`, `execute:read-steps`, `execute:tick:<step>`, `done:read-branch`, `auto-move`,
+  `done`.
+
+The `light` and `mechanical` lists are closed, and `scripts/lint-workflows.sh` holds them.
+
+| Kind | model | effort |
+|---|---|---|
+| `stage` | `models[role]` | `effort[role]` |
+| `light` | `models.light`, else `models[role]` | `effort[role]` |
+| `mechanical` | `models.light`, else `models[role]` | `low` |
+
+`platform` and `session` mean pass nothing. From Claude Code 2.1.251 a model the dispatch passes
+outranks everything; without one the agent's frontmatter `model` decides, then
+`CLAUDE_CODE_SUBAGENT_MODEL`, then the session's model. Before 2.1.251 the environment variable
+outranked everything. An effort not passed is the session's, because a platform agent declares none
+(`conventions/platform-contract.md` → `## Roles`).
+
+Method A passes both through the prelude's `tuning(role, kind)`. Method B passes the model with the
+dispatch and cannot pass effort: the host's dispatch takes no such parameter, so every stage runs at
+the session's effort and the orchestrator says so once. Under Method B the walkthrough is the only
+`light` call, and the `mechanical` ones run in the main context. Work in the main context — the
+orchestrator, a handed-back stage, a Method B stage without an agent — runs on the session's model
+and effort.
