@@ -98,6 +98,12 @@ def tuning_label(model, effort):
     return " ".join(part for part in (model, effort) if part) or "—"
 
 
+def short_model(model):
+    # Panel width is tight; drop the claude- prefix and a trailing -YYYYMMDD pin date, never the effort.
+    model = re.sub(r"^claude-", "", model or "")
+    return re.sub(r"-\d{8}$", "", model)
+
+
 def phase_totals(mine):
     # A stage runs read-plan, its phases and the walkthrough on different models, so its report
     # folds every agent rather than quoting whichever came first.
@@ -163,7 +169,8 @@ def render_panel(doc):
             tail = "  %s" % agent["lastTool"] if agent["state"] == "running" and agent["lastTool"] else ""
             lines.append("  %s %-12s %-18s %-24s %7s out · %7s ctx · %3s tools · %8s%s" % (
                 GLYPH.get(agent["state"], "⬜"), (agent["phase"] or "—")[:12],
-                short(agent["agentType"])[:18], agent["tuningText"][:24], human_tokens(agent["out"]),
+                short(agent["agentType"])[:18],
+                tuning_label(short_model(agent["model"]), agent["effort"]), human_tokens(agent["out"]),
                 human_tokens(agent["ctx"]), agent["tools"] or 0,
                 human_time(agent["elapsedMs"]), tail))
         for phase in run["phases"]:

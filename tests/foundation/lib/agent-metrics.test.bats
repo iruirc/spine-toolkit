@@ -597,6 +597,36 @@ tuning_metrics() {
   run tuning_metrics "$cfg" --format panel
   rm -rf "$cfg"
   [ "$status" -eq 0 ]
-  tm_contains "$output" "claude-sonnet-5 low"
-  tm_contains "$output" "claude-opus-5 xhigh"
+  # The panel shortens the model (drops the claude- prefix), unlike tuningText in JSON/md.
+  tm_contains "$output" "sonnet-5 low"
+  tm_contains "$output" "opus-5 xhigh"
+}
+
+long_model_home() {
+  local sess="$1/projects/-tmp-proj/80808080-8080-8080-8080-808080808080"
+  local d="$sess/subagents/workflows/wf_long0000-000"
+  mkdir -p "$sess/workflows" "$d"
+  cat >"$sess/workflows/wf_long0000-000.json" <<'JSON'
+{
+  "runId": "wf_long0000-000", "workflowName": "profile-bug", "status": "completed",
+  "args": {"task_id": "089", "profile": "bug"}, "phases": [{"title": "Fix"}],
+  "workflowProgress": [
+    {"type": "workflow_phase", "index": 1, "title": "Fix"},
+    {"type": "workflow_agent", "index": 1, "label": "fix:1", "phaseTitle": "Fix", "agentId": "l0000000000000001",
+     "agentType": "fixture-platform:fixture-developer", "model": "claude-haiku-4-5-20251001", "state": "done",
+     "tokens": 50000, "toolCalls": 5, "durationMs": 20000}
+  ]
+}
+JSON
+  printf '%s\n' '{"type":"assistant","effort":"high","message":{"model":"claude-haiku-4-5-20251001","usage":{"output_tokens":50}}}' >"$d/agent-l0000000000000001.jsonl"
+}
+
+@test "the panel shortens a long model id instead of cutting off the effort" {
+  local cfg; cfg="$(mktemp -d)"; long_model_home "$cfg"
+  run env CLAUDE_CONFIG_DIR="$cfg" CLAUDE_CODE_SESSION_ID="" \
+    "$(tm_repo_root)/scripts/agent-metrics.sh" --session 80808080-8080-8080-8080-808080808080 --format panel
+  rm -rf "$cfg"
+  [ "$status" -eq 0 ]
+  tm_contains "$output" "haiku-4-5 high"
+  tm_lacks "$output" "2025100"
 }
