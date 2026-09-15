@@ -542,12 +542,13 @@ At `live`, after the stage report, run
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/agent-metrics.sh" --format json --run <runId>
 ```
 
-and render `progress_stage_metrics` from the record in `agents[]` whose `phase` equals the
-stage just reported. Fill `{model}`, `{out}`, `{ctx}`, `{tools}` and `{elapsed}` from that
-record's `model` (an em dash `—` if it is null), `outText`, `ctxText`, `tools` and
-`elapsedText` — the ready-to-print strings where the script gives one, never from the raw
-`out`, `ctx` and `elapsedMs` numbers beside them. At `quiet` and `normal` the script is not run
-at all — those two values behave exactly as they did before the metrics line existed.
+and render `progress_stage_metrics` from the entry in `phases[]` whose `title` equals the stage
+just reported — it folds every agent the stage ran, its read-plan and walkthrough calls included.
+Fill `{tuning}`, `{out}`, `{ctx}`, `{tools}` and `{elapsed}` from that entry's `tuningText`,
+`outText`, `ctxText`, `tools` and `elapsedText` — the ready-to-print strings where the script gives
+one, never from the raw `out`, `ctx` and `elapsedMs` numbers beside them; `{elapsed}` is the time
+its agents worked, summed. At `quiet` and `normal` the script is not run at all — those two values
+behave exactly as they did before the metrics line existed.
 
 The call is best-effort: a non-zero exit or unparseable output means the stage report is
 printed without the metrics line and nothing else changes.

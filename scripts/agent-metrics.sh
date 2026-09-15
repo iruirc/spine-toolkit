@@ -94,6 +94,32 @@ def short(agent_type):
     return (agent_type or "—").split(":")[-1]
 
 
+def tuning_label(model, effort):
+    return " ".join(part for part in (model, effort) if part) or "—"
+
+
+def phase_totals(mine):
+    # A stage runs read-plan, its phases and the walkthrough on different models, so its report
+    # folds every agent rather than quoting whichever came first.
+    tuning = []
+    for agent in mine:
+        pair = next((t for t in tuning if (t["model"], t["effort"]) == (agent["model"], agent["effort"])), None)
+        if pair is None:
+            pair = {"model": agent["model"], "effort": agent["effort"], "agents": 0}
+            tuning.append(pair)
+        pair["agents"] += 1
+    totals = {"agents": len(mine), "tuning": tuning,
+              "out": sum(a["out"] for a in mine),
+              "tools": sum(a["tools"] or 0 for a in mine),
+              "ctx": max([a["ctx"] or 0 for a in mine] or [0]),
+              "elapsedMs": sum(a["elapsedMs"] or 0 for a in mine) or None}
+    totals.update(text_fields(totals))
+    totals["tuningText"] = " + ".join(
+        tuning_label(t["model"], t["effort"]) + (" ×%d" % t["agents"] if t["agents"] > 1 else "")
+        for t in tuning) or "—"
+    return totals
+
+
 def render_md(doc):
     if not doc["runs"]:
         return doc.get("reason") or "no runs found"
@@ -105,11 +131,11 @@ def render_md(doc):
         lines += ["**%s** — %s · %s" % (head, run["status"] or "—",
                                         human_time(run["elapsedMs"])),
                   "",
-                  "| Stage | Agent | out | ctx | tools | time |",
-                  "|---|---|---|---|---|---|"]
+                  "| Stage | Agent | Tuning | out | ctx | tools | time |",
+                  "|---|---|---|---|---|---|---|"]
         for agent in run["agents"]:
-            lines.append("| %s | %s | %s | %s | %s | %s |" % (
-                agent["phase"] or "—", short(agent["agentType"]),
+            lines.append("| %s | %s | %s | %s | %s | %s | %s |" % (
+                agent["phase"] or "—", short(agent["agentType"]), agent["tuningText"],
                 human_tokens(agent["out"]), human_tokens(agent["ctx"]),
                 agent["tools"] or 0, human_time(agent["elapsedMs"])))
         lines.append("")
@@ -135,9 +161,9 @@ def render_panel(doc):
         lines += [head, ""]
         for agent in run["agents"]:
             tail = "  %s" % agent["lastTool"] if agent["state"] == "running" and agent["lastTool"] else ""
-            lines.append("  %s %-12s %-18s %7s out · %7s ctx · %3s tools · %8s%s" % (
+            lines.append("  %s %-12s %-18s %-24s %7s out · %7s ctx · %3s tools · %8s%s" % (
                 GLYPH.get(agent["state"], "⬜"), (agent["phase"] or "—")[:12],
-                short(agent["agentType"])[:18], human_tokens(agent["out"]),
+                short(agent["agentType"])[:18], agent["tuningText"][:24], human_tokens(agent["out"]),
                 human_tokens(agent["ctx"]), agent["tools"] or 0,
                 human_time(agent["elapsedMs"]), tail))
         for phase in run["phases"]:
@@ -234,6 +260,7 @@ def transcript(path):
     out = tools = ctx = 0
     in_tok = cache_write = cache_read = 0
     model = first = last = None
+    effort = None
     for row in load_jsonl(path):
         stamp = row.get("timestamp")
         if stamp:
@@ -243,6 +270,7 @@ def transcript(path):
             continue
         message = row.get("message") or {}
         model = message.get("model") or model
+        effort = row.get("effort") or effort
         usage = message.get("usage") or {}
         out += usage.get("output_tokens") or 0
         in_tok += usage.get("input_tokens") or 0
@@ -255,7 +283,7 @@ def transcript(path):
         for block in message.get("content") or []:
             if isinstance(block, dict) and block.get("type") == "tool_use":
                 tools += 1
-    return {"out": out, "ctx": ctx, "tools": tools, "model": model,
+    return {"out": out, "ctx": ctx, "tools": tools, "model": model, "effort": effort,
             "inTok": in_tok, "cacheWrite": cache_write, "cacheRead": cache_read,
             "first": ms(first), "last": ms(last)}
 
@@ -316,6 +344,7 @@ def agent_record(run_dir, agent_id, rec, state):
         "agentType": rec.get("agentType") or meta_type(run_dir, agent_id),
         "phase": rec.get("phaseTitle"),
         "model": rec.get("model") or seen["model"],
+        "effort": seen["effort"],
         "state": state,
         "out": seen["out"],
         "ctx": rec.get("tokens") or seen["ctx"],
@@ -329,6 +358,7 @@ def agent_record(run_dir, agent_id, rec, state):
         "summary": None,
     }
     record.update(text_fields(record))
+    record["tuningText"] = tuning_label(record["model"], record["effort"])
     return record
 
 
@@ -342,7 +372,7 @@ def phase_states(phases, agents):
             state = "done"
         else:
             state = "todo"
-        out.append(dict(phase, state=state))
+        out.append(dict(phase, state=state, **phase_totals(mine)))
     return out
 
 

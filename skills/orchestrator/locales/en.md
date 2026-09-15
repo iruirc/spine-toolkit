@@ -152,7 +152,7 @@ Artifact: {path}
 Verdict: {verdict}
 
 ## progress_stage_metrics
-{model} · {out} out · {ctx} ctx · {tools} tools · {elapsed}
+{tuning} · {out} out · {ctx} ctx · {tools} tools · {elapsed}
 
 ## progress_run_elapsed
 Run finished in {elapsed}.

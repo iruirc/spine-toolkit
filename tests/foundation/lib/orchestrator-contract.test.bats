@@ -257,3 +257,15 @@ setup() {
     grep -qF '{roles}' <<<"$body" || { echo "$l: warn_effort_method_b lacks {roles}"; return 1; }
   done
 }
+
+@test "the stage metrics line is read from the stage's fold, with its tuning" {
+  para="$(awk '/^and render `progress_stage_metrics`/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no progress_stage_metrics paragraph"; return 1; }
+  grep -qF '`phases[]`' <<<"$para" || { echo "the line is not read from phases[]"; return 1; }
+  grep -qF '`tuningText`' <<<"$para" || { echo "the line does not fill {tuning}"; return 1; }
+  ! grep -qF 'the record in `agents[]`' <<<"$para" || { echo "the line still quotes one agent"; return 1; }
+  for l in en ru; do
+    grep -qxF '{tuning} · {out} out · {ctx} ctx · {tools} tools · {elapsed}' "$ROOT/skills/orchestrator/locales/$l.md" \
+      || { echo "$l: progress_stage_metrics does not carry {tuning}"; return 1; }
+  done
+}

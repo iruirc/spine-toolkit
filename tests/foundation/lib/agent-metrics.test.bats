@@ -354,8 +354,8 @@ JSON
 @test "md format prints a table row per agent" {
   run tm_metrics home-a --session 11111111-1111-1111-1111-111111111111 --format md
   [ "$status" -eq 0 ]
-  tm_contains "$output" "| Stage | Agent | out | ctx | tools | time |"
-  tm_contains "$output" "| Analyze | fixture-architect |"
+  tm_contains "$output" "| Stage | Agent | Tuning | out | ctx | tools | time |"
+  tm_contains "$output" "| Analyze | fixture-architect | claude-opus-5 |"
   tm_contains "$output" "312.0k"
 }
 
@@ -526,4 +526,77 @@ JSON
   [ "$(tm_run_count "$output")" = "1" ]
   [ "$(tm_field "$output" runs.0.task_id)" = "" ]
   [ "$(tm_field "$output" runs.0.agents.0.phase)" = "" ]
+}
+
+# One Method A run: Plan on one agent with no effort recorded; Fix on three agents across two
+# model-and-effort pairs, the way a light read-plan precedes the phases.
+tuning_home() {
+  local sess="$1/projects/-tmp-proj/70707070-7070-7070-7070-707070707070"
+  local d="$sess/subagents/workflows/wf_tune0000-000"
+  mkdir -p "$sess/workflows" "$d"
+  cat >"$sess/workflows/wf_tune0000-000.json" <<'JSON'
+{
+  "runId": "wf_tune0000-000", "workflowName": "profile-bug", "status": "completed",
+  "args": {"task_id": "088", "profile": "bug"}, "phases": [{"title": "Plan"}, {"title": "Fix"}],
+  "workflowProgress": [
+    {"type": "workflow_phase", "index": 1, "title": "Plan"},
+    {"type": "workflow_phase", "index": 2, "title": "Fix"},
+    {"type": "workflow_agent", "index": 1, "label": "plan", "phaseTitle": "Plan", "agentId": "t0000000000000001",
+     "agentType": "fixture-platform:fixture-architect", "model": "claude-opus-5", "state": "done",
+     "tokens": 90000, "toolCalls": 10, "durationMs": 60000},
+    {"type": "workflow_agent", "index": 2, "label": "fix:read-plan", "phaseTitle": "Fix", "agentId": "t0000000000000002",
+     "agentType": "fixture-platform:fixture-developer", "model": "claude-sonnet-5", "state": "done",
+     "tokens": 60000, "toolCalls": 2, "durationMs": 10000},
+    {"type": "workflow_agent", "index": 3, "label": "fix:1", "phaseTitle": "Fix", "agentId": "t0000000000000003",
+     "agentType": "fixture-platform:fixture-developer", "model": "claude-opus-5", "state": "done",
+     "tokens": 250000, "toolCalls": 30, "durationMs": 600000},
+    {"type": "workflow_agent", "index": 4, "label": "fix:2", "phaseTitle": "Fix", "agentId": "t0000000000000004",
+     "agentType": "fixture-platform:fixture-developer", "model": "claude-opus-5", "state": "done",
+     "tokens": 200000, "toolCalls": 20, "durationMs": 300000}
+  ]
+}
+JSON
+  printf '%s\n' '{"type":"assistant","message":{"model":"claude-opus-5","usage":{"output_tokens":100}}}' >"$d/agent-t0000000000000001.jsonl"
+  printf '%s\n' '{"type":"assistant","effort":"low","message":{"model":"claude-sonnet-5","usage":{"output_tokens":20}}}' >"$d/agent-t0000000000000002.jsonl"
+  printf '%s\n' '{"type":"assistant","effort":"xhigh","message":{"model":"claude-opus-5","usage":{"output_tokens":300}}}' >"$d/agent-t0000000000000003.jsonl"
+  printf '%s\n' '{"type":"assistant","effort":"xhigh","message":{"model":"claude-opus-5","usage":{"output_tokens":200}}}' >"$d/agent-t0000000000000004.jsonl"
+}
+
+tuning_metrics() {
+  env CLAUDE_CONFIG_DIR="$1" CLAUDE_CODE_SESSION_ID="" \
+    "$(tm_repo_root)/scripts/agent-metrics.sh" --session 70707070-7070-7070-7070-707070707070 "${@:2}"
+}
+
+@test "an agent record carries the effort its transcript recorded, and null when none" {
+  local cfg; cfg="$(mktemp -d)"; tuning_home "$cfg"
+  run tuning_metrics "$cfg"
+  rm -rf "$cfg"
+  [ "$status" -eq 0 ]
+  [ "$(tm_field "$output" runs.0.agents.1.effort)" = "low" ]
+  [ "$(tm_field "$output" runs.0.agents.0.effort)" = "" ]
+  [ "$(tm_field "$output" runs.0.agents.1.tuningText)" = "claude-sonnet-5 low" ]
+}
+
+@test "a phase folds its agents: pairs in order of appearance, sums, and the largest context" {
+  local cfg; cfg="$(mktemp -d)"; tuning_home "$cfg"
+  run tuning_metrics "$cfg"
+  rm -rf "$cfg"
+  [ "$status" -eq 0 ]
+  [ "$(tm_field "$output" runs.0.phases.1.agents)" = "3" ]
+  [ "$(tm_field "$output" runs.0.phases.1.tuningText)" = "claude-sonnet-5 low + claude-opus-5 xhigh ×2" ]
+  [ "$(tm_field "$output" runs.0.phases.1.tuning.1.agents)" = "2" ]
+  [ "$(tm_field "$output" runs.0.phases.1.out)" = "520" ]
+  [ "$(tm_field "$output" runs.0.phases.1.tools)" = "52" ]
+  [ "$(tm_field "$output" runs.0.phases.1.ctxText)" = "250.0k" ]
+  [ "$(tm_field "$output" runs.0.phases.1.elapsedText)" = "15m 10s" ]
+  [ "$(tm_field "$output" runs.0.phases.0.tuningText)" = "claude-opus-5" ]
+}
+
+@test "the panel shows each agent's model and effort" {
+  local cfg; cfg="$(mktemp -d)"; tuning_home "$cfg"
+  run tuning_metrics "$cfg" --format panel
+  rm -rf "$cfg"
+  [ "$status" -eq 0 ]
+  tm_contains "$output" "claude-sonnet-5 low"
+  tm_contains "$output" "claude-opus-5 xhigh"
 }

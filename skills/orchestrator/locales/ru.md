@@ -152,7 +152,7 @@ security; OWASP; vulnerability; certificate pinning; безопасность
 Вердикт: {verdict}
 
 ## progress_stage_metrics
-{model} · {out} out · {ctx} ctx · {tools} tools · {elapsed}
+{tuning} · {out} out · {ctx} ctx · {tools} tools · {elapsed}
 
 ## progress_run_elapsed
 Прогон занял {elapsed}.
