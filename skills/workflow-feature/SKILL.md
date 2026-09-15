@@ -59,7 +59,7 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   The architect MUST apply the `feature-requirements` skill and then the `feature-landscape` skill, producing two H2 sections inside `Research.md`: `## Requirements` (Primary / Secondary / Designer questions / Backend questions / Known unknowns) and `## Landscape` (Entity graph / Layer map / Integration points / Work items / Implementation sequence). The `## Architectural Analysis` and other architect-output sections are appended after these two.
 
-  The writer applies the `task-documents` skill to `Research.md`: every question under the task's `### Questions for Research` answered, every outcome listed including a corrupted state, the source of each quantity a rule uses named, and nothing the task already decided re-decided.
+  Every agent of this stage applies the `task-documents` skill, its `Research.md` section — it holds what the document carries, which outcomes it lists, and what it leaves to `Task.md` and `Plan.md`.
 
 - **Plan** — `[architect]`. Artifact: `Plan.md` with **two layers of progress tracking**:
   1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase, coarse-grained completion.
@@ -67,7 +67,7 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   The plan decomposes the feature into concrete phases and steps. Per-phase action items are seeded from the work-items list in `Research.md ## Landscape ### Work items`.
 
-  The plan applies the `task-documents` skill to `Plan.md`: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
+  The plan applies the `task-documents` skill, its `Plan.md` section — it holds how a step or phase is described, how a risk is written, and what the plan leaves out.
 
   Every phase's detail section opens with a `**Verification:**` line and one checkbox per check it names; the rung comes from the `phase-verification` skill, which holds the rungs, the questions that pick one, and when the line says `full`. The full regression belongs to Validation — a phase checks what it can break, and a phase repeating the whole suite at `proportional` is a defect of the plan.
 

@@ -73,7 +73,7 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   Research-only invariant: the agent MUST NOT modify any source code or write any non-artifact files. If the research agent is tempted to propose a fix inline, it should instead enumerate the proposed fix as a follow-up task under `## Follow-up`.
 
-  The agent applies the `task-documents` skill's rules for every document: meaning before a code, and a question it cannot settle written as an open question with its options.
+  The agent applies the `task-documents` skill's rules for every document to `Research.md` — here the document is the deliverable, so the skill's layers and its per-document sections do not apply.
 
 - **Review** — `[reviewer]` (only if `need_review=true`). Artifact: `Review.md`, **mandatory first line** `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (shared contract). The reviewer evaluates `Research.md` for: coverage of the stated goal, soundness of method, internal consistency of the findings, actionability of the follow-up list. **Critically — the reviewer does NOT validate the technical accuracy of the findings against the codebase**; that is the Research agent's domain. The reviewer judges only research quality.
 

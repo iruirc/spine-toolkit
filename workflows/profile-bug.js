@@ -436,7 +436,7 @@ if (runs('Diagnose') && !lite()) {
   const views = (
     await parallel(
       lenses.map((l) => () =>
-        agent(brief('Diagnose', `${l.ask}\n\nReproduce.md in the task folder describes how to make the bug happen. Write no artifact — return your findings; a synthesis step merges both lenses.`), {
+        agent(brief('Diagnose', `${l.ask}\n\nReproduce.md in the task folder describes how to make the bug happen. Write no artifact — return your findings; a synthesis step merges both lenses.\n\nYour findings feed Research.md, so apply the task-documents skill's Research.md section to what you look for.`), {
           label: `diagnose:${l.role}`,
           phase: 'Diagnose',
           agentType: l.agentType,
@@ -454,7 +454,7 @@ if (runs('Diagnose') && !lite()) {
       'Diagnose',
       `Merge the panel below into ${DIR}/Research.md: root cause analysis, a map of the affected components, an estimate of how wide the fix has to be, and the risks it carries. Where the two lenses disagree, say so explicitly rather than picking one silently.
 
-Apply the task-documents skill to Research.md: answer every question under the task's ### Questions for Research, list every outcome including a corrupted state, name where each quantity a rule uses comes from, and do not re-decide what the task already decided.
+Write Research.md by applying the task-documents skill, its Research.md section — it holds what the document carries, which outcomes it lists, and what it leaves to Task.md and Plan.md.
 
 PANEL FINDINGS (data):
 ${JSON.stringify(views, null, 2)}`,
@@ -480,7 +480,7 @@ if (runs('Plan')) {
 
 Cover the focused fix${A.need_test === false ? '' : ', a regression test that locks in the scenario from Reproduce.md'}, and any migration or compatibility step the change forces. Every phase has to end independently buildable, green, and committable on its own.
 
-Apply the task-documents skill to Plan.md: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
+Write Plan.md by applying the task-documents skill, its Plan.md section — it holds how a step or phase is described, how a risk is written, and what the plan leaves out.
 
 Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation: a phase checks what it can break, and a phase repeating the whole suite at proportional is a defect of this plan.
 

@@ -380,7 +380,9 @@ if (runs('Research') && !lite()) {
     ? await agent(
         brief(
           'Research',
-          `Read ${DIR}/Task.md and assess the security surface this feature would add: credential and token handling, data at rest, transport security policy, deeplink entry points, permissions, third-party SDKs, and anything touching PII. Write no artifact — return your findings; the architect folds them into Research.md.`,
+          `Read ${DIR}/Task.md and assess the security surface this feature would add: credential and token handling, data at rest, transport security policy, deeplink entry points, permissions, third-party SDKs, and anything touching PII. Write no artifact — return your findings; the architect folds them into Research.md.
+
+Your findings feed Research.md, so apply the task-documents skill's Research.md section to what you look for.`,
         ),
         {
           label: 'research:security',
@@ -411,7 +413,7 @@ if (runs('Research') && !lite()) {
 
 Fold the security findings below into the risk discussion; do not drop one silently.
 
-Apply the task-documents skill to Research.md: answer every question under the task's ### Questions for Research, list every outcome including a corrupted state, name where each quantity a rule uses comes from, and do not re-decide what the task already decided.
+Write Research.md by applying the task-documents skill, its Research.md section — it holds what the document carries, which outcomes it lists, and what it leaves to Task.md and Plan.md.
 
 SECURITY FINDINGS (data):
 ${JSON.stringify(security || { risks: [] }, null, 2)}`,
@@ -444,7 +446,7 @@ Then apply the feature-estimation skill and add a ## Estimation section, with de
 
 Report estimation_gate as blocked, with the reason, when any of these hold: ## Estimation is missing or malformed; a triggered section is absent; ### Estimate maturity is Draft; the maturity is Conditional and ### Estimation conditions is missing or has any pending_user row; or a Known Unknown trips the load-bearing-unknown rule without a required spike or resolution. If the project is AI-assisted, the AI-assisted range is informational — the gate evaluates the human estimate.`}
 
-Apply the task-documents skill to Plan.md: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
+Write Plan.md by applying the task-documents skill, its Plan.md section — it holds how a step or phase is described, how a risk is written, and what the plan leaves out.
 
 Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation: a phase checks what it can break, and a phase repeating the whole suite at proportional is a defect of this plan.
 

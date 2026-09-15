@@ -90,25 +90,23 @@ INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:
 @test "every investigating stage points its writer at the Research.md section — Method A" {
   for pair in $INVESTIGATING; do
     b="$(stage_brief "${pair%%:*}" "${pair##*:}")"
-    grep -qF 'Apply the task-documents skill to Research.md' <<<"$b" \
+    grep -qF 'by applying the task-documents skill, its Research.md section' <<<"$b" \
       || { echo "profile-${pair%%:*}.js ${pair##*:}: no pointer at the skill"; return 1; }
-    grep -qF '### Questions for Research' <<<"$b" \
-      || { echo "profile-${pair%%:*}.js ${pair##*:}: the task's questions go unanswered"; return 1; }
   done
 }
 
 @test "every investigating stage points its writer at the Research.md section — Method B" {
   for pair in $INVESTIGATING; do
-    bullet "${pair%%:*}" "${pair##*:}" | grep -qF 'applies the `task-documents` skill to `Research.md`' \
+    bullet "${pair%%:*}" "${pair##*:}" | grep -qF 'applies the `task-documents` skill, its `Research.md` section' \
       || { echo "workflow-${pair%%:*}/SKILL.md ${pair##*:}: no pointer at the skill"; return 1; }
   done
 }
 
 @test "every Plan stage points at the Plan.md section — both forms" {
   for p in feature bug refactor test epic; do
-    stage_brief "$p" Plan | grep -qF 'Apply the task-documents skill to Plan.md' \
+    stage_brief "$p" Plan | grep -qF 'by applying the task-documents skill, its Plan.md section' \
       || { echo "profile-$p.js Plan: no pointer at the skill"; return 1; }
-    bullet "$p" Plan | grep -qF 'applies the `task-documents` skill to `Plan.md`' \
+    bullet "$p" Plan | grep -qF 'applies the `task-documents` skill, its `Plan.md` section' \
       || { echo "workflow-$p/SKILL.md Plan: no pointer at the skill"; return 1; }
   done
 }
@@ -154,8 +152,23 @@ INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:
 
 @test "exactly five scripts carry each of the two stage clauses" {
   # Vacuity guard: without it the loops above iterate over a list someone shortened.
-  n="$(grep -l 'Apply the task-documents skill to Research.md' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  n="$(grep -l 'by applying the task-documents skill, its Research.md section' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
   [ "$n" -eq 5 ] || { echo "$n script(s) carry the Research.md clause, expected 5"; return 1; }
-  n="$(grep -l 'Apply the task-documents skill to Plan.md' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  n="$(grep -l 'by applying the task-documents skill, its Plan.md section' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
   [ "$n" -eq 5 ] || { echo "$n script(s) carry the Plan.md clause, expected 5"; return 1; }
+}
+
+@test "every panel lens is pointed at the skill" {
+  for pair in feature:Research bug:Diagnose test:Analyze; do
+    stage_brief "${pair%%:*}" "${pair##*:}" | grep -qF "apply the task-documents skill's Research.md section to what you look for" \
+      || { echo "profile-${pair%%:*}.js ${pair##*:}: the lens is never pointed at the skill"; return 1; }
+  done
+}
+
+@test "no brief retells the skill's rules" {
+  # The rules live in the skill; a copy in a brief drifts from it.
+  for phrase in 'corrupted state' 'what a user would see' 'superseded revisions' 'meaning before a code' 'every question under the task'; do
+    ! grep -rqF "$phrase" "$ROOT"/workflows/profile-*.js "$ROOT"/skills/workflow-*/SKILL.md \
+      || { echo "a brief still retells: $phrase"; return 1; }
+  done
 }
