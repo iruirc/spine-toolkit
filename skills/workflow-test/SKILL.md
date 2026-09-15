@@ -57,11 +57,15 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
 - **Analyze** — a panel: `[architect]` + `[tester]` (via the Task tool, in parallel or sequentially as the orchestrator decides). Artifact: `Research.md`. Goal: determine **what to test** (uncovered code, critical paths, regression scenarios), **what test level** (unit / integration / UI / snapshot), **which frameworks** (whichever the platform provides for unit, mocking and snapshot work). Additionally, `[architect]` evaluates the testability of existing code: whether dependency injection, mocks, or protocols for abstracting external dependencies are required.
 
+  The writer applies the `task-documents` skill to `Research.md`: every question under the task's `### Questions for Research` answered, every outcome listed including a corrupted state, the source of each quantity a rule uses named, and nothing the task already decided re-decided.
+
 - **Plan** — `[tester]`. Artifact: `Plan.md` with **two layers of progress tracking**:
   1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase with a `P0`/`P1`/`P2` priority column, coarse-grained completion.
   2. **Per-phase detail section** for each phase — actionable items rendered as **markdown checkboxes** `- [ ] <item>`. Granularity: one checkbox per test case to add, per fixture/mock to create, per assertion-cluster to verify. Granular enough to be ticked individually as the Write stage progresses. Static prose (test-strategy notes, framework choices) stays as plain bullets — only **action items** become checkboxes.
 
   The plan decomposes tests into phases — usually by groups (one phase per testable component / module / use case). Each phase is assigned a priority `P0` (critical, blocks release) / `P1` (important) / `P2` (nice-to-have).
+
+  The plan applies the `task-documents` skill to `Plan.md`: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
 
   Every phase's detail section opens with a `**Verification:**` line and one checkbox per check it names; the rung comes from the `phase-verification` skill, which holds the rungs, the questions that pick one, and when the line says `full`. The full regression belongs to Validation — a phase checks what it can break, and a phase repeating the whole suite at `proportional` is a defect of the plan.
 
@@ -107,7 +111,8 @@ At `lite`:
 - **Analyze does not get its own stage.** No agent is dispatched for it and no `Research.md` is
   written. `Plan.md` opens with a `## Analysis` section carrying what that stage would have found:
   what is uncovered, which paths are critical, the test level each case belongs at, and whether the
-  code under test needs seams before it can be tested at all.
+  code under test needs seams before it can be tested at all. That section is `Research.md` folded into `Plan.md`, so the
+  `task-documents` skill's `Research.md` section applies to it.
 - **`Walkthrough.md` is not written** unless `[WALKTHROUGH]` in `Task.md` says so.
 - Every artifact the table in `scripts/lint-artifact-budget.sh` names carries a line ceiling, and
   `Validation.md` links to build and test output rather than pasting it.

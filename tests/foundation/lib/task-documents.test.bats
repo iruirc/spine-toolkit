@@ -73,3 +73,89 @@ setup() {
   grep -qF 'For step tasks also verify `[STATUS] = `, `### Expected behaviour`, `### Questions for Research` and `### Acceptance`.' "$ROOT/skills/task-new/SKILL.md" \
     || { echo "a step whose anchor was translated passes task-new's own check"; return 1; }
 }
+
+# A stage's brief in a profile script, from its banner to the next banner.
+stage_brief() { # $1 = profile, $2 = stage
+  awk -v s="// ── $2 " 'index($0,s)==1{p=1;next} p&&/^\/\/ ── /{exit} p' "$ROOT/workflows/profile-$1.js"
+}
+# A stage's own bullet in a Method B skill.
+bullet() { # $1 = profile, $2 = stage
+  awk -v s="- **$2**" 'index($0,s)==1{p=1;print;next} p&&/^- \*\*/{exit} p' "$ROOT/skills/workflow-$1/SKILL.md"
+}
+scale_section() { # $1 = profile
+  awk '/^## 2a\. Scale$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/workflow-$1/SKILL.md"
+}
+INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:Research'
+
+@test "every investigating stage points its writer at the Research.md section — Method A" {
+  for pair in $INVESTIGATING; do
+    b="$(stage_brief "${pair%%:*}" "${pair##*:}")"
+    grep -qF 'Apply the task-documents skill to Research.md' <<<"$b" \
+      || { echo "profile-${pair%%:*}.js ${pair##*:}: no pointer at the skill"; return 1; }
+    grep -qF '### Questions for Research' <<<"$b" \
+      || { echo "profile-${pair%%:*}.js ${pair##*:}: the task's questions go unanswered"; return 1; }
+  done
+}
+
+@test "every investigating stage points its writer at the Research.md section — Method B" {
+  for pair in $INVESTIGATING; do
+    bullet "${pair%%:*}" "${pair##*:}" | grep -qF 'applies the `task-documents` skill to `Research.md`' \
+      || { echo "workflow-${pair%%:*}/SKILL.md ${pair##*:}: no pointer at the skill"; return 1; }
+  done
+}
+
+@test "every Plan stage points at the Plan.md section — both forms" {
+  for p in feature bug refactor test epic; do
+    stage_brief "$p" Plan | grep -qF 'Apply the task-documents skill to Plan.md' \
+      || { echo "profile-$p.js Plan: no pointer at the skill"; return 1; }
+    bullet "$p" Plan | grep -qF 'applies the `task-documents` skill to `Plan.md`' \
+      || { echo "workflow-$p/SKILL.md Plan: no pointer at the skill"; return 1; }
+  done
+}
+
+@test "a lite fold applies the Research.md section to the folded section — both forms" {
+  for p in feature refactor test; do
+    stage_brief "$p" Plan | grep -qF "That section is Research.md folded into Plan.md, so the task-documents skill's Research.md section applies" \
+      || { echo "profile-$p.js: the lite Plan brief drops the Research.md rules"; return 1; }
+    scale_section "$p" | grep -qF 'folded into `Plan.md`' \
+      || { echo "workflow-$p/SKILL.md: the lite fold drops the Research.md rules"; return 1; }
+  done
+  stage_brief bug Reproduce | grep -qF "That section is Research.md folded into Reproduce.md, so the task-documents skill's Research.md section applies" \
+    || { echo "profile-bug.js: the lite Diagnosis section drops the Research.md rules"; return 1; }
+  scale_section bug | grep -qF 'folded into `Reproduce.md`' \
+    || { echo "workflow-bug/SKILL.md: the lite fold drops the Research.md rules"; return 1; }
+}
+
+@test "the epic's Plan writes each step's Task.md by the skill, under the contract's ceiling — both forms" {
+  b="$(stage_brief epic Plan)"
+  grep -qF "its section on a step's Task.md" <<<"$b" || { echo "profile-epic.js: steps are written without the skill"; return 1; }
+  grep -qF "\${BUDGETS['Task.md']}" <<<"$b" || { echo "profile-epic.js: the step ceiling is not read from budgets"; return 1; }
+  IFS='|' read -r a c d <<<"$ANCHORS"
+  for anchor in "$a" "$c" "$d"; do
+    grep -qF "$anchor" <<<"$b" || { echo "profile-epic.js: the brief never names $anchor"; return 1; }
+  done
+  m="$(bullet epic Plan)"
+  grep -qF -- '--task-docs' <<<"$m" || { echo "workflow-epic/SKILL.md: no word that the steps are measured"; return 1; }
+  grep -qF '`budgets`' <<<"$m" || { echo "workflow-epic/SKILL.md: the ceiling does not come from the contract"; return 1; }
+}
+
+@test "RESEARCH applies only the rules for every document — both forms" {
+  b="$(stage_brief research Research)"
+  grep -qF "task-documents skill's rules for every document" <<<"$b" || { echo "profile-research.js: no pointer at the skill"; return 1; }
+  ! grep -qF 'Questions for Research' <<<"$b" || { echo "profile-research.js: a research deliverable is held to a step's questions"; return 1; }
+  bullet research Research | grep -qF "\`task-documents\` skill's rules for every document" \
+    || { echo "workflow-research/SKILL.md: no pointer at the skill"; return 1; }
+}
+
+@test "Reproduce points at the skill only inside its lite fold" {
+  n="$(stage_brief bug Reproduce | grep -o 'task-documents' | wc -l | tr -d ' ')"
+  [ "$n" -eq 1 ] || { echo "Reproduce names the skill $n time(s), expected exactly the lite fold"; return 1; }
+}
+
+@test "exactly five scripts carry each of the two stage clauses" {
+  # Vacuity guard: without it the loops above iterate over a list someone shortened.
+  n="$(grep -l 'Apply the task-documents skill to Research.md' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 5 ] || { echo "$n script(s) carry the Research.md clause, expected 5"; return 1; }
+  n="$(grep -l 'Apply the task-documents skill to Plan.md' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 5 ] || { echo "$n script(s) carry the Plan.md clause, expected 5"; return 1; }
+}

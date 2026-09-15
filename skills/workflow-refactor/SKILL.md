@@ -59,11 +59,15 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   The architect MUST apply the `feature-landscape` skill **twice**: once to draw the **current** entity graph + layer map + integration points (the as-is landscape), and once to draw the **target** landscape after refactor. `Research.md` gets two sections: `## Landscape (current)` and `## Landscape (target)`. The diff between them IS the refactor scope; per-phase work items in `Plan.md` are derived from this diff.
 
+  The writer applies the `task-documents` skill to `Research.md`: every question under the task's `### Questions for Research` answered, every outcome listed including a corrupted state, the source of each quantity a rule uses named, and nothing the task already decided re-decided.
+
 - **Plan** — `[architect]`. Artifact: `Plan.md` with **two layers of progress tracking**:
   1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase, captures coarse-grained completion.
   2. **Per-phase detail section** for each phase — actionable items rendered as **markdown checkboxes** `- [ ] <item>`. Granularity: one checkbox per file to edit, per acceptance criterion, per test to add, per verification command to run. The checkboxes MUST be granular enough that they can be ticked individually as work progresses inside the phase (the Refactor stage will tick them — see Refactor below). Static prose inside per-phase sections (rationale, rollback markers, decisions) stays as plain bullets/text — only **action items** become checkboxes.
 
   Each phase MUST be **independently buildable, test-passing, AND physically committed by the Refactor stage** — that is the requirement of incremental refactoring. "Commit-ready" is NOT enough — an interrupt or rollback destroys all uncommitted work. The Refactor stage produces one git commit per green phase (see Refactor below).
+
+  The plan applies the `task-documents` skill to `Plan.md`: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
 
   Every phase's detail section opens with a `**Verification:**` line and one checkbox per check it names; the rung comes from the `phase-verification` skill, which holds the rungs, the questions that pick one, and when the line says `full`. The full regression belongs to Validation — a phase checks what it can break, and a phase repeating the whole suite at `proportional` is a defect of the plan.
 
@@ -112,7 +116,8 @@ At `lite`:
 - **Analyze does not get its own stage.** No agent is dispatched for it and no `Research.md` is
   written. `Plan.md` opens with a `## Analysis` section carrying what that stage would have found:
   what is wrong now, the target shape, the components affected, and the risk the move carries. The
-  behaviour-preservation invariant is stated there, because it is what Validation checks against.
+  behaviour-preservation invariant is stated there, because it is what Validation checks against. That section is `Research.md` folded into `Plan.md`, so the
+  `task-documents` skill's `Research.md` section applies to it.
 - **`OpsChecklist.md` is not written.** The regression check that matters on this profile is the
   pre-existing test suite passing unmodified, and that is Validation's, not the checklist's.
 - **`Walkthrough.md` is not written** unless `[WALKTHROUGH]` in `Task.md` says so.

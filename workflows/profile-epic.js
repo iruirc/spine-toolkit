@@ -431,6 +431,8 @@ Do not translate, localize or adapt that heading — it is a machine-parsed anch
 
 For the decomposition verdict, apply feature-requirements and feature-landscape at epic level, so Research.md also carries ## Requirements (Primary / Secondary / Designer / Backend / Known Unknowns) and ## Landscape (entity graph, layer map, integration points, and a ### Work items list). Those work items seed the step decomposition in the next stage, so make them concrete.
 
+Apply the task-documents skill to Research.md: answer every question under the task's ### Questions for Research, list every outcome including a corrupted state, name where each quantity a rule uses comes from, and do not re-decide what the task already decided.
+
 You write no code. Research.md is the only file you create.`,
     ),
     {
@@ -463,7 +465,9 @@ if (runs('Plan')) {
 If the verdict is DECOMPOSITION:
 Write ${DIR}/Plan.md with a progress table of the steps, in execution order, with the columns: Done? | step_id | TASK_TYPE | [STATUS] | short description | artifact. The Done? column renders as a markdown checkbox, "- [ ]" for every step that is not yet DONE.
 Seed the steps from Research.md ### Work items, grouped along layer or feature boundaries — typically one step per major layer (Domain / Repository / Networking / UI) or per self-contained sub-feature.
+Apply the task-documents skill to Plan.md: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
 Then create the step folders physically by invoking spine-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE], [STATUS] = PENDING, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
+Write each step's Task.md by applying the task-documents skill, its section on a step's Task.md: the problem on one example, the epic's decisions this step does not reopen, and under ### Expected behaviour, ### Questions for Research and ### Acceptance what it must do, what its own investigation must find and what is true when it closes. After this stage each one is measured: at most ${BUDGETS['Task.md']} lines, and all three anchors carrying text or "— <reason>".
 Apply feature-estimation at epic level and write ## Estimation into Plan.md: the aggregate is the SUM of the per-step ranges, reported as a named best/worst epic range, and it carries both the human and the AI-assisted range when the project is AI-assisted. Per-step ranges are written later by each step's own Plan stage; this roll-up is informational, it does NOT gate Execute, but it has to be present before the first step runs.
 Return every step you created in the steps array, in execution order.
 
