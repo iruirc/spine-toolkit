@@ -465,6 +465,14 @@ JSON
   [ "$(tm_field "$output" runs.0.elapsedMs)" = "171000" ]
 }
 
+@test "a merged task's folded phases carry their own agent count and tuningText" {
+  run tm_metrics home-a --session 55555555-5555-5555-5555-555555555555
+  [ "$(tm_field "$output" runs.0.phases.0.agents)" = "1" ]
+  [ "$(tm_field "$output" runs.0.phases.0.tuningText)" = "claude-opus-5" ]
+  [ "$(tm_field "$output" runs.0.phases.1.agents)" = "1" ]
+  [ "$(tm_field "$output" runs.0.phases.1.tuningText)" = "claude-opus-5" ]
+}
+
 @test "a merged task's phase list names each phase once, both finished stages done" {
   run tm_metrics home-a --session 55555555-5555-5555-5555-555555555555
   [ "$(python3 -c 'import json,sys; print(len(json.loads(sys.argv[1])["runs"][0]["phases"]))' "$output")" = "3" ]
