@@ -181,3 +181,40 @@ setup() {
     done
   done
 }
+
+@test "the outbound contract carries budgets as a filled brace map" {
+  grep -qxF 'budgets={Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100}' "$SKILL" \
+    || { echo "no filled budgets= line in the Outbound Contract block"; return 1; }
+  grep -qF 'The two map-valued fields (`agents`, `budgets`)' "$SKILL" \
+    || { echo "the encoding rule still names one map-valued field"; return 1; }
+}
+
+@test "the budgets field is resolved by the script, not by reading the config" {
+  para="$(awk '/^`budgets` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`budgets\` paragraph in the Outbound Contract"; return 1; }
+  for token in 'lint-artifact-budget.sh --budgets' '## Budgets' 'warn_budget_unrecognised' 'Always filled' 'real JSON'; do
+    grep -qF "$token" <<<"$para" || { echo "the budgets paragraph does not name $token"; return 1; }
+  done
+}
+
+@test "the artifact budget runs --task-docs after an epic's Plan, at any scale" {
+  para="$(awk '/^\*\*Artifact budget\.\*\*/{f=1} f&&/^On a non-zero exit/{exit} f' "$SKILL")"
+  grep -qF -- '--task-docs' <<<"$para" || { echo "the orchestrator never measures a step's Task.md"; return 1; }
+  grep -qF 'at any scale' <<<"$para" || { echo "the step check reads as lite-only"; return 1; }
+  grep -qF '`task_doc_anchor_missing`' "$SKILL" || { echo "a missing anchor has no announcement"; return 1; }
+}
+
+@test "an epic's auto Method A range stops at Plan so its steps are measured before they run" {
+  # In auto the whole range returns at once; measured after that, a step has already run on the
+  # Task.md the measurement exists to fix.
+  para="$(awk '/^In `auto` on a Method A range/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  grep -qF 'end_stage=Plan' <<<"$para" || { echo "an epic's range runs Execute before its steps are measured"; return 1; }
+}
+
+@test "both new budget keys exist in both locales" {
+  for key in task_doc_anchor_missing warn_budget_unrecognised; do
+    for l in en ru; do
+      grep -qx "## $key" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no $key"; return 1; }
+    done
+  done
+}

@@ -110,9 +110,9 @@ At `lite`:
   code under test needs seams before it can be tested at all.
 - **`Walkthrough.md` is not written** unless `[WALKTHROUGH]` in `Task.md` says so.
 - Every artifact the table in `scripts/lint-artifact-budget.sh` names carries a line ceiling, and
-  `Validation.md` links to build and test output rather than pasting it. Read the ceilings from
-  that table, pass each one to the agent writing that artifact, and expect the orchestrator to
-  measure against the same table when the stage returns.
+  `Validation.md` links to build and test output rather than pasting it.
+  Read the ceilings from the contract's `budgets` field, pass each one to the agent writing that
+  artifact, and expect the orchestrator to measure against the same values when the stage returns.
 
 Unchanged at `lite`: one commit per green phase with the phase's tests run before it, `Validation`
 by its own agent **including the flake detection** — a test that flaps is the failure this profile

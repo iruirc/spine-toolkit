@@ -182,7 +182,13 @@ Creating a project from scratch belongs to the platform plugin — run its proje
 Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in `Task.md`; the remaining stages run at full depth.
 
 ## budget_over_limit
-`{artifact}` runs to {actual} lines against a `lite` ceiling of {cap}. Trimming it to the ceiling — logs and dumps by reference rather than pasted inline.
+`{artifact}` runs to {actual} lines against a ceiling of {cap}. Trimming it to the ceiling without dropping a requirement — logs and dumps by reference rather than pasted inline.
+
+## task_doc_anchor_missing
+`{step}`: its `Task.md` has no text under `{anchor}`. Sending it back to the architect to fill the anchor, or to write `— <reason>` where it does not apply.
+
+## warn_budget_unrecognised
+`{line}` in `## Budgets` of `CLAUDE-spine-toolkit.md` names no artifact the budget lint knows, or its ceiling is not a positive whole number, so the default stays. The artifacts are `Task.md`, `Reproduce.md`, `Plan.md`, `Validation.md`, `Review.md` and `Done.md`.
 
 ## warn_walkthrough_pre_depth
 `on` is the pre-depth value, so this run writes `Walkthrough.md` at `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. To keep the older shape, write `brief` — in `[WALKTHROUGH]` in `Task.md`, or under `walkthrough` in `## Reporting` in `CLAUDE-spine-toolkit.md`.
