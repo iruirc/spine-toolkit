@@ -72,3 +72,9 @@ REVIEW_LINE="{ label: 'review', phase: 'Review', agentType: A.agents.reviewer, s
   mutate profile-bug.js "need('Fix', 'developer', 'tester')" "need('Fix', 'developer')"
   expect_violation 'role "tester" dispatched in stage "Fix" is not gated'
 }
+
+@test "a dispatch violation reports the line in the file, not in the comment-stripped copy" {
+  mutate profile-review.js "$REVIEW_LINE" "{ label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },"
+  n="$(grep -n "label: 'review', phase: 'Review'" "$T/workflows/profile-review.js" | cut -d: -f1)"
+  expect_violation "workflows/profile-review.js:$n: dispatch 'review'"
+}

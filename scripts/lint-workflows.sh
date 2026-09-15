@@ -242,7 +242,8 @@ for fname in files:
 
     # A dispatch's option line is the agentType line with a label on it or on one of the three lines
     # above; the Diagnose lens objects carry agentType and no label, and are not dispatches.
-    lines = src.split('\n')
+    # Comments blanked rather than stripped (unlike src), so these line numbers match the file.
+    lines = re.sub(r'(?m)^[ \t]*//.*$', '', raw).split('\n')
     dispatches = []
     for i, line in enumerate(lines):
         at = re.search(r'\bagentType\b(?:\s*:\s*([^,}]+?))?\s*[,}]', line)
