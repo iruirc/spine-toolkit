@@ -565,6 +565,12 @@ try:
             for rid in run_ids]
     for rid, run in zip(run_ids, runs):
         recover_from_prompt(os.path.join(sess, "subagents", "workflows", rid), run)
+        if not run["phases"]:
+            # No wf_*.json yet to name the phases: fall back to the stages recovered
+            # onto the agents themselves, in the order they first appear.
+            titles = list(dict.fromkeys(a["phase"] for a in run["agents"] if a["phase"]))
+            run["phases"] = phase_states(
+                [{"index": i + 1, "title": t} for i, t in enumerate(titles)], run["agents"])
 
     if RUN_FILTER:
         runs = [r for r in runs if r["runId"] == RUN_FILTER]

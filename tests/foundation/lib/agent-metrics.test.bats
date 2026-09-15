@@ -514,6 +514,14 @@ JSON
   [ "$(tm_field "$output" runs.0.agents.0.state)" = "running" ]
 }
 
+@test "an in-flight run's recovered stage also lands in phases[], not just agents[]" {
+  run tm_metrics home-a --session 44444444-4444-4444-4444-444444444444
+  [ "$status" -eq 0 ]
+  [ "$(tm_field "$output" runs.0.phases.0.title)" = "Analyze" ]
+  [ "$(tm_field "$output" runs.0.phases.0.agents)" = "1" ]
+  [ "$(tm_field "$output" runs.0.phases.0.tuningText)" != "" ]
+}
+
 @test "panel shows the recovered stage name for an in-flight run, not an em dash" {
   run tm_metrics home-a --session 44444444-4444-4444-4444-444444444444 --format panel
   [ "$status" -eq 0 ]
