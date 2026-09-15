@@ -47,7 +47,7 @@ REVIEW-profile specifics (differences from other workflows):
 
 ## 2. Stages
 
-A stage names its owner as a role in brackets — `[architect]`, `[developer]`. Which agent a role means arrives in the contract's `agents` map; dispatch that agent per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage whose role resolved to `—` says so before it starts.
+A stage names its owner as a role in brackets — `[architect]`, `[developer]`. Which agent a role means arrives in the contract's `agents` map; dispatch that agent per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage whose role resolved to `—` says so before it starts. Dispatch it on the model `conventions/stage-dispatch.md` → Model and effort derives from the contract's `models` map, and name no model where that map says `platform`; this method cannot pass an effort.
 
 - **Review** — `[reviewer]`. Artifact: `Review.md` in the task folder. **Mandatory first line** of the artifact: `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` — this is the contract shared with every workflow and the orchestrator. Body of `Review.md`: what was done well, what needs changes (by severity), open questions. The detailed output format is described by the `reviewer` agent.
 

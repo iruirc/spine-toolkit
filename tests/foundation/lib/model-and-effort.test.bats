@@ -119,3 +119,15 @@ PY
   grep -qF "effort: { type: 'string', description: 'only when the step declares its own [EFFORT]" "$E" || { echo "the step record has no effort"; return 1; }
   grep -qF 'the text between the brackets of its [MODELS] and [EFFORT]' "$E" || { echo "read-steps never asks for them"; return 1; }
 }
+
+@test "every workflow skill dispatches a stage on the model the rule derives" {
+  n=0
+  for f in "$ROOT"/skills/workflow-*/SKILL.md; do
+    n=$((n + 1))
+    para="$(grep '^A stage names its owner as a role in brackets' "$f")"
+    [ -n "$para" ] || { echo "$f: no dispatch paragraph"; return 1; }
+    grep -qF '`conventions/stage-dispatch.md` → Model and effort' <<<"$para" || { echo "$f: the paragraph does not point at the rule"; return 1; }
+    grep -qF 'cannot pass an effort' <<<"$para" || { echo "$f: the paragraph does not say effort stays behind"; return 1; }
+  done
+  [ "$n" -eq 7 ] || { echo "scanned $n skill(s), expected 7"; return 1; }
+}
