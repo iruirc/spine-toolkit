@@ -380,7 +380,9 @@ if (runs('Analyze') && !lite()) {
     ? await agent(
         brief(
           'Analyze',
-          `Assess how testable the code in scope actually is: where dependency injection is missing, what needs a protocol to be abstracted, which external dependencies need mocks or fakes, and which seams have to exist before a test can be written at all. Write no artifact — return your findings; the tester folds them into Research.md.`,
+          `Assess how testable the code in scope actually is: where dependency injection is missing, what needs a protocol to be abstracted, which external dependencies need mocks or fakes, and which seams have to exist before a test can be written at all. Write no artifact — return your findings; the tester folds them into Research.md.
+
+Your findings feed Research.md, so apply the task-documents skill's Research.md section to what you look for.`,
         ),
         {
           label: 'analyze:testability',
@@ -405,7 +407,7 @@ if (runs('Analyze') && !lite()) {
       'Analyze',
       `Write ${DIR}/Research.md: what to test (uncovered code, critical paths, regression scenarios), at what level (unit, integration, UI, snapshot), and with which of this platform's test frameworks and helpers. Fold the testability findings below into it — a blocker that is not written down becomes a phase that cannot be finished.
 
-Apply the task-documents skill to Research.md: answer every question under the task's ### Questions for Research, list every outcome including a corrupted state, name where each quantity a rule uses comes from, and do not re-decide what the task already decided.
+Write Research.md by applying the task-documents skill, its Research.md section — it holds what the document carries, which outcomes it lists, and what it leaves to Task.md and Plan.md.
 
 TESTABILITY FINDINGS (data):
 ${JSON.stringify(testability || { blockers: [] }, null, 2)}`,
@@ -431,7 +433,7 @@ if (runs('Plan')) {
 
 Group phases by testable unit — one per component, module, or use case — and give each a priority: P0 critical and release-blocking, P1 important, P2 nice to have.
 
-Apply the task-documents skill to Plan.md: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
+Write Plan.md by applying the task-documents skill, its Plan.md section — it holds how a step or phase is described, how a risk is written, and what the plan leaves out.
 
 Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation: a phase checks what it can break, and a phase repeating the whole suite at proportional is a defect of this plan.
 
