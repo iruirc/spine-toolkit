@@ -300,3 +300,33 @@ PY
   [[ "$output" == *"plumber"* ]]
   [[ "$output" != *"unbound variable"* ]]
 }
+
+frontmatter_add() { # $1 = agent file, $2 = line inserted right after the name line
+  awk -v add="$2" '{ print } /^name: /{ print add }' "$1" >"$1.new" && mv "$1.new" "$1"
+}
+
+@test "fails when a Roles agent pins a model heavier than the session may choose" {
+  frontmatter_add "$TMP/p/agents/fixture-architect.md" 'model: opus'
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"agent pins model 'opus'"*"fixture-platform:fixture-architect"* ]]
+}
+
+@test "passes when a Roles agent pins sonnet" {
+  frontmatter_add "$TMP/p/agents/fixture-architect.md" 'model: sonnet'
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when a Roles agent pins an effort" {
+  frontmatter_add "$TMP/p/agents/fixture-architect.md" 'effort: high'
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"agent pins an effort"*"fixture-platform:fixture-architect"* ]]
+}
+
+@test "a model line in an agent's body is not its frontmatter" {
+  printf '\nmodel: opus\neffort: max\n' >>"$TMP/p/agents/fixture-architect.md"
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 0 ]
+}
