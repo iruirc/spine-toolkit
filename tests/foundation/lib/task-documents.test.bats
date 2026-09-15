@@ -165,6 +165,17 @@ INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:
   done
 }
 
+@test "the step process verifies structural anchors before reporting" {
+  step="$(awk '/^## Process — step task/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/task-new/SKILL.md")"
+  grep -qF 'step 10 of the root-task process' <<<"$step" \
+    || { echo "the step process reports without verifying its anchors"; return 1; }
+}
+
+@test "workflow-epic's Auto mode names --task-docs" {
+  sect="$(awk '/^## 4\. Auto mode$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/workflow-epic/SKILL.md")"
+  grep -qF -- '--task-docs' <<<"$sect" || { echo "Auto mode never mentions --task-docs"; return 1; }
+}
+
 @test "no brief retells the skill's rules" {
   # The rules live in the skill; a copy in a brief drifts from it.
   for phrase in 'corrupted state' 'what a user would see' 'superseded revisions' 'meaning before a code' 'every question under the task'; do

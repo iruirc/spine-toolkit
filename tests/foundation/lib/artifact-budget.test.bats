@@ -242,6 +242,73 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
   [ "$n" -eq 7 ] || { echo "scanned $n script(s), expected 7"; return 1; }
 }
 
+@test "--task-docs skips a step with [STATUS] = [DONE] even with no anchors" {
+  epic; mkdir -p "$TASK/1.step"
+  printf '[TASK_TYPE] = [FEATURE]\n[STATUS] = [DONE]\n' >"$TASK/1.step/Task.md"
+  run "$LINT" --task-docs "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "--task-docs measures a step with [STATUS] = [PENDING]" {
+  epic; mkdir -p "$TASK/1.step"
+  printf '[TASK_TYPE] = [FEATURE]\n[STATUS] = [PENDING]\n' >"$TASK/1.step/Task.md"
+  run "$LINT" --task-docs "$TASK"
+  [ "$status" -eq 1 ]
+}
+
+@test "--task-docs measures a step with [STATUS] = [TODO]" {
+  epic; mkdir -p "$TASK/1.step"
+  printf '[TASK_TYPE] = [FEATURE]\n[STATUS] = [TODO]\n' >"$TASK/1.step/Task.md"
+  run "$LINT" --task-docs "$TASK"
+  [ "$status" -eq 1 ]
+}
+
+@test "a budget value with a non-ASCII digit keeps the default and is reported, not a crash" {
+  printf '## Budgets\n\nPlan.md: ²\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$LINT" --budgets "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  case "$output" in *"Plan.md: 200"*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *"not recognized"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a lone hyphen or en dash under an anchor is reported as a bare dash" {
+  epic; mkdir -p "$TASK/1.step"
+  printf '[TASK_TYPE] = [FEATURE]\n\n## 3. [Task]\n\n### Expected behaviour\n\n-\n\n### Questions for Research\n\nwhere\n\n### Acceptance\n\n–\n' >"$TASK/1.step/Task.md"
+  run "$LINT" --task-docs "$TASK"
+  [ "$status" -eq 1 ]
+  case "$output" in *'"### Expected behaviour" is a bare dash'*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *'"### Acceptance" is a bare dash'*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "an anchor under ## 2. [Description] instead of ## 3. [Task] is reported missing" {
+  epic; mkdir -p "$TASK/1.step"
+  printf '[TASK_TYPE] = [FEATURE]\n\n## 2. [Description]\n\n### Expected behaviour\n\n| a | b |\n\n### Questions for Research\n\nwhere\n\n### Acceptance\n\ndone\n' >"$TASK/1.step/Task.md"
+  run "$LINT" --task-docs "$TASK"
+  [ "$status" -eq 1 ]
+  case "$output" in *'anchor "### Expected behaviour" missing'*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *'anchor "### Questions for Research" missing'*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *'anchor "### Acceptance" missing'*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "--task-docs leaves the epic's own root Task.md alone" {
+  epic; step_task "$TASK/1.step" 50
+  run "$LINT" --task-docs "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "--budgets keeps stdout to the map while a warning goes to stderr" {
+  printf '## Budgets\n\nPlan.md: ²\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$LINT" --budgets "$TASK" 2>/dev/null)"
+  [ "$out" = "{Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100}" ] \
+    || { echo "$out"; return 1; }
+}
+
+@test "a pushed step states its ceilings from the same contract" {
+  # A pushed step states its ceilings from the same contract the orchestrator measures against.
+  block="$(sed -n '/const stepArgs/,/^    })$/p' "$ROOT/workflows/profile-epic.js")"
+  grep -qF 'budgets: A.budgets' <<<"$block" || { echo "stepArgs never states its ceilings"; return 1; }
+}
+
 @test "the four phased Method B skills read the ceilings from the contract" {
   for p in feature bug refactor test; do
     grep -qF "Read the ceilings from the contract's \`budgets\` field" "$ROOT/skills/workflow-$p/SKILL.md" \

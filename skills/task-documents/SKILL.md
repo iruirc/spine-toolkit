@@ -11,7 +11,7 @@ A task's documents are written by one agent and read by another. The reader neve
 
 | Document | Answers | Carries | Never carries |
 |---|---|---|---|
-| `Task.md` | what and why | the problem on an example; decisions not reopened, one line each; expected behaviour; open questions; questions for Research; acceptance | code mechanics, the algorithm, where in the code, test lists, per-work-item done criteria |
+| `Task.md` | what and why | the problem on an example; decisions not reopened, one line each; expected behaviour; open questions; questions for Research; acceptance | code mechanics, the algorithm, test lists, per-work-item done criteria |
 | `Research.md` | how it works today and which outcomes exist | the mechanics; every outcome, a corrupted state included; answers to the task's questions for Research | a decision the task already made, re-decided |
 | `Plan.md` | how to do it | the order and why; each step or phase with what it waits for and what is true after it; risks | a retelling of the research; the history of superseded revisions |
 
@@ -35,13 +35,13 @@ Written from the owner's words, before any investigation. Keep the layer: what i
 
 Written by the epic's planner from the epic's `Task.md`, `Research.md` and `Questions.md`.
 
-- `## 2. [Description]` — the problem on one example with numbers, then the epic's decisions this step does not reopen, one line each.
+- `## 2. [Description]` — the problem on one example, with numbers where the source gives them; the epic's decisions this step does not reopen, one line each; then the step's open questions, written as rule 5 says.
 - `## 3. [Task]` — what the step delivers, in plain words, then three anchors. The headings stay English; the text follows the project language.
   - `### Expected behaviour` — a table of cases, situation → result. A command and its outcome is a case.
   - `### Questions for Research` — what the step's own investigation must find out: mechanics, rare outcomes, where things live. Questions, not answers.
   - `### Acceptance` — what must be true when the step closes.
 - An anchor that does not apply carries `— <reason>`, never a bare dash.
-- `## 1. [Files]` names symbols, not line numbers: a line number drifts between writing the step and running it.
+- `## 1. [Files]` names where the work starts, by symbol, not by line number: a line number drifts between writing the step and running it. How the code works there is a question for Research.
 - Every requirement and constraint of the epic that lands on this step appears in it. Shorter is not better when it drops one.
 - `scripts/lint-artifact-budget.sh --task-docs` measures the file against its line ceiling. A step over it moves mechanics into `### Questions for Research`; it never drops a requirement.
 

@@ -632,8 +632,9 @@ being the directory that holds `workflows/` (`conventions/agent-tooling.md` → 
 Templates). Without a flag it measures a `lite` task's own artifacts, and exits 0 at `full`, on a
 profile with no implementing stage, and on a `lite` task inside its ceilings. After the Plan stage of
 an EPIC that chose decomposition, add `--task-docs`, at any scale: it also measures the `Task.md` of
-every step that stage wrote — its ceiling and its three anchors (`skills/task-documents/SKILL.md`).
-A non-zero exit prints one line per finding.
+every step not yet started — `[STATUS]` PENDING, as that stage writes them — its ceiling and its three
+anchors (`skills/task-documents/SKILL.md`). A step that has started or closed is not measured: its
+`Task.md` is already the record of what ran. A non-zero exit prints one line per finding.
 
 Measure rather than instruct: a count limit published in a brief and never checked is the class of
 directive this toolkit has already watched go unobserved, which is why the ceilings live in that
@@ -655,7 +656,8 @@ In `auto` on a Method A range the whole range returns at once: run the same meas
 over what the range wrote. An EPIC range holding both Plan and Execute is dispatched as two calls
 instead — the first with `end_stage=Plan`, the second from Execute — and the `--task-docs`
 measurement runs between them: measured after the range, a step would already have run on the
-`Task.md` the measurement exists to fix.
+`Task.md` the measurement exists to fix. The second call continues the same run: `start_stage=Execute`,
+`stage_scope=forward`, no new archiving, and no second opening block.
 
 **Per-phase commits vs flow-level commits.** The "commit always confirmed with user" rule applies ONLY to flow-level wrap commits the orchestrator itself initiates (squash, merge, push) — these are user-confirmed regardless of mode. **Per-phase commits inside a workflow-* multi-phase stage (Refactor / Execute / Fix / Write) are autonomous** — the workflow-* skill creates one commit per green phase without a user prompt, in both manual and auto modes. The orchestrator MUST NOT misread "does not confirm commit with user" inside workflow-* skills as "does not commit at all"; per-phase commits are mandatory for the phase invariant ("each phase independently buildable+test-passing+committed") to hold against interrupts.
 
