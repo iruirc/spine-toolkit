@@ -231,3 +231,20 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
   grep -qF -- '--budgets' <<<"$sect" || { echo "the convention does not say how a ceiling reaches an agent"; return 1; }
   grep -qF 'at every scale' <<<"$sect" || { echo "the convention still reads every ceiling as lite-only"; return 1; }
 }
+
+@test "every profile script reads the ceilings from the contract's budgets" {
+  n=0
+  for f in "$ROOT"/workflows/profile-*.js; do
+    n=$((n + 1))
+    grep -qF 'A.budgets' "$f" || { echo "$(basename "$f"): the prelude ignores budgets"; return 1; }
+    grep -qF '${BUDGETS[file]}' "$f" || { echo "$(basename "$f"): cap() still names the default"; return 1; }
+  done
+  [ "$n" -eq 7 ] || { echo "scanned $n script(s), expected 7"; return 1; }
+}
+
+@test "the four phased Method B skills read the ceilings from the contract" {
+  for p in feature bug refactor test; do
+    grep -qF "Read the ceilings from the contract's \`budgets\` field" "$ROOT/skills/workflow-$p/SKILL.md" \
+      || { echo "workflow-$p/SKILL.md still reads the ceilings from the script's table"; return 1; }
+  done
+}

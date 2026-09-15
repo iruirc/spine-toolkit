@@ -341,7 +341,7 @@ See also the "Stage Management" section — it details the semantics of `run --f
 
 After Resolution, the orchestrator hands these fields to the dispatch path chosen in **Dispatch**. The fields are identical either way; only the encoding differs. Method B takes `key=value` form, **separated only by newlines** (a comma is NOT used as a field separator). Method A takes the same fields as a JSON object. **All fields are filled** — neither workflow-* nor a workflow script tries to recover anything.
 
-Multi-valued fields (e.g. `archive_paths`) are encoded in **list syntax**: square brackets, commas inside. The one map-valued field (`agents`) is encoded in **brace syntax**: `{key: value, key: value}`.
+Multi-valued fields (e.g. `archive_paths`) are encoded in **list syntax**: square brackets, commas inside. The two map-valued fields (`agents`, `budgets`) are encoded in **brace syntax**: `{key: value, key: value}`.
 
 ```
 task_id=001
@@ -361,6 +361,7 @@ need_review=true|false
 walkthrough=brief|deep|off
 docs=on|off
 scale=lite|full
+budgets={Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100}
 archive_paths=[Tasks/ACTIVE/001-profile/_archive/Plan-2026-04-25T143022.md, Tasks/ACTIVE/001-profile/_archive/Research-2026-04-25T143022.md]
 ```
 
@@ -413,6 +414,8 @@ Two cases write nothing. A run already resolved to `full` has nothing to raise. 
 [full]` already in `Task.md` is the author's own decision: report the stage's finding, change no
 file. Because the value lives in the file, a later `redo` of any stage runs at `full` as well — the
 size belongs to the task, not to one dispatch.
+
+`budgets` — the line ceiling of every artifact core measures. Resolved by running `<core root>/scripts/lint-artifact-budget.sh --budgets <task dir>`, which reads the script's defaults and the project's `## Budgets` over them; the brace map it prints is this field. Always filled, for every profile, so a consumer reads one shape rather than testing for the field first. Method B takes that line as it is; Method A passes the same object as real JSON with integer values, so a script reads `A.budgets['Task.md']` and gets `100` by default. It travels in the contract for the reason `walkthrough` does — a Method A script names a ceiling in a brief and has no filesystem to read it from. The script is the one reader of `## Budgets`: do not re-derive the map from the config. Each line the script reports on stderr as not recognized is announced once with key `warn_budget_unrecognised` (placeholder `{line}`). Which artifact is measured at which scale is not this field's business: `conventions/task-scale.md`.
 
 `archive_paths` — list of paths to backups already created in `_archive/` for stages that will be overwritten (filled before handing off control). Format: `[path1, path2, path3]`. Empty list = `[]`.
 
@@ -623,24 +626,36 @@ After the dialog finishes (all items processed OR user aborted), re-run the open
 
 **Scope:** the inspection runs ONLY at stage-done boundaries that produce a research-style artifact. It does NOT run after Plan / Execute / Validation / Review / Done. The `workflow-*` Output Contract is unchanged — open-questions handling is entirely orchestrator-side and does not require new fields in `next_recommended_action`.
 
-**Artifact budget (`lite` only).** After a stage returns, and before rendering `stage_done_prompt`,
+**Artifact budget.** After a stage returns, and before rendering `stage_done_prompt`,
 measure the task folder: run `<core root>/scripts/lint-artifact-budget.sh <task_dir>`, the core root
 being the directory that holds `workflows/` (`conventions/agent-tooling.md` → Plugin Roots And
-Templates). It exits 0 at `full`, on a profile with no implementing stage, and on a `lite` task
-inside its ceilings; a non-zero exit prints one line per artifact over budget.
+Templates). Without a flag it measures a `lite` task's own artifacts, and exits 0 at `full`, on a
+profile with no implementing stage, and on a `lite` task inside its ceilings. After the Plan stage of
+an EPIC that chose decomposition, add `--task-docs`, at any scale: it also measures the `Task.md` of
+every step that stage wrote — its ceiling and its three anchors (`skills/task-documents/SKILL.md`).
+A non-zero exit prints one line per finding.
 
 Measure rather than instruct: a count limit published in a brief and never checked is the class of
 directive this toolkit has already watched go unobserved, which is why the ceilings live in that
 script and not in a sentence (`conventions/task-scale.md`).
 
-On a non-zero exit, report each line with key `budget_over_limit` (`{artifact}`, `{actual}`,
+On a non-zero exit, report each line over a ceiling with key `budget_over_limit` (`{artifact}`, `{actual}`,
 `{cap}`) and re-dispatch that artifact's own stage owner **once**, asking for a trim only — no new
 findings, no re-investigation, no change to any verdict line. If it is still over after that one
 pass, report it and carry on. A long artifact is a cost, not a failure, and a trim loop would spend
 more than the prose does.
 
+A step's `Task.md` goes back to the architect the same way, once: over its ceiling, with key
+`budget_over_limit`, asking to move mechanics into `### Questions for Research` and drop what
+retells the epic's research — never a requirement; an anchor missing, empty or a bare dash, with key
+`task_doc_anchor_missing` (`{step}`, `{anchor}`), asking to fill it or to write `— <reason>` where it
+does not apply.
+
 In `auto` on a Method A range the whole range returns at once: run the same measurement then, once,
-over what the range wrote.
+over what the range wrote. An EPIC range holding both Plan and Execute is dispatched as two calls
+instead — the first with `end_stage=Plan`, the second from Execute — and the `--task-docs`
+measurement runs between them: measured after the range, a step would already have run on the
+`Task.md` the measurement exists to fix.
 
 **Per-phase commits vs flow-level commits.** The "commit always confirmed with user" rule applies ONLY to flow-level wrap commits the orchestrator itself initiates (squash, merge, push) — these are user-confirmed regardless of mode. **Per-phase commits inside a workflow-* multi-phase stage (Refactor / Execute / Fix / Write) are autonomous** — the workflow-* skill creates one commit per green phase without a user prompt, in both manual and auto modes. The orchestrator MUST NOT misread "does not confirm commit with user" inside workflow-* skills as "does not commit at all"; per-phase commits are mandatory for the phase invariant ("each phase independently buildable+test-passing+committed") to hold against interrupts.
 

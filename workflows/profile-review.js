@@ -192,11 +192,16 @@ const escalate = (stage, r) => {
   result.notes.push(`Scale raised to full at ${stage}: ${scaleEscalation.reason}. Write [SCALE] = [full] into Task.md.`)
 }
 
-// Line ceilings for a lite task's artifacts. scripts/lint-artifact-budget.sh carries the same table
-// and is what measures against it; artifact-budget.test.bats fails when the two disagree. First
-// draft, taken from the shape of existing artifacts rather than from a measurement.
+// Line ceilings. scripts/lint-artifact-budget.sh carries the same defaults and measures against
+// them; artifact-budget.test.bats fails when the two disagree. A project moves them in ## Budgets,
+// and the orchestrator ships what they resolve to as budgets — a script cannot read the config.
+// Task.md is a step's, measured at every scale; the rest are a lite task's own artifacts.
 const CAP = { 'Reproduce.md': 120, 'Plan.md': 200, 'Validation.md': 100, 'Review.md': 120, 'Done.md': 80, 'Task.md': 100 }
-const cap = (file) => (lite() && CAP[file] ? `\n\nKeep ${file} to ${CAP[file]} lines or fewer. Logs, dumps and long tool output go in by reference, never pasted inline.` : '')
+const BUDGETS = { ...CAP }
+if (A.budgets && typeof A.budgets === 'object') {
+  for (const [name, lines] of Object.entries(A.budgets)) if (name in CAP && Number.isInteger(lines) && lines > 0) BUDGETS[name] = lines
+}
+const cap = (file) => (lite() && file !== 'Task.md' && BUDGETS[file] ? `\n\nKeep ${file} to ${BUDGETS[file]} lines or fewer. Logs, dumps and long tool output go in by reference, never pasted inline.` : '')
 
 const ESCALATION = {
   type: 'object',
