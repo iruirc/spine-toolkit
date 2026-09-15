@@ -107,3 +107,11 @@ offenders_in() {
   offenders="$(offenders_in "$f")"
   [ -z "$offenders" ] || { echo "single-ecosystem vocabulary in phase-verification:"; echo "$offenders"; return 1; }
 }
+
+@test "the task-documents skill names one ecosystem's tooling nowhere" {
+  # Its worked example is the model every platform's writer copies from.
+  f="$ROOT/skills/task-documents/SKILL.md"
+  [ -f "$f" ] || { echo "no $f — the scan would run over nothing"; return 1; }
+  offenders="$(offenders_in "$f")"
+  [ -z "$offenders" ] || { echo "single-ecosystem vocabulary in task-documents:"; echo "$offenders"; return 1; }
+}
