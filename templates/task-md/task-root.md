@@ -13,6 +13,8 @@
 # [PHASE_VERIFICATION] = [full] # proportional | full
 # [WALKTHROUGH] = [off]       # brief | deep | off
 # [SCALE] = [full]            # lite | full
+# [MODELS] = [architect: opus]  # <key>: <opus|sonnet|haiku|fable|platform>, comma-separated; keys: light and the eight dispatched roles
+# [EFFORT] = [reviewer: high]   # <role>: <low|medium|high|xhigh|max|session>, comma-separated
 # [DOCS] = [off]              # on | off
 # [DOCS_NEW] = [Name:state]   # components this task creates: <name>:<state|progress>, comma-separated
 

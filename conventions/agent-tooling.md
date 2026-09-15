@@ -24,6 +24,9 @@ agent context — the Task tool with `subagent_type=<plugin>:<agent>` in Claude 
 - Every `workflow-*` stage that names a role is dispatched this way, to the agent that role
   resolved to. The contract, including what to do when the host offers no such mechanism, is
   `conventions/stage-dispatch.md`.
+- The model and effort a dispatch runs with come from
+  `conventions/stage-dispatch.md` → Model and effort. In Claude Code the model travels as the
+  dispatch's `model` parameter; the dispatch has no effort parameter.
 - Some hosts carry a standing instruction not to spawn subagents unasked. A spine-toolkit command
   is the user asking; that skill's own text says so.
 
