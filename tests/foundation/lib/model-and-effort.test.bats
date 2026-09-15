@@ -128,6 +128,7 @@ PY
     [ -n "$para" ] || { echo "$f: no dispatch paragraph"; return 1; }
     grep -qF '`conventions/stage-dispatch.md` → Model and effort' <<<"$para" || { echo "$f: the paragraph does not point at the rule"; return 1; }
     grep -qF 'cannot pass an effort' <<<"$para" || { echo "$f: the paragraph does not say effort stays behind"; return 1; }
+    grep -qF 'a walkthrough takes `light`' <<<"$para" || { echo "$f: the paragraph does not give a walkthrough light first"; return 1; }
   done
   [ "$n" -eq 7 ] || { echo "scanned $n skill(s), expected 7"; return 1; }
 }
