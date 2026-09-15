@@ -15,6 +15,9 @@ set -euo pipefail
 #   - every A.agents.<role> read inside a stage is gated by that stage's need() or lens():
 #     the gate is what keeps an em dash out of subagent_type, and deleting one is invisible
 #     to every other check here
+#   - every agent() call carries one tuning(<role>, <kind>) beside its agentType, on the role that
+#     agentType reads, of the kind conventions/stage-dispatch.md → Model and effort gives its label;
+#     no literal model or effort anywhere
 #   - the prelude block is byte-identical in every script (a script cannot import,
 #     so the shared skeleton is copied; this is what keeps the copies one thing)
 #   - none of the sandbox-forbidden globals, and no worktree isolation (decision D5)
@@ -41,6 +44,39 @@ INLINE_UNDER_METHOD_B = {
     ('refactor', 'Done'), ('research', 'Done'), ('test', 'Done'),
     ('epic', 'Execute'), ('review', 'Auto-move'),
 }
+
+# conventions/stage-dispatch.md → Model and effort: the calls whose work the script's own prompt
+# defines. Every other dispatch is a stage call.
+KIND_OF_LABEL = (
+    (r'\$\{stage\.toLowerCase\(\)\}:read-plan', 'mechanical'),
+    (r'execute:read-steps', 'mechanical'),
+    (r'execute:tick:\$\{st\.step_id\}', 'mechanical'),
+    (r'done:read-branch', 'mechanical'),
+    (r'auto-move', 'mechanical'),
+    (r'done', 'mechanical'),
+    (r'walkthrough', 'light'),
+)
+
+# Dispatches whose role is a variable, as (agentType expression, tuning role expression). An unlisted
+# variable form is a violation, so no dispatch slips past the role check.
+VARIABLE_DISPATCH = {
+    ('A.agents[role]', 'role'),
+    ('agentType', 'WALKTHROUGH_AGENT'),
+    ('l.agentType', 'l.role'),
+    ('A.agents[ROLE_OF[picked]]', 'ROLE_OF[picked]'),
+}
+
+ROLE_STRINGS = (
+    r"tuning\('([a-z]+)'",
+    r"readPlan\('[A-Za-z]+',\s*'([a-z]+)'\)",
+)
+ROLE_MAP = r"\{\s*code:\s*'([a-z]+)',\s*test:\s*'([a-z]+)'\s*\}"
+
+
+def role_strings(text):
+    """Roles a dispatch reaches by name rather than through an A.agents read."""
+    found = [r for pattern in ROLE_STRINGS for r in re.findall(pattern, text)]
+    return found + [r for pair in re.findall(ROLE_MAP, text) for r in pair]
 
 violations = []
 
@@ -147,6 +183,7 @@ for fname in files:
     # lens('<role>') is the other dispatch site: a named-but-non-writing role resolved through
     # the prelude's best-effort helper instead of a direct A.agents.<role> read.
     dispatched = set(re.findall(r'A\.agents\.(\w+)', src)) | set(re.findall(r"lens\('([a-z]+)'\)", src))
+    dispatched |= set(role_strings(src))
 
     # A.agents[<ident>] form: <ident> is either a bare-role constant (WALKTHROUGH_AGENT) or an
     # object literal mapping a catalog name to a role (profile-research.js's ROLE_OF). Either
@@ -191,11 +228,56 @@ for fname in files:
                     f'{path}: A.agents.{role} in stage "{stage}" is not gated — '
                     f"the stage's need() or lens() has to name that role"
                 )
+        for role in role_strings(line):
+            if role not in gated.get(stage, ()):
+                violations.append(
+                    f'{path}: role "{role}" dispatched in stage "{stage}" is not gated — '
+                    f"the stage's need() or lens() has to name that role"
+                )
 
     # All three JS string forms: a literal in the two the check did not read is
     # exactly as dispatched as one in the third.
     for _q, literal in re.findall(r"agentType:\s*(['\"`])([^'\"`]*)\1", src):
         violations.append(f'{path}: agentType is the string literal \'{literal}\' — must resolve through A.agents.<role>')
+
+    # A dispatch's option line is the agentType line with a label on it or on one of the three lines
+    # above; the Diagnose lens objects carry agentType and no label, and are not dispatches.
+    lines = src.split('\n')
+    dispatches = []
+    for i, line in enumerate(lines):
+        at = re.search(r'\bagentType\b(?:\s*:\s*([^,}]+?))?\s*[,}]', line)
+        if not at or re.search(r'\bconst agentType\b', line):
+            continue
+        labelled = [lines[j] for j in range(max(0, i - 3), i + 1) if 'label:' in lines[j]]
+        if not labelled:
+            continue
+        lab = re.search(r"label:\s*(['`])(.*?)\1", labelled[-1])
+        dispatches.append((i + 1, (at.group(1) or 'agentType').strip(), lab.group(2) if lab else '?', line))
+
+    calls = len(re.findall(r'\bagent\(', src))
+    if calls != len(dispatches):
+        violations.append(f'{path}: {calls} agent() call(s) but {len(dispatches)} dispatch option line(s) — every call names a label within three lines above its agentType')
+
+    for kw in sorted(set(re.findall(r"\b(model|effort):\s*['\"`]", src))):
+        violations.append(f'{path}: literal `{kw}:` — a dispatch takes its model and effort only from tuning()')
+
+    lens_role = dict(re.findall(r"^\s*const (\w+) = lens\('([a-z]+)'\)", raw, flags=re.M))
+    for n, expr, label, line in dispatches:
+        tunings = re.findall(r"\.\.\.tuning\(\s*([^,]+?)\s*,\s*'([a-z]+)'\s*\)", line)
+        if len(tunings) != 1:
+            violations.append(f"{path}:{n}: dispatch '{label}' carries {len(tunings)} tuning() call(s) beside its agentType, expected exactly one")
+            continue
+        role_expr, kind = tunings[0]
+        direct = re.fullmatch(r'A\.agents\.(\w+)', expr)
+        read = direct.group(1) if direct else lens_role.get(expr)
+        if read:
+            if role_expr != f"'{read}'":
+                violations.append(f"{path}:{n}: dispatch '{label}' reads role {read} in agentType but tunes for {role_expr}")
+        elif (expr, role_expr) not in VARIABLE_DISPATCH:
+            violations.append(f"{path}:{n}: dispatch '{label}' pairs agentType {expr} with tuning role {role_expr}, a variable form lint-workflows.sh does not list")
+        expected = next((k for pattern, k in KIND_OF_LABEL if re.fullmatch(pattern, label)), 'stage')
+        if kind != expected:
+            violations.append(f"{path}:{n}: dispatch '{label}' is tuned {kind}; conventions/stage-dispatch.md → Model and effort makes it {expected}")
 
     # meta is parsed before the run and is not a binding inside the sandbox, so the prelude reads a
     # per-file AGENT_OF copy instead. Two copies only stay one map if something compares them.
@@ -258,5 +340,5 @@ if violations:
     print(f'workflow lint failed: {len(violations)} violation(s)')
     sys.exit(1)
 
-print(f'workflow lint passed: {len(files)} script(s), stages in sync with their skills, every dispatch gated, preludes identical')
+print(f'workflow lint passed: {len(files)} script(s), stages in sync with their skills, every dispatch gated and tuned, preludes identical')
 PY

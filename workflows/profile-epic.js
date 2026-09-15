@@ -266,19 +266,24 @@ const record = (stage, r) => {
   })
 }
 
-// effort: 'low' marks the mechanical calls — read a file back, tick a box, write a report from
-// finished artifacts. Everything that has to think omits it and inherits the session's effort, so a
-// user running high is never quietly downgraded.
-//
+// Model and effort for one dispatch — conventions/stage-dispatch.md → Model and effort. `platform`
+// and `session` pass nothing, leaving the choice to the agent's frontmatter and the session.
+const tuning = (role, kind) => {
+  const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)
+  const model = (kind !== 'stage' && pick(A.models, 'light', 'platform')) || pick(A.models, role, 'platform')
+  const effort = kind === 'mechanical' ? 'low' : pick(A.effort, role, 'session')
+  return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
+}
+
 // Entering at an implementation stage means no Plan stage ran in this invocation, so the phase
 // list has to be read back off disk — the script itself cannot see Plan.md.
-const readPlan = (stage, agentType) =>
+const readPlan = (stage, role) =>
   agent(
     brief(
       stage,
       `Read ${DIR}/Plan.md and return its phases in order. Skip every phase already marked ✅ in the top-level table${A.start_phase ? `, and start from phase ${A.start_phase}` : ''}. Mark a phase kind test only when it adds or changes tests and nothing else. Change nothing on disk.`,
     ),
-    { label: `${stage.toLowerCase()}:read-plan`, phase: stage, agentType, schema: PLAN, effort: 'low' },
+    { label: `${stage.toLowerCase()}:read-plan`, phase: stage, agentType: A.agents[role], schema: PLAN, ...tuning(role, 'mechanical') },
   )
 
 // start_phase is an entry point, not a hint: the read-plan agent is free to return an earlier
@@ -299,13 +304,14 @@ const fromStartPhase = (phases) => {
 // commit, so fanning these out would corrupt the history rather than speed anything up.
 // Returns a tally for stages[] on success, false on the first phase that stalled: the stage has no
 // artifact of its own, so without the tally its record would echo whatever Plan said.
-const runPhases = async (stage, agents, phases, guidance) => {
+const runPhases = async (stage, roles, phases, guidance) => {
   if (!phases.length) {
     result.notes.push(`Plan.md listed no outstanding phases, so ${stage} had nothing to do.`)
     return 'no outstanding phases'
   }
   log(`${stage}: ${phases.length} phase(s), sequentially`)
   for (const ph of phases) {
+    const role = roles[ph.kind] || roles.code
     const done = await agent(
       brief(
         stage,
@@ -320,7 +326,7 @@ The commit message is Conventional Commits: "<type>(<scope>): <imperative subjec
 
 The phase is not done until every checkbox is ticked AND it is committed. If you cannot get it green, leave the row at 🔄, set committed to false, and say plainly what blocks it.`,
       ),
-      { label: `${stage.toLowerCase()}:${ph.id}`, phase: stage, agentType: agents[ph.kind] || agents.code, schema: PHASE },
+      { label: `${stage.toLowerCase()}:${ph.id}`, phase: stage, agentType: A.agents[role], schema: PHASE, ...tuning(role, 'stage') },
     )
     if (!done || !done.ok || !done.committed) {
       result.notes.push(`${stage} stopped at phase ${ph.id}: ${done ? done.summary : 'the agent returned nothing'}`)
@@ -359,7 +365,7 @@ ${extra}` : ''}
 
 Change no production code and no tests.`,
     ),
-    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT },
+    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'light') },
   )
   if (w && w.artifact_path) log(`Walkthrough.md: ${w.summary || 'written'}`)
   else result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
@@ -438,7 +444,7 @@ You write no code. Research.md is the only file you create.`,
     {
       label: 'research',
       phase: 'Research',
-      agentType: A.agents.architect,
+      agentType: A.agents.architect, ...tuning('architect', 'stage'),
       schema: {
         ...ARTIFACT,
         required: [...ARTIFACT.required, 'decision'],
@@ -474,7 +480,7 @@ Return every step you created in the steps array, in execution order.
 If the verdict is PURE_RESEARCH:
 Finalize ${DIR}/Research.md. Plan.md is optional here and, if you write one, it is a research roadmap — what else needs investigating — with no executable steps. Return branch pure_research and an empty steps array. Create no step folders.`,
     ),
-    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: EPIC_PLAN },
+    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: EPIC_PLAN, ...tuning('architect', 'stage') },
   )
   if (!plan) return finish('stop', { status: 'error', reason: 'the Plan agent returned nothing' })
   record('Plan', plan)
@@ -521,7 +527,7 @@ if (runs('Execute')) {
         'Execute',
         `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE] and [STATUS] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own and its [SCALE] where it declares one. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
-      { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, effort: 'low' },
+      { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'mechanical') },
     )
     if (!read) return finish('stop', { status: 'error', reason: 'the step reader returned nothing' })
     branch = read.branch
@@ -637,7 +643,7 @@ if (runs('Execute')) {
           'Execute',
           `Step ${st.step_id} finished. In ${DIR}/Plan.md tick that step's row in the progress table — "- [ ]" becomes "- [x]" — and set its [STATUS] column to match its Task.md, which spine-toolkit:task-move has just updated. Touch nothing else in the file and no other file.`,
         ),
-        { label: `execute:tick:${st.step_id}`, phase: 'Execute', agentType: A.agents.architect, schema: ARTIFACT, effort: 'low' },
+        { label: `execute:tick:${st.step_id}`, phase: 'Execute', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'mechanical') },
       )
     }
 
@@ -660,8 +666,7 @@ if (runs('Done') && branch === null) {
     {
       label: 'done:read-branch',
       phase: 'Done',
-      agentType: A.agents.architect,
-      effort: 'low',
+      agentType: A.agents.architect, ...tuning('architect', 'mechanical'),
       schema: {
         type: 'object',
         additionalProperties: false,
@@ -698,7 +703,7 @@ if (runs('Done') && !failed_steps.length && !cancelled && !pending_steps.length)
 - A ## Estimate retrospective section that rolls up every completed step's own retrospective: the aggregate estimated epic range against the summed actual effort, an in-range verdict, and the reason for any variance. Take actual effort per feature-estimation ## Estimate retrospective — the user's own figure when there is one, otherwise the git proxy, labelled as a proxy, otherwise unknown. Sum step rows only in matching units; never add human-days to proxy values in one total. Append or refresh this epic's data point in the calibration log.
 - Objections, aggregated from the steps' Done.md files where the user insisted on a contested decision.`,
     ),
-    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, effort: 'low' },
+    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'mechanical') },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)

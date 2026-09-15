@@ -272,19 +272,24 @@ const record = (stage, r) => {
   })
 }
 
-// effort: 'low' marks the mechanical calls — read a file back, tick a box, write a report from
-// finished artifacts. Everything that has to think omits it and inherits the session's effort, so a
-// user running high is never quietly downgraded.
-//
+// Model and effort for one dispatch — conventions/stage-dispatch.md → Model and effort. `platform`
+// and `session` pass nothing, leaving the choice to the agent's frontmatter and the session.
+const tuning = (role, kind) => {
+  const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)
+  const model = (kind !== 'stage' && pick(A.models, 'light', 'platform')) || pick(A.models, role, 'platform')
+  const effort = kind === 'mechanical' ? 'low' : pick(A.effort, role, 'session')
+  return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
+}
+
 // Entering at an implementation stage means no Plan stage ran in this invocation, so the phase
 // list has to be read back off disk — the script itself cannot see Plan.md.
-const readPlan = (stage, agentType) =>
+const readPlan = (stage, role) =>
   agent(
     brief(
       stage,
       `Read ${DIR}/Plan.md and return its phases in order. Skip every phase already marked ✅ in the top-level table${A.start_phase ? `, and start from phase ${A.start_phase}` : ''}. Mark a phase kind test only when it adds or changes tests and nothing else. Change nothing on disk.`,
     ),
-    { label: `${stage.toLowerCase()}:read-plan`, phase: stage, agentType, schema: PLAN, effort: 'low' },
+    { label: `${stage.toLowerCase()}:read-plan`, phase: stage, agentType: A.agents[role], schema: PLAN, ...tuning(role, 'mechanical') },
   )
 
 // start_phase is an entry point, not a hint: the read-plan agent is free to return an earlier
@@ -305,13 +310,14 @@ const fromStartPhase = (phases) => {
 // commit, so fanning these out would corrupt the history rather than speed anything up.
 // Returns a tally for stages[] on success, false on the first phase that stalled: the stage has no
 // artifact of its own, so without the tally its record would echo whatever Plan said.
-const runPhases = async (stage, agents, phases, guidance) => {
+const runPhases = async (stage, roles, phases, guidance) => {
   if (!phases.length) {
     result.notes.push(`Plan.md listed no outstanding phases, so ${stage} had nothing to do.`)
     return 'no outstanding phases'
   }
   log(`${stage}: ${phases.length} phase(s), sequentially`)
   for (const ph of phases) {
+    const role = roles[ph.kind] || roles.code
     const done = await agent(
       brief(
         stage,
@@ -326,7 +332,7 @@ The commit message is Conventional Commits: "<type>(<scope>): <imperative subjec
 
 The phase is not done until every checkbox is ticked AND it is committed. If you cannot get it green, leave the row at 🔄, set committed to false, and say plainly what blocks it.`,
       ),
-      { label: `${stage.toLowerCase()}:${ph.id}`, phase: stage, agentType: agents[ph.kind] || agents.code, schema: PHASE },
+      { label: `${stage.toLowerCase()}:${ph.id}`, phase: stage, agentType: A.agents[role], schema: PHASE, ...tuning(role, 'stage') },
     )
     if (!done || !done.ok || !done.committed) {
       result.notes.push(`${stage} stopped at phase ${ph.id}: ${done ? done.summary : 'the agent returned nothing'}`)
@@ -365,7 +371,7 @@ ${extra}` : ''}
 
 Change no production code and no tests.`,
     ),
-    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT },
+    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'light') },
   )
   if (w && w.artifact_path) log(`Walkthrough.md: ${w.summary || 'written'}`)
   else result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
@@ -387,7 +393,7 @@ Set reproducible to no only when you could not make it happen at all, and record
     {
       label: 'reproduce',
       phase: 'Reproduce',
-      agentType: A.agents.diagnostics,
+      agentType: A.agents.diagnostics, ...tuning('diagnostics', 'stage'),
       schema: withEscalation({
         ...ARTIFACT,
         required: [...ARTIFACT.required, 'reproducible'],
@@ -439,7 +445,7 @@ if (runs('Diagnose') && !lite()) {
         agent(brief('Diagnose', `${l.ask}\n\nReproduce.md in the task folder describes how to make the bug happen. Write no artifact — return your findings; a synthesis step merges both lenses.\n\nYour findings feed Research.md, so apply the task-documents skill's Research.md section to what you look for.`), {
           label: `diagnose:${l.role}`,
           phase: 'Diagnose',
-          agentType: l.agentType,
+          agentType: l.agentType, ...tuning(l.role, 'stage'),
           schema: LENS,
         }),
       ),
@@ -459,7 +465,7 @@ Write Research.md by applying the task-documents skill, its Research.md section 
 PANEL FINDINGS (data):
 ${JSON.stringify(views, null, 2)}`,
     ),
-    { label: 'diagnose:synthesis', phase: 'Diagnose', agentType: A.agents.architect, schema: ARTIFACT },
+    { label: 'diagnose:synthesis', phase: 'Diagnose', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'stage') },
   )
   if (!diagnosis) return finish('stop', { status: 'error', reason: 'the Diagnose synthesis returned nothing' })
   record('Diagnose', diagnosis)
@@ -486,7 +492,7 @@ Open every phase's detail section with a **Verification:** line and one checkbox
 
 Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, each stated as what must be true rather than as what to press, so Validation can turn it into a case a person walks. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry. The reproduction replay is not one of these lines: its steps are already in Reproduce.md, and Validation reads them from there.${cap('Plan.md')}${ratchet()}`,
     ),
-    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: withEscalation(PLAN) },
+    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: withEscalation(PLAN), ...tuning('architect', 'stage') },
   )
   if (!plan) return finish('stop', { status: 'error', reason: 'the Plan agent returned nothing' })
   record('Plan', plan)
@@ -496,12 +502,12 @@ Then add a ## Manual acceptance section: one line per check this task's automati
 // ── Fix ─────────────────────────────────────────────────────────────────────
 if (runs('Fix')) {
   if (!need('Fix', 'developer', 'tester')) return finish('ask_user')
-  if (!plan) plan = await readPlan('Fix', A.agents.developer)
+  if (!plan) plan = await readPlan('Fix', 'developer')
   if (!plan) return finish('stop', { status: 'error', reason: 'could not read the phase list from Plan.md' })
 
   const phasesDone = await runPhases(
     'Fix',
-    { code: A.agents.developer, test: A.agents.tester },
+    { code: 'developer', test: 'tester' },
     fromStartPhase(plan.phases || []),
     'Commit type: fix for the repair itself, test for the regression-test phase, chore for build or config only. A regression test is mandatory for this profile unless the contract disabled it — it is what stops the bug coming back.',
   )
@@ -528,7 +534,7 @@ Change no production code and no tests. Return the same status you wrote on the 
     {
       label: 'validation',
       phase: 'Validation',
-      agentType: A.agents.validator,
+      agentType: A.agents.validator, ...tuning('validator', 'stage'),
       schema: { ...VALIDATION, required: [...VALIDATION.required, 'reproduction_status'] },
     },
   )
@@ -567,7 +573,7 @@ if (runs('Review') && A.need_review !== false) {
 
 Judge the fix against Reproduce.md and Plan.md: does it address the root cause rather than the symptom, does the regression test lock in the real scenario, does it carry the risks the diagnosis named — Research.md, or the ## Diagnosis section of Reproduce.md on a run that folded it. When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
-    { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
+    { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )
   if (!review) return finish('stop', { status: 'error', reason: 'the Review agent returned nothing' })
   record('Review', review)
@@ -591,7 +597,7 @@ if (runs('Done')) {
       'Done',
       `Write the final report ${DIR}/Done.md: what was fixed, which regression test was added, the validation status including the outcome of the reproduction replay, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries. Keep it short enough to be read.${cap('Done.md')}`,
     ),
-    { label: 'done', phase: 'Done', agentType: A.agents.developer, schema: ARTIFACT, effort: 'low' },
+    { label: 'done', phase: 'Done', agentType: A.agents.developer, schema: ARTIFACT, ...tuning('developer', 'mechanical') },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
