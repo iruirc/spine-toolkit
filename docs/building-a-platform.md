@@ -532,10 +532,10 @@ consulted at all. A block that names no role overrides nothing, which is the sta
 
 The same file holds `## Stack` (resolved axis values), `## Modules` (per-module stack overrides), and
 core's own blocks: `## Language`, `## Platform`, `## Mode`, `## Progress`, `## Validation`,
-`## Reporting`, `## Docs`, `## Scale`, `## Budgets`, `## EstimationDeltas`, `## DeliveryMode`,
-`## AILeverage`, `## Paths`.
-`## Docs`, `## Scale` and `## Budgets` are core's alone — a platform neither declares them nor
-reads them, and nothing in your manifest changes because of it.
+`## Reporting`, `## Docs`, `## Scale`, `## Budgets`, `## Models`, `## Effort`, `## EstimationDeltas`,
+`## DeliveryMode`, `## AILeverage`, `## Paths`.
+`## Docs`, `## Scale`, `## Budgets`, `## Models` and `## Effort` are core's alone — a platform
+neither declares them nor reads them, and nothing in your manifest changes because of it.
 
 ## 8. Release checklist
 
