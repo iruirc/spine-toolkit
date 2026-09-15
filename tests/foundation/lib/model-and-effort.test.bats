@@ -131,3 +131,12 @@ PY
   done
   [ "$n" -eq 7 ] || { echo "scanned $n skill(s), expected 7"; return 1; }
 }
+
+@test "the platform contract and the platform guide keep model and effort out of agent frontmatter" {
+  roles="$(awk '/^## `## Roles`$/{f=1;next} f&&/^## /{exit} f' "$ROOT/conventions/platform-contract.md")"
+  for token in 'no `effort`' '`sonnet` or `haiku`' '`conventions/stage-dispatch.md` → Model and effort' '`lint-manifest.sh`'; do
+    grep -qF "$token" <<<"$roles" || { echo "## Roles does not say $token"; return 1; }
+  done
+  ! grep -qF 'plus whatever your' "$ROOT/docs/building-a-platform.md" || { echo "the guide still invites a model in frontmatter"; return 1; }
+  grep -qF 'leave `model` and `effort` out' "$ROOT/docs/building-a-platform.md" || { echo "the guide does not say to leave them out"; return 1; }
+}

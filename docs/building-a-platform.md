@@ -108,8 +108,9 @@ verbatim and a rename would leave it resolving to nothing.
 
 ### Step 3 — write the agents
 
-One Markdown file per agent at `<plugin>/agents/<name>.md`, frontmatter `name` + `description` (plus whatever
-your host supports — `model`, `color`, `tools`):
+One Markdown file per agent at `<plugin>/agents/<name>.md`, frontmatter `name` + `description` (plus
+`color` or `tools` where your host supports them; leave `model` and `effort` out —
+`conventions/platform-contract.md` → `## Roles` says when a lighter model is allowed):
 
 ```markdown
 ---

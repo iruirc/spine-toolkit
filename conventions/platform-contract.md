@@ -90,6 +90,12 @@ The right-hand side is always namespaced (`plugin:agent`), because the map it fe
 subagent dispatch verbatim, and the agent it names must exist as `<plugin>/agents/<name>.md` —
 `<name>` being the part after the colon.
 
+That file's frontmatter carries no `effort`, and no `model` other than `sonnet` or `haiku` — those
+two only where the agent's work is mechanical, such as reading build logs. Which model and effort a
+stage runs on belongs to the session and to the project's `## Models` and `## Effort`
+(`conventions/stage-dispatch.md` → Model and effort); a heavier model pinned here outranks both,
+whatever the user chose. `lint-manifest.sh` rejects either.
+
 Core's stage briefs say what a role must accomplish and never how: "a build and a full test run are
 mandatory", never the name of a build tool. Only the agent behind the role knows how this ecosystem's
 projects get built and tested, and it brings that knowledge itself — which is why nothing here asks a
