@@ -270,19 +270,24 @@ const record = (stage, r) => {
   })
 }
 
-// effort: 'low' marks the mechanical calls — read a file back, tick a box, write a report from
-// finished artifacts. Everything that has to think omits it and inherits the session's effort, so a
-// user running high is never quietly downgraded.
-//
+// Model and effort for one dispatch — conventions/stage-dispatch.md → Model and effort. `platform`
+// and `session` pass nothing, leaving the choice to the agent's frontmatter and the session.
+const tuning = (role, kind) => {
+  const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)
+  const model = (kind !== 'stage' && pick(A.models, 'light', 'platform')) || pick(A.models, role, 'platform')
+  const effort = kind === 'mechanical' ? 'low' : pick(A.effort, role, 'session')
+  return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
+}
+
 // Entering at an implementation stage means no Plan stage ran in this invocation, so the phase
 // list has to be read back off disk — the script itself cannot see Plan.md.
-const readPlan = (stage, agentType) =>
+const readPlan = (stage, role) =>
   agent(
     brief(
       stage,
       `Read ${DIR}/Plan.md and return its phases in order. Skip every phase already marked ✅ in the top-level table${A.start_phase ? `, and start from phase ${A.start_phase}` : ''}. Mark a phase kind test only when it adds or changes tests and nothing else. Change nothing on disk.`,
     ),
-    { label: `${stage.toLowerCase()}:read-plan`, phase: stage, agentType, schema: PLAN, effort: 'low' },
+    { label: `${stage.toLowerCase()}:read-plan`, phase: stage, agentType: A.agents[role], schema: PLAN, ...tuning(role, 'mechanical') },
   )
 
 // start_phase is an entry point, not a hint: the read-plan agent is free to return an earlier
@@ -303,13 +308,14 @@ const fromStartPhase = (phases) => {
 // commit, so fanning these out would corrupt the history rather than speed anything up.
 // Returns a tally for stages[] on success, false on the first phase that stalled: the stage has no
 // artifact of its own, so without the tally its record would echo whatever Plan said.
-const runPhases = async (stage, agents, phases, guidance) => {
+const runPhases = async (stage, roles, phases, guidance) => {
   if (!phases.length) {
     result.notes.push(`Plan.md listed no outstanding phases, so ${stage} had nothing to do.`)
     return 'no outstanding phases'
   }
   log(`${stage}: ${phases.length} phase(s), sequentially`)
   for (const ph of phases) {
+    const role = roles[ph.kind] || roles.code
     const done = await agent(
       brief(
         stage,
@@ -324,7 +330,7 @@ The commit message is Conventional Commits: "<type>(<scope>): <imperative subjec
 
 The phase is not done until every checkbox is ticked AND it is committed. If you cannot get it green, leave the row at 🔄, set committed to false, and say plainly what blocks it.`,
       ),
-      { label: `${stage.toLowerCase()}:${ph.id}`, phase: stage, agentType: agents[ph.kind] || agents.code, schema: PHASE },
+      { label: `${stage.toLowerCase()}:${ph.id}`, phase: stage, agentType: A.agents[role], schema: PHASE, ...tuning(role, 'stage') },
     )
     if (!done || !done.ok || !done.committed) {
       result.notes.push(`${stage} stopped at phase ${ph.id}: ${done ? done.summary : 'the agent returned nothing'}`)
@@ -363,7 +369,7 @@ ${extra}` : ''}
 
 Change no production code and no tests.`,
     ),
-    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT },
+    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'light') },
   )
   if (w && w.artifact_path) log(`Walkthrough.md: ${w.summary || 'written'}`)
   else result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
@@ -384,7 +390,7 @@ The invariant: external behaviour does not change. Only structure, readability, 
 
 Write Research.md by applying the task-documents skill, its Research.md section — it holds what the document carries, which outcomes it lists, and what it leaves to Task.md and Plan.md.`,
     ),
-    { label: 'analyze', phase: 'Analyze', agentType: A.agents.architect, schema: ARTIFACT },
+    { label: 'analyze', phase: 'Analyze', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'stage') },
   )
   if (!analyze) return finish('stop', { status: 'error', reason: 'the Analyze agent returned nothing' })
   record('Analyze', analyze)
@@ -411,7 +417,7 @@ Open every phase's detail section with a **Verification:** line and one checkbox
 
 Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, each stated as what must be true rather than as what to press, so Validation can turn it into a case a person walks. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}`,
     ),
-    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: withEscalation(PLAN) },
+    { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: withEscalation(PLAN), ...tuning('architect', 'stage') },
   )
   if (!plan) return finish('stop', { status: 'error', reason: 'the Plan agent returned nothing' })
   record('Plan', plan)
@@ -421,12 +427,12 @@ Then add a ## Manual acceptance section: one line per check this task's automati
 // ── Refactor ────────────────────────────────────────────────────────────────
 if (runs('Refactor')) {
   if (!need('Refactor', 'refactorer', 'tester')) return finish('ask_user')
-  if (!plan) plan = await readPlan('Refactor', A.agents.refactorer)
+  if (!plan) plan = await readPlan('Refactor', 'refactorer')
   if (!plan) return finish('stop', { status: 'error', reason: 'could not read the phase list from Plan.md' })
 
   const phasesDone = await runPhases(
     'Refactor',
-    { code: A.agents.refactorer, test: A.agents.tester },
+    { code: 'refactorer', test: 'tester' },
     fromStartPhase(plan.phases || []),
     'Commit type: refactor for a structural phase, test for a test-only phase, chore for build or config only. External behaviour does not change — if a pre-existing test needs editing to pass, that is a signal you changed behaviour, so stop and say so rather than editing the test.',
   )
@@ -450,7 +456,7 @@ For REFACTOR a full test run is mandatory as a regression check: every pre-exist
 
 Change no production code and no tests. Return the same status you wrote on the first line.${cap('Validation.md')}`,
     ),
-    { label: 'validation', phase: 'Validation', agentType: A.agents.validator, schema: VALIDATION },
+    { label: 'validation', phase: 'Validation', agentType: A.agents.validator, schema: VALIDATION, ...tuning('validator', 'stage') },
   )
   if (!validation) return finish('stop', { status: 'error', reason: 'the Validation agent returned nothing' })
   record('Validation', validation)
@@ -484,7 +490,7 @@ if (runs('Review') && A.need_review !== false) {
 
 Judge it against the refactor invariant first: did external behaviour stay put. Then against the target landscape — Research.md, or the ## Analysis section of Plan.md on a run that folded it: is the structure actually where the plan said it would be, or did the phases stop halfway. When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
-    { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
+    { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )
   if (!review) return finish('stop', { status: 'error', reason: 'the Review agent returned nothing' })
   record('Review', review)
@@ -508,7 +514,7 @@ if (runs('Done')) {
       'Done',
       `Write the final report ${DIR}/Done.md: what was refactored, why the result is better (readability, separation of concerns, reduced coupling), whatever measurable metrics you have (file size, cyclomatic complexity of the key functions, dependency count), the validation status, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries.${cap('Done.md')}`,
     ),
-    { label: 'done', phase: 'Done', agentType: A.agents.refactorer, schema: ARTIFACT, effort: 'low' },
+    { label: 'done', phase: 'Done', agentType: A.agents.refactorer, schema: ARTIFACT, ...tuning('refactorer', 'mechanical') },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)

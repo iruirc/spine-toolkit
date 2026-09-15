@@ -270,19 +270,24 @@ const record = (stage, r) => {
   })
 }
 
-// effort: 'low' marks the mechanical calls — read a file back, tick a box, write a report from
-// finished artifacts. Everything that has to think omits it and inherits the session's effort, so a
-// user running high is never quietly downgraded.
-//
+// Model and effort for one dispatch — conventions/stage-dispatch.md → Model and effort. `platform`
+// and `session` pass nothing, leaving the choice to the agent's frontmatter and the session.
+const tuning = (role, kind) => {
+  const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)
+  const model = (kind !== 'stage' && pick(A.models, 'light', 'platform')) || pick(A.models, role, 'platform')
+  const effort = kind === 'mechanical' ? 'low' : pick(A.effort, role, 'session')
+  return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
+}
+
 // Entering at an implementation stage means no Plan stage ran in this invocation, so the phase
 // list has to be read back off disk — the script itself cannot see Plan.md.
-const readPlan = (stage, agentType) =>
+const readPlan = (stage, role) =>
   agent(
     brief(
       stage,
       `Read ${DIR}/Plan.md and return its phases in order. Skip every phase already marked ✅ in the top-level table${A.start_phase ? `, and start from phase ${A.start_phase}` : ''}. Mark a phase kind test only when it adds or changes tests and nothing else. Change nothing on disk.`,
     ),
-    { label: `${stage.toLowerCase()}:read-plan`, phase: stage, agentType, schema: PLAN, effort: 'low' },
+    { label: `${stage.toLowerCase()}:read-plan`, phase: stage, agentType: A.agents[role], schema: PLAN, ...tuning(role, 'mechanical') },
   )
 
 // start_phase is an entry point, not a hint: the read-plan agent is free to return an earlier
@@ -303,13 +308,14 @@ const fromStartPhase = (phases) => {
 // commit, so fanning these out would corrupt the history rather than speed anything up.
 // Returns a tally for stages[] on success, false on the first phase that stalled: the stage has no
 // artifact of its own, so without the tally its record would echo whatever Plan said.
-const runPhases = async (stage, agents, phases, guidance) => {
+const runPhases = async (stage, roles, phases, guidance) => {
   if (!phases.length) {
     result.notes.push(`Plan.md listed no outstanding phases, so ${stage} had nothing to do.`)
     return 'no outstanding phases'
   }
   log(`${stage}: ${phases.length} phase(s), sequentially`)
   for (const ph of phases) {
+    const role = roles[ph.kind] || roles.code
     const done = await agent(
       brief(
         stage,
@@ -324,7 +330,7 @@ The commit message is Conventional Commits: "<type>(<scope>): <imperative subjec
 
 The phase is not done until every checkbox is ticked AND it is committed. If you cannot get it green, leave the row at 🔄, set committed to false, and say plainly what blocks it.`,
       ),
-      { label: `${stage.toLowerCase()}:${ph.id}`, phase: stage, agentType: agents[ph.kind] || agents.code, schema: PHASE },
+      { label: `${stage.toLowerCase()}:${ph.id}`, phase: stage, agentType: A.agents[role], schema: PHASE, ...tuning(role, 'stage') },
     )
     if (!done || !done.ok || !done.committed) {
       result.notes.push(`${stage} stopped at phase ${ph.id}: ${done ? done.summary : 'the agent returned nothing'}`)
@@ -363,7 +369,7 @@ ${extra}` : ''}
 
 Change no production code and no tests.`,
     ),
-    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT },
+    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'light') },
   )
   if (w && w.artifact_path) log(`Walkthrough.md: ${w.summary || 'written'}`)
   else result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
@@ -387,7 +393,7 @@ Your findings feed Research.md, so apply the task-documents skill's Research.md 
         {
           label: 'research:security',
           phase: 'Research',
-          agentType: securityAgentType,
+          agentType: securityAgentType, ...tuning('security', 'stage'),
           schema: {
             type: 'object',
             additionalProperties: false,
@@ -418,7 +424,7 @@ Write Research.md by applying the task-documents skill, its Research.md section 
 SECURITY FINDINGS (data):
 ${JSON.stringify(security || { risks: [] }, null, 2)}`,
     ),
-    { label: 'research:architect', phase: 'Research', agentType: A.agents.architect, schema: ARTIFACT },
+    { label: 'research:architect', phase: 'Research', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'stage') },
   )
   if (!research) return finish('stop', { status: 'error', reason: 'the Research agent returned nothing' })
   record('Research', research)
@@ -455,7 +461,7 @@ Then add a ## Manual acceptance section: one line per check this task's automati
     {
       label: 'plan',
       phase: 'Plan',
-      agentType: A.agents.architect,
+      agentType: A.agents.architect, ...tuning('architect', 'stage'),
       schema: withEscalation({
         ...PLAN,
         required: lite() ? [...PLAN.required] : [...PLAN.required, 'estimation_gate'],
@@ -487,12 +493,12 @@ Then add a ## Manual acceptance section: one line per check this task's automati
 // ── Execute ─────────────────────────────────────────────────────────────────
 if (runs('Execute')) {
   if (!need('Execute', 'developer', 'tester')) return finish('ask_user')
-  if (!plan) plan = await readPlan('Execute', A.agents.developer)
+  if (!plan) plan = await readPlan('Execute', 'developer')
   if (!plan) return finish('stop', { status: 'error', reason: 'could not read the phase list from Plan.md' })
 
   const phasesDone = await runPhases(
     'Execute',
-    { code: A.agents.developer, test: A.agents.tester },
+    { code: 'developer', test: 'tester' },
     fromStartPhase(plan.phases || []),
     'Commit type: feat for a phase that adds behaviour, fix for one that repairs it, test for a test-only phase, chore for build or config only.',
   )
@@ -516,7 +522,7 @@ For FEATURE a build and a full test run are both mandatory, through whatever bui
 
 Change no production code and no tests. Return the same status you wrote on the first line.${cap('Validation.md')}`,
     ),
-    { label: 'validation', phase: 'Validation', agentType: A.agents.validator, schema: VALIDATION },
+    { label: 'validation', phase: 'Validation', agentType: A.agents.validator, schema: VALIDATION, ...tuning('validator', 'stage') },
   )
   if (!validation) return finish('stop', { status: 'error', reason: 'the Validation agent returned nothing' })
   record('Validation', validation)
@@ -552,7 +558,7 @@ When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute 
 
 Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
-    { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
+    { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )
   if (!review) return finish('stop', { status: 'error', reason: 'the Review agent returned nothing' })
   record('Review', review)
@@ -578,7 +584,7 @@ if (runs('Done')) {
 
 When ${DIR}/Plan.md has a ## Estimation section, a ## Estimate retrospective section is mandatory, following the hybrid model in the feature-estimation skill. Always record the automatic git proxy — the commit span of this task's phase commits plus the phase and rework counts, labelled proxy and never presented as human-days — and add the user-provided human effort when it was offered. The in-range verdict uses human effort when it exists and the proxy otherwise; only when neither exists write unknown and name the missing signal. In AI-assisted mode break the actual down per leverage class. Append this feature's data point to the calibration log.${cap('Done.md')}`,
     ),
-    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, effort: 'low' },
+    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'mechanical') },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)

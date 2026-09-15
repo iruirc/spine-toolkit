@@ -75,3 +75,18 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   grep -qF '`[MODELS] = [<key>: <value>, …]`' "$f" || { echo "task-new lacks [MODELS]"; return 1; }
   grep -qF '`[EFFORT] = [<role>: <value>, …]`' "$f" || { echo "task-new lacks [EFFORT]"; return 1; }
 }
+
+@test "every profile script defines tuning() as the rule states it" {
+  n=0
+  for p in "$ROOT"/workflows/profile-*.js; do
+    n=$((n + 1))
+    for line in "const tuning = (role, kind) => {" \
+                "  const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)" \
+                "  const model = (kind !== 'stage' && pick(A.models, 'light', 'platform')) || pick(A.models, role, 'platform')" \
+                "  const effort = kind === 'mechanical' ? 'low' : pick(A.effort, role, 'session')" \
+                "  return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }"; do
+      grep -qxF "$line" "$p" || { echo "$(basename "$p"): missing '$line'"; return 1; }
+    done
+  done
+  [ "$n" -eq 7 ] || { echo "scanned $n script(s), expected 7"; return 1; }
+}

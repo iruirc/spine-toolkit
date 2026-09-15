@@ -264,19 +264,24 @@ const record = (stage, r) => {
   })
 }
 
-// effort: 'low' marks the mechanical calls — read a file back, tick a box, write a report from
-// finished artifacts. Everything that has to think omits it and inherits the session's effort, so a
-// user running high is never quietly downgraded.
-//
+// Model and effort for one dispatch — conventions/stage-dispatch.md → Model and effort. `platform`
+// and `session` pass nothing, leaving the choice to the agent's frontmatter and the session.
+const tuning = (role, kind) => {
+  const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)
+  const model = (kind !== 'stage' && pick(A.models, 'light', 'platform')) || pick(A.models, role, 'platform')
+  const effort = kind === 'mechanical' ? 'low' : pick(A.effort, role, 'session')
+  return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
+}
+
 // Entering at an implementation stage means no Plan stage ran in this invocation, so the phase
 // list has to be read back off disk — the script itself cannot see Plan.md.
-const readPlan = (stage, agentType) =>
+const readPlan = (stage, role) =>
   agent(
     brief(
       stage,
       `Read ${DIR}/Plan.md and return its phases in order. Skip every phase already marked ✅ in the top-level table${A.start_phase ? `, and start from phase ${A.start_phase}` : ''}. Mark a phase kind test only when it adds or changes tests and nothing else. Change nothing on disk.`,
     ),
-    { label: `${stage.toLowerCase()}:read-plan`, phase: stage, agentType, schema: PLAN, effort: 'low' },
+    { label: `${stage.toLowerCase()}:read-plan`, phase: stage, agentType: A.agents[role], schema: PLAN, ...tuning(role, 'mechanical') },
   )
 
 // start_phase is an entry point, not a hint: the read-plan agent is free to return an earlier
@@ -297,13 +302,14 @@ const fromStartPhase = (phases) => {
 // commit, so fanning these out would corrupt the history rather than speed anything up.
 // Returns a tally for stages[] on success, false on the first phase that stalled: the stage has no
 // artifact of its own, so without the tally its record would echo whatever Plan said.
-const runPhases = async (stage, agents, phases, guidance) => {
+const runPhases = async (stage, roles, phases, guidance) => {
   if (!phases.length) {
     result.notes.push(`Plan.md listed no outstanding phases, so ${stage} had nothing to do.`)
     return 'no outstanding phases'
   }
   log(`${stage}: ${phases.length} phase(s), sequentially`)
   for (const ph of phases) {
+    const role = roles[ph.kind] || roles.code
     const done = await agent(
       brief(
         stage,
@@ -318,7 +324,7 @@ The commit message is Conventional Commits: "<type>(<scope>): <imperative subjec
 
 The phase is not done until every checkbox is ticked AND it is committed. If you cannot get it green, leave the row at 🔄, set committed to false, and say plainly what blocks it.`,
       ),
-      { label: `${stage.toLowerCase()}:${ph.id}`, phase: stage, agentType: agents[ph.kind] || agents.code, schema: PHASE },
+      { label: `${stage.toLowerCase()}:${ph.id}`, phase: stage, agentType: A.agents[role], schema: PHASE, ...tuning(role, 'stage') },
     )
     if (!done || !done.ok || !done.committed) {
       result.notes.push(`${stage} stopped at phase ${ph.id}: ${done ? done.summary : 'the agent returned nothing'}`)
@@ -357,7 +363,7 @@ ${extra}` : ''}
 
 Change no production code and no tests.`,
     ),
-    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT },
+    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'light') },
   )
   if (w && w.artifact_path) log(`Walkthrough.md: ${w.summary || 'written'}`)
   else result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
@@ -401,7 +407,7 @@ Apply the task-documents skill's rules for every document to Research.md — her
     {
       label: `research:${picked}`,
       phase: 'Research',
-      agentType: A.agents[ROLE_OF[picked]],
+      agentType: A.agents[ROLE_OF[picked]], ...tuning(ROLE_OF[picked], 'stage'),
       schema: {
         ...ARTIFACT,
         required: [...ARTIFACT.required, 'follow_up_count'],
@@ -432,7 +438,7 @@ Judge the research and only the research: does it cover the goal it set itself, 
 
 You are explicitly NOT verifying the findings against the codebase — the technical accuracy of a finding belongs to the research agent, and second-guessing it here duplicates that work at full cost while adding no gate. Modify nothing. Return the same status you wrote on the first line.`,
     ),
-    { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },
+    { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )
   if (!review) return finish('stop', { status: 'error', reason: 'the Review agent returned nothing' })
   record('Review', review)
@@ -451,7 +457,7 @@ if (runs('Done')) {
       'Done',
       `Write the final report ${DIR}/Done.md: what was investigated, the verdict or key finding in one paragraph, a pointer to Research.md, and the follow-up tasks — how many, briefly what they are, and the task-new invocation hint for each. Nothing was built here, so keep the report about what is now known and what should happen next.`,
     ),
-    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, effort: 'low' },
+    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'mechanical') },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
