@@ -330,3 +330,22 @@ frontmatter_add() { # $1 = agent file, $2 = line inserted right after the name l
   run "$LINT" "$TMP/p"
   [ "$status" -eq 0 ]
 }
+
+@test "a quoted, commented or trailing-spaced sonnet still passes" {
+  orig="$TMP/p/agents/fixture-architect.md"
+  for line in 'model: "sonnet"' 'model: sonnet # light' 'model: sonnet '; do
+    cp "$ROOT/tests/fixtures/fixture-platform/agents/fixture-architect.md" "$orig"
+    frontmatter_add "$orig" "$line"
+    run "$LINT" "$TMP/p"
+    [ "$status" -eq 0 ] || { echo "'$line' failed: $output"; return 1; }
+  done
+}
+
+@test "a CRLF agent file still has its pinned model read" {
+  sed 's/$/\r/' "$TMP/p/agents/fixture-architect.md" > "$TMP/p/agents/fixture-architect.md.crlf" \
+    && mv "$TMP/p/agents/fixture-architect.md.crlf" "$TMP/p/agents/fixture-architect.md"
+  frontmatter_add "$TMP/p/agents/fixture-architect.md" 'model: opus'
+  run "$LINT" "$TMP/p"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"agent pins model 'opus'"* ]]
+}

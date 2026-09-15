@@ -134,13 +134,27 @@ while read -r ref; do
     || { echo "manifest names an agent outside this plugin's namespace (expected $own_name:): $ref"; violations=$((violations+1)); }
   [ -f "$plugin/agents/${ref#*:}.md" ] \
     || { echo "manifest names an agent with no file: $ref"; violations=$((violations+1)); }
-  # A frontmatter model or effort outranks what the session and the project chose
-  # (conventions/platform-contract.md → ## Roles); only a lighter model is allowed.
-  front="$(awk 'NR == 1 && $0 == "---" { f = 1; next } f && $0 == "---" { exit } f' "$plugin/agents/${ref#*:}.md" 2>/dev/null || true)"
-  pinned="$(sed -n 's/^model:[[:space:]]*//p' <<<"$front" | head -1)"
+  # A frontmatter model decides for every project that leaves the role at `platform`,
+  # whatever the session runs, so only a lighter model is allowed.
+  front="$(awk '{ sub(/\r$/, "") } NR == 1 && $0 == "---" { f = 1; next } f && $0 == "---" { exit } f' "$plugin/agents/${ref#*:}.md" 2>/dev/null || true)"
+  # Parsed like YAML in awk, not `sed | head -1`: `head` closing early can SIGPIPE
+  # sed and abort the script under `pipefail`, and awk also strips quotes/comments.
+  pinned="$(awk -v q1="'" -v q2='"' '
+    !found && /^model:/ {
+      v = $0
+      sub(/^model:[[:space:]]*/, "", v)
+      sub(/[[:space:]]*#.*/, "", v)
+      if (substr(v, 1, 1) == q1 || substr(v, 1, 1) == q2) v = substr(v, 2)
+      n = length(v)
+      if (n > 0 && (substr(v, n, 1) == q1 || substr(v, n, 1) == q2)) v = substr(v, 1, n - 1)
+      sub(/^[[:space:]]+/, "", v); sub(/[[:space:]]+$/, "", v)
+      print v
+      found = 1
+    }
+  ' <<<"$front")"
   case "$pinned" in
     ''|sonnet|haiku) ;;
-    *) echo "agent pins model '$pinned', which outranks the session and the project — only sonnet or haiku, or none: $ref"; violations=$((violations+1)) ;;
+    *) echo "agent pins model '$pinned', which decides for every project that leaves the role at platform — only sonnet or haiku, or none: $ref"; violations=$((violations+1)) ;;
   esac
   if grep -qE '^effort:' <<<"$front"; then
     echo "agent pins an effort, which belongs to the session and the project: $ref"; violations=$((violations+1))
