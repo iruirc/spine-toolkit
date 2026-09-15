@@ -51,3 +51,25 @@ setup() {
   grep -qF 'spine-toolkit:task-documents' "$ROOT/docs/building-a-platform.md" \
     || { echo "a platform author is never told whose shape an artifact follows"; return 1; }
 }
+
+@test "the step template carries the three anchors inside ## 3. [Task], in order" {
+  got="$(awk '/^## 3\. \[Task\]$/{f=1;next} f&&/^## /{exit} f&&/^### /' "$ROOT/templates/task-md/task-step.md" | paste -sd'|' -)"
+  [ "$got" = "$ANCHORS" ] || { echo "anchors under ## 3. [Task]: '$got'"; return 1; }
+}
+
+@test "the root template carries none of the anchors" {
+  ! grep -q '^### ' "$ROOT/templates/task-md/task-root.md" || { echo "the root template grew an anchor"; return 1; }
+}
+
+@test "task-new applies the skill to a root task and to a step" {
+  N="$ROOT/skills/task-new/SKILL.md"
+  root="$(awk '/^## Process — root task$/{f=1;next} f&&/^## /{exit} f' "$N")"
+  step="$(awk '/^## Process — step task/{f=1;next} f&&/^## /{exit} f' "$N")"
+  grep -qF "section on a root task's \`Task.md\`" <<<"$root" || { echo "the root process never applies the skill"; return 1; }
+  grep -qF "section on a step's \`Task.md\`" <<<"$step" || { echo "the step process never applies the skill"; return 1; }
+}
+
+@test "task-new verifies a step's three anchors" {
+  grep -qF 'For step tasks also verify `[STATUS] = `, `### Expected behaviour`, `### Questions for Research` and `### Acceptance`.' "$ROOT/skills/task-new/SKILL.md" \
+    || { echo "a step whose anchor was translated passes task-new's own check"; return 1; }
+}

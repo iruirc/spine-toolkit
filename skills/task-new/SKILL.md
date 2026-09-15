@@ -106,6 +106,7 @@ For reference, the templates contain these placeholders:
    - Logs → `## 5. [Logs]` (only if present in the request)
    - Stack traces / crashlogs → `## 6. [StackTrace]` (only if present)
    The prose follows the user's natural language. The headings themselves are not touched.
+   Apply the `task-documents` skill, its section on a root task's `Task.md`: keep the owner's words in the what-and-why layer, give an example only where the owner gave one, and write what the owner left open as an open question.
 9. **Optional override lines** — append via Edit immediately after the `[NEED_REVIEW]` line, one per line, only where the user explicitly asked for something other than the project default in `CLAUDE-spine-toolkit.md`. Otherwise leave the template as is (the commented-out lines stay as documentation).
    - `[WORKFLOW_MODE] = [<manual|auto>]` — overrides `## Mode`.
    - `[DRIVE_APP] = [<auto|off>]` — overrides `## Validation` → `drive_app`; write `off` when the user says the UI check of this particular task has to be done by hand.
@@ -143,7 +144,7 @@ For reference, the templates contain these placeholders:
     - `## 5. [Logs]`
     - `## 6. [StackTrace]`
 
-    For step tasks also verify `[STATUS] = `.
+    For step tasks also verify `[STATUS] = `, `### Expected behaviour`, `### Questions for Research` and `### Acceptance`.
 
     If ANY anchor is missing — that means the model translated / adapted / localized the template against instruction. Fix it via Edit:
     - Find whatever non-canonical variant is present in `Task.md` for the missing anchor.
@@ -169,7 +170,7 @@ For reference, the templates contain these placeholders:
       `~/.claude/plugins/cache/spine-toolkit/spine-toolkit/<version>/templates/task-md/task-step.md`
       or the marketplace checkout under `~/.claude/plugins/marketplaces/spine-toolkit/`
 7. **Read the template, substitute placeholders, write the result** to `parent/<name>.step/Task.md` — exactly the same Read+substitute+Write pass as for root tasks, plus the `{{STATUS}}` placeholder. Touch ONLY `{{...}}` tokens.
-8. **Fill section bodies** via the file-edit mechanism, like for root tasks. Step tasks do NOT have their own STATUS-subfolder — they inherit their parent's folder.
+8. **Fill section bodies** via the file-edit mechanism, like for root tasks. Step tasks do NOT have their own STATUS-subfolder — they inherit their parent's folder. Apply the `task-documents` skill, its section on a step's `Task.md`: what the step delivers goes directly under `## 3. [Task]`, above the anchors; the expected behaviour, the questions for Research and the acceptance go under their three anchors, and an anchor that does not apply carries `— <reason>`.
 9. **Report** the created path.
 
 ## Rules

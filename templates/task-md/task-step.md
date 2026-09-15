@@ -21,6 +21,12 @@
 
 ## 3. [Task]
 
+### Expected behaviour
+
+### Questions for Research
+
+### Acceptance
+
 ## 4. [Stack]
 
 ## 5. [Logs]
