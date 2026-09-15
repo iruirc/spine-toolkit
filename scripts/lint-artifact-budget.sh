@@ -8,10 +8,10 @@ set -euo pipefail
 #        scripts/lint-artifact-budget.sh --budgets <task-dir>
 # Exit:  0 nothing over budget (or nothing measured), 1 something over, 2 usage.
 #
-# Without a flag: a lite task's own artifacts. --task-docs adds the Task.md of every .step/ folder
-# at any scale — its ceiling and its three anchors (skills/task-documents/SKILL.md). --budgets
-# prints the ceilings a task resolves to, in the Outbound Contract's brace syntax, and measures
-# nothing: the orchestrator ships that line as the contract's budgets field.
+# Without a flag: a lite task's own artifacts. --task-docs covers every .step/ folder not yet
+# started, at any scale — its ceiling and its three anchors (skills/task-documents/SKILL.md).
+# --budgets prints the ceilings a task resolves to, in the Outbound Contract's brace syntax, and
+# measures nothing: the orchestrator ships that line as the contract's budgets field.
 #
 # Scale per task dir: Task.md [SCALE] -> the nearest CLAUDE-spine-toolkit.md ## Scale -> full.
 # Ceilings: CAPS below, overridden per artifact by ## Budgets in that same config.
@@ -109,7 +109,7 @@ def budgets(start):
     for line in block(cfg, 'Budgets'):
         m = re.match(r'^(\S+)\s*:\s*(\S+)$', line)
         name, value = (m.group(1), m.group(2)) if m else (line, '')
-        if name in caps and value.isdigit() and int(value) > 0:
+        if name in caps and re.fullmatch(r'[0-9]+', value) and int(value) > 0:
             caps[name] = int(value)
         elif (cfg, line) not in reported:
             reported.add((cfg, line))
@@ -156,9 +156,13 @@ def measure(task_dir):
 
 
 def check_step(step_dir):
-    """A step's Task.md at any scale: the what-and-why layer does not depend on the task's size."""
+    """A step's Task.md at any scale, not yet started: [STATUS] other than PENDING or TODO means
+    the step already ran, and its Task.md is the record of that rather than a target to fix."""
     task_md = os.path.join(step_dir, 'Task.md')
     if not os.path.isfile(task_md):
+        return
+    status = field(task_md, 'STATUS')
+    if status and status not in ('PENDING', 'TODO'):
         return
     cap = budgets(step_dir)['Task.md']
     n = count(task_md)
@@ -168,19 +172,26 @@ def check_step(step_dir):
         violations.append('%s: %d lines, ceiling %d' % (task_md, n, cap))
     with open(task_md, encoding='utf-8') as fh:
         lines = [l.rstrip('\n') for l in fh]
+    # Anchors count only inside ## 3. [Task]: the same heading elsewhere in the file is prose,
+    # not the section the anchors belong to.
+    section = []
+    if '## 3. [Task]' in lines:
+        start = lines.index('## 3. [Task]') + 1
+        end = next((i for i in range(start, len(lines)) if lines[i].startswith('## ')), len(lines))
+        section = lines[start:end]
     for anchor in ANCHORS:
-        if anchor not in lines:
+        if anchor not in section:
             violations.append('%s: anchor "%s" missing' % (task_md, anchor))
             continue
         body = []
-        for l in lines[lines.index(anchor) + 1:]:
+        for l in section[section.index(anchor) + 1:]:
             if l.startswith('## ') or l.startswith('### '):
                 break
             if l.strip():
                 body.append(l.strip())
         if not body:
             violations.append('%s: anchor "%s" has no text' % (task_md, anchor))
-        elif body == ['—']:
+        elif len(body) == 1 and re.fullmatch(r'[-–—]+', body[0]):
             violations.append('%s: anchor "%s" is a bare dash, give the reason' % (task_md, anchor))
 
 

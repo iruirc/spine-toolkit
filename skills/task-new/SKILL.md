@@ -171,7 +171,7 @@ For reference, the templates contain these placeholders:
       or the marketplace checkout under `~/.claude/plugins/marketplaces/spine-toolkit/`
 7. **Read the template, substitute placeholders, write the result** to `parent/<name>.step/Task.md` — exactly the same Read+substitute+Write pass as for root tasks, plus the `{{STATUS}}` placeholder. Touch ONLY `{{...}}` tokens.
 8. **Fill section bodies** via the file-edit mechanism, like for root tasks. Step tasks do NOT have their own STATUS-subfolder — they inherit their parent's folder. Apply the `task-documents` skill, its section on a step's `Task.md`: what the step delivers goes directly under `## 3. [Task]`, above the anchors; the expected behaviour, the questions for Research and the acceptance go under their three anchors, and an anchor that does not apply carries `— <reason>`.
-9. **Report** the created path.
+9. **Verify structural anchors** exactly as step 10 of the root-task process does, including its line for step tasks, then **report** the created path.
 
 ## Rules
 

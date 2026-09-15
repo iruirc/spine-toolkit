@@ -209,6 +209,7 @@ setup() {
   # Task.md the measurement exists to fix.
   para="$(awk '/^In `auto` on a Method A range/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   grep -qF 'end_stage=Plan' <<<"$para" || { echo "an epic's range runs Execute before its steps are measured"; return 1; }
+  grep -qF 'stage_scope=forward' <<<"$para" || { echo "the second call's scope is not pinned to forward"; return 1; }
 }
 
 @test "both new budget keys exist in both locales" {

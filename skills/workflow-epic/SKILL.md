@@ -191,6 +191,8 @@ In push mode, pauses between the inner stages of a step are the responsibility o
 
 No pauses. Steps in Execute run sequentially one after another; the only interruption is when a step returns `status=error` or `status=cancelled`. Per-step commits are created autonomously by each step's inner workflow-* (no user prompt). The only commit that always requires confirmation regardless of mode is a flow-level wrap commit (squash, merge, push) the orchestrator may initiate after Done — that confirmation is the orchestrator's responsibility, not workflow-epic's.
 
+On the decomposition branch the orchestrator still measures the steps between Plan and Execute — `scripts/lint-artifact-budget.sh --task-docs` — and sends a step back to the architect once. It is a measurement, not a pause, so it runs in `auto` as well.
+
 ## 5. Output Contract (extended)
 
 The EPIC output contract is extended with fields for steps and the branch. After each stage (in `manual` mode) or after a full pass (in `auto` mode), workflow-epic returns a JSON-like structure to the orchestrator:

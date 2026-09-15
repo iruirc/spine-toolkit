@@ -563,6 +563,7 @@ if (runs('Execute')) {
       stack: st.stack || STACK,
       lang: LANG,
       agents: A.agents,
+      budgets: A.budgets,
       need_test: st.need_test === undefined ? A.need_test : st.need_test,
       need_review: st.need_review === undefined ? A.need_review : st.need_review,
       scale: st.scale === undefined ? scale : st.scale,
