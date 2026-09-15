@@ -341,7 +341,7 @@ See also the "Stage Management" section — it details the semantics of `run --f
 
 After Resolution, the orchestrator hands these fields to the dispatch path chosen in **Dispatch**. The fields are identical either way; only the encoding differs. Method B takes `key=value` form, **separated only by newlines** (a comma is NOT used as a field separator). Method A takes the same fields as a JSON object. **All fields are filled** — neither workflow-* nor a workflow script tries to recover anything.
 
-Multi-valued fields (e.g. `archive_paths`) are encoded in **list syntax**: square brackets, commas inside. The two map-valued fields (`agents`, `budgets`) are encoded in **brace syntax**: `{key: value, key: value}`.
+Multi-valued fields (e.g. `archive_paths`) are encoded in **list syntax**: square brackets, commas inside. The four map-valued fields (`agents`, `budgets`, `models`, `effort`) are encoded in **brace syntax**: `{key: value, key: value}`.
 
 ```
 task_id=001
@@ -362,6 +362,8 @@ walkthrough=brief|deep|off
 docs=on|off
 scale=lite|full
 budgets={Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100}
+models={light: sonnet, architect: platform, developer: platform, tester: platform, reviewer: platform, refactorer: platform, validator: platform, security: platform, diagnostics: platform}
+effort={architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}
 archive_paths=[Tasks/ACTIVE/001-profile/_archive/Plan-2026-04-25T143022.md, Tasks/ACTIVE/001-profile/_archive/Research-2026-04-25T143022.md]
 ```
 
@@ -417,6 +419,10 @@ size belongs to the task, not to one dispatch.
 
 `budgets` — the line ceiling of every artifact core measures. Resolved by running `<core root>/scripts/lint-artifact-budget.sh --budgets <task dir>`, which reads the script's defaults and the project's `## Budgets` over them; the brace map it prints is this field. Always filled, for every profile, so a consumer reads one shape rather than testing for the field first. Method B takes that line as it is; Method A passes the same object as real JSON with integer values, so a script reads `A.budgets['Task.md']` and gets `100` by default. It travels in the contract for the reason `walkthrough` does — a Method A script names a ceiling in a brief and has no filesystem to read it from. The script is the one reader of `## Budgets`: do not re-derive the map from the config. Each line the script reports on stderr as not recognized is announced once with key `warn_budget_unrecognised` (placeholder `{line}`). Which artifact is measured at which scale is not this field's business: `conventions/task-scale.md`.
 
+`models` — the model each dispatch runs on: a key for each of the eight roles the profiles dispatch, and `light` for the calls whose work the script's own prompt defines. Resolved by running `<core root>/scripts/resolve-tuning.sh <task dir>`, which walks, key by key, `Task.md` `[MODELS]` → for a `.step/` folder, the epic's `Task.md` `[MODELS]` → `CLAUDE-spine-toolkit.md` `## Models` → `sonnet` for `light` and `platform` for every role; its `models=` line is this field. Always filled, for every profile, `light` first and then the roles in vocabulary order without `init`, which no profile dispatches. Method B takes that line as it is; Method A passes the same object as real JSON, so a script reads `A.models.light` and gets `"sonnet"` by default. It travels in the contract for the reason `walkthrough` does — a Method A script sets each dispatch's model and has no filesystem to read it from. The script is the one reader of `## Models` and `[MODELS]`: do not re-derive the map from the config. How a dispatch turns the map into a model is `conventions/stage-dispatch.md` → Model and effort. Each line the script reports on stderr as not recognized is announced once with key `warn_tuning_unrecognised`, its placeholders filled from that line: `{source}` is the text before `: '`, `{entry}` the text between the quotes.
+
+`effort` — the reasoning effort each dispatch runs at, a key for each of the same eight roles. Resolved by the same run of `resolve-tuning.sh`, over `Task.md` `[EFFORT]` → the epic's for a `.step/` folder → `CLAUDE-spine-toolkit.md` `## Effort` → `session`; its `effort=` line is this field. Always filled, for every profile, the roles in vocabulary order. Method B takes that line as it is; Method A passes the same object as real JSON. It travels in the contract, has one reader, and has what it cannot use announced exactly as `models` does. Only Method A can pass it per dispatch; what a Method B run says instead is in **Dispatch**.
+
 `archive_paths` — list of paths to backups already created in `_archive/` for stages that will be overwritten (filled before handing off control). Format: `[path1, path2, path3]`. Empty list = `[]`.
 
 **Invariant:** workflow-* never receives empty fields. If a field arrives empty — workflow-* returns an error to the orchestrator and does not try to recover.
@@ -464,6 +470,8 @@ A `—` in the Method A column means that profile always takes Method B. Never c
   Method B run chosen this way is indistinguishable from one that never had the workflow path.
 
 State the choice **once** per task, using key `dispatch_method_a` or `dispatch_method_b`, inside the opening block that `## Progress reporting` requires before the first dispatch. At `quiet` there is no opening block: state it in the final report instead. Not per stage.
+
+Under Method B, when the contract's `effort` names any value other than `session`, add `warn_effort_method_b` (placeholder `{roles}`: those roles, comma-separated) to the same opening block, or to the final report at `quiet`, once per task. A Method B dispatch cannot carry an effort, so every stage runs at the session's (`conventions/stage-dispatch.md` → Model and effort).
 
 **Method A — invoke.** The opening block goes out before this call, not after it: once the workflow is running, the feed shows a spinner and nothing about what is inside.
 
