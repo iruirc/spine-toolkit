@@ -59,11 +59,15 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   The architect MUST apply the `feature-requirements` skill and then the `feature-landscape` skill, producing two H2 sections inside `Research.md`: `## Requirements` (Primary / Secondary / Designer questions / Backend questions / Known unknowns) and `## Landscape` (Entity graph / Layer map / Integration points / Work items / Implementation sequence). The `## Architectural Analysis` and other architect-output sections are appended after these two.
 
+  The writer applies the `task-documents` skill to `Research.md`: every question under the task's `### Questions for Research` answered, every outcome listed including a corrupted state, the source of each quantity a rule uses named, and nothing the task already decided re-decided.
+
 - **Plan** — `[architect]`. Artifact: `Plan.md` with **two layers of progress tracking**:
   1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase, coarse-grained completion.
   2. **Per-phase detail section** for each phase — actionable items rendered as **markdown checkboxes** `- [ ] <item>`. Granularity: one checkbox per file to edit, per acceptance criterion, per test to add, per verification step. Granular enough to be ticked individually as the Execute stage progresses. Static prose (rationale, decisions, design notes) stays as plain bullets — only **action items** become checkboxes.
 
   The plan decomposes the feature into concrete phases and steps. Per-phase action items are seeded from the work-items list in `Research.md ## Landscape ### Work items`.
+
+  The plan applies the `task-documents` skill to `Plan.md`: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
 
   Every phase's detail section opens with a `**Verification:**` line and one checkbox per check it names; the rung comes from the `phase-verification` skill, which holds the rungs, the questions that pick one, and when the line says `full`. The full regression belongs to Validation — a phase checks what it can break, and a phase repeating the whole suite at `proportional` is a defect of the plan.
 
@@ -117,7 +121,8 @@ At `lite`:
   written. `Plan.md` opens with a `## Research` section carrying what that stage would have found:
   the Primary and Secondary requirements, the work-item list, and the integration points a phase
   will cross. The investigation still happens — it stops being a separate agent and a separate file
-  that every later stage re-reads.
+  that every later stage re-reads. That section is `Research.md` folded into `Plan.md`, so the
+  `task-documents` skill's `Research.md` section applies to it.
 - **`## Estimation` is not produced and the estimation gate does not run.** An engineering-day range
   nobody consumes is the paperwork this axis exists to stop; `Done.md`'s `## Estimate retrospective`
   is already conditional on the section existing, so it drops out with it.

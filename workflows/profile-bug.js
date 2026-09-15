@@ -382,7 +382,7 @@ if (runs('Reproduce')) {
 
 Apply the feature-requirements skill, Secondary checklist only, to enumerate which Secondary states the bug touches — error, loading, empty, offline, a11y, deeplink, push, i18n, analytics, lifecycle, cancellation. A bug usually hides in one of those rather than in the happy path, and naming them now is what stops "fixed the happy path, broke offline".
 
-Set reproducible to no only when you could not make it happen at all, and record what you tried in Reproduce.md before you do.${lite() ? `\n\nThis run is at scale lite, so Diagnose gets no stage of its own. Add a "## Diagnosis" section to Reproduce.md carrying what it would have produced: the root cause, the components a fix touches, how wide it has to be, and the risks it carries. If you cannot localize the root cause, say so there and raise the scale rather than guessing. If you do raise it, leave that section out — Diagnose then runs as its own stage.` : ''}${cap('Reproduce.md')}${ratchet()}`,
+Set reproducible to no only when you could not make it happen at all, and record what you tried in Reproduce.md before you do.${lite() ? `\n\nThis run is at scale lite, so Diagnose gets no stage of its own. Add a "## Diagnosis" section to Reproduce.md carrying what it would have produced: the root cause, the components a fix touches, how wide it has to be, and the risks it carries. If you cannot localize the root cause, say so there and raise the scale rather than guessing. If you do raise it, leave that section out — Diagnose then runs as its own stage. That section is Research.md folded into Reproduce.md, so the task-documents skill's Research.md section applies to it as well.` : ''}${cap('Reproduce.md')}${ratchet()}`,
     ),
     {
       label: 'reproduce',
@@ -454,6 +454,8 @@ if (runs('Diagnose') && !lite()) {
       'Diagnose',
       `Merge the panel below into ${DIR}/Research.md: root cause analysis, a map of the affected components, an estimate of how wide the fix has to be, and the risks it carries. Where the two lenses disagree, say so explicitly rather than picking one silently.
 
+Apply the task-documents skill to Research.md: answer every question under the task's ### Questions for Research, list every outcome including a corrupted state, name where each quantity a rule uses comes from, and do not re-decide what the task already decided.
+
 PANEL FINDINGS (data):
 ${JSON.stringify(views, null, 2)}`,
     ),
@@ -477,6 +479,8 @@ if (runs('Plan')) {
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per file to edit, per acceptance criterion, per regression-test case, per verification step. Static prose (root-cause notes, decisions) stays plain bullets; only action items become checkboxes.
 
 Cover the focused fix${A.need_test === false ? '' : ', a regression test that locks in the scenario from Reproduce.md'}, and any migration or compatibility step the change forces. Every phase has to end independently buildable, green, and committable on its own.
+
+Apply the task-documents skill to Plan.md: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
 
 Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation: a phase checks what it can break, and a phase repeating the whole suite at proportional is a defect of this plan.
 

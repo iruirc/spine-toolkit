@@ -405,6 +405,8 @@ if (runs('Analyze') && !lite()) {
       'Analyze',
       `Write ${DIR}/Research.md: what to test (uncovered code, critical paths, regression scenarios), at what level (unit, integration, UI, snapshot), and with which of this platform's test frameworks and helpers. Fold the testability findings below into it — a blocker that is not written down becomes a phase that cannot be finished.
 
+Apply the task-documents skill to Research.md: answer every question under the task's ### Questions for Research, list every outcome including a corrupted state, name where each quantity a rule uses comes from, and do not re-decide what the task already decided.
+
 TESTABILITY FINDINGS (data):
 ${JSON.stringify(testability || { blockers: [] }, null, 2)}`,
     ),
@@ -422,12 +424,14 @@ if (runs('Plan')) {
   plan = await agent(
     brief(
       'Plan',
-      `${lite() ? `This run is at scale lite, so Analyze got no stage of its own and there is no Research.md. Open ${DIR}/Plan.md with a "## Analysis" section carrying what that stage would have produced: what is uncovered, which paths are critical, the level each case belongs at, and whether the code under test needs seams before it can be tested at all. Then write the plan from it.\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'that section' : 'Research.md'}, with two layers of progress tracking:
+      `${lite() ? `This run is at scale lite, so Analyze got no stage of its own and there is no Research.md. Open ${DIR}/Plan.md with a "## Analysis" section carrying what that stage would have produced: what is uncovered, which paths are critical, the level each case belongs at, and whether the code under test needs seams before it can be tested at all. Then write the plan from it. That section is Research.md folded into Plan.md, so the task-documents skill's Research.md section applies to it as well.\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'that section' : 'Research.md'}, with two layers of progress tracking:
 
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘, plus a priority column holding P0, P1, or P2.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per test case to add, per fixture or mock to create, per assertion cluster to verify. Static prose (test-strategy notes, framework choices) stays plain bullets; only action items become checkboxes.
 
 Group phases by testable unit — one per component, module, or use case — and give each a priority: P0 critical and release-blocking, P1 important, P2 nice to have.
+
+Apply the task-documents skill to Plan.md: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
 
 Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation: a phase checks what it can break, and a phase repeating the whole suite at proportional is a defect of this plan.
 

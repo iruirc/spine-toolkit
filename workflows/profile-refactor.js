@@ -380,7 +380,9 @@ if (runs('Analyze') && !lite()) {
 
 Apply the feature-landscape skill TWICE and give the artifact two sections: ## Landscape (current) — the as-is entity graph, layer map, and integration points — and ## Landscape (target) — the same after the refactor. The diff between them IS the scope, and Plan.md derives its per-phase work items from that diff, so make the diff legible rather than implied.
 
-The invariant: external behaviour does not change. Only structure, readability, maintainability, type and module boundaries, naming, and dependency isolation do. The public API and behaviour contract is preserved.`,
+The invariant: external behaviour does not change. Only structure, readability, maintainability, type and module boundaries, naming, and dependency isolation do. The public API and behaviour contract is preserved.
+
+Apply the task-documents skill to Research.md: answer every question under the task's ### Questions for Research, list every outcome including a corrupted state, name where each quantity a rule uses comes from, and do not re-decide what the task already decided.`,
     ),
     { label: 'analyze', phase: 'Analyze', agentType: A.agents.architect, schema: ARTIFACT },
   )
@@ -396,12 +398,14 @@ if (runs('Plan')) {
   plan = await agent(
     brief(
       'Plan',
-      `${lite() ? `This run is at scale lite, so Analyze got no stage of its own and there is no Research.md. Open ${DIR}/Plan.md with a "## Analysis" section carrying what that stage would have produced: what is wrong now, the target shape, the components affected, the risk the move carries, and the behaviour-preservation invariant Validation will check against. Then write the plan from it.\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'that section' : 'the landscape diff in Research.md'}, with two layers of progress tracking:
+      `${lite() ? `This run is at scale lite, so Analyze got no stage of its own and there is no Research.md. Open ${DIR}/Plan.md with a "## Analysis" section carrying what that stage would have produced: what is wrong now, the target shape, the components affected, the risk the move carries, and the behaviour-preservation invariant Validation will check against. Then write the plan from it. That section is Research.md folded into Plan.md, so the task-documents skill's Research.md section applies to it as well.\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'that section' : 'the landscape diff in Research.md'}, with two layers of progress tracking:
 
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per file to edit, per acceptance criterion, per test to add, per verification command to run. Static prose (rationale, rollback markers, decisions) stays plain bullets; only action items become checkboxes.
 
 Every phase must be independently buildable, test-passing, AND committable on its own — that is the requirement of incremental refactoring, and commit-ready is not enough, because an interrupt destroys uncommitted work.
+
+Apply the task-documents skill to Plan.md: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
 
 Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation: a phase checks what it can break, and a phase repeating the whole suite at proportional is a defect of this plan.
 

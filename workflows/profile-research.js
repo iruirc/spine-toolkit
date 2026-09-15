@@ -394,7 +394,9 @@ if (runs('Research')) {
 
 The heading ## Follow-up is a byte-for-byte literal. Do not translate, localize, or adapt it — it is a machine-parsed anchor. The bullets underneath it are prose and follow the output language.
 
-The invariant of this profile: you modify NO source code and write no file other than Research.md. When you find yourself wanting to apply a fix, write it down as a follow-up item instead — that is the deliverable here.`,
+The invariant of this profile: you modify NO source code and write no file other than Research.md. When you find yourself wanting to apply a fix, write it down as a follow-up item instead — that is the deliverable here.
+
+Apply the task-documents skill's rules for every document: meaning before a code, and a question you cannot settle written as an open question with its options.`,
     ),
     {
       label: `research:${picked}`,

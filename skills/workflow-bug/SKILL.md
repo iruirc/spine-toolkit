@@ -61,11 +61,15 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
 - **Diagnose** — a panel: `[diagnostics]` + `[architect]` (via the Task tool, in parallel or sequentially as the orchestrator decides). Artifact: `Research.md` with root cause analysis, a map of affected components, an estimate of fix scope, and the related risks.
 
+  The writer applies the `task-documents` skill to `Research.md`: every question under the task's `### Questions for Research` answered, every outcome listed including a corrupted state, the source of each quantity a rule uses named, and nothing the task already decided re-decided.
+
 - **Plan** — `[architect]`. Artifact: `Plan.md` with **two layers of progress tracking**:
   1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase, coarse-grained completion.
   2. **Per-phase detail section** for each phase — actionable items rendered as **markdown checkboxes** `- [ ] <item>`. Granularity: one checkbox per file to edit, per acceptance criterion, per regression-test case, per verification step. Granular enough to be ticked individually as the Fix stage progresses. Static prose (root-cause analysis, decisions) stays as plain bullets — only **action items** become checkboxes.
 
   The plan covers: the focused fix, a regression test (if `need_test=true`), and migration / compatibility steps if needed.
+
+  The plan applies the `task-documents` skill to `Plan.md`: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
 
   Every phase's detail section opens with a `**Verification:**` line and one checkbox per check it names; the rung comes from the `phase-verification` skill, which holds the rungs, the questions that pick one, and when the line says `full`. The full regression belongs to Validation — a phase checks what it can break, and a phase repeating the whole suite at `proportional` is a defect of the plan.
 
@@ -115,7 +119,8 @@ At `lite`:
   written. `Reproduce.md` gains a `## Diagnosis` section carrying what that stage would have found:
   the root cause, the components a fix touches, how wide it has to be, and the risks. The
   investigation still happens — it stops being a second agent and a second file that every later
-  stage re-reads.
+  stage re-reads. That section is `Research.md` folded into `Reproduce.md`, so the
+  `task-documents` skill's `Research.md` section applies to it.
 - **`OpsChecklist.md` is not written.** BUG's checklist is already scoped to the categories the bug
   touched rather than run in full, and at `lite` the perimeter is narrow enough that the Secondary
   enumeration in `Reproduce.md` is the whole of it.

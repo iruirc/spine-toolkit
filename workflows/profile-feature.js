@@ -411,6 +411,8 @@ if (runs('Research') && !lite()) {
 
 Fold the security findings below into the risk discussion; do not drop one silently.
 
+Apply the task-documents skill to Research.md: answer every question under the task's ### Questions for Research, list every outcome including a corrupted state, name where each quantity a rule uses comes from, and do not re-decide what the task already decided.
+
 SECURITY FINDINGS (data):
 ${JSON.stringify(security || { risks: [] }, null, 2)}`,
     ),
@@ -431,7 +433,7 @@ if (runs('Plan')) {
   plan = await agent(
     brief(
       'Plan',
-      `${lite() ? `This run is at scale lite, so Research got no stage of its own and there is no Research.md. Open ${DIR}/Plan.md with a "## Research" section carrying what that stage would have produced: the Primary and Secondary requirements, the work-item list, and the integration points a phase will cross. Then write the plan from it.\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'that section' : 'Research.md'}, with two layers of progress tracking:
+      `${lite() ? `This run is at scale lite, so Research got no stage of its own and there is no Research.md. Open ${DIR}/Plan.md with a "## Research" section carrying what that stage would have produced: the Primary and Secondary requirements, the work-item list, and the integration points a phase will cross. Then write the plan from it. That section is Research.md folded into Plan.md, so the task-documents skill's Research.md section applies to it as well.\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'that section' : 'Research.md'}, with two layers of progress tracking:
 
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per file to edit, per acceptance criterion, per test to add, per verification step. Static prose (rationale, decisions, design notes) stays plain bullets; only action items become checkboxes.
@@ -441,6 +443,8 @@ Seed the per-phase action items from ${lite() ? 'the ## Research section above' 
 Then apply the feature-estimation skill and add a ## Estimation section, with depth scaled to the feature's risk per that skill's Estimation depth table. The minimum is feature type, baseline table, engineering range, and confidence; PERT, scope-aware risk deltas, estimate maturity, estimation conditions, delivery calendar, store buffer, known unknowns, and the self-check are added only when their triggers fire.
 
 Report estimation_gate as blocked, with the reason, when any of these hold: ## Estimation is missing or malformed; a triggered section is absent; ### Estimate maturity is Draft; the maturity is Conditional and ### Estimation conditions is missing or has any pending_user row; or a Known Unknown trips the load-bearing-unknown rule without a required spike or resolution. If the project is AI-assisted, the AI-assisted range is informational — the gate evaluates the human estimate.`}
+
+Apply the task-documents skill to Plan.md: each step or phase in plain words, with what it waits for and what is true after it, why the order is what it is, a risk as what a user would see, and what happens when a step or phase fails.
 
 Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation: a phase checks what it can break, and a phase repeating the whole suite at proportional is a defect of this plan.
 
