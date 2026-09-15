@@ -139,7 +139,10 @@ Three things every role agent needs:
 1. **Read the project config first.** `CLAUDE-spine-toolkit.md` carries the resolved stack, the
    architecture, the conventions. An agent that skips it invents its own.
 2. **Know it is being dispatched into a stage** and that its output becomes a named artifact
-   (`Research.md`, `Plan.md`, `Validation.md`, `Review.md`, `Done.md`, `Walkthrough.md`).
+   (`Research.md`, `Plan.md`, `Validation.md`, `Review.md`, `Done.md`, `Walkthrough.md`). What a
+   `Task.md`, `Research.md` or `Plan.md` carries, and what it leaves to the others, arrives in
+   core's brief through `spine-toolkit:task-documents`; do not give your agent a document shape of
+   its own.
 3. **Bring the tooling.** Core's brief says "run a full test run"; only your agent knows this
    ecosystem's test runner, and only your validator can drive a running instance of the app. The
    same split holds per phase: core names a `**Verification:**` rung — `surface` means a build of
@@ -301,7 +304,7 @@ Do **not** name that skill `setup`. It would collide with core's own in every na
 trigger — which is exactly why the binding goes through this table instead of a naming convention.
 The same applies to every other core skill name: `orchestrator`, `stack-detect`, `lang`,
 `agent-status`, `task-new`, `task-move`, `task-status`, `task-walkthrough`, `workflow-*`,
-`feature-*`, `ops-checklist`, `manual-checks`, `phase-verification`.
+`feature-*`, `ops-checklist`, `manual-checks`, `phase-verification`, `task-documents`.
 
 The direction runs both ways: wherever your own files reference a core skill by name — an agent
 brief, a reference doc, a manifest row — write it namespaced, `spine-toolkit:<skill>`. A bare
