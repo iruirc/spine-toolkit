@@ -389,6 +389,8 @@ const STEP = {
     need_test: { type: 'boolean' },
     need_review: { type: 'boolean' },
     scale: { type: 'string', enum: ['lite', 'full'], description: 'only when the step declares its own [SCALE]' },
+    models: { type: 'string', description: 'only when the step declares its own [MODELS]: the text between its brackets' },
+    effort: { type: 'string', description: 'only when the step declares its own [EFFORT]: the text between its brackets' },
   },
 }
 
@@ -509,6 +511,22 @@ const failed_steps = []
 const pending_steps = []
 let cancelled = false
 
+// A step's own [MODELS] and [EFFORT] keys over the epic's resolved maps: the chain
+// scripts/resolve-tuning.sh walks for a step, whose vocabulary these two lines copy.
+const TUNING_KEYS = { models: ['light', 'architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'], effort: ['architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'] }
+const TUNING_VALUES = { models: ['opus', 'sonnet', 'haiku', 'fable', 'platform'], effort: ['low', 'medium', 'high', 'xhigh', 'max', 'session'] }
+const overlay = (field, st) => {
+  const out = { ...(A[field] || {}) }
+  for (const entry of String(st[field] || '').split(',').map((e) => e.trim()).filter(Boolean)) {
+    const m = entry.match(/^([A-Za-z]+)\s*:\s*([A-Za-z]+)$/)
+    const key = m && m[1].toLowerCase()
+    const value = m && m[2].toLowerCase()
+    if (m && TUNING_KEYS[field].includes(key) && TUNING_VALUES[field].includes(value)) out[key] = value
+    else result.notes.push(`Step ${st.step_id}: "${entry}" in [${field.toUpperCase()}] is not recognized and was skipped.`)
+  }
+  return out
+}
+
 const toPending = (st) => ({
   step_id: st.step_id,
   task_id: st.task_id,
@@ -525,7 +543,7 @@ if (runs('Execute')) {
     const read = await agent(
       brief(
         'Execute',
-        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE] and [STATUS] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own and its [SCALE] where it declares one. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
+        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE] and [STATUS] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
       { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'mechanical') },
     )
@@ -570,6 +588,8 @@ if (runs('Execute')) {
       lang: LANG,
       agents: A.agents,
       budgets: A.budgets,
+      models: overlay('models', st),
+      effort: overlay('effort', st),
       need_test: st.need_test === undefined ? A.need_test : st.need_test,
       need_review: st.need_review === undefined ? A.need_review : st.need_review,
       scale: st.scale === undefined ? scale : st.scale,

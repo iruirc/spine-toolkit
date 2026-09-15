@@ -90,3 +90,32 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   done
   [ "$n" -eq 7 ] || { echo "scanned $n script(s), expected 7"; return 1; }
 }
+
+@test "the epic's copy of the vocabulary is the resolver's" {
+  verdict="$(python3 - "$ROOT/scripts/resolve-tuning.sh" "$ROOT/workflows/profile-epic.js" <<'PY'
+import re, sys
+sh = open(sys.argv[1], encoding='utf-8').read()
+js = open(sys.argv[2], encoding='utf-8').read()
+var = lambda name: re.search(r'^%s="([^"]*)"' % name, sh, re.M).group(1).split()
+keys = re.search(r'^const TUNING_KEYS = \{ models: \[([^\]]*)\], effort: \[([^\]]*)\] \}$', js, re.M)
+values = re.search(r'^const TUNING_VALUES = \{ models: \[([^\]]*)\], effort: \[([^\]]*)\] \}$', js, re.M)
+if not keys or not values:
+    print('profile-epic.js carries no TUNING_KEYS / TUNING_VALUES line'); raise SystemExit
+q = lambda s: re.findall(r"'([a-z]+)'", s)
+want = (['light'] + var('ROLES'), var('ROLES'), var('MODELS'), var('EFFORTS'))
+have = (q(keys.group(1)), q(keys.group(2)), q(values.group(1)), q(values.group(2)))
+print('same' if want == have else 'differ: %s vs %s' % (want, have))
+PY
+)"
+  [ "$verdict" = "same" ] || { echo "$verdict"; return 1; }
+}
+
+@test "a pushed step gets the epic's maps with its own keys over them" {
+  E="$ROOT/workflows/profile-epic.js"
+  block="$(sed -n '/const stepArgs/,/^    })$/p' "$E")"
+  grep -qF "models: overlay('models', st)," <<<"$block" || { echo "stepArgs does not hand the step its models"; return 1; }
+  grep -qF "effort: overlay('effort', st)," <<<"$block" || { echo "stepArgs does not hand the step its effort"; return 1; }
+  grep -qF "models: { type: 'string', description: 'only when the step declares its own [MODELS]" "$E" || { echo "the step record has no models"; return 1; }
+  grep -qF "effort: { type: 'string', description: 'only when the step declares its own [EFFORT]" "$E" || { echo "the step record has no effort"; return 1; }
+  grep -qF 'the text between the brackets of its [MODELS] and [EFFORT]' "$E" || { echo "read-steps never asks for them"; return 1; }
+}
