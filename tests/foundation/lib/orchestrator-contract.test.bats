@@ -254,6 +254,8 @@ setup() {
     body="$(awk '/^## warn_tuning_unrecognised$/{p=1;next} /^## /{p=0} p' "$L")"
     grep -qF '{source}' <<<"$body" || { echo "$l: warn_tuning_unrecognised lacks {source}"; return 1; }
     grep -qF '{entry}' <<<"$body" || { echo "$l: warn_tuning_unrecognised lacks {entry}"; return 1; }
+    grep -qF '`session`; ' <<<"$body" || { echo "$l: warn_tuning_unrecognised does not list session among model values"; return 1; }
+    ! grep -qF '`platform`' <<<"$body" || { echo "$l: warn_tuning_unrecognised still lists platform"; return 1; }
     body="$(awk '/^## warn_effort_method_b$/{p=1;next} /^## /{p=0} p' "$L")"
     grep -qF '{roles}' <<<"$body" || { echo "$l: warn_effort_method_b lacks {roles}"; return 1; }
   done

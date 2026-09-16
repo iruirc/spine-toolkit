@@ -176,5 +176,16 @@ DEFAULT_EFFORT='effort={architect: session, developer: session, tester: session,
   printf '[TASK_TYPE] = [BUG]\n[MODELS] = [validator: session]\n' >"$TASK/Task.md"
   out="$("$RESOLVE" "$TASK" 2>"$ERR")"
   [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
-  grep -qF 'validator: session' <<<"$out" || { echo "$out"; return 1; }
+  grep -qF 'validator: session' <<<"$(sed -n 1p <<<"$out")" || { echo "$out"; return 1; }
+}
+
+@test "a platform entry in the epic's Task.md reads as absent for its step" {
+  printf '## Models\n\narchitect: opus\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [EPIC]\n[MODELS] = [architect: platform]\n' >"$TASK/Task.md"
+  STEP="$TASK/1.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  out="$("$RESOLVE" "$STEP" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  grep -qF 'architect: opus' <<<"$(sed -n 1p <<<"$out")" || { echo "$out"; return 1; }
 }
