@@ -134,8 +134,8 @@ while read -r ref; do
     || { echo "manifest names an agent outside this plugin's namespace (expected $own_name:): $ref"; violations=$((violations+1)); }
   [ -f "$plugin/agents/${ref#*:}.md" ] \
     || { echo "manifest names an agent with no file: $ref"; violations=$((violations+1)); }
-  # A frontmatter model decides for every project that leaves the role at `platform`,
-  # whatever the session runs, so only a lighter model is allowed.
+  # A frontmatter model decides for every project that leaves the role at `session`,
+  # whatever the session runs, so a platform agent declares none.
   front="$(awk '{ sub(/\r$/, "") } NR == 1 && $0 == "---" { f = 1; next } f && $0 == "---" { exit } f' "$plugin/agents/${ref#*:}.md" 2>/dev/null || true)"
   # Parsed like YAML in awk, not `sed | head -1`: `head` closing early can SIGPIPE
   # sed and abort the script under `pipefail`, and awk also strips quotes/comments.
@@ -153,8 +153,8 @@ while read -r ref; do
     }
   ' <<<"$front")"
   case "$pinned" in
-    ''|sonnet|haiku) ;;
-    *) echo "agent pins model '$pinned', which decides for every project that leaves the role at platform — only sonnet or haiku, or none: $ref"; violations=$((violations+1)) ;;
+    '') ;;
+    *) echo "agent pins model '$pinned', which belongs to the project's ## Models: $ref"; violations=$((violations+1)) ;;
   esac
   if grep -qE '^effort:' <<<"$front"; then
     echo "agent pins an effort, which belongs to the session and the project: $ref"; violations=$((violations+1))

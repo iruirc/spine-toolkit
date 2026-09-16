@@ -305,17 +305,18 @@ frontmatter_add() { # $1 = agent file, $2 = line inserted right after the name l
   awk -v add="$2" '{ print } /^name: /{ print add }' "$1" >"$1.new" && mv "$1.new" "$1"
 }
 
-@test "fails when a Roles agent pins a model heavier than the session may choose" {
+@test "fails when a Roles agent pins a model" {
   frontmatter_add "$TMP/p/agents/fixture-architect.md" 'model: opus'
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
   [[ "$output" == *"agent pins model 'opus'"*"fixture-platform:fixture-architect"* ]]
 }
 
-@test "passes when a Roles agent pins sonnet" {
+@test "fails when a Roles agent pins sonnet, the lighter model core defaults a role to" {
   frontmatter_add "$TMP/p/agents/fixture-architect.md" 'model: sonnet'
   run "$LINT" "$TMP/p"
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"agent pins model 'sonnet', which belongs to the project's ## Models"*"fixture-platform:fixture-architect"* ]]
 }
 
 @test "fails when a Roles agent pins an effort" {
@@ -331,13 +332,14 @@ frontmatter_add() { # $1 = agent file, $2 = line inserted right after the name l
   [ "$status" -eq 0 ]
 }
 
-@test "a quoted, commented or trailing-spaced sonnet still passes" {
+@test "a quoted, commented or trailing-spaced model is still read" {
   orig="$TMP/p/agents/fixture-architect.md"
   for line in 'model: "sonnet"' 'model: sonnet # light' 'model: sonnet '; do
     cp "$ROOT/tests/fixtures/fixture-platform/agents/fixture-architect.md" "$orig"
     frontmatter_add "$orig" "$line"
     run "$LINT" "$TMP/p"
-    [ "$status" -eq 0 ] || { echo "'$line' failed: $output"; return 1; }
+    [ "$status" -eq 1 ] || { echo "'$line' passed"; return 1; }
+    [[ "$output" == *"agent pins model 'sonnet'"* ]] || { echo "'$line' read as: $output"; return 1; }
   done
 }
 
