@@ -266,11 +266,11 @@ const record = (stage, r) => {
   })
 }
 
-// Model and effort for one dispatch — conventions/stage-dispatch.md → Model and effort. `platform`
-// and `session` pass nothing, leaving the choice to the agent's frontmatter and the session.
+// Model and effort for one dispatch — conventions/stage-dispatch.md → Model and effort. `session`
+// passes nothing, leaving the choice to CLAUDE_CODE_SUBAGENT_MODEL and the session.
 const tuning = (role, kind) => {
   const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)
-  const model = (kind !== 'stage' && pick(A.models, 'light', 'platform')) || pick(A.models, role, 'platform')
+  const model = (kind !== 'stage' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')
   const effort = kind === 'mechanical' ? 'low' : pick(A.effort, role, 'session')
   return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
 }
@@ -512,15 +512,17 @@ const pending_steps = []
 let cancelled = false
 
 // A step's own [MODELS] and [EFFORT] keys over the epic's resolved maps: the chain
-// scripts/resolve-tuning.sh walks for a step, whose vocabulary these two lines copy.
+// scripts/resolve-tuning.sh walks for a step, whose vocabulary these three lines copy.
 const TUNING_KEYS = { models: ['light', 'architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'], effort: ['architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'] }
-const TUNING_VALUES = { models: ['opus', 'sonnet', 'haiku', 'fable', 'platform'], effort: ['low', 'medium', 'high', 'xhigh', 'max', 'session'] }
+const TUNING_VALUES = { models: ['opus', 'sonnet', 'haiku', 'fable', 'session'], effort: ['low', 'medium', 'high', 'xhigh', 'max', 'session'] }
+const TUNING_UNSET = { models: ['platform'], effort: [] }
 const overlay = (field, st) => {
   const out = { ...(A[field] || {}) }
   for (const entry of String(st[field] || '').split(',').map((e) => e.trim()).filter(Boolean)) {
     const m = entry.match(/^([A-Za-z]+)\s*:\s*([A-Za-z]+)$/)
     const key = m && m[1].toLowerCase()
     const value = m && m[2].toLowerCase()
+    if (m && TUNING_KEYS[field].includes(key) && TUNING_UNSET[field].includes(value)) continue
     if (m && TUNING_KEYS[field].includes(key) && TUNING_VALUES[field].includes(value)) out[key] = value
     else result.notes.push(`Step ${st.step_id}: "${entry}" in [${field.toUpperCase()}] is not recognized and was skipped.`)
   }

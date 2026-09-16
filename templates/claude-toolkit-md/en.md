@@ -180,26 +180,27 @@ number, keeps the default and is reported.)
 ## Models
 
 light: sonnet
-architect: platform
-developer: platform
-tester: platform
-reviewer: platform
-refactorer: platform
-validator: platform
-security: platform
-diagnostics: platform
+architect: session
+developer: session
+tester: session
+reviewer: session
+refactorer: session
+validator: sonnet
+security: session
+diagnostics: session
 
 (which model a subagent runs on; the rule is `conventions/stage-dispatch.md` → Model and effort in
 the toolkit. A role's key covers every stage its agent runs. `light` covers the calls whose work
 the script's own prompt defines — writing `Walkthrough.md` and `Done.md`, reading `Plan.md` back,
 ticking an epic step, moving a reviewed task — and falls back to the role's key when it says
-`platform`. Values: `opus`, `sonnet`, `haiku`, `fable`, or `platform`, which passes no model, so the
-platform agent's own `model`, then `CLAUDE_CODE_SUBAGENT_MODEL`, then the session's model decide.
-`haiku` has a 200k context and no effort setting, too small for a phase or a walkthrough. On Amazon
-Bedrock, Google Cloud's Agent Platform and Microsoft Foundry `sonnet` means Sonnet 4.5. The
-orchestrator and any stage it runs in the main context stay on the session's model. A single task
-overrides any key with `[MODELS] = [<key>: <value>, …]` in its `Task.md`, and an epic's keys reach
-its steps.)
+`session`. Values: `opus`, `sonnet`, `haiku`, `fable`, or `session`, which passes no model, so
+`CLAUDE_CODE_SUBAGENT_MODEL`, then the session's model decide. `validator` starts on `sonnet`:
+building, running the tests and reading their logs need no heavier model. A `platform` left from
+1.11.0 reads as if its line were absent. `haiku` has a 200k context and no effort setting, too small
+for a phase or a walkthrough. On Amazon Bedrock, Google Cloud's Agent Platform and Microsoft Foundry
+`sonnet` means Sonnet 4.5. The orchestrator and any stage it runs in the main context stay on the
+session's model. A single task overrides any key with `[MODELS] = [<key>: <value>, …]` in its
+`Task.md`, and an epic's keys reach its steps.)
 
 ## Effort
 

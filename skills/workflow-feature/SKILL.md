@@ -53,7 +53,7 @@ The fields that directly drive this workflow's behavior:
 
 ## 2. Stages
 
-A stage names its owner as a role in brackets — `[architect]`, `[developer]`. Which agent a role means arrives in the contract's `agents` map; dispatch that agent per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage whose role resolved to `—` says so before it starts. Dispatch it on the model `conventions/stage-dispatch.md` → Model and effort derives from the contract's `models` map — a walkthrough takes `light` before its writer's role — and name no model where the rule yields `platform`; this method cannot pass an effort.
+A stage names its owner as a role in brackets — `[architect]`, `[developer]`. Which agent a role means arrives in the contract's `agents` map; dispatch that agent per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage whose role resolved to `—` says so before it starts. Dispatch it on the model `conventions/stage-dispatch.md` → Model and effort derives from the contract's `models` map — a walkthrough takes `light` before its writer's role — and name no model where the rule yields `session`; this method cannot pass an effort.
 
 - **Research** — a panel: `[architect]` + `[security]` (via the Task tool, in parallel or sequentially as the orchestrator decides). Artifact: `Research.md` in the task folder. Goal: investigate the domain, surface risks, propose architectural options.
 

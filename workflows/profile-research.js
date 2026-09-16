@@ -264,11 +264,11 @@ const record = (stage, r) => {
   })
 }
 
-// Model and effort for one dispatch — conventions/stage-dispatch.md → Model and effort. `platform`
-// and `session` pass nothing, leaving the choice to the agent's frontmatter and the session.
+// Model and effort for one dispatch — conventions/stage-dispatch.md → Model and effort. `session`
+// passes nothing, leaving the choice to CLAUDE_CODE_SUBAGENT_MODEL and the session.
 const tuning = (role, kind) => {
   const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)
-  const model = (kind !== 'stage' && pick(A.models, 'light', 'platform')) || pick(A.models, role, 'platform')
+  const model = (kind !== 'stage' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')
   const effort = kind === 'mechanical' ? 'low' : pick(A.effort, role, 'session')
   return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
 }

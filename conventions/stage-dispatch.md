@@ -62,10 +62,10 @@ The `light` and `mechanical` lists are closed, and `scripts/lint-workflows.sh` h
 | `light` | `models.light`, else `models[role]` | `effort[role]` |
 | `mechanical` | `models.light`, else `models[role]` | `low` |
 
-`platform` and `session` mean pass nothing. From Claude Code 2.1.251 a model the dispatch passes
-outranks everything; without one the agent's frontmatter `model` decides, then
-`CLAUDE_CODE_SUBAGENT_MODEL`, then the session's model. Before 2.1.251 the environment variable
-outranked everything. An effort not passed is the session's, because a platform agent declares none
+`session` means pass nothing. From Claude Code 2.1.251 a model the dispatch passes outranks
+everything; without one `CLAUDE_CODE_SUBAGENT_MODEL` decides, then the session's model. Before
+2.1.251 the environment variable outranked everything. An effort not passed is the session's.
+Neither falls to the agent's frontmatter, because a platform agent declares no model and no effort
 (`conventions/platform-contract.md` → `## Roles`).
 
 Method A passes both through the prelude's `tuning(role, kind)`. Method B passes the model with the
