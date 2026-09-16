@@ -29,9 +29,10 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
 @test "the rule states the host's order with its version, and what Method B cannot pass" {
   s="$(section "$RULE" '## Model and effort')"
-  for token in 'CLAUDE_CODE_SUBAGENT_MODEL' '2.1.251' 'Method B' 'cannot pass effort' 'main context'; do
+  for token in 'CLAUDE_CODE_SUBAGENT_MODEL' '2.1.251' 'Method B' 'cannot pass effort' 'main context' '`session` means pass nothing'; do
     grep -qF "$token" <<<"$s" || { echo "the rule does not say $token"; return 1; }
   done
+  ! grep -qF '`platform`' <<<"$s" || { echo "the rule still names platform"; return 1; }
 }
 
 @test "agent tooling points a dispatch's model and effort at the rule" {
@@ -68,6 +69,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   for t in task-root task-step; do
     grep -qF '# [MODELS] = [architect: opus]' "$ROOT/templates/task-md/$t.md" || { echo "no [MODELS] in $t.md"; return 1; }
     grep -qF '# [EFFORT] = [reviewer: high]' "$ROOT/templates/task-md/$t.md" || { echo "no [EFFORT] in $t.md"; return 1; }
+    grep -qF '<opus|sonnet|haiku|fable|session>' "$ROOT/templates/task-md/$t.md" || { echo "$t.md does not list session"; return 1; }
   done
 }
 
@@ -122,6 +124,10 @@ PY
   grep -qF 'the text between the brackets of its [MODELS] and [EFFORT]' "$E" || { echo "read-steps never asks for them"; return 1; }
   grep -qF "if (m && TUNING_KEYS[field].includes(key) && TUNING_UNSET[field].includes(value)) continue" "$E" \
     || { echo "overlay does not skip a 1.11.0 platform silently"; return 1; }
+  skip_at="$(grep -nF 'TUNING_UNSET[field].includes(value)) continue' "$E" | cut -d: -f1)"
+  note_at="$(grep -nF 'TUNING_VALUES[field].includes(value)) out[key] = value' "$E" | cut -d: -f1)"
+  [ -n "$skip_at" ] && [ -n "$note_at" ] && [ "$skip_at" -lt "$note_at" ] \
+    || { echo "the silent skip ($skip_at) must come before the branch that writes a note ($note_at)"; return 1; }
 }
 
 @test "every workflow skill dispatches a stage on the model the rule derives" {

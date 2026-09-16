@@ -13,7 +13,8 @@ set -euo pipefail
 # tests/foundation/lib/model-and-effort.test.bats fails when the two disagree.
 ROLES="architect developer tester reviewer refactorer validator security diagnostics"
 MODELS="opus sonnet haiku fable session"
-# 1.11.0 wrote `session` as `platform`; such an entry reads as if its line were absent.
+# A `platform` left by 1.11.0 reads as if its line were absent, not as `session`,
+# so the validator keeps its `sonnet` default.
 UNSET_MODELS="platform"
 EFFORTS="low medium high xhigh max session"
 

@@ -92,10 +92,10 @@ subagent dispatch verbatim, and the agent it names must exist as `<plugin>/agent
 
 That file's frontmatter carries no `model` and no `effort`. Which model and effort a stage runs on
 belongs to the session and to the project's `## Models` and `## Effort`
-(`conventions/stage-dispatch.md` → Model and effort), and a role whose work is mechanical, such as
-reading build logs, gets its lighter model there as core's default. A model pinned here decides for
-every project that leaves the role at `session`, whatever model its session runs. `lint-manifest.sh`
-rejects either.
+(`conventions/stage-dispatch.md` → Model and effort), and a role whose work needs no heavier model,
+such as reading build logs, gets a lighter one there as core's default. A model pinned here decides
+for every project that leaves the role at `session`, whatever model its session runs.
+`lint-manifest.sh` rejects either.
 
 Core's stage briefs say what a role must accomplish and never how: "a build and a full test run are
 mandatory", never the name of a build tool. Only the agent behind the role knows how this ecosystem's
