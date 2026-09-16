@@ -517,12 +517,18 @@ commit confirmations behave identically at all three values.
 **At `quiet`** — nothing beyond the final report that closes the range. Sending work to the
 background still deserves one plain line saying a stage started; that line names no agent, no
 method, no scope and no artifact, and it does not point at `/workflows`. Each of those belongs to
-the opening block, and `quiet` is the value that has no opening block.
+the opening block or the dispatch line, and `quiet` is the value that renders neither.
 
 **At `normal` and above** — an opening block, once per task, before the first dispatch. Render
 `progress_open_header` (`{method}` is the literal `Method A` or `Method B`), then the sentence
 from `dispatch_method_a` / `dispatch_method_b`, then the stage-to-agent table, then
-`progress_open_live_hint` for Method A only.
+`progress_open_live_hint` for Method A only, `{workflow}` being the script's `meta.name`.
+
+Under Method A, every `Workflow` call is then preceded by `progress_dispatch` — the one per stage in
+`manual`, the single one in `auto`, and any re-dispatch after a hand-back or a retry. `{range}` is
+what that call covers: one stage, or `<start> → <end>`. The host lists each run by `meta.name`
+alone, so a `manual` task fills `/workflows` with identical rows; this line is what ties a row to
+its stage.
 
 The table's agent column comes from `meta.phases[].agent` in `workflows/profile-<profile>.js`.
 Read that file's `meta` block — it is the same file that dispatches, and a second copy of the map

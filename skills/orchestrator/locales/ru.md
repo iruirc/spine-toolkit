@@ -134,13 +134,16 @@ security; OWASP; vulnerability; certificate pinning; безопасность
 {profile} {task_id} · {method} · {start} → {end} · Progress: {progress}
 
 ## progress_open_live_hint
-Живой ход идущего workflow — вьюха /workflows.
+Живой ход — вьюха /workflows. Каждый запуск ниже — там отдельная строка `{workflow}`, новые сверху.
 
 ## progress_open_live_ticker_note
 Панель с токенами — запусти `bash "{script}" --session {session}` в соседней панели терминала.
 
 ## progress_open_method_b_live
 В Method B хост сам рисует каждый вызов агента; панель добавляет к нему цифры расхода, которых хост не показывает.
+
+## progress_dispatch
+{range} → новый запуск `{workflow}`, верхняя строка в /workflows.
 
 ## progress_stage_report
 {stage} — {agent}

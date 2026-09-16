@@ -134,13 +134,16 @@ Stop and hand back control
 {profile} {task_id} · {method} · {start} → {end} · Progress: {progress}
 
 ## progress_open_live_hint
-Live progress of the running workflow — the /workflows view.
+Live progress — the /workflows view. Each dispatch below is a run of its own there, listed as `{workflow}`, newest on top.
 
 ## progress_open_live_ticker_note
 Token panel — run `bash "{script}" --session {session}` in a second terminal pane.
 
 ## progress_open_method_b_live
 Under Method B the host renders every agent call itself; the panel adds the token figures it does not show.
+
+## progress_dispatch
+{range} → new `{workflow}` run, the top row in /workflows.
 
 ## progress_stage_report
 {stage} — {agent}

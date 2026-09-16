@@ -272,3 +272,19 @@ setup() {
       || { echo "$l: progress_stage_metrics does not carry {tuning}"; return 1; }
   done
 }
+
+# The host labels a run by meta.name alone, so a manual task's rows are identical.
+@test "every Method A dispatch says which stages its /workflows row runs" {
+  para="$(awk '/^Under Method A, every `Workflow` call/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "Progress reporting never ties a /workflows row to its stage"; return 1; }
+  grep -qF '`progress_dispatch`' <<<"$para" || { echo "the paragraph names no key"; return 1; }
+  grep -qF '`manual`' <<<"$para" || { echo "the paragraph does not cover manual"; return 1; }
+  for l in en ru; do
+    L="$ROOT/skills/orchestrator/locales/$l.md"
+    body="$(awk '/^## progress_dispatch$/{p=1;next} /^## /{p=0} p' "$L")"
+    grep -qF '{range}' <<<"$body" || { echo "$l: progress_dispatch lacks {range}"; return 1; }
+    grep -qF '{workflow}' <<<"$body" || { echo "$l: progress_dispatch lacks {workflow}"; return 1; }
+    body="$(awk '/^## progress_open_live_hint$/{p=1;next} /^## /{p=0} p' "$L")"
+    grep -qF '{workflow}' <<<"$body" || { echo "$l: progress_open_live_hint lacks {workflow}"; return 1; }
+  done
+}
