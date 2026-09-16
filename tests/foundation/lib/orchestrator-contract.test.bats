@@ -221,7 +221,7 @@ setup() {
 }
 
 @test "the outbound contract carries models and effort as filled brace maps" {
-  grep -qxF 'models={light: sonnet, architect: platform, developer: platform, tester: platform, reviewer: platform, refactorer: platform, validator: platform, security: platform, diagnostics: platform}' "$SKILL" \
+  grep -qxF 'models={light: sonnet, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}' "$SKILL" \
     || { echo "no filled models= line in the Outbound Contract block"; return 1; }
   grep -qxF 'effort={architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}' "$SKILL" \
     || { echo "no filled effort= line in the Outbound Contract block"; return 1; }
@@ -230,7 +230,8 @@ setup() {
 @test "models and effort are resolved by the script, not by reading the config" {
   para="$(awk '/^`models` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`models\` paragraph in the Outbound Contract"; return 1; }
-  for token in 'resolve-tuning.sh' '## Models' '[MODELS]' '.step/' 'warn_tuning_unrecognised' 'Always filled' 'real JSON' 'Model and effort'; do
+  for token in 'resolve-tuning.sh' '## Models' '[MODELS]' '.step/' 'warn_tuning_unrecognised' 'Always filled' 'real JSON' 'Model and effort' \
+              '`sonnet` for `light` and `validator`, `session` for every other role'; do
     grep -qF "$token" <<<"$para" || { echo "the models paragraph does not name $token"; return 1; }
   done
   para="$(awk '/^`effort` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"

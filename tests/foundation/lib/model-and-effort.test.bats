@@ -41,11 +41,12 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
 @test "the config template ships every Models key at its default, and no init" {
   block="$(section "$TPL" '## Models')"
-  for line in 'light: sonnet' 'architect: platform' 'developer: platform' 'tester: platform' 'reviewer: platform' \
-              'refactorer: platform' 'validator: platform' 'security: platform' 'diagnostics: platform'; do
+  for line in 'light: sonnet' 'architect: session' 'developer: session' 'tester: session' 'reviewer: session' \
+              'refactorer: session' 'validator: sonnet' 'security: session' 'diagnostics: session'; do
     grep -qxF "$line" <<<"$block" || { echo "## Models lacks '$line'"; return 1; }
   done
   ! grep -q '^init:' <<<"$block" || { echo "## Models names init, which no profile dispatches"; return 1; }
+  ! grep -q ': platform$' <<<"$block" || { echo "## Models still writes platform"; return 1; }
 }
 
 @test "the config template ships every Effort key at session, and no light" {
@@ -56,9 +57,9 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   ! grep -q '^light:' <<<"$block" || { echo "## Effort carries light, which no effort reads"; return 1; }
 }
 
-@test "the Models guidance names what platform passes and the limits a user can trip on" {
+@test "the Models guidance names what session passes, the 1.11.0 spelling and the limits a user can trip on" {
   block="$(section "$TPL" '## Models')"
-  for token in 'CLAUDE_CODE_SUBAGENT_MODEL' '200k' 'Sonnet 4.5' '[MODELS]'; do
+  for token in 'CLAUDE_CODE_SUBAGENT_MODEL' '200k' 'Sonnet 4.5' '[MODELS]' 'as if its line were absent'; do
     grep -qF "$token" <<<"$block" || { echo "## Models guidance does not mention $token"; return 1; }
   done
 }
@@ -82,7 +83,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     n=$((n + 1))
     for line in "const tuning = (role, kind) => {" \
                 "  const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)" \
-                "  const model = (kind !== 'stage' && pick(A.models, 'light', 'platform')) || pick(A.models, role, 'platform')" \
+                "  const model = (kind !== 'stage' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')" \
                 "  const effort = kind === 'mechanical' ? 'low' : pick(A.effort, role, 'session')" \
                 "  return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }"; do
       grep -qxF "$line" "$p" || { echo "$(basename "$p"): missing '$line'"; return 1; }
@@ -99,11 +100,12 @@ js = open(sys.argv[2], encoding='utf-8').read()
 var = lambda name: re.search(r'^%s="([^"]*)"' % name, sh, re.M).group(1).split()
 keys = re.search(r'^const TUNING_KEYS = \{ models: \[([^\]]*)\], effort: \[([^\]]*)\] \}$', js, re.M)
 values = re.search(r'^const TUNING_VALUES = \{ models: \[([^\]]*)\], effort: \[([^\]]*)\] \}$', js, re.M)
-if not keys or not values:
-    print('profile-epic.js carries no TUNING_KEYS / TUNING_VALUES line'); raise SystemExit
+unset = re.search(r'^const TUNING_UNSET = \{ models: \[([^\]]*)\], effort: \[([^\]]*)\] \}$', js, re.M)
+if not keys or not values or not unset:
+    print('profile-epic.js carries no TUNING_KEYS / TUNING_VALUES / TUNING_UNSET line'); raise SystemExit
 q = lambda s: re.findall(r"'([a-z]+)'", s)
-want = (['light'] + var('ROLES'), var('ROLES'), var('MODELS'), var('EFFORTS'))
-have = (q(keys.group(1)), q(keys.group(2)), q(values.group(1)), q(values.group(2)))
+want = (['light'] + var('ROLES'), var('ROLES'), var('MODELS'), var('EFFORTS'), var('UNSET_MODELS'), [])
+have = (q(keys.group(1)), q(keys.group(2)), q(values.group(1)), q(values.group(2)), q(unset.group(1)), q(unset.group(2)))
 print('same' if want == have else 'differ: %s vs %s' % (want, have))
 PY
 )"
@@ -118,6 +120,8 @@ PY
   grep -qF "models: { type: 'string', description: 'only when the step declares its own [MODELS]" "$E" || { echo "the step record has no models"; return 1; }
   grep -qF "effort: { type: 'string', description: 'only when the step declares its own [EFFORT]" "$E" || { echo "the step record has no effort"; return 1; }
   grep -qF 'the text between the brackets of its [MODELS] and [EFFORT]' "$E" || { echo "read-steps never asks for them"; return 1; }
+  grep -qF "if (m && TUNING_KEYS[field].includes(key) && TUNING_UNSET[field].includes(value)) continue" "$E" \
+    || { echo "overlay does not skip a 1.11.0 platform silently"; return 1; }
 }
 
 @test "every workflow skill dispatches a stage on the model the rule derives" {
@@ -129,6 +133,7 @@ PY
     grep -qF '`conventions/stage-dispatch.md` → Model and effort' <<<"$para" || { echo "$f: the paragraph does not point at the rule"; return 1; }
     grep -qF 'cannot pass an effort' <<<"$para" || { echo "$f: the paragraph does not say effort stays behind"; return 1; }
     grep -qF 'a walkthrough takes `light`' <<<"$para" || { echo "$f: the paragraph does not give a walkthrough light first"; return 1; }
+    grep -qF 'where the rule yields `session`' <<<"$para" || { echo "$f: the paragraph does not name session"; return 1; }
   done
   [ "$n" -eq 7 ] || { echo "scanned $n skill(s), expected 7"; return 1; }
 }

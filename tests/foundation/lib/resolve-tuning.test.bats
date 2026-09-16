@@ -13,7 +13,7 @@ setup() {
   ERR="$BATS_TEST_TMPDIR/err"
 }
 
-DEFAULT_MODELS='models={light: sonnet, architect: platform, developer: platform, tester: platform, reviewer: platform, refactorer: platform, validator: platform, security: platform, diagnostics: platform}'
+DEFAULT_MODELS='models={light: sonnet, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}'
 DEFAULT_EFFORT='effort={architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}'
 
 @test "a project that says nothing resolves to the defaults, models line first" {
@@ -27,7 +27,7 @@ DEFAULT_EFFORT='effort={architect: session, developer: session, tester: session,
 @test "the project's blocks move the keys they name and no other" {
   printf '## Models\n\nlight: haiku\narchitect: opus\n\n## Effort\n\nreviewer: high\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   out="$("$RESOLVE" "$TASK")"
-  [ "$(sed -n 1p <<<"$out")" = 'models={light: haiku, architect: opus, developer: platform, tester: platform, reviewer: platform, refactorer: platform, validator: platform, security: platform, diagnostics: platform}' ] \
+  [ "$(sed -n 1p <<<"$out")" = 'models={light: haiku, architect: opus, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}' ] \
     || { echo "$out"; return 1; }
   [ "$(sed -n 2p <<<"$out")" = 'effort={architect: session, developer: session, tester: session, reviewer: high, refactorer: session, validator: session, security: session, diagnostics: session}' ] \
     || { echo "$out"; return 1; }
@@ -42,7 +42,7 @@ DEFAULT_EFFORT='effort={architect: session, developer: session, tester: session,
 }
 
 @test "the template's commented override line is not a value" {
-  printf '[TASK_TYPE] = [BUG]\n# [MODELS] = [architect: opus]  # <key>: <opus|sonnet|haiku|fable|platform>, comma-separated\n' >"$TASK/Task.md"
+  printf '[TASK_TYPE] = [BUG]\n# [MODELS] = [architect: opus]  # <key>: <opus|sonnet|haiku|fable|session>, comma-separated\n' >"$TASK/Task.md"
   run "$RESOLVE" "$TASK"
   [ "${lines[0]}" = "$DEFAULT_MODELS" ] || { echo "$output"; return 1; }
 }
@@ -61,7 +61,7 @@ DEFAULT_EFFORT='effort={architect: session, developer: session, tester: session,
 @test "a folder that is not a step never reads the Task.md above it" {
   printf '[TASK_TYPE] = [EPIC]\n[MODELS] = [architect: opus]\n' >"$PROJ/Tasks/ACTIVE/Task.md"
   out="$("$RESOLVE" "$TASK")"
-  grep -qF 'architect: platform' <<<"$out" || { echo "$out"; return 1; }
+  grep -qF 'architect: session' <<<"$out" || { echo "$out"; return 1; }
 }
 
 @test "an unusable entry is reported, skipped, and the next source applies" {
@@ -108,7 +108,7 @@ DEFAULT_EFFORT='effort={architect: session, developer: session, tester: session,
 
 @test "the config's last entry for a repeated key wins, not the first" {
   cp "$ROOT/templates/claude-toolkit-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
-  awk '{print} /^architect: platform$/ && !done {print "architect: opus"; done=1}' \
+  awk '{print} /^architect: session$/ && !done {print "architect: opus"; done=1}' \
     "$PROJ/CLAUDE-spine-toolkit.md" >"$PROJ/CLAUDE-spine-toolkit.md.new"
   mv "$PROJ/CLAUDE-spine-toolkit.md.new" "$PROJ/CLAUDE-spine-toolkit.md"
   out="$("$RESOLVE" "$TASK" 2>"$ERR")"
@@ -137,4 +137,44 @@ DEFAULT_EFFORT='effort={architect: session, developer: session, tester: session,
   printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
   out="$(cd "$STEP" && "$RESOLVE" .)"
   grep -qF 'architect: opus' <<<"$out" || { echo "the epic's key did not reach the step via '.': $out"; return 1; }
+}
+
+@test "a config written by 1.11.0 keeps every model it had and reports nothing" {
+  printf '## Models\n\nlight: sonnet\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  for role in architect developer tester reviewer refactorer validator security diagnostics; do
+    printf '%s: platform\n' "$role" >>"$PROJ/CLAUDE-spine-toolkit.md"
+  done
+  out="$("$RESOLVE" "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { echo "platform was reported:"; cat "$ERR"; return 1; }
+  [ "$(sed -n 1p <<<"$out")" = "$DEFAULT_MODELS" ] || { echo "$out"; return 1; }
+}
+
+@test "light: platform reads as absent, so light keeps its sonnet default" {
+  printf '## Models\n\nlight: platform\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  grep -qF 'light: sonnet' <<<"$out" || { echo "$out"; return 1; }
+}
+
+@test "a task's platform entry leaves the project's value in place" {
+  printf '## Models\n\narchitect: opus\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [architect: platform]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  grep -qF 'architect: opus' <<<"$out" || { echo "$out"; return 1; }
+}
+
+@test "platform is still reported under an unknown models key and in Effort" {
+  printf '## Models\n\nplanner: platform\n\n## Effort\n\nreviewer: platform\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  "$RESOLVE" "$TASK" 2>"$ERR" >/dev/null
+  grep -qF "## Models: 'planner: platform' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+  grep -qF "## Effort: 'reviewer: platform' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+}
+
+@test "a task can name session over the project's model" {
+  printf '## Models\n\nvalidator: opus\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [validator: session]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  grep -qF 'validator: session' <<<"$out" || { echo "$out"; return 1; }
 }

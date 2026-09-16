@@ -12,22 +12,25 @@ set -euo pipefail
 # workflows/profile-epic.js copies this vocabulary for the steps it pushes, and
 # tests/foundation/lib/model-and-effort.test.bats fails when the two disagree.
 ROLES="architect developer tester reviewer refactorer validator security diagnostics"
-MODELS="opus sonnet haiku fable platform"
+MODELS="opus sonnet haiku fable session"
+# 1.11.0 wrote `session` as `platform`; such an entry reads as if its line were absent.
+UNSET_MODELS="platform"
 EFFORTS="low medium high xhigh max session"
 
 [ "$#" -eq 1 ] || { echo "usage: $0 <task-dir>" >&2; exit 2; }
 [ -d "$1" ] || { echo "not a directory: $1" >&2; exit 2; }
 
-python3 - "$ROLES" "$MODELS" "$EFFORTS" "$1" <<'PY'
+python3 - "$ROLES" "$MODELS" "$EFFORTS" "$UNSET_MODELS" "$1" <<'PY'
 import os, re, sys
 
-ROLES, MODEL_VALUES, EFFORT_VALUES = (s.split() for s in sys.argv[1:4])
-TASK_DIR = sys.argv[4]
+ROLES, MODEL_VALUES, EFFORT_VALUES, UNSET_MODELS = (s.split() for s in sys.argv[1:5])
+TASK_DIR = sys.argv[5]
 
 AXES = (
-    # contract field, Task.md field, config block, keys, values, defaults
-    ('models', 'MODELS', 'Models', ['light'] + ROLES, MODEL_VALUES, dict({r: 'platform' for r in ROLES}, light='sonnet')),
-    ('effort', 'EFFORT', 'Effort', ROLES, EFFORT_VALUES, {r: 'session' for r in ROLES}),
+    # contract field, Task.md field, config block, keys, values, values read as absent, defaults
+    ('models', 'MODELS', 'Models', ['light'] + ROLES, MODEL_VALUES, UNSET_MODELS,
+     dict({r: 'session' for r in ROLES}, light='sonnet', validator='sonnet')),
+    ('effort', 'EFFORT', 'Effort', ROLES, EFFORT_VALUES, [], {r: 'session' for r in ROLES}),
 )
 
 
@@ -93,7 +96,7 @@ def sources(field, block_name):
     return found
 
 
-for name, field, block_name, keys, values, defaults in AXES:
+for name, field, block_name, keys, values, unset, defaults in AXES:
     resolved, decided = dict(defaults), set()
     for label, entries in sources(field, block_name):
         # Last valid entry for a key wins within this source; an invalid one is reported
@@ -102,6 +105,8 @@ for name, field, block_name, keys, values, defaults in AXES:
         for entry in entries:
             m = re.fullmatch(r'([A-Za-z]+)\s*:\s*([A-Za-z]+)', entry)
             key, value = (m.group(1).lower(), m.group(2).lower()) if m else (None, None)
+            if key in keys and value in unset:
+                continue
             if key not in keys or value not in values:
                 print("%s: '%s' not recognized, skipped" % (label, entry), file=sys.stderr)
                 continue
