@@ -61,7 +61,7 @@ DEFAULT_EFFORT='effort={architect: session, developer: session, tester: session,
 @test "a folder that is not a step never reads the Task.md above it" {
   printf '[TASK_TYPE] = [EPIC]\n[MODELS] = [architect: opus]\n' >"$PROJ/Tasks/ACTIVE/Task.md"
   out="$("$RESOLVE" "$TASK")"
-  grep -qF 'architect: session' <<<"$out" || { echo "$out"; return 1; }
+  grep -qF 'architect: session' <<<"$(sed -n 1p <<<"$out")" || { echo "$out"; return 1; }
 }
 
 @test "an unusable entry is reported, skipped, and the next source applies" {
