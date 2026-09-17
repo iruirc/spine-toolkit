@@ -65,11 +65,13 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   done
 }
 
-@test "both task templates offer the MODELS and EFFORT overrides" {
+@test "both task templates offer the MODELS and EFFORT overrides with the resolver's keys and values" {
+  var() { sed -n "s/^$1=\"\(.*\)\"$/\1/p" "$ROOT/scripts/resolve-tuning.sh" | tr ' ' '|'; }
+  models="# [MODELS] = [architect: opus]  # <light|$(var ROLES)>: <$(var MODELS)>, comma-separated"
+  effort="# [EFFORT] = [reviewer: high]   # <$(var ROLES)>: <$(var EFFORTS)>, comma-separated"
   for t in task-root task-step; do
-    grep -qF '# [MODELS] = [architect: opus]' "$ROOT/templates/task-md/$t.md" || { echo "no [MODELS] in $t.md"; return 1; }
-    grep -qF '# [EFFORT] = [reviewer: high]' "$ROOT/templates/task-md/$t.md" || { echo "no [EFFORT] in $t.md"; return 1; }
-    grep -qF '<opus|sonnet|haiku|fable|session>' "$ROOT/templates/task-md/$t.md" || { echo "$t.md does not list session"; return 1; }
+    grep -qxF "$models" "$ROOT/templates/task-md/$t.md" || { echo "$t.md: [MODELS] is not '$models'"; return 1; }
+    grep -qxF "$effort" "$ROOT/templates/task-md/$t.md" || { echo "$t.md: [EFFORT] is not '$effort'"; return 1; }
   done
 }
 
