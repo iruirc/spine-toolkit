@@ -37,6 +37,38 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   run "$RESOLVE" json "$TASK"
   [ "$status" -eq 2 ]
   case "$output" in *"CLAUDE-spine-toolkit.md"*"/setup"*) ;; *) echo "$output"; return 1 ;; esac
+  # Every subcommand refuses alike, raw included: it is the only way docs-route.sh reaches here.
+  run "$RESOLVE" raw "$PROJ" Paths
+  [ "$status" -eq 2 ]
+  run "$RESOLVE" show "$TASK"
+  [ "$status" -eq 2 ]
+}
+
+@test "a project-only field is never read from a Task.md" {
+  printf '[TASK_TYPE] = [BUG]\n[PROGRESS] = [live]\n[DOCS_STRICTNESS] = [blocking]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field progress <<<"$output")" = normal ] || { echo "$output"; return 1; }
+  [ "$(source_of progress <<<"$output")" = default ] || { echo "$output"; return 1; }
+  [ "$(field docs_strictness <<<"$output")" = advisory ] || { echo "$output"; return 1; }
+  [ "$(source_of docs_strictness <<<"$output")" = default ] || { echo "$output"; return 1; }
+}
+
+@test "a config that names a scalar twice takes the first line, as a Task.md does" {
+  printf '## Task defaults\n\n[SCALE] = [lite]\n[SCALE] = [full]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field scale <<<"$output")" = lite ] || { echo "$output"; return 1; }
+  [ "$(source_of scale <<<"$output")" = project ] || { echo "$output"; return 1; }
+}
+
+@test "two config MODELS lines fold in file order, the last entry for a repeated key wins" {
+  printf '## Task defaults\n\n[MODELS] = [reviewer: opus, architect: opus]\n[MODELS] = [tester: haiku, architect: sonnet]\n' \
+    >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$status" -eq 0 ]
+  [ "$(map_value models architect <<<"$output")" = sonnet ] || { echo "$output"; return 1; }
+  [ "$(map_value models tester <<<"$output")" = haiku ] || { echo "$output"; return 1; }
+  [ "$(map_value models reviewer <<<"$output")" = opus ] \
+    || { echo "a key named only on the first line was dropped: $output"; return 1; }
 }
 
 @test "a block that is not a setting is left alone, and raw still reads it" {
