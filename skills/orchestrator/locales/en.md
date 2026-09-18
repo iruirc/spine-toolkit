@@ -203,7 +203,7 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 `on` is the pre-depth value, so this run writes `Walkthrough.md` at `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. To keep the older shape, write `brief` — in `[WALKTHROUGH]` in `Task.md`, or under `walkthrough` in `## Reporting` in `CLAUDE-spine-toolkit.md`.
 
 ## warn_walkthrough_unrecognised
-`{value}` is not one of the three walkthrough depths, so this run writes the `deep` one. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]` in `Task.md`, or under `walkthrough` in `## Reporting` in `CLAUDE-spine-toolkit.md`.
+`{value}` is not one of the three walkthrough depths, so it was skipped and the next source down decides: the project's `walkthrough` in `## Reporting` where it names one, `deep` where nothing does. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]` in `Task.md`, or under `walkthrough` in `## Reporting` in `CLAUDE-spine-toolkit.md`. The settings column above names the depth this run actually resolved to.
 
 ## warn_tuning_unrecognised
 `{entry}` in {source} is not a key and value this run can use, so it was skipped and the next setting down applies. Model keys are `light` and the eight roles, with `opus`, `sonnet`, `haiku`, `fable` or `session`; effort keys are the eight roles, with `low`, `medium`, `high`, `xhigh`, `max` or `session`.

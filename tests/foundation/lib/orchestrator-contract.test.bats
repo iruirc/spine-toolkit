@@ -162,8 +162,15 @@ section() {
     || { echo "the paragraph never says the field can be read unconditionally"; return 1; }
   grep -qF 'pre-depth value' <<<"$para" \
     || { echo "the paragraph does not say how a legacy on resolves"; return 1; }
-  grep -qF 'Any other value resolves to `deep`' <<<"$para" \
-    || { echo "the vocabulary is open: nothing says what an unrecognised value does"; return 1; }
+  # The chain continues past a value it cannot use (conventions/task-settings.md), so a paragraph
+  # promising `deep` is false for the one case it exists to describe: a project whose config says
+  # `brief` under a task file with a typo.
+  grep -qF 'Any other value is reported and skipped, and the chain carries on past it' <<<"$para" \
+    || { echo "nothing says an unrecognised value falls through to the next source"; return 1; }
+  grep -qF 'only a chain that names no usable value anywhere lands on `deep`' <<<"$para" \
+    || { echo "the paragraph does not say when deep is actually what lands"; return 1; }
+  ! grep -qF 'Any other value resolves to `deep`' <<<"$para" \
+    || { echo "the old promise survives beside the new one"; return 1; }
 }
 
 @test "scale still moves the walkthrough default, and to deep" {
@@ -180,7 +187,15 @@ section() {
     body="$(awk '/^## warn_walkthrough_unrecognised$/{p=1;next} /^## /{p=0} p' "$L")"
     grep -q '{value}' <<<"$body" \
       || { echo "$lang.md has no warn_walkthrough_unrecognised string substituting {value}"; return 1; }
+    # Named twice: once as the source that decides after the skipped value, once as where to fix
+    # it. A string that names it only as the place to fix is one still claiming a depth of its own.
+    # Counted rather than grepped, both locales being one paragraph on one line.
+    n="$(grep -oF -- '## Reporting' <<<"$body" | wc -l | tr -d ' ')"
+    [ "$n" -ge 2 ] \
+      || { echo "$lang.md: the announcement never names what decides after the value is skipped"; return 1; }
   done
+  ! grep -qF 'so this run writes the `deep` one' "$ROOT/skills/orchestrator/locales/en.md" \
+    || { echo "en.md still promises a depth the chain may not land on"; return 1; }
 }
 
 @test "the pre-depth substitution is announced from the one place that sees it" {
