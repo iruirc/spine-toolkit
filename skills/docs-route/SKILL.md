@@ -14,8 +14,11 @@ to write when it did.
 > - `task-walkthrough` — the per-task account that feeds a progress component
 > - `manual-checks` — the other artifact whose shape a skill owns and a config block only levers
 
-`[DOCS]` stays a lever this script reads directly, never the answer (`docs-route.sh state` decides
-that). Every other task setting resolves along one chain, held once in `conventions/task-settings.md`.
+`[DOCS]` is a lever, never the answer — `docs-route.sh state` decides that, and only it knows
+whether any component is declared. The lever itself resolves along the one chain every task setting
+resolves along, through `scripts/resolve-settings.sh`: the task's own field, then the epic's for a
+`.step/` folder, then `## Docs` → `enabled`. The chain is held once, in
+`conventions/task-settings.md`.
 
 ## The criterion
 

@@ -26,6 +26,20 @@ The task's own `[WALKTHROUGH]` is checked before the `lite` gate and wins outrig
 config is checked *after* the gate, so it never overrides `lite` the way the task's own line can
 (the second decision below).
 
+**A missing key is the default, not an error.** A task file that never names the field, a project
+with no such block, a block with no such key — each is a link that contributes nothing and hands
+the question to the next. Nothing stops because a setting was left unwritten, and a project that
+has never opened its config runs on the defaults of the release it is on.
+
+**An unrecognized value is reported, and the chain continues past it.** The resolver names the
+entry on stderr and moves to the next link, so a typo in a task's `[DRIVE_APP]` lands on the
+project's choice rather than on the built-in default. This is what the two map fields always did,
+and it is the less surprising of the two outcomes: silently preferring the built-in default to the
+value a project wrote down looks, from the project's side, like its config being ignored. The
+warning is printed either way. Two entries are not covered by it: `progress`, whose resolved value
+the opening block prints anyway, is skipped in silence; and `[WALKTHROUGH] = [on]`, the pre-depth
+spelling, is read as `deep` and reported in words of its own, because a migration is not a typo.
+
 ## Fields
 
 | Field | `Task.md` | Config | Values | Default |
@@ -68,3 +82,7 @@ explicit `[WALKTHROUGH] = [deep]` writes the file on a `lite` run. The project's
 `walkthrough` sits *after* the `lite` step, not before it: a config that turns the file on cannot
 out-rank the `lite` floor the way the task's own line can. Only the task's own word on its own file
 beats the axis (`conventions/task-scale.md` → Explicit beats the axis).
+
+An epic's `[WALKTHROUGH]` beats the gate at the same rank, for a step that names none of its own:
+it is a task file, read before the gate, and the first decision above is what makes the epic the
+step's own word rather than its config.
