@@ -173,3 +173,9 @@ catalog_words() {
   ! grep -qE '^[A-Za-z]+\.md *:' <<<"$block" || { echo "the template ships a ceiling a project did not choose"; return 1; }
   grep -qF 'not when the lint turns red' <<<"$block" || { echo "nothing warns against raising a ceiling to silence the lint"; return 1; }
 }
+
+@test "the config template offers the settings key of ## Progress" {
+  block="$(awk '/^## Progress$/{f=1;next} f&&/^## /{exit} f' "$TPL")"
+  grep -qx 'settings: diff' <<<"$block" || { echo "## Progress does not ship 'settings: diff'"; return 1; }
+  grep -qF 'diff | full | off' <<<"$block" || { echo "the guidance does not list the three values"; return 1; }
+}

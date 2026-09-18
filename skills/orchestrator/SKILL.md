@@ -68,12 +68,13 @@ The orchestrator does not activate on every user request — light commands bypa
    - Confirmation/skip is governed in Resolution Algorithm, step 6 (single source of truth).
    - **Driver pre-flight.** Run this only when the resolved stage range includes Validation **and**
      `drive_app` does not resolve to `off` — on a run that never reaches validation, or one told not
-     to drive, none of it is needed and the driver's manifest is not invoked at all. Resolve the
-     driver: `Task.md [DRIVER]` → `CLAUDE-spine-toolkit.md ## Validation → driver:` → the platform
-     manifest's `## Driver → default` → `—`. A `driver:` of `auto`, or no `driver:` key at all, falls
-     through to the platform default; an explicit `—` is the project choosing none, and ends the
-     chain there. On `—`, say nothing: no driver is a supported configuration, not a problem.
-     Otherwise invoke `<driver>:manifest`. If it does not resolve, report with key
+     to drive, none of it is needed and the driver's manifest is not invoked at all. Take `driver`
+     from the contract — the chain that used to read `Task.md [DRIVER]` and `CLAUDE-spine-toolkit.md
+     ## Validation → driver:` here now runs once, inside `resolve-settings.sh` (Resolution Algorithm
+     step 3) — then resolve it against the platform manifest's `## Driver → default`. A contract
+     value of `auto` falls through to that default; an explicit `—` is the project choosing none,
+     and ends the chain there. On `—`, say nothing: no driver is a supported configuration, not a
+     problem. Otherwise invoke `<driver>:manifest`. If it does not resolve, report with key
      `warn_driver_plugin_missing`. If it resolves, read the `namespace` row of its `## Driver`
      block — it lists one or more prefixes — and look for a tool named `mcp__<prefix>__*` for each
      in turn. The first prefix with tools present is the one this session uses. If none of them
@@ -128,19 +129,15 @@ Algorithm:
    ↓ if missing → AUQ using key `fallback_profile_question`
    ↓ profile = workflow-<TASK_TYPE.lower()>
 
-3. Resolve mode (priority high→low):
-   mode_override (NL: "automatically" / "step-by-step")
-   > Task.md [WORKFLOW_MODE]
-   > CLAUDE-spine-toolkit.md "## Mode"
-   > "manual" (default)
+3. Resolve the settings — one call, every field:
+     bash "<core root>/scripts/resolve-settings.sh" json <task dir>
+   • mode_override (NL: "automatically" / "step-by-step") wins over the `mode` field
+   • progress_override (NL: "quietly" / "with live indication") wins over the `progress` field
+   ↓ every other field is the value the script printed; do not re-derive one by reading a file
 
-3.5 Resolve progress (priority high→low):
-    progress_override (NL: "quietly" / "with live indication")
-    > CLAUDE-spine-toolkit.md "## Progress"
-    > "normal" (default)
-
-    An unrecognized value resolves to "normal" without an error: the resolved value is printed
-    in the opening block, so a typo shows up as a mismatch with the file rather than as silence.
+   An unrecognized `progress` value resolves to "normal" without an error: the resolved value is
+   printed in the settings column, so a typo shows up as a mismatch with the file rather than as
+   silence.
 
 4. Resolve stack (per-axis; replaces the old monolithic chain):
    4.0 if stack_override is set (stack explicitly named in the request):
@@ -361,6 +358,10 @@ need_review=true|false
 walkthrough=brief|deep|off
 docs=on|off
 scale=lite|full
+drive_app=auto|off
+manual_checks=auto|always
+driver=<driver-plugin>|auto|—
+phase_verification=proportional|full
 budgets={Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100}
 models={light: sonnet, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}
 effort={architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}
@@ -382,7 +383,7 @@ Semantics of `stage_scope`:
 
 `agents` — the role-to-agent map resolved in step 5.7. Always filled, always all nine roles, always in vocabulary order (`architect`, `developer`, `tester`, `reviewer`, `refactorer`, `validator`, `security`, `diagnostics`, `init`). Method B encodes it as the single line above; Method A passes the same object as real JSON, so a script reads `A.agents.architect` and gets `"fixture-platform:fixture-architect"` for the reference platform above. Keys are bare role names: the manifest's `role[axis=value]` form is resolved away in step 5.7 and never reaches the contract. A role the platform declared absent arrives as the em dash `—` in both encodings — a value a consumer checks for before dispatching, not a missing key, and the reason this field is never partial and never omitted. This is what lets a stage name its owner by role: which agent that role means is a property of the platform, not of the profile.
 
-`walkthrough` — whether the run writes `Walkthrough.md`, and at what depth. Always filled, for every profile, so a consumer reads one shape rather than testing for the field first. Resolved `Task.md` `[WALKTHROUGH]` → `off` when `scale` is `lite` (the `scale` field below owns that step) → `CLAUDE-spine-toolkit.md` `## Reporting` → `walkthrough` → `deep`; a missing section is the default, not an error. Three values: `deep` writes a glossary, the commit order and a section per commit; `brief` writes a summary, the divergences and a one-bullet-per-commit log; `off` writes nothing. `on` is the pre-depth value and resolves to `deep`. It declared whether, never how deep, so there is no prior depth to preserve — `on` used to produce what `brief` now produces, so a config left alone writes more than it did, and the run announces that once with key `warn_walkthrough_pre_depth`. This is the only announcement that reaches a project which has not opened its config since — the one kind of project that still carries `on`. Any other value resolves to `deep` as well, and the run announces it once with key `warn_walkthrough_unrecognised` (placeholder `{value}`); a silent fallback would hide a typo in a project's config for as long as nobody compared two walkthroughs. Unlike `drive_app`, this one travels in the contract because the script itself gates on it — a Method A run has no filesystem access and cannot read the value for itself. Always `off` for `profile=review` and `profile=research`, where the profile has no implementing stage and no diff of its own; if the task file sets it anyway, say once that it was not executed and why, rather than dropping it silently.
+`walkthrough` — whether the run writes `Walkthrough.md`, and at what depth. Always filled, for every profile, so a consumer reads one shape rather than testing for the field first. Resolved `Task.md` `[WALKTHROUGH]` → `off` when `scale` is `lite` (the `scale` field below owns that step) → `CLAUDE-spine-toolkit.md` `## Reporting` → `walkthrough` → `deep`; a missing section is the default, not an error. Three values: `deep` writes a glossary, the commit order and a section per commit; `brief` writes a summary, the divergences and a one-bullet-per-commit log; `off` writes nothing. `on` is the pre-depth value and resolves to `deep`. It declared whether, never how deep, so there is no prior depth to preserve — `on` used to produce what `brief` now produces, so a config left alone writes more than it did, and the run announces that once with key `warn_walkthrough_pre_depth`. This is the only announcement that reaches a project which has not opened its config since — the one kind of project that still carries `on`. Any other value resolves to `deep` as well, and the run announces it once with key `warn_walkthrough_unrecognised` (placeholder `{value}`); a silent fallback would hide a typo in a project's config for as long as nobody compared two walkthroughs. It travels in the contract because the script itself gates on it — a Method A run has no filesystem access and cannot read the value for itself. Always `off` for `profile=review` and `profile=research`, where the profile has no implementing stage and no diff of its own; if the task file sets it anyway, say once that it was not executed and why, rather than dropping it silently.
 
 `docs` — whether this run has any documentation to route. Resolved by asking `<core root>/scripts/docs-route.sh state <project root> --task-dir <task dir>`, which walks the same chain the mechanism itself walks, in order: the task's own `[DOCS]` decides alone when it is present, in either direction; failing that the project's `## Docs` block decides through `enabled`; and only if the run is on at all does the answer depend on whether anything is declared, in the project's registry or in one at any external package root. A registry that exists but does not parse answers `on`, deliberately — the run then meets the error by name instead of skipping a registry someone meant to be read. It travels in the contract for the reason `walkthrough` does — a Method A run has no filesystem access and cannot read the value for itself. The script is the single authority on the answer; do not re-derive it by reading the config, because the check spans the project's registry and one at every external package root.
 
@@ -416,6 +417,14 @@ Two cases write nothing. A run already resolved to `full` has nothing to raise. 
 [full]` already in `Task.md` is the author's own decision: report the stage's finding, change no
 file. Because the value lives in the file, a later `redo` of any stage runs at `full` as well — the
 size belongs to the task, not to one dispatch.
+
+`drive_app` — whether the Validation stage may drive the running app through the platform's own tooling. Resolved by the same run of `resolve-settings.sh json`, whose `drive_app` field walks `Task.md` `[DRIVE_APP]` → for a `.step/` folder, the epic's `Task.md` `[DRIVE_APP]` → `CLAUDE-spine-toolkit.md` `## Validation` → `drive_app` → `auto`; that field is this field. Always filled, for every profile. `auto` leaves the choice to the profile named in `## Validation`'s parenthetical; `off` is the project saying it has nothing to drive. The Driver pre-flight (**Routing**, check 4) reads this field to decide whether it runs at all.
+
+`manual_checks` — when the validator writes `ManualChecks.md`. Resolved by the same run, whose `manual_checks` field walks the same chain over `[MANUAL_CHECKS]` and `## Validation` → `manual_checks` → `auto`; that field is this field. Always filled, for every profile. `auto` writes the file only for the checks the validator was told not to run itself; `always` writes it every time, even when the validator drove the app and covered the happy path.
+
+`driver` — which driver plugin the project chose. Resolved by the same run, whose `driver` field walks the same chain over `[DRIVER]` and `## Validation` → `driver` → `auto`; that field is this field. Always filled, for every profile. It carries the project's own choice — `auto`, `—`, or a plugin name — never the plugin the Driver pre-flight resolves `auto` to: that resolution still happens there, against the platform manifest, reading this field instead of `Task.md` and the config directly (**Routing**, check 4).
+
+`phase_verification` — how much each phase checks before it commits. Resolved by the same run, whose `phase_verification` field walks the same chain over `[PHASE_VERIFICATION]` and `## Validation` → `phase_verification` → `proportional`; that field is this field. Always filled, for every profile. `proportional` leaves the full regression to Validation; `full` repeats it in every phase. The rungs themselves are `phase-verification`'s business, not this field's.
 
 `budgets` — the line ceiling of every artifact core measures. Resolved by running `<core root>/scripts/lint-artifact-budget.sh --budgets <task dir>`, which reads the script's defaults and the project's `## Budgets` over them; the brace map it prints is this field. Always filled, for every profile, so a consumer reads one shape rather than testing for the field first. Method B takes that line as it is; Method A passes the same object as real JSON with integer values, so a script reads `A.budgets['Task.md']` and gets `100` by default. It travels in the contract for the reason `walkthrough` does — a Method A script names a ceiling in a brief and has no filesystem to read it from. The script is the one reader of `## Budgets`: do not re-derive the map from the config. Each line the script reports on stderr as not recognized is announced once with key `warn_budget_unrecognised` (placeholder `{line}`). Which artifact is measured at which scale is not this field's business: `conventions/task-scale.md`.
 
@@ -523,6 +532,11 @@ the opening block or the dispatch line, and `quiet` is the value that renders ne
 `progress_open_header` (`{method}` is the literal `Method A` or `Method B`), then the sentence
 from `dispatch_method_a` / `dispatch_method_b`, then the stage-to-agent table, then
 `progress_open_live_hint` for Method A only, `{workflow}` being the script's `meta.name`.
+
+Then, unless `settings_report` is `off`, the settings column: `progress_open_settings`, then the
+lines of `bash "<core root>/scripts/resolve-settings.sh" show <task dir>` at `diff`, or of the same
+command with every field at `full`. A line the script printed on stderr is announced once, exactly
+as `models` and `effort` announce theirs.
 
 Under Method A, every `Workflow` call is then preceded by `progress_dispatch` — the one per stage in
 `manual`, the single one in `auto`, and any re-dispatch after a hand-back or a retry. `{range}` is

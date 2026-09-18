@@ -142,6 +142,12 @@ Token panel — run `bash "{script}" --session {session}` in a second terminal p
 ## progress_open_method_b_live
 Under Method B the host renders every agent call itself; the panel adds the token figures it does not show.
 
+## progress_open_settings
+Settings:
+
+## progress_open_settings_rest
+{count} more at their default
+
 ## progress_dispatch
 {range} → new `{workflow}` run, the top row in /workflows.
 

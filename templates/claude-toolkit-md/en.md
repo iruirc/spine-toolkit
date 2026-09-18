@@ -64,11 +64,15 @@ manual
 ## Progress
 
 normal
+settings: diff
 
 (how much the orchestrator narrates a profile run: `quiet` — the final report only;
 `normal` — the stage-to-agent plan once, then a report after every stage; `live` — everything
 from `normal` plus each stage's token cost, a totals line when the run finishes, and the
 command for a live agent panel you can run in a second terminal pane.
+`settings` — how much of what the run resolved the opening block prints (`diff | full | off`):
+`diff` — the fields this task or this project chose, `full` — every field, `off` — none. The full
+list is one `scripts/resolve-settings.sh show <task dir>` away at any time.
 This setting governs reporting only — the between-stage confirmations of `manual` mode are
 unaffected by it.)
 
