@@ -124,11 +124,13 @@ For reference, the templates contain these placeholders:
      changes strings, flags or tooling and raises no documentation question at all. The field is
      a blanket lever: it silences every component for the whole task, and it stays visible in
      `Task.md` at Review.
-   - `[DOCS_NEW] = [<name>:<state|progress>, …]` — the components this task **creates**. Write it
-     when the user named a new subsystem or a new line of work; this is the one thing routing
-     cannot derive, since a subsystem being born has no `covers` to match against. Declaring is
-     not creating: the registry entry and the first file appear at the phase that first answers
-     Applicable, when the rule is already in the code.
+
+   One more line goes in the same place and is **not** an override, because the config has no such
+   field: `[DOCS_NEW] = [<name>:<state|progress>, …]` names the components this task **creates**.
+   Write it when the user named a new subsystem or a new line of work; this is the one thing routing
+   cannot derive, since a subsystem being born has no `covers` to match against. Declaring is
+   not creating: the registry entry and the first file appear at the phase that first answers
+   Applicable, when the rule is already in the code.
 
    Never write which **existing** components the task affects. The author does not know yet —
    the steps that turn out to carry the work are usually raised by findings during it rather than

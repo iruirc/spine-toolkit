@@ -24,9 +24,12 @@ mentions() {
 }
 
 @test "no script or workflow names a moved block of the config" {
+  n=0
   for f in "$ROOT"/scripts/*.sh "$ROOT"/workflows/*.js; do
+    n=$((n + 1))
     for block in Language Mode Progress Scale Reporting Validation Docs Budgets Models Effort; do
       [ -z "$(mentions "$block" "$f")" ] || { echo "$f still names ## $block"; return 1; }
     done
   done
+  [ "$n" -ge 10 ] || { echo "scanned $n file(s), expected at least 10"; return 1; }
 }

@@ -49,7 +49,7 @@ section() {
 @test "the scale field documents the whole resolution chain" {
   para="$(awk '/^`scale` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`scale\` paragraph in the Outbound Contract"; return 1; }
-  for token in '[SCALE]' 'CLAUDE-spine-toolkit.md' '`full`'; do
+  for token in '[SCALE]' '`CLAUDE-spine-toolkit.md` `[SCALE]` → `full`' '`full`'; do
     case "$para" in
       *"$token"*) ;;
       *) echo "the scale chain does not name $token"; return 1 ;;
@@ -264,13 +264,13 @@ section() {
 @test "models and effort are resolved by the script, not by reading the config" {
   para="$(awk '/^`models` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`models\` paragraph in the Outbound Contract"; return 1; }
-  for token in 'resolve-settings.sh' 'CLAUDE-spine-toolkit.md' '[MODELS]' '.step/' 'warn_tuning_unrecognised' 'Always filled' 'real JSON' 'Model and effort' \
+  for token in 'resolve-settings.sh' '→ `CLAUDE-spine-toolkit.md` `[MODELS]` →' '[MODELS]' '.step/' 'warn_tuning_unrecognised' 'Always filled' 'real JSON' 'Model and effort' \
               '`sonnet` for `light` and `validator`, `session` for every other role'; do
     grep -qF "$token" <<<"$para" || { echo "the models paragraph does not name $token"; return 1; }
   done
   para="$(awk '/^`effort` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`effort\` paragraph in the Outbound Contract"; return 1; }
-  for token in 'resolve-settings.sh' 'CLAUDE-spine-toolkit.md' '[EFFORT]' 'Always filled' '**Dispatch**'; do
+  for token in 'resolve-settings.sh' '`CLAUDE-spine-toolkit.md` `[EFFORT]` → `session`' '[EFFORT]' 'Always filled' '**Dispatch**'; do
     grep -qF "$token" <<<"$para" || { echo "the effort paragraph does not name $token"; return 1; }
   done
 }

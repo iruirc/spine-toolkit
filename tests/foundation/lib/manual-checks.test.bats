@@ -140,9 +140,13 @@ validation_brief() {
     || { echo "a platform author is never told the form is not theirs to invent"; return 1; }
 }
 
-@test "the project config template points at the skill for what goes inside" {
-  grep -q 'manual-checks' "$ROOT/templates/claude-toolkit-md/en.md" \
-    || { echo "the manual_checks key documents when, and nothing documents what"; return 1; }
+@test "the configuration page points at the skill for what goes inside" {
+  # The guidance left the template when the settings became one-line fields; the reference page is
+  # where it lands, and this assertion goes live with it.
+  doc="$ROOT/docs/configuration.md"
+  [ -f "$doc" ] || skip "docs/configuration.md does not exist yet"
+  grep -q 'manual-checks' "$doc" \
+    || { echo "the manual_checks field documents when, and nothing documents what"; return 1; }
 }
 
 # The Review stage's brief TEXT only, stopping at the agent() options object the

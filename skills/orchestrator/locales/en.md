@@ -200,7 +200,7 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 `{line}` in `[BUDGETS]` of `CLAUDE-spine-toolkit.md` names no artifact the budget lint knows, or its ceiling is not a positive whole number, so the default stays. The artifacts are `Task.md`, `Reproduce.md`, `Plan.md`, `Validation.md`, `Review.md` and `Done.md`.
 
 ## warn_walkthrough_pre_depth
-`on` is the pre-depth value, so this run writes `Walkthrough.md` at `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. To keep the older shape, write `brief` in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`.
+`on` is the pre-depth value, so it is read as `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. A project's `on` still ends at `off` when this task's `scale` is `lite`, the gate sitting below the task's own field and above the project's. To keep the older shape, write `brief` in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`.
 
 ## warn_walkthrough_unrecognised
 `{value}` is not one of the three walkthrough depths, so it was skipped and the rest of the chain decides: `off` when this task's `scale` is `lite`, otherwise the project's `[WALKTHROUGH]` where it names one, and `deep` where nothing does. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`. The settings column above names the depth this run actually resolved to.
