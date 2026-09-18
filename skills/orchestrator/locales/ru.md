@@ -142,6 +142,12 @@ security; OWASP; vulnerability; certificate pinning; безопасность
 ## progress_open_method_b_live
 В Method B хост сам рисует каждый вызов агента; панель добавляет к нему цифры расхода, которых хост не показывает.
 
+## progress_open_settings
+Настройки:
+
+## progress_open_settings_rest
+ещё {count} по умолчанию
+
 ## progress_dispatch
 {range} → новый запуск `{workflow}`, верхняя строка в /workflows.
 

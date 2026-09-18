@@ -16,6 +16,11 @@ setup() {
   AGENT_KEYS="${AGENT_KEYS% }"
 }
 
+# A section's body, heading excluded, up to the next H2. $2 carries its own "## ".
+section() {
+  awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"
+}
+
 @test "the outbound contract's agents map covers exactly the core role vocabulary" {
   [ -n "$VOCABULARY" ]
   [ "$(tr ' ' '\n' <<<"$AGENT_KEYS" | sort | tr '\n' ' ')" \
@@ -80,15 +85,14 @@ setup() {
     || { echo "the pre-flight does not name its gate inside ## Routing"; return 1; }
 }
 
-@test "the driver does not travel in the Outbound Contract" {
-  # D-10 of the spec, as a guard: core holds the driver's name to warn about it and
-  # for nothing else. The moment it rides the contract, a workflow script starts
-  # gating on it, and core owns a decision that belongs to whoever drives. drive_app
-  # is absent for the same reason and stays the reference for this shape.
+@test "the pre-flight takes the driver from the contract, not from disk" {
+  # The chain that used to read Task.md and CLAUDE-spine-toolkit.md directly now
+  # runs once, inside resolve-settings.sh, and the pre-flight only resolves the
+  # contract's own `driver` field to a plugin through the platform manifest.
   SK="$ROOT/skills/orchestrator/SKILL.md"
-  contract="$(awk '/^## Outbound Contract$/{c=1;next} /^## Dispatch$/{c=0} c' "$SK")"
-  ! grep -qE '\bdriver\b' <<<"$contract" \
-    || { echo "the Outbound Contract names the driver; it must not"; return 1; }
+  preflight="$(awk '/Driver pre-flight\./{r=1} /^## State Detection$/{r=0} r' "$SK")"
+  grep -qF 'the contract' <<<"$preflight" \
+    || { echo "the pre-flight does not say it reads the contract's driver field"; return 1; }
 }
 
 @test "both driver warning keys exist in both locales with parity" {
@@ -286,5 +290,26 @@ setup() {
     grep -qF '{workflow}' <<<"$body" || { echo "$l: progress_dispatch lacks {workflow}"; return 1; }
     body="$(awk '/^## progress_open_live_hint$/{p=1;next} /^## /{p=0} p' "$L")"
     grep -qF '{workflow}' <<<"$body" || { echo "$l: progress_open_live_hint lacks {workflow}"; return 1; }
+  done
+}
+
+@test "the contract carries the four validation fields" {
+  block="$(section "$SKILL" '## Outbound Contract')"
+  for line in 'drive_app=auto|off' 'manual_checks=auto|always' 'driver=<driver-plugin>|auto|—' 'phase_verification=proportional|full'; do
+    grep -qxF "$line" <<<"$block" || { echo "the contract does not carry '$line'"; return 1; }
+  done
+}
+
+@test "the opening block names the settings column and its key" {
+  block="$(section "$SKILL" '## Progress reporting')"
+  grep -qF 'progress_open_settings' <<<"$block" || { echo "the opening block does not render the settings column"; return 1; }
+  grep -qF 'settings_report' <<<"$block" || { echo "nothing says which key sizes the column"; return 1; }
+}
+
+@test "both locales carry the settings keys" {
+  for l in en ru; do
+    f="$ROOT/skills/orchestrator/locales/$l.md"
+    grep -qxF '## progress_open_settings' "$f" || { echo "$l.md lacks progress_open_settings"; return 1; }
+    grep -qF '{count}' "$f" || { echo "$l.md lacks the {count} placeholder"; return 1; }
   done
 }
