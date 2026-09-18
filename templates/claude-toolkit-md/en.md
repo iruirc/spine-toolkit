@@ -71,7 +71,9 @@ settings: diff
 from `normal` plus each stage's token cost, a totals line when the run finishes, and the
 command for a live agent panel you can run in a second terminal pane.
 `settings` — how much of what the run resolved the opening block prints (`diff | full | off`):
-`diff` — the fields this task or this project chose, `full` — every field, `off` — none. The full
+`diff` — the fields this task or this project chose a value for that is not the built-in default
+(a block below that writes the default down again is not a choice this run has to report),
+`full` — every field, `off` — none. The full
 list is one `scripts/resolve-settings.sh show <task dir> --all` away at any time.
 This setting governs reporting only — the between-stage confirmations of `manual` mode are
 unaffected by it.)

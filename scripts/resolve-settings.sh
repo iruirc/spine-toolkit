@@ -8,7 +8,7 @@ set -euo pipefail
 #        scripts/resolve-settings.sh show <task-dir> [--all]   # Task.md lines, with sources
 #                                                                # --all: every field, defaults included
 #        scripts/resolve-settings.sh raw  <dir> <block>        # the value lines of one config block
-# Exit:  0, or 2 on a usage error. One stderr line per entry it could not use.
+# Exit:  0, or 2 on a usage error. One stderr line per entry it could not take at face value.
 #
 # Key by key: Task.md [FIELD] -> for a .step/ folder, the epic's Task.md above it -> the nearest
 # CLAUDE-spine-toolkit.md -> the defaults below. walkthrough has one more step: off when the
@@ -63,10 +63,31 @@ MAPS = (
 )
 # A value the resolver reads but never rejects: a free-form value has no closed list.
 FREE = ('driver', 'docs_map')
+# A spelling an older release wrote, still applied. Reported in words a caller can tell apart from
+# a typo's, so the two get different announcements.
+ALIASES = {'walkthrough': {'on': 'deep'}}
 
 
 def warn(label, entry):
     print("%s: '%s' not recognized, skipped" % (label, entry), file=sys.stderr)
+
+
+def accept(name, values, raw, label):
+    """What this entry contributes, or None when it contributes nothing and the chain goes on."""
+    if values is None:
+        return raw
+    low = raw.lower()
+    if low in values:
+        return low
+    alias = ALIASES.get(name, {}).get(low)
+    if alias:
+        print("%s: '%s' is the pre-depth spelling, read as '%s'" % (label, raw, alias), file=sys.stderr)
+        return alias
+    # progress is the one field a bad value does not get reported for: the opening block prints
+    # what it resolved to, so the mismatch with the file is visible.
+    if name != 'progress':
+        warn(label, raw)
+    return None
 
 
 def config_path(start):
@@ -151,7 +172,7 @@ if CMD not in ('json', 'show'):
     print('unknown command "%s"' % CMD, file=sys.stderr)
     sys.exit(2)
 
-resolved, sources = {}, {}
+resolved, sources, defaults = {}, {}, {}
 
 for name, task_field, block_name, key, values, default in SCALARS:
     value, source = None, 'default'
@@ -159,12 +180,12 @@ for name, task_field, block_name, key, values, default in SCALARS:
         if not task_field:
             break
         raw = task_value(path, task_field)
-        if raw is None or not raw:
+        if not raw:
             continue
-        if values is not None and raw.lower() not in values:
-            warn('Task.md [%s]' % task_field, raw)
+        value = accept(name, values, raw, 'Task.md [%s]' % task_field)
+        if value is None:
             continue
-        value, source = raw if name in FREE else raw.lower(), label
+        source = label
         break
     if value is None:
         lines = block(CFG, block_name)
@@ -178,23 +199,21 @@ for name, task_field, block_name, key, values, default in SCALARS:
                     raw = m.group(1).strip()
                     break
         if raw is not None:
-            if values is not None and raw.lower() not in values:
-                # progress is the one field a bad value does not get reported for: the opening
-                # block prints what it resolved to, so the mismatch with the file is visible.
-                if name != 'progress':
-                    warn('%s ## %s' % (CFG, block_name), raw)
-            else:
-                value, source = raw if name in FREE else raw.lower(), 'project'
-    resolved[name], sources[name] = (default if value is None else value), source
+            value = accept(name, values, raw, '%s ## %s' % (CFG, block_name))
+            if value is not None:
+                source = 'project'
+    resolved[name], sources[name], defaults[name] = (default if value is None else value), source, default
 
 # walkthrough: off on a lite task, above the project and below the task's own field.
-if sources['walkthrough'] == 'default' and resolved['scale'] == 'lite':
+# show_source holds what the column says where that is more than the source's bare name.
+show_source = {}
+if resolved['scale'] == 'lite' and sources['walkthrough'] in ('default', 'project'):
+    displaced = resolved['walkthrough'] if sources['walkthrough'] == 'project' else None
     resolved['walkthrough'], sources['walkthrough'] = 'off', 'scale'
-elif sources['walkthrough'] == 'project' and resolved['scale'] == 'lite':
-    resolved['walkthrough'], sources['walkthrough'] = 'off', 'scale'
+    show_source['walkthrough'] = 'scale: lite' + (' (project: %s)' % displaced if displaced else '')
 
-for name, task_field, block_name, keys, values, unset, defaults in MAPS:
-    out, decided = dict(defaults), set()
+for name, task_field, block_name, keys, values, unset, map_defaults in MAPS:
+    out, decided = dict(map_defaults), set()
     found = [(('Task.md [%s]' % task_field), label, task_map_entries(path, task_field))
              for label, path in task_files()]
     found.append((('%s ## %s' % (CFG, block_name)), 'project', block(CFG, block_name)))
@@ -215,7 +234,7 @@ for name, task_field, block_name, keys, values, unset, defaults in MAPS:
                 out[k], decided = v, decided | {k}
                 key_source[k] = source
                 sources.setdefault('%s.%s' % (name, k), source)
-    resolved[name] = out
+    resolved[name], defaults[name] = out, dict(map_defaults)
     # The map's own source is the nearest label among the keys that were actually decided:
     # task beats epic beats project, so a task-chosen key is never reported as the project's.
     order = ['task', 'epic', 'project']
@@ -227,12 +246,12 @@ for line in block(CFG, 'Budgets'):
     name, value = (m.group(1), m.group(2)) if m else (line, '')
     if name in caps and re.fullmatch(r'[0-9]+', value) and int(value) > 0:
         caps[name], budget_source = int(value), 'project'
-        # Recorded even when the value matches the default: the line was still an override,
-        # and 'budgets.<name>' is what show's per-key filter (below) keys off.
+        # Recorded even when the value matches the default: the line was still an override, and
+        # 'budgets.<name>' is how a caller asks which ceilings this project wrote down at all.
         sources['budgets.%s' % name] = 'project'
     else:
         warn('%s ## Budgets' % CFG, line)
-resolved['budgets'] = caps
+resolved['budgets'], defaults['budgets'] = caps, dict(CAPS)
 sources['budgets'] = budget_source
 
 if CMD == 'json':
@@ -240,25 +259,29 @@ if CMD == 'json':
     sys.exit(0)
 
 # show: the column a human reads. Task.md spells a map as one bracketed list, so that is how
-# the column spells it too. Only the keys somebody chose are named, unless --all was given, which
-# names every field and every map key — defaults included — and never prints the "more" line.
+# the column spells it too. A field is in the column when somebody chose it AND the value they
+# chose differs from the built-in default: the shipped config template writes every field down at
+# its default, and a column repeating those is one nobody reads. --all names every field and every
+# map key — defaults included — and never prints the "more" line.
 FIELD_OF = {'mode': 'WORKFLOW_MODE', 'docs_lever': 'DOCS', 'settings_report': 'SETTINGS_REPORT'}
 rows, rest = [], 0
 for name in [s[0] for s in SCALARS] + ['models', 'effort', 'budgets']:
-    if sources[name] == 'default' and not SHOW_ALL:
-        rest += 1
-        continue
     value = resolved[name]
     if isinstance(value, dict):
-        chosen = [k for k in value if sources.get('%s.%s' % (name, k))]
+        chosen = [k for k in value
+                  if sources.get('%s.%s' % (name, k)) and value[k] != defaults[name][k]]
         keys = list(value) if SHOW_ALL else chosen
         if not keys:
             rest += 1
             continue
         text = ', '.join('%s: %s' % (k, value[k]) for k in keys)
     else:
+        if not SHOW_ALL and (sources[name] == 'default' or value == defaults[name]):
+            rest += 1
+            continue
         text = value
-    rows.append(('[%s]' % FIELD_OF.get(name, name.upper()), text, sources[name]))
+    rows.append(('[%s]' % FIELD_OF.get(name, name.upper()), text,
+                 show_source.get(name, sources[name])))
 width = max(len(r[0]) for r in rows) if rows else 0
 for label, text, source in rows:
     print('%-*s = [%s]  # %s' % (width, label, text, source))
