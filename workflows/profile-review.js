@@ -76,6 +76,9 @@ const runs = (stage) => {
 const DIR = A.task_dir
 const LANG = A.lang || 'en'
 const STACK = A.stack || 'unspecified'
+const DRIVE_APP = A.drive_app === 'off' ? 'off' : 'auto'
+const MANUAL_CHECKS = A.manual_checks === 'always' ? 'always' : 'auto'
+const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'
 
 // Documentation routing. Which declared component a change set may have touched is a script
 // (conventions/docs-components.md), because matching a diff against a dozen glob patterns by

@@ -15,8 +15,16 @@ choice.
 Task.md  →  the epic's Task.md for a .step/ folder  →  the nearest CLAUDE-spine-toolkit.md at or above the task dir  →  the default
 ```
 
-First hit wins. `walkthrough` inserts one step between the task and the config: `off` when `scale`
-resolved to `lite`, before the config is even read (below).
+First hit wins. `walkthrough` inserts one step between the task and the config, ahead of it rather
+than instead of it:
+
+```
+Task.md [WALKTHROUGH]  →  off when scale resolved to lite  →  CLAUDE-spine-toolkit.md ## Reporting → walkthrough  →  deep
+```
+
+The task's own `[WALKTHROUGH]` is checked before the `lite` gate and wins outright; the project's
+config is checked *after* the gate, so it never overrides `lite` the way the task's own line can
+(the second decision below).
 
 ## Fields
 
