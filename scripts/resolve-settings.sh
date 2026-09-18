@@ -64,8 +64,6 @@ MAPS = (
      dict({r: 'session' for r in ROLES}, light='sonnet', validator='sonnet')),
     ('effort', 'EFFORT', ROLES, EFFORT_VALUES, [], {r: 'session' for r in ROLES}),
 )
-# A value the resolver reads but never rejects: a free-form value has no closed list.
-FREE = ('driver', 'docs_map')
 # A spelling an older release wrote, still applied. Reported in words a caller can tell apart from
 # a typo's, so the two get different announcements.
 ALIASES = {'walkthrough': {'on': 'deep'}}
@@ -130,9 +128,9 @@ def block(cfg, name):
 
 
 def config_fields(cfg):
-    """Every [FIELD] = [value] line of the config, anchored at column 0 — a commented-out line
-    is documentation, exactly as it is in a Task.md. The last line for a field wins, so a file
-    that names one twice behaves as a task file does."""
+    """Every [FIELD] = [value] line of the config, in file order, one list per field. Anchored at
+    column 0 — a commented-out line is documentation, exactly as it is in a Task.md. A field named
+    twice folds as a task file's does, which is what config_value and config_entries below apply."""
     out = {}
     if not cfg:
         return out
@@ -140,7 +138,7 @@ def config_fields(cfg):
         for line in fh:
             m = re.match(r'^\[([A-Z_]+)\]\s*=\s*\[([^\]]*)\]', line)
             if m:
-                out[m.group(1)] = m.group(2).strip()
+                out.setdefault(m.group(1), []).append(m.group(2).strip())
     return out
 
 
@@ -164,6 +162,18 @@ def refuse_old_format(cfg):
 def field_entries(raw):
     """The entries of one bracketed, comma-separated field value."""
     return [e.strip() for e in (raw or '').split(',') if e.strip()]
+
+
+def config_value(field):
+    """A config scalar: the first [FIELD] line, as task_value takes a Task.md's first."""
+    lines = CFG_FIELDS.get(field, ())
+    return lines[0] if lines else None
+
+
+def config_entries(field):
+    """A config map's entries: every [FIELD] line folded in file order, as task_map_entries
+    folds a Task.md's."""
+    return [e for raw in CFG_FIELDS.get(field, ()) for e in field_entries(raw)]
 
 
 def task_value(path, name):
@@ -229,7 +239,7 @@ for name, field, values, default in SCALARS:
         source = label
         break
     if value is None:
-        raw = CFG_FIELDS.get(field)
+        raw = config_value(field)
         if raw:
             value = accept(name, values, raw, '%s [%s]' % (CFG, field))
             if value is not None:
@@ -248,7 +258,7 @@ for name, field, keys, values, unset, map_defaults in MAPS:
     out, decided = dict(map_defaults), set()
     found = [(('Task.md [%s]' % field), label, task_map_entries(path, field))
              for label, path in task_files()]
-    found.append((('%s [%s]' % (CFG, field)), 'project', field_entries(CFG_FIELDS.get(field))))
+    found.append((('%s [%s]' % (CFG, field)), 'project', config_entries(field)))
     key_source = {}
     for label, source, entries in found:
         seen = {}
@@ -273,7 +283,7 @@ for name, field, keys, values, unset, map_defaults in MAPS:
     sources[name] = min((key_source.values()), key=order.index, default='default')
 
 caps, budget_source = dict(CAPS), 'default'
-for entry in field_entries(CFG_FIELDS.get('BUDGETS')):
+for entry in config_entries('BUDGETS'):
     m = re.match(r'^(\S+)\s*:\s*(\S+)$', entry)
     name, value = (m.group(1), m.group(2)) if m else (entry, '')
     if name in caps and re.fullmatch(r'[0-9]+', value) and int(value) > 0:

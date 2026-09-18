@@ -173,7 +173,6 @@ catalog_words() {
 }
 
 @test "the config template offers the settings_report field" {
-  grep -qE '^\[SETTINGS_REPORT\] = \[diff\]' "$TPL" \
-    || { echo "the template does not ship '[SETTINGS_REPORT] = [diff]'"; return 1; }
-  grep -qF 'diff | full | off' "$TPL" || { echo "the field does not name its three values"; return 1; }
+  grep -qE '^\[SETTINGS_REPORT\] = \[diff\] +# diff \| full \| off$' "$TPL" \
+    || { echo "[SETTINGS_REPORT] must ship diff and name diff | full | off"; return 1; }
 }
