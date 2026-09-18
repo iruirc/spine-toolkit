@@ -80,7 +80,7 @@ The skill's behavior is determined by the project state, computed from four chec
 1. Does `CLAUDE.md` exist in the project root?
 2. Does `CLAUDE-spine-toolkit.md` exist in the project root?
 3. Does a pre-split `CLAUDE-swift-toolkit.md` exist in the project root?
-4. Does `CLAUDE.md` contain any of the legacy block headings — Language, Stack, Mode? (Indicates the legacy single-file format.)
+4. Does `CLAUDE.md` carry a `Language`, `Stack` or `Mode` heading? (That is the legacy single-file layout, where all three lived in `CLAUDE.md`.)
 
 | State | `CLAUDE.md` | `CLAUDE-spine-toolkit.md` | Pre-split config | Toolkit sections in `CLAUDE.md`? | Action branch |
 |---|---|---|---|---|---|
