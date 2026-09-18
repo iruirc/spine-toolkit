@@ -58,7 +58,7 @@ lines() { python3 -c 'import sys; open(sys.argv[1],"w").write("x\n"*int(sys.argv
   printf '## Scale\n\ngarbage\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ]
-  case "$output" in *"garbage"*"treating as full"*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *"garbage"*"not recognized"*) ;; *) echo "$output"; return 1 ;; esac
 }
 
 @test "the profiles with no implementing stage are not measured" {
@@ -107,8 +107,8 @@ lines() { python3 -c 'import sys; open(sys.argv[1],"w").write("x\n"*int(sys.argv
   [ "$status" -eq 0 ]
 }
 
-@test "the ceilings in the lint and in the workflow prelude are one table" {
-  verdict="$(python3 - "$LINT" "$ROOT/workflows/profile-bug.js" <<'PY'
+@test "the ceilings in the resolver and in the workflow prelude are one table" {
+  verdict="$(python3 - "$ROOT/scripts/resolve-settings.sh" "$ROOT/workflows/profile-bug.js" <<'PY'
 import re, sys
 lint = re.search(r'^CAPS="([^"]*)"', open(sys.argv[1], encoding='utf-8').read(), re.M)
 pre = re.search(r'^const CAP = \{([^}]*)\}', open(sys.argv[2], encoding='utf-8').read(), re.M)
@@ -200,8 +200,8 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
   lines "$TASK/Plan.md" 201
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ]
-  case "$output" in *"budget 'Plan.md: many' not recognized"*) ;; *) echo "$output"; return 1 ;; esac
-  case "$output" in *"budget 'Notes.md: 10' not recognized"*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *"## Budgets: 'Plan.md: many' not recognized"*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *"## Budgets: 'Notes.md: 10' not recognized"*) ;; *) echo "$output"; return 1 ;; esac
 }
 
 @test "the template's guidance under ## Budgets is not a budget" {

@@ -13,26 +13,31 @@ set -euo pipefail
 # --budgets prints the ceilings a task resolves to, in the Outbound Contract's brace syntax, and
 # measures nothing: the orchestrator ships that line as the contract's budgets field.
 #
-# Scale per task dir: Task.md [SCALE] -> the nearest CLAUDE-spine-toolkit.md ## Scale -> full.
-# Ceilings: CAPS below, overridden per artifact by ## Budgets in that same config.
+# Scale and the per-artifact ceilings both come from scripts/resolve-settings.sh, the one reader
+# of Task.md and CLAUDE-spine-toolkit.md.
 # REVIEW and RESEARCH are never measured: neither has an implementing stage, and the artifact
 # their run produces IS the deliverable. EPIC is never measured either, for a different reason:
 # its own Plan.md and Done.md are not gated by this ceiling (workflow-epic/SKILL.md). Its
 # .step/ subfolders are unaffected — walk() measures each one against its own Task.md.
 
-# First draft, taken from the shape of existing artifacts rather than from a measurement; the
-# design's Rollout §1 revises them. workflows/profile-*.js carries the same table as its prelude
-# CAP map, and tests/foundation/lib/artifact-budget.test.bats fails when the two disagree.
-CAPS="Reproduce.md:120 Plan.md:200 Validation.md:100 Review.md:120 Done.md:80 Task.md:100"
-
 [ "$#" -ge 1 ] || { echo "usage: $0 [--task-docs] <task-dir> [<task-dir> ...] | --budgets <task-dir>" >&2; exit 2; }
 
-python3 - "$CAPS" "$@" <<'PY'
-import os, re, sys
+RESOLVE="$(dirname -- "${BASH_SOURCE[0]}")/resolve-settings.sh"
+python3 - "$RESOLVE" "$@" <<'PY'
+import json, os, re, subprocess, sys
 
-DEFAULTS = dict((n, int(v)) for n, v in (p.split(':') for p in sys.argv[1].split()))
 ANCHORS = ['### Expected behaviour', '### Questions for Research', '### Acceptance']
 UNMEASURED = {'REVIEW', 'RESEARCH', 'EPIC'}
+
+RESOLVE = sys.argv[1]
+
+
+def settings(task_dir):
+    """Every setting of this task dir, from the one reader (scripts/resolve-settings.sh)."""
+    out = subprocess.run([RESOLVE, 'json', task_dir], capture_output=True, text=True)
+    sys.stderr.write(out.stderr)
+    return json.loads(out.stdout) if out.returncode == 0 else {}
+
 
 args = sys.argv[2:]
 task_docs = '--task-docs' in args
@@ -43,7 +48,6 @@ if any(a.startswith('--') for a in dirs) or not dirs or (print_budgets and (task
     sys.exit(2)
 
 violations = []
-reported = set()
 
 
 def field(path, name):
@@ -61,62 +65,6 @@ def field(path, name):
     return None
 
 
-def config(start):
-    """The nearest CLAUDE-spine-toolkit.md at or above start."""
-    d = os.path.abspath(start)
-    while True:
-        cfg = os.path.join(d, 'CLAUDE-spine-toolkit.md')
-        if os.path.isfile(cfg):
-            return cfg
-        parent = os.path.dirname(d)
-        if parent == d:
-            return None
-        d = parent
-
-
-def block(cfg, name):
-    """The value lines under ## <name>: non-empty, outside the parenthetical guidance a
-    template block carries, which may run over several lines."""
-    if not cfg:
-        return []
-    out, inside, paren = [], False, False
-    with open(cfg, encoding='utf-8') as fh:
-        for line in fh:
-            if line.startswith('## '):
-                if inside:
-                    break
-                inside = line.strip() == '## ' + name
-                continue
-            if not inside or not line.strip():
-                continue
-            if paren or line.lstrip().startswith('('):
-                paren = not line.rstrip().endswith(')')
-                continue
-            out.append(line.strip())
-    return out
-
-
-def project_scale(start):
-    lines = block(config(start), 'Scale')
-    return lines[0].lower() if lines else None
-
-
-def budgets(start):
-    """CAPS overridden by ## Budgets. A line that names no artifact CAPS knows, or whose ceiling
-    is not a positive whole number, keeps the default and is reported once."""
-    cfg = config(start)
-    caps = dict(DEFAULTS)
-    for line in block(cfg, 'Budgets'):
-        m = re.match(r'^(\S+)\s*:\s*(\S+)$', line)
-        name, value = (m.group(1), m.group(2)) if m else (line, '')
-        if name in caps and re.fullmatch(r'[0-9]+', value) and int(value) > 0:
-            caps[name] = int(value)
-        elif (cfg, line) not in reported:
-            reported.add((cfg, line))
-            print("%s: budget '%s' not recognized, keeping the default" % (cfg, line), file=sys.stderr)
-    return caps
-
-
 def count(path):
     try:
         with open(path, 'rb') as fh:
@@ -132,19 +80,10 @@ def measure(task_dir):
         return
     if (field(task_md, 'TASK_TYPE') or '') in UNMEASURED:
         return
-    scale = (field(task_md, 'SCALE') or '').lower() or project_scale(task_dir) or 'full'
-    if scale != 'lite':
-        # Garbage resolves to full, same as a missing block — that direction is safe (the
-        # task runs deeper, not shallower). But full and garbage must not look alike: an
-        # unrecognized value is reported, so a typo shows up rather than passing as silence.
-        if scale != 'full':
-            print(
-                "%s: scale '%s' not recognized, treating as full (not measured)"
-                % (task_dir, scale),
-                file=sys.stderr,
-            )
+    s = settings(task_dir)
+    if s.get('scale', 'full') != 'lite':
         return
-    for name, cap in sorted(budgets(task_dir).items()):
+    for name, cap in sorted(s.get('budgets', {}).items()):
         if name == 'Task.md':
             continue
         path = os.path.join(task_dir, name)
@@ -164,7 +103,7 @@ def check_step(step_dir):
     status = field(task_md, 'STATUS')
     if status and status not in ('PENDING', 'TODO'):
         return
-    cap = budgets(step_dir)['Task.md']
+    cap = settings(step_dir).get('budgets', {})['Task.md']
     n = count(task_md)
     if n is None:
         return
@@ -215,7 +154,7 @@ for arg in dirs:
         sys.exit(2)
 
 if print_budgets:
-    caps = budgets(dirs[0])
+    caps = settings(dirs[0]).get('budgets', {})
     print('{%s}' % ', '.join('%s: %d' % (k, caps[k]) for k in sorted(caps)))
     sys.exit(0)
 

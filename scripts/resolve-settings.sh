@@ -115,8 +115,8 @@ def task_value(path, name):
 
 
 def task_map_entries(path, name):
-    """Every entry of every matching [NAME] = [...] line, in file order: a map field folds like
-    resolve-tuning.sh's task_entries, unlike the scalar path above, which stops at the first."""
+    """Every entry of every matching [NAME] = [...] line, in file order: a map field folds every
+    line, unlike the scalar path above, which stops at the first."""
     out = []
     try:
         with open(path, encoding='utf-8') as fh:
