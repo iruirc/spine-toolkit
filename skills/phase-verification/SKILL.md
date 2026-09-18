@@ -62,11 +62,9 @@ Where no single build covers every dependent, build them one by one; there is no
 
 ## The switch
 
-```
-Task.md [PHASE_VERIFICATION]  →  CLAUDE-spine-toolkit.md ## Validation → phase_verification  →  proportional
-```
+The value arrives in the contract as `phase_verification`; `conventions/task-settings.md` holds the chain it was resolved along.
 
-First hit wins; a missing key is the default, not an error. `proportional` is the rungs above. `full` runs the full regression in every phase — right where the whole suite takes a minute, or on a task whose author buys insurance against a wrong rung. `full` in a line is legal only when the switch resolves to `full`. There is no `off`: a planner choosing freely is the defect this skill exists for. `scale` does not move the switch.
+`proportional` is the rungs above. `full` runs the full regression in every phase — right where the whole suite takes a minute, or on a task whose author buys insurance against a wrong rung. `full` in a line is legal only when the switch resolves to `full`. There is no `off`: a planner choosing freely is the defect this skill exists for. `scale` does not move the switch.
 
 ## By profile
 

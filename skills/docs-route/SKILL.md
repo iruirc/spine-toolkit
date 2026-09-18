@@ -13,6 +13,7 @@ to write when it did.
 > - `ops-checklist` — the same three-state vocabulary, at a different question
 > - `task-walkthrough` — the per-task account that feeds a progress component
 > - `manual-checks` — the other artifact whose shape a skill owns and a config block only levers
+> - `conventions/task-settings.md` — the chain and field table every other task setting resolves along
 
 ## The criterion
 
