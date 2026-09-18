@@ -16,6 +16,7 @@ setup() {
 
 field() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1]])' "$1"; }
 source_of() { python3 -c 'import json,sys; print(json.load(sys.stdin)["sources"][sys.argv[1]])' "$1"; }
+map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1]][sys.argv[2]])' "$1" "$2"; }
 
 @test "a project that says nothing resolves every field to its default" {
   run "$RESOLVE" json "$TASK"
@@ -134,4 +135,34 @@ for field, want in old.items():
         print('%s: old %s vs new %s' % (field, want, new[field]))
         sys.exit(1)
 PY
+}
+
+@test "two Task.md MODELS lines fold in file order, the last entry for a repeated key wins, matching resolve-tuning.sh" {
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [architect: opus]\n[MODELS] = [tester: haiku, architect: sonnet]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$status" -eq 0 ]
+  [ "$(map_value models architect <<<"$output")" = sonnet ] || { echo "$output"; return 1; }
+  [ "$(map_value models tester <<<"$output")" = haiku ] || { echo "$output"; return 1; }
+  old="$("$ROOT/scripts/resolve-tuning.sh" "$TASK" 2>/dev/null)"
+  grep -qF 'architect: sonnet' <<<"$old" || { echo "$old"; return 1; }
+  grep -qF 'tester: haiku' <<<"$old" || { echo "$old"; return 1; }
+}
+
+@test "a budgets override is recorded with its own source, and show prints it" {
+  printf '## Budgets\n\nPlan.md: 150\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$status" -eq 0 ]
+  [ "$(map_value budgets Plan.md <<<"$output")" = 150 ] || { echo "$output"; return 1; }
+  [ "$(source_of budgets <<<"$output")" = project ] || { echo "$output"; return 1; }
+  [ "$(source_of budgets.Plan.md <<<"$output")" = project ] || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK"
+  grep -qE '^\[BUDGETS\] += \[Plan\.md: 150\] +# project$' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "a budgets override equal to the default is still the project's choice, not the default's" {
+  printf '## Budgets\n\nPlan.md: 200\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(map_value budgets Plan.md <<<"$output")" = 200 ] || { echo "$output"; return 1; }
+  [ "$(source_of budgets <<<"$output")" = project ] || { echo "$output"; return 1; }
+  [ "$(source_of budgets.Plan.md <<<"$output")" = project ] || { echo "$output"; return 1; }
 }

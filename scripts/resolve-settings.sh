@@ -114,6 +114,21 @@ def task_value(path, name):
     return None
 
 
+def task_map_entries(path, name):
+    """Every entry of every matching [NAME] = [...] line, in file order: a map field folds like
+    resolve-tuning.sh's task_entries, unlike the scalar path above, which stops at the first."""
+    out = []
+    try:
+        with open(path, encoding='utf-8') as fh:
+            for line in fh:
+                m = re.match(r'^\[%s\]\s*=\s*\[([^\]]*)\]' % name, line)
+                if m:
+                    out.extend(e.strip() for e in m.group(1).split(',') if e.strip())
+    except OSError:
+        pass
+    return out
+
+
 def task_files():
     """(source label, Task.md path), nearest first."""
     out = [('task', os.path.join(TARGET, 'Task.md'))]
@@ -176,8 +191,7 @@ elif sources['walkthrough'] == 'project' and resolved['scale'] == 'lite':
 
 for name, task_field, block_name, keys, values, unset, defaults in MAPS:
     out, decided = dict(defaults), set()
-    found = [(('Task.md [%s]' % task_field), label,
-              [e.strip() for e in (task_value(path, task_field) or '').split(',') if e.strip()])
+    found = [(('Task.md [%s]' % task_field), label, task_map_entries(path, task_field))
              for label, path in task_files()]
     found.append((('%s ## %s' % (CFG, block_name)), 'project', block(CFG, block_name)))
     key_source = {}
@@ -203,16 +217,19 @@ for name, task_field, block_name, keys, values, unset, defaults in MAPS:
     order = ['task', 'epic', 'project']
     sources[name] = min((key_source.values()), key=order.index, default='default')
 
-caps = dict(CAPS)
+caps, budget_source = dict(CAPS), 'default'
 for line in block(CFG, 'Budgets'):
     m = re.match(r'^(\S+)\s*:\s*(\S+)$', line)
     name, value = (m.group(1), m.group(2)) if m else (line, '')
     if name in caps and re.fullmatch(r'[0-9]+', value) and int(value) > 0:
-        caps[name] = int(value)
+        caps[name], budget_source = int(value), 'project'
+        # Recorded even when the value matches the default: the line was still an override,
+        # and 'budgets.<name>' is what show's per-key filter (below) keys off.
+        sources['budgets.%s' % name] = 'project'
     else:
         warn('%s ## Budgets' % CFG, line)
 resolved['budgets'] = caps
-sources['budgets'] = 'project' if caps != CAPS else 'default'
+sources['budgets'] = budget_source
 
 if CMD == 'json':
     print(json.dumps(dict(resolved, sources=sources), ensure_ascii=False, sort_keys=True))
