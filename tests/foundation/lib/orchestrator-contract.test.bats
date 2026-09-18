@@ -85,14 +85,29 @@ section() {
     || { echo "the pre-flight does not name its gate inside ## Routing"; return 1; }
 }
 
-@test "the pre-flight takes the driver from the contract, not from disk" {
-  # The chain that used to read Task.md and CLAUDE-spine-toolkit.md directly now
-  # runs once, inside resolve-settings.sh, and the pre-flight only resolves the
-  # contract's own `driver` field to a plugin through the platform manifest.
+@test "the driver does not travel in the Outbound Contract" {
+  # D-10 of the spec, as a guard: core holds the driver's name to warn about it and
+  # for nothing else. The moment it rides the contract, a workflow script starts
+  # gating on it, and core owns a decision that belongs to whoever drives. drive_app
+  # is absent for the same reason and stays the reference for this shape.
+  SK="$ROOT/skills/orchestrator/SKILL.md"
+  contract="$(awk '/^## Outbound Contract$/{c=1;next} /^## Dispatch$/{c=0} c' "$SK")"
+  ! grep -qE '\bdriver\b' <<<"$contract" \
+    || { echo "the Outbound Contract names the driver; it must not"; return 1; }
+}
+
+@test "the pre-flight takes the driver from the resolver, not by parsing the config itself" {
+  # The other half of the guard above: the contract must not name the driver, and the
+  # pre-flight must not walk Task.md / CLAUDE-spine-toolkit.md on its own to find it —
+  # both would duplicate what Resolution step 3's resolve-settings.sh call already read.
   SK="$ROOT/skills/orchestrator/SKILL.md"
   preflight="$(awk '/Driver pre-flight\./{r=1} /^## State Detection$/{r=0} r' "$SK")"
-  grep -qF 'the contract' <<<"$preflight" \
-    || { echo "the pre-flight does not say it reads the contract's driver field"; return 1; }
+  grep -qF 'resolve-settings.sh' <<<"$preflight" \
+    || { echo "the pre-flight does not say it reads the resolver's driver field"; return 1; }
+  ! grep -qF 'Task.md [DRIVER]' <<<"$preflight" \
+    || { echo "the pre-flight still walks Task.md [DRIVER] itself"; return 1; }
+  ! grep -qF 'CLAUDE-spine-toolkit.md ## Validation' <<<"$preflight" \
+    || { echo "the pre-flight still reads CLAUDE-spine-toolkit.md itself"; return 1; }
 }
 
 @test "both driver warning keys exist in both locales with parity" {
@@ -293,9 +308,9 @@ section() {
   done
 }
 
-@test "the contract carries the four validation fields" {
+@test "the contract carries the three validation fields" {
   block="$(section "$SKILL" '## Outbound Contract')"
-  for line in 'drive_app=auto|off' 'manual_checks=auto|always' 'driver=<driver-plugin>|auto|—' 'phase_verification=proportional|full'; do
+  for line in 'drive_app=auto|off' 'manual_checks=auto|always' 'phase_verification=proportional|full'; do
     grep -qxF "$line" <<<"$block" || { echo "the contract does not carry '$line'"; return 1; }
   done
 }
