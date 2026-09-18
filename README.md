@@ -118,10 +118,10 @@ copies to be restored to match core.
 it. Your own project instructions stay in `CLAUDE.md`, which the toolkit only ever touches to insert
 the import line. The blocks and fields the toolkit reads:
 
-`[LANG]`, `## Platform`, `## Agents` (per-role overrides of the manifest), `## Stack`,
-`## Mode`, `## Progress`, `## Validation`, `## Reporting`, `## Docs`, `## Scale`, `## Budgets`,
-`## Models`, `## Effort`, `## Modules` (per-module stack overrides), `## EstimationDeltas`,
-`## DeliveryMode`, `## AILeverage`, `## Paths`.
+`## Project settings` and `## Task defaults` — every setting a run resolves, one
+`[FIELD] = [value]` line each, `[LANG]` and `[MODELS]` among them — plus `## Platform`,
+`## Agents` (per-role overrides of the manifest), `## Stack`, `## Modules` (per-module stack
+overrides), `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`.
 
 The template writes three more — `## Persona`, `## Rules` and `## Orchestration`. Those are for the
 agents reading the file as context, not blocks the toolkit parses.

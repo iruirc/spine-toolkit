@@ -1,6 +1,6 @@
 ---
 name: task-walkthrough
-description: "Use at the end of an implementing stage (Execute / Fix / Refactor / Write), and again at Done, to write or refresh `Walkthrough.md` — the human-facing account of what a task actually landed, at the depth the axis resolves to: `deep`, a section per commit with the failure each one is written against; `brief`, a summary with a commit log; or `off`, not written at all. Governed by `[WALKTHROUGH]` in Task.md and `## Reporting` in CLAUDE-spine-toolkit.md."
+description: "Use at the end of an implementing stage (Execute / Fix / Refactor / Write), and again at Done, to write or refresh `Walkthrough.md` — the human-facing account of what a task actually landed, at the depth the axis resolves to: `deep`, a section per commit with the failure each one is written against; `brief`, a summary with a commit log; or `off`, not written at all. Governed by `[WALKTHROUGH]` in Task.md and CLAUDE-spine-toolkit.md."
 ---
 
 # Task Walkthrough
@@ -33,7 +33,7 @@ Every rule below is derived from that one sentence, and it settles the arguments
 
 ## The switch
 
-`[WALKTHROUGH] = [brief|deep|off]` in `Task.md` → `off` when the run's `scale` is `lite` → `## Reporting` → `walkthrough:` in `CLAUDE-spine-toolkit.md` → `deep`. First hit wins; a missing section is not an error, it is the default. The axis moves the default only, so an explicit `[WALKTHROUGH] = [deep]` writes this file on a `lite` run (`conventions/task-scale.md`).
+`[WALKTHROUGH] = [brief|deep|off]` in `Task.md` → `off` when the run's `scale` is `lite` → `[WALKTHROUGH]` in `CLAUDE-spine-toolkit.md` → `deep`. First hit wins; a missing field is not an error, it is the default. The axis moves the default only, so an explicit `[WALKTHROUGH] = [deep]` writes this file on a `lite` run (`conventions/task-scale.md`).
 
 | Value | Meaning |
 |---|---|

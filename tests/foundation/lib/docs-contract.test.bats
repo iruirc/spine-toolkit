@@ -22,7 +22,7 @@ setup() {
 @test "the shipped template parses as a registry" {
   proj="$BATS_TEST_TMPDIR/p"
   mkdir -p "$proj"
-  printf '## Docs\n\nmap: DocsMap.md\nstrictness: advisory\n' >"$proj/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n[DOCS_STRICTNESS] = [advisory]\n' >"$proj/CLAUDE-spine-toolkit.md"
   cp "$TPL" "$proj/DocsMap.md"
   run "$DR" registry "$proj"
   [ "$status" -eq 0 ]
@@ -38,7 +38,7 @@ setup() {
   proj="$BATS_TEST_TMPDIR/q"
   taskdir="$proj/Tasks/ACTIVE/001-t"
   mkdir -p "$taskdir"
-  printf '## Docs\n\nmap: DocsMap.md\nstrictness: blocking\n' >"$proj/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n[DOCS_STRICTNESS] = [blocking]\n' >"$proj/CLAUDE-spine-toolkit.md"
   printf '## D\n\ngenre: state\nplaces:\n  - Documents/D/\ncovers:\n  - Sources/**\n' >"$proj/DocsMap.md"
   cp "$ROOT/templates/task-md/task-root.md" "$taskdir/Task.md"
   run bash -c "printf 'M\tSources/A.txt\n' | '$DR' route '$proj' --task-dir '$taskdir' --phase 1"

@@ -1,6 +1,6 @@
 ---
 name: manual-checks
-description: "Use at Plan to enumerate what a task's automation will not be able to check, and at Validation to turn that list into `ManualChecks.md` — the hand-run script a person executes after the run: a state they can reach, steps they can follow, and a verdict they can settle. Governed by `[MANUAL_CHECKS]` in Task.md and `## Validation` in CLAUDE-spine-toolkit.md."
+description: "Use at Plan to enumerate what a task's automation will not be able to check, and at Validation to turn that list into `ManualChecks.md` — the hand-run script a person executes after the run: a state they can reach, steps they can follow, and a verdict they can settle. Governed by `[MANUAL_CHECKS]` in Task.md and CLAUDE-spine-toolkit.md."
 ---
 
 # Manual Checks
@@ -100,7 +100,7 @@ Naming the instrument is not carrying it: an instrument mentioned by filename, w
 
 Neither `**Scene:**` nor either expectation identifies a state by the name of a function, a file, or a variable. Nobody can reach *almost at the minimum-duration constant*; they can reach *compressed until it stops compressing*. A symbol is allowed in parentheses as a gloss, never as the instruction.
 
-## Scale
+## Depth by task scale
 
 The axis decides depth, not existence: whether this file appears at all is `manual_checks`. The value arrives in the contract as `manual_checks`; `conventions/task-settings.md` holds the chain it was resolved along. At either value of `scale` it is written when that switch says so — it is the only record of ground nothing verified, and `conventions/task-scale.md ## The floor` keeps what carries a guarantee.
 

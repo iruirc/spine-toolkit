@@ -95,8 +95,8 @@ the ordinary case here, not the exception.
   still open across all phases; report them, do not enforce them.
 
 All of it is skipped by a stage that changes no files, by a task whose `Task.md` carries `[DOCS] =
-[off]`, by a project whose `## Docs` block carries `enabled: off`, and by a project that declares
-no components at all — neither in the map named by `## Docs` → `map`, `DocsMap.md` by default —
+[off]`, by a project whose `CLAUDE-spine-toolkit.md` carries the same, and by a project that declares
+no components at all — neither in the map named by `[DOCS_MAP]`, `DocsMap.md` by default —
 nor in any package it holds, so a project that declares nothing is served by silence.
 Review reads `Docs.md` the way it reads
 `OpsChecklist.md`: a row left `Pending` is surfaced for an explicit accept or defer.

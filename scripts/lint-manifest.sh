@@ -154,7 +154,7 @@ while read -r ref; do
   ' <<<"$front")"
   case "$pinned" in
     '') ;;
-    *) echo "agent pins model '$pinned', which belongs to the project's ## Models: $ref"; violations=$((violations+1)) ;;
+    *) echo "agent pins model '$pinned', which belongs to the project's [MODELS]: $ref"; violations=$((violations+1)) ;;
   esac
   if grep -qE '^effort:' <<<"$front"; then
     echo "agent pins an effort, which belongs to the session and the project: $ref"; violations=$((violations+1))

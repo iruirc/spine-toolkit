@@ -1,8 +1,9 @@
 # Documentation Components
 
 A **component** is a named unit of documentation a project declares once and refers to by name
-ever after. The declaration lives in `DocsMap.md`; the levers live in `## Docs` of
-`CLAUDE-spine-toolkit.md`; the matching is `scripts/docs-route.sh`.
+ever after. The declaration lives in `DocsMap.md`; the levers are `CLAUDE-spine-toolkit.md`'s
+`[DOCS]`, `[DOCS_MAP]`, `[DOCS_STRICTNESS]` and `[DOCS_FRESHNESS]`; the matching is
+`scripts/docs-route.sh`.
 
 ## The record
 
@@ -21,7 +22,7 @@ covers:
 |---|---|
 | H2 | the component's name, unique across the project and every package it holds |
 | `genre` | `state` or `progress` |
-| `strictness` | `blocking`, `advisory` or `off`; absent means the `## Docs` default |
+| `strictness` | `blocking`, `advisory` or `off`; absent means the `[DOCS_STRICTNESS]` default |
 | `places` | where the files are, one or more paths |
 | `covers` | what a `state` component describes: code paths, globs or exact files |
 | `fed_by` | what a `progress` component aggregates: task-folder patterns |
@@ -100,14 +101,14 @@ and what makes a good reason, is the `docs-route` skill.
 
 ## Suspending the mechanism
 
-`## Docs` → `enabled: off` stops the four commands a run invokes — `route`, `check`, `audit` and
-`progress` — while leaving `registry` able to read the file. That is the difference between a pause
-and a deletion: the declarations survive, and a single task can still opt back in with
-`[DOCS] = [on]`.
+`[DOCS] = [off]` in the project's config stops the four commands a run invokes — `route`, `check`,
+`audit` and `progress` — while leaving `registry` able to read the file. That is the difference
+between a pause and a deletion: the declarations survive, and a single task can still opt back in
+with `[DOCS] = [on]`.
 
 A registry that does not exist has the same effect and needs no lever, which is the state every
 project starts in.
 
-## Scale
+## Independent of task scale
 
 `conventions/task-scale.md` does not move `strictness`. The floor is identical at both values.

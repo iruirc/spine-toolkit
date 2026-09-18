@@ -1,6 +1,6 @@
 ---
 name: docs-route
-description: "Use at Plan, at the end of every implementing phase, and at Done to decide whether a change altered what a declared documentation component asserts, and to record the answer in the task's `Docs.md`. Governed by `[DOCS]` in Task.md and `## Docs` in CLAUDE-spine-toolkit.md; the registry format is `conventions/docs-components.md`."
+description: "Use at Plan, at the end of every implementing phase, and at Done to decide whether a change altered what a declared documentation component asserts, and to record the answer in the task's `Docs.md`. Governed by `[DOCS]` in Task.md and CLAUDE-spine-toolkit.md; the registry format is `conventions/docs-components.md`."
 ---
 
 # Docs Route
@@ -12,12 +12,12 @@ to write when it did.
 > **Related skills:**
 > - `ops-checklist` — the same three-state vocabulary, at a different question
 > - `task-walkthrough` — the per-task account that feeds a progress component
-> - `manual-checks` — the other artifact whose shape a skill owns and a config block only levers
+> - `manual-checks` — the other artifact whose shape a skill owns and a config field only levers
 
 `[DOCS]` is a lever, never the answer — `docs-route.sh state` decides that, and only it knows
 whether any component is declared. The lever itself resolves along the one chain every task setting
 resolves along, through `scripts/resolve-settings.sh`: the task's own field, then the epic's for a
-`.step/` folder, then `## Docs` → `enabled`. The chain is held once, in
+`.step/` folder, then the project's `[DOCS]`. The chain is held once, in
 `conventions/task-settings.md`.
 
 ## The criterion
@@ -71,7 +71,7 @@ behaviour is a forecast that reads as a fact and is wrong from its first day.
 
 ## Freshness header
 
-When `## Docs` → `freshness` is `on`, every file of a `state` or `progress` component opens with:
+When `[DOCS_FRESHNESS]` is `on`, every file of a `state` or `progress` component opens with:
 
 ```
 > **Status:** LIVE | SNAPSHOT | ARCHIVE

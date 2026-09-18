@@ -19,17 +19,17 @@ First hit wins. `walkthrough` inserts one step between the task and the config, 
 than instead of it:
 
 ```
-Task.md [WALKTHROUGH]  →  off when scale resolved to lite  →  CLAUDE-spine-toolkit.md ## Reporting → walkthrough  →  deep
+Task.md [WALKTHROUGH]  →  off when scale resolved to lite  →  CLAUDE-spine-toolkit.md [WALKTHROUGH]  →  deep
 ```
 
 The task's own `[WALKTHROUGH]` is checked before the `lite` gate and wins outright; the project's
 config is checked *after* the gate, so it never overrides `lite` the way the task's own line can
 (the second decision below).
 
-**A missing key is the default, not an error.** A task file that never names the field, a project
-with no such block, a block with no such key — each is a link that contributes nothing and hands
-the question to the next. Nothing stops because a setting was left unwritten, and a project that
-has never opened its config runs on the defaults of the release it is on.
+**A missing field is the default, not an error.** A task file that never names the field, a config
+that does not name it either — each is a link that contributes nothing and hands the question to
+the next. Nothing stops because a setting was left unwritten, and a project that has never opened
+its config runs on the defaults of the release it is on.
 
 **An unrecognized value is reported, and the chain continues past it.** The resolver names the
 entry on stderr and moves to the next link, so a typo in a task's `[DRIVE_APP]` lands on the
@@ -42,25 +42,28 @@ spelling, is read as `deep` and reported in words of its own, because a migratio
 
 ## Fields
 
+Both files spell a field the same way; a `—` in the `Task.md` column is a field the config alone
+answers.
+
 | Field | `Task.md` | Config | Values | Default |
 |---|---|---|---|---|
 | `lang` | — | `[LANG]` | `en` `ru` | `en` |
-| `mode` | `[WORKFLOW_MODE]` | `## Mode`, first value line | `manual` `auto` | `manual` |
-| `progress` | — | `## Progress`, first value line | `quiet` `normal` `live` | `normal` |
-| `settings_report` | — | `## Progress` → `settings` | `diff` `full` `off` | `diff` |
-| `scale` | `[SCALE]` | `## Scale`, first value line | `lite` `full` | `full` |
-| `walkthrough` | `[WALKTHROUGH]` | `## Reporting` → `walkthrough` | `brief` `deep` `off` | `off` when `scale` is `lite`, else `deep` |
-| `drive_app` | `[DRIVE_APP]` | `## Validation` → `drive_app` | `auto` `off` | `auto` |
-| `manual_checks` | `[MANUAL_CHECKS]` | `## Validation` → `manual_checks` | `auto` `always` | `auto` |
-| `driver` | `[DRIVER]` | `## Validation` → `driver` | a plugin name, `auto`, `—` | `auto` |
-| `phase_verification` | `[PHASE_VERIFICATION]` | `## Validation` → `phase_verification` | `proportional` `full` | `proportional` |
-| `docs_lever` | `[DOCS]` | `## Docs` → `enabled` | `on` `off` | `on` |
-| `docs_map` | — | `## Docs` → `map` | a path | `DocsMap.md` |
-| `docs_strictness` | — | `## Docs` → `strictness` | `blocking` `advisory` `off` | `advisory` |
-| `docs_freshness` | — | `## Docs` → `freshness` | `on` `off` | `on` |
-| `budgets` | — | `## Budgets`, one `<artifact>: <lines>` per line | a positive integer | the `CAPS` table |
-| `models` | `[MODELS]` | `## Models`, one `<key>: <value>` per line | `opus` `sonnet` `haiku` `fable` `session` | `sonnet` for `light` and `validator`, `session` for the other seven roles |
-| `effort` | `[EFFORT]` | `## Effort`, one `<role>: <value>` per line | `low` `medium` `high` `xhigh` `max` `session` | `session` |
+| `mode` | `[WORKFLOW_MODE]` | `[WORKFLOW_MODE]` | `manual` `auto` | `manual` |
+| `progress` | — | `[PROGRESS]` | `quiet` `normal` `live` | `normal` |
+| `settings_report` | — | `[SETTINGS_REPORT]` | `diff` `full` `off` | `diff` |
+| `scale` | `[SCALE]` | `[SCALE]` | `lite` `full` | `full` |
+| `walkthrough` | `[WALKTHROUGH]` | `[WALKTHROUGH]` | `brief` `deep` `off` | `off` when `scale` is `lite`, else `deep` |
+| `drive_app` | `[DRIVE_APP]` | `[DRIVE_APP]` | `auto` `off` | `auto` |
+| `manual_checks` | `[MANUAL_CHECKS]` | `[MANUAL_CHECKS]` | `auto` `always` | `auto` |
+| `driver` | `[DRIVER]` | `[DRIVER]` | a plugin name, `auto`, `—` | `auto` |
+| `phase_verification` | `[PHASE_VERIFICATION]` | `[PHASE_VERIFICATION]` | `proportional` `full` | `proportional` |
+| `docs_lever` | `[DOCS]` | `[DOCS]` | `on` `off` | `on` |
+| `docs_map` | — | `[DOCS_MAP]` | a path | `DocsMap.md` |
+| `docs_strictness` | — | `[DOCS_STRICTNESS]` | `blocking` `advisory` `off` | `advisory` |
+| `docs_freshness` | — | `[DOCS_FRESHNESS]` | `on` `off` | `on` |
+| `budgets` | — | `[BUDGETS]`, entries `<artifact>: <lines>` | a positive integer | the `CAPS` table |
+| `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | `opus` `sonnet` `haiku` `fable` `session` | `sonnet` for `light` and `validator`, `session` for the other seven roles |
+| `effort` | `[EFFORT]` | `[EFFORT]`, entries `<role>: <value>` | `low` `medium` `high` `xhigh` `max` `session` | `session` |
 
 `driver` walks this same chain but never rides the Outbound Contract: a workflow script must not
 gate on it, so it stays a pre-flight concern of the orchestrator alone
@@ -78,8 +81,8 @@ itself.
 
 **`walkthrough`'s task override beats `lite`; the project's config does not.** The chain above
 checks the task's own `[WALKTHROUGH]` before it checks whether `scale` resolved to `lite` — an
-explicit `[WALKTHROUGH] = [deep]` writes the file on a `lite` run. The project's `## Reporting` →
-`walkthrough` sits *after* the `lite` step, not before it: a config that turns the file on cannot
+explicit `[WALKTHROUGH] = [deep]` writes the file on a `lite` run. The project's own
+`[WALKTHROUGH]` sits *after* the `lite` step, not before it: a config that turns the file on cannot
 out-rank the `lite` floor the way the task's own line can. Only the task's own word on its own file
 beats the axis (`conventions/task-scale.md` → Explicit beats the axis).
 

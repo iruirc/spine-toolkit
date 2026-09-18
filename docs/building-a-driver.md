@@ -137,12 +137,10 @@ and record the source in a header comment the way platform authors do.
 
 ## 9. Try it
 
-In a project already configured for spine-toolkit, set the key:
+In a project already configured for spine-toolkit, set the field:
 
 ```
-## Validation
-
-driver: my-driver
+[DRIVER] = [my-driver]
 ```
 
 Then run a task with a Validation stage. If the plugin is not installed, or its server is not

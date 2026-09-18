@@ -18,7 +18,7 @@ setup() {
 
 @test "the switch names deep as the default and reads on as deep" {
   sw="$(awk '/^## The switch$/{f=1;next} /^## /{f=0} f' "$SKILL")"
-  grep -qF 'walkthrough:` in `CLAUDE-spine-toolkit.md` → `deep`' <<<"$sw" \
+  grep -qF '`[WALKTHROUGH]` in `CLAUDE-spine-toolkit.md` → `deep`' <<<"$sw" \
     || { echo "the chain does not end at deep"; return 1; }
   grep -qF '`on` is the pre-depth value and resolves to `deep`' <<<"$sw" \
     || { echo "the pre-depth value is not resolved, or is named in a second vocabulary"; return 1; }
@@ -129,27 +129,31 @@ NAMES
     || { echo "## Localization no longer states the split it exists for"; return 1; }
 }
 
-@test "the config template ships the deep default and explains all three values" {
+@test "the config template ships the deep default beside all three values" {
   T="$ROOT/templates/claude-toolkit-md/en.md"
-  rep="$(awk '/^## Reporting$/{f=1;next} /^## /{f=0} f' "$T")"
-  grep -qxF 'walkthrough: deep' <<<"$rep" \
-    || { echo "the template does not ship deep"; return 1; }
+  grep -qE '^\[WALKTHROUGH\] = \[deep\] +# brief \| deep \| off$' "$T" \
+    || { echo "the template does not ship deep beside the three values"; return 1; }
+}
+
+@test "the depth guidance explains all three values and what becomes of on" {
+  # The guidance left the template when the settings became one-line fields; the reference page is
+  # where it lands, and these assertions go live with it.
+  doc="$ROOT/docs/configuration.md"
+  [ -f "$doc" ] || skip "docs/configuration.md does not exist yet"
   # anchored: the migration sentence names every value too, and would satisfy a bare token
   for v in '^`deep` — ' '^`brief` — ' '^`off` — '; do
-    grep -q "$v" <<<"$rep" || { echo "## Reporting does not enumerate $v"; return 1; }
+    grep -q "$v" "$doc" || { echo "the guidance does not enumerate $v"; return 1; }
   done
-  grep -qF '`on` is the pre-depth value and is read as `deep`' <<<"$rep" \
-    || { echo "the template does not say what happens to on"; return 1; }
-  grep -qF '`[WALKTHROUGH] = [brief|deep|off]`' <<<"$rep" \
-    || { echo "the template's override spelling drifted from task-md and task-new"; return 1; }
-  # the value shipped above and the value the prose calls the default must be one value
-  shipped="$(sed -n 's/^walkthrough: //p' <<<"$rep")"
-  para="$(awk -v lead="\`$shipped\` — " '
-    index($0, lead) == 1 { f = 1 }
-    f && substr($0, 1, 1) == "`" && index($0, lead) != 1 { exit }
-    f { print }' <<<"$rep")"
+  grep -qF '`on` is the pre-depth value and is read as `deep`' "$doc" \
+    || { echo "the guidance does not say what happens to on"; return 1; }
+  grep -qF '`[WALKTHROUGH] = [brief|deep|off]`' "$doc" \
+    || { echo "the override spelling drifted from task-md and task-new"; return 1; }
+  para="$(awk '
+    index($0, "`deep` — ") == 1 { f = 1 }
+    f && substr($0, 1, 1) == "`" && index($0, "`deep` — ") != 1 { exit }
+    f { print }' "$doc")"
   grep -qF 'it is the default' <<<"$para" \
-    || { echo "the shipped value $shipped is not the one the prose calls the default"; return 1; }
+    || { echo "the shipped value deep is not the one the guidance calls the default"; return 1; }
 }
 
 @test "both task templates offer the three values in the optional block" {
@@ -202,13 +206,13 @@ NAMES
   # to a contract pointer in every one of them, so the chain — and its precedence, lite gate
   # before project config — is pinned once, here, instead.
   C="$ROOT/conventions/task-settings.md"
-  grep -qF 'Task.md [WALKTHROUGH]  →  off when scale resolved to lite  →  CLAUDE-spine-toolkit.md ## Reporting → walkthrough  →  deep' "$C" \
+  grep -qF 'Task.md [WALKTHROUGH]  →  off when scale resolved to lite  →  CLAUDE-spine-toolkit.md [WALKTHROUGH]  →  deep' "$C" \
     || { echo "the chain omits the lite step or orders it wrong"; return 1; }
 }
 
 @test "the walkthrough chain ends at the new default" {
   C="$ROOT/conventions/task-settings.md"
-  grep -qF '## Reporting → walkthrough  →  deep' "$C" \
+  grep -qF 'CLAUDE-spine-toolkit.md [WALKTHROUGH]  →  deep' "$C" \
     || { echo "task-settings.md still defaults to the pre-depth value"; return 1; }
 }
 

@@ -40,7 +40,7 @@ setup() {
 }
 
 @test "the skill states the floor that survives lite" {
-  grep -q '^## Scale$' "$SKILL" || { echo "the skill says nothing about scale"; return 1; }
+  grep -q '^## Depth by task scale$' "$SKILL" || { echo "the skill says nothing about scale"; return 1; }
   grep -qi 'cuts no required field' "$SKILL" || { echo "lite is not held off the required fields"; return 1; }
 }
 

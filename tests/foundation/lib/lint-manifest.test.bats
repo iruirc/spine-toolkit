@@ -316,7 +316,7 @@ frontmatter_add() { # $1 = agent file, $2 = line inserted right after the name l
   frontmatter_add "$TMP/p/agents/fixture-architect.md" 'model: sonnet'
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"agent pins model 'sonnet', which belongs to the project's ## Models"*"fixture-platform:fixture-architect"* ]]
+  [[ "$output" == *"agent pins model 'sonnet', which belongs to the project's [MODELS]"*"fixture-platform:fixture-architect"* ]]
 }
 
 @test "fails when a Roles agent pins an effort" {

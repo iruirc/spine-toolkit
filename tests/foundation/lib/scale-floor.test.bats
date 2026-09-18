@@ -41,10 +41,10 @@ setup() {
   grep -qi 'never lowered' "$c" || { echo "the convention does not state the one-way rule"; return 1; }
 }
 
-@test "the template ships lite and documents full as the absent-block default" {
+@test "the template ships lite and documents full as the absent-field default" {
   tpl="$ROOT/templates/claude-toolkit-md/en.md"
-  v="$(awk '/^## Scale$/{f=1;next} f&&NF{print;exit}' "$tpl")"
-  [ "$v" = "lite" ] || { echo "## Scale ships '$v', expected lite"; return 1; }
-  grep -qF 'A project without this block runs `full`' "$tpl" \
-    || { echo "the template does not document the absent-block default"; return 1; }
+  v="$(sed -n 's/^\[SCALE\] = \[\([a-z]*\)\].*/\1/p' "$tpl")"
+  [ "$v" = "lite" ] || { echo "[SCALE] ships '$v', expected lite"; return 1; }
+  grep -qF 'a project without this field runs full' "$tpl" \
+    || { echo "the template does not document the absent-field default"; return 1; }
 }

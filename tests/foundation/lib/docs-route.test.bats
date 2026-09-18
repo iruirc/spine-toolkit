@@ -9,7 +9,7 @@ setup() {
   DR="$ROOT/scripts/docs-route.sh"
   PROJ="$BATS_TEST_TMPDIR/proj"
   mkdir -p "$PROJ"
-  printf '## Docs\n\nmap: DocsMap.md\nstrictness: advisory\nfreshness: on\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n[DOCS_STRICTNESS] = [advisory]\n[DOCS_FRESHNESS] = [on]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
 }
 
 map() { cat >"$PROJ/DocsMap.md"; }
@@ -43,7 +43,7 @@ EOF
 @test "a component that declares no strictness inherits the block default" {
   # The block's value differs from the code's own fallback on purpose: with both at `advisory`
   # a stub config() that never opened the file would pass this test unchanged.
-  printf '## Docs\n\nmap: DocsMap.md\nstrictness: blocking\nfreshness: on\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n[DOCS_STRICTNESS] = [blocking]\n[DOCS_FRESHNESS] = [on]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   map <<'EOF'
 ## Ledger
 
@@ -440,7 +440,7 @@ EOF
 
 @test "a lite project does not lower strictness" {
   task; two_components; routed
-  printf '## Docs\n\nmap: DocsMap.md\n\n## Scale\n\nlite\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n\n## Task defaults\n\n[SCALE] = [lite]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run bash -c "printf 'M\tSources/Ledger/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
   [ "$status" -eq 1 ]
 }
@@ -760,7 +760,7 @@ EOF
 
 @test "a project lever of off silences routing" {
   task; two_components
-  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\nstrictness: blocking\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n[DOCS_STRICTNESS] = [blocking]\n\n## Task defaults\n\n[DOCS] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run bash -c "printf 'M\tSources/Ledger/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
   [ "$status" -eq 0 ]
   [ -z "$output" ] || { echo "$output"; return 1; }
@@ -769,7 +769,7 @@ EOF
 
 @test "a project lever of off silences the lever itself" {
   task; two_components; routed
-  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\nstrictness: blocking\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n[DOCS_STRICTNESS] = [blocking]\n\n## Task defaults\n\n[DOCS] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run bash -c "printf 'M\tSources/Ledger/Resolver.txt\n' | '$DR' check '$PROJ' --task-dir '$TASK' --phase 3"
   [ "$status" -eq 0 ]
   [ -z "$output" ] || { echo "$output"; return 1; }
@@ -777,7 +777,7 @@ EOF
 
 @test "a project lever of off silences audit and progress but not registry" {
   mkdir -p "$PROJ/.git" "$PROJ/Packages/Core/.git" "$PROJ/Documents/Barcode"
-  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n\n## Task defaults\n\n[DOCS] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   step DONE 351-a-step 2026-08-07
   mkdir -p "$PROJ/Progress"
   printf '# S\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/Progress/Snapping.md"
@@ -816,7 +816,7 @@ EOF
 
 @test "a task that says on overrides a suspended project" {
   task; two_components
-  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\nstrictness: blocking\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n[DOCS_STRICTNESS] = [blocking]\n\n## Task defaults\n\n[DOCS] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   printf '[TASK_TYPE] = [FEATURE]\n[DOCS] = [on]\n' >"$TASK/Task.md"
   run bash -c "printf 'M\tSources/Ledger/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
   [ "$status" -eq 0 ]
@@ -845,7 +845,7 @@ EOF
 @test "a suspended project stays quiet even when its registry is malformed" {
   # The guard has to run before the registry is read. If it did not, a suspended project would
   # die with exit 2 on a bad registry — louder than an unsuspended one, which is backwards.
-  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n\n## Task defaults\n\n[DOCS] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   map <<'EOF'
 ## Broken
 
@@ -895,7 +895,7 @@ EOF
 
 @test "state follows the levers in both directions" {
   task; two_components
-  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\nstrictness: blocking\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n[DOCS_STRICTNESS] = [blocking]\n\n## Task defaults\n\n[DOCS] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$DR" state "$PROJ" --task-dir "$TASK"
   [ "$output" = "off" ]
   printf '[TASK_TYPE] = [FEATURE]\n[DOCS] = [on]\n' >"$TASK/Task.md"
@@ -920,7 +920,7 @@ EOF
 }
 
 @test "state fails loud on a resolver failure, and never turns a suspended project back on" {
-  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\nstrictness: blocking\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n[DOCS_STRICTNESS] = [blocking]\n\n## Task defaults\n\n[DOCS] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$DR" state "$PROJ" --task-dir "$PROJ/Tasks/ACTIVE/does-not-exist"
   [ "$status" -eq 2 ]
   [ "$output" != "on" ] || { echo "a failed resolver call flipped off to on"; return 1; }
@@ -972,7 +972,7 @@ EOF
 
 @test "a resolver warning shared across route's several resolver calls is printed once" {
   task; two_components
-  printf '## Docs\n\nmap: DocsMap.md\nstrictness: strict\nfreshness: on\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n[DOCS_STRICTNESS] = [strict]\n[DOCS_FRESHNESS] = [on]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run bash -c "printf 'M\tSources/Ledger/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   n="$(printf '%s\n' "$output" | grep -c "strict' not recognized")"
@@ -983,7 +983,7 @@ EOF
   # Every caller shares one resolver, so an unfiltered forward reports a tuning typo as a
   # documentation problem — and again, differently labelled, from the next caller.
   task; two_components
-  printf '## Docs\n\nmap: DocsMap.md\nstrictness: strict\n\n## Models\n\narchitect: gpt\n' \
+  printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n[DOCS_STRICTNESS] = [strict]\n\n## Task defaults\n\n[MODELS] = [architect: gpt]\n' \
     >"$PROJ/CLAUDE-spine-toolkit.md"
   run bash -c "printf 'M\tSources/Ledger/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
