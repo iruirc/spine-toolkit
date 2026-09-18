@@ -38,28 +38,31 @@ EXTRA = sys.argv[8] if len(sys.argv) > 8 else None
 BLOCK = EXTRA if CMD == 'raw' else None
 SHOW_ALL = CMD == 'show' and EXTRA == '--all'
 
-# field, Task.md field, config block, key (None = the block's first value line), values, default
+# field, config/Task.md field name, values (None = open), default
 SCALARS = (
-    ('lang', None, 'Language', None, ['en', 'ru'], 'en'),
-    ('mode', 'WORKFLOW_MODE', 'Mode', None, ['manual', 'auto'], 'manual'),
-    ('progress', None, 'Progress', None, ['quiet', 'normal', 'live'], 'normal'),
-    ('settings_report', None, 'Progress', 'settings', ['diff', 'full', 'off'], 'diff'),
-    ('scale', 'SCALE', 'Scale', None, ['lite', 'full'], 'full'),
-    ('walkthrough', 'WALKTHROUGH', 'Reporting', 'walkthrough', ['brief', 'deep', 'off'], 'deep'),
-    ('drive_app', 'DRIVE_APP', 'Validation', 'drive_app', ['auto', 'off'], 'auto'),
-    ('manual_checks', 'MANUAL_CHECKS', 'Validation', 'manual_checks', ['auto', 'always'], 'auto'),
-    ('driver', 'DRIVER', 'Validation', 'driver', None, 'auto'),
-    ('phase_verification', 'PHASE_VERIFICATION', 'Validation', 'phase_verification', ['proportional', 'full'], 'proportional'),
-    ('docs_lever', 'DOCS', 'Docs', 'enabled', ['on', 'off'], 'on'),
-    ('docs_map', None, 'Docs', 'map', None, 'DocsMap.md'),
-    ('docs_strictness', None, 'Docs', 'strictness', ['blocking', 'advisory', 'off'], 'advisory'),
-    ('docs_freshness', None, 'Docs', 'freshness', ['on', 'off'], 'on'),
+    ('lang', 'LANG', ['en', 'ru'], 'en'),
+    ('mode', 'WORKFLOW_MODE', ['manual', 'auto'], 'manual'),
+    ('progress', 'PROGRESS', ['quiet', 'normal', 'live'], 'normal'),
+    ('settings_report', 'SETTINGS_REPORT', ['diff', 'full', 'off'], 'diff'),
+    ('scale', 'SCALE', ['lite', 'full'], 'full'),
+    ('walkthrough', 'WALKTHROUGH', ['brief', 'deep', 'off'], 'deep'),
+    ('drive_app', 'DRIVE_APP', ['auto', 'off'], 'auto'),
+    ('manual_checks', 'MANUAL_CHECKS', ['auto', 'always'], 'auto'),
+    ('driver', 'DRIVER', None, 'auto'),
+    ('phase_verification', 'PHASE_VERIFICATION', ['proportional', 'full'], 'proportional'),
+    ('docs_lever', 'DOCS', ['on', 'off'], 'on'),
+    ('docs_map', 'DOCS_MAP', None, 'DocsMap.md'),
+    ('docs_strictness', 'DOCS_STRICTNESS', ['blocking', 'advisory', 'off'], 'advisory'),
+    ('docs_freshness', 'DOCS_FRESHNESS', ['on', 'off'], 'on'),
 )
-# The task field of a map is one bracketed list; the config block is one line per key.
+# A field the config alone answers: no Task.md is read for it, which is what ## Project settings means.
+PROJECT_ONLY = {'lang', 'progress', 'settings_report', 'docs_map', 'docs_strictness',
+                'docs_freshness', 'budgets'}
+# A map's field is one bracketed, comma-separated list, in the config exactly as in a Task.md.
 MAPS = (
-    ('models', 'MODELS', 'Models', ['light'] + ROLES, MODEL_VALUES, UNSET_MODELS,
+    ('models', 'MODELS', ['light'] + ROLES, MODEL_VALUES, UNSET_MODELS,
      dict({r: 'session' for r in ROLES}, light='sonnet', validator='sonnet')),
-    ('effort', 'EFFORT', 'Effort', ROLES, EFFORT_VALUES, [], {r: 'session' for r in ROLES}),
+    ('effort', 'EFFORT', ROLES, EFFORT_VALUES, [], {r: 'session' for r in ROLES}),
 )
 # A value the resolver reads but never rejects: a free-form value has no closed list.
 FREE = ('driver', 'docs_map')
@@ -105,7 +108,8 @@ def config_path(start):
 
 def block(cfg, name):
     """The value lines under ## <name>: non-empty, outside the parenthetical guidance a
-    template block carries, which may run over several lines."""
+    template block carries, which may run over several lines. `raw` is the only caller —
+    a setting is a [FIELD] line now, and what is left is the blocks a skill reads itself."""
     if not cfg:
         return []
     out, inside, paren = [], False, False
@@ -123,6 +127,43 @@ def block(cfg, name):
                 continue
             out.append(line.strip())
     return out
+
+
+def config_fields(cfg):
+    """Every [FIELD] = [value] line of the config, anchored at column 0 — a commented-out line
+    is documentation, exactly as it is in a Task.md. The last line for a field wins, so a file
+    that names one twice behaves as a task file does."""
+    out = {}
+    if not cfg:
+        return out
+    with open(cfg, encoding='utf-8') as fh:
+        for line in fh:
+            m = re.match(r'^\[([A-Z_]+)\]\s*=\s*\[([^\]]*)\]', line)
+            if m:
+                out[m.group(1)] = m.group(2).strip()
+    return out
+
+
+MOVED = ('Language', 'Mode', 'Progress', 'Scale', 'Reporting', 'Validation', 'Docs', 'Budgets',
+         'Models', 'Effort')
+
+
+def refuse_old_format(cfg):
+    """A config in the 1.x shape is an error, not a file to guess at: every field would silently
+    fall to its default and a project would run on settings nobody chose."""
+    if not cfg:
+        return
+    with open(cfg, encoding='utf-8') as fh:
+        for line in fh:
+            if line.startswith('## ') and line.strip()[3:] in MOVED:
+                print('%s: the %s format is 2.0-incompatible, run /setup to migrate'
+                      % (cfg, line.strip()), file=sys.stderr)
+                sys.exit(2)
+
+
+def field_entries(raw):
+    """The entries of one bracketed, comma-separated field value."""
+    return [e.strip() for e in (raw or '').split(',') if e.strip()]
 
 
 def task_value(path, name):
@@ -148,7 +189,7 @@ def task_map_entries(path, name):
             for line in fh:
                 m = re.match(r'^\[%s\]\s*=\s*\[([^\]]*)\]' % name, line)
                 if m:
-                    out.extend(e.strip() for e in m.group(1).split(',') if e.strip())
+                    out.extend(field_entries(m.group(1)))
     except OSError:
         pass
     return out
@@ -163,6 +204,7 @@ def task_files():
 
 
 CFG = config_path(TARGET)
+refuse_old_format(CFG)
 
 if CMD == 'raw':
     for line in block(CFG, BLOCK):
@@ -172,34 +214,24 @@ if CMD not in ('json', 'show'):
     print('unknown command "%s"' % CMD, file=sys.stderr)
     sys.exit(2)
 
+CFG_FIELDS = config_fields(CFG)
 resolved, sources, defaults = {}, {}, {}
 
-for name, task_field, block_name, key, values, default in SCALARS:
+for name, field, values, default in SCALARS:
     value, source = None, 'default'
-    for label, path in task_files():
-        if not task_field:
-            break
-        raw = task_value(path, task_field)
+    for label, path in ([] if name in PROJECT_ONLY else task_files()):
+        raw = task_value(path, field)
         if not raw:
             continue
-        value = accept(name, values, raw, 'Task.md [%s]' % task_field)
+        value = accept(name, values, raw, 'Task.md [%s]' % field)
         if value is None:
             continue
         source = label
         break
     if value is None:
-        lines = block(CFG, block_name)
-        raw = None
-        if key is None:
-            raw = lines[0] if lines else None
-        else:
-            for line in lines:
-                m = re.match(r'^%s\s*:\s*(.+)$' % re.escape(key), line)
-                if m:
-                    raw = m.group(1).strip()
-                    break
-        if raw is not None:
-            value = accept(name, values, raw, '%s ## %s' % (CFG, block_name))
+        raw = CFG_FIELDS.get(field)
+        if raw:
+            value = accept(name, values, raw, '%s [%s]' % (CFG, field))
             if value is not None:
                 source = 'project'
     resolved[name], sources[name], defaults[name] = (default if value is None else value), source, default
@@ -212,11 +244,11 @@ if resolved['scale'] == 'lite' and sources['walkthrough'] in ('default', 'projec
     resolved['walkthrough'], sources['walkthrough'] = 'off', 'scale'
     show_source['walkthrough'] = 'scale: lite' + (' (project: %s)' % displaced if displaced else '')
 
-for name, task_field, block_name, keys, values, unset, map_defaults in MAPS:
+for name, field, keys, values, unset, map_defaults in MAPS:
     out, decided = dict(map_defaults), set()
-    found = [(('Task.md [%s]' % task_field), label, task_map_entries(path, task_field))
+    found = [(('Task.md [%s]' % field), label, task_map_entries(path, field))
              for label, path in task_files()]
-    found.append((('%s ## %s' % (CFG, block_name)), 'project', block(CFG, block_name)))
+    found.append((('%s [%s]' % (CFG, field)), 'project', field_entries(CFG_FIELDS.get(field))))
     key_source = {}
     for label, source, entries in found:
         seen = {}
@@ -241,16 +273,16 @@ for name, task_field, block_name, keys, values, unset, map_defaults in MAPS:
     sources[name] = min((key_source.values()), key=order.index, default='default')
 
 caps, budget_source = dict(CAPS), 'default'
-for line in block(CFG, 'Budgets'):
-    m = re.match(r'^(\S+)\s*:\s*(\S+)$', line)
-    name, value = (m.group(1), m.group(2)) if m else (line, '')
+for entry in field_entries(CFG_FIELDS.get('BUDGETS')):
+    m = re.match(r'^(\S+)\s*:\s*(\S+)$', entry)
+    name, value = (m.group(1), m.group(2)) if m else (entry, '')
     if name in caps and re.fullmatch(r'[0-9]+', value) and int(value) > 0:
         caps[name], budget_source = int(value), 'project'
-        # Recorded even when the value matches the default: the line was still an override, and
+        # Recorded even when the value matches the default: the entry was still an override, and
         # 'budgets.<name>' is how a caller asks which ceilings this project wrote down at all.
         sources['budgets.%s' % name] = 'project'
     else:
-        warn('%s ## Budgets' % CFG, line)
+        warn('%s [BUDGETS]' % CFG, entry)
 resolved['budgets'], defaults['budgets'] = caps, dict(CAPS)
 sources['budgets'] = budget_source
 
@@ -263,7 +295,7 @@ if CMD == 'json':
 # chose differs from the built-in default: the shipped config template writes every field down at
 # its default, and a column repeating those is one nobody reads. --all names every field and every
 # map key — defaults included — and never prints the "more" line.
-FIELD_OF = {'mode': 'WORKFLOW_MODE', 'docs_lever': 'DOCS', 'settings_report': 'SETTINGS_REPORT'}
+FIELD_OF = dict((s[0], s[1]) for s in SCALARS)
 rows, rest = [], 0
 for name in [s[0] for s in SCALARS] + ['models', 'effort', 'budgets']:
     value = resolved[name]

@@ -28,9 +28,14 @@ core_grep() {
   [ "$rc" -le 1 ] || { echo "git grep exited $rc — the scan did not run" >&2; return 1; }
 }
 
-@test "the config template declares every block the toolkit reads" {
-  for block in Language Platform Agents Stack Mode Progress Modules EstimationDeltas Scale Budgets Models Effort Docs; do
+@test "the config template declares every block and every field the toolkit reads" {
+  for block in Platform Agents Stack Modules EstimationDeltas; do
     grep -q "^## $block\$" "$TPL" || { echo "missing block: ## $block"; return 1; }
+  done
+  for f in LANG PROGRESS SETTINGS_REPORT BUDGETS DOCS_MAP DOCS_STRICTNESS DOCS_FRESHNESS \
+           WORKFLOW_MODE SCALE DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION WALKTHROUGH \
+           DOCS MODELS EFFORT; do
+    grep -q "^\[$f\] = \[" "$TPL" || { echo "missing field: [$f]"; return 1; }
   done
 }
 
@@ -118,22 +123,18 @@ catalog_words() {
   [ "$n" -eq 3 ] || { echo "self-excluded lines in this file: $n, expected 3"; return 1; }
 }
 
-@test "the config template declares the driver key" {
-  # The block is where drive_app and manual_checks already live; a third key that
-  # the template does not carry is a key no project ever has, and every reader of
-  # it silently takes the absent branch.
-  grep -q '^driver: ' "$TPL" || { echo "no 'driver:' key in the template"; return 1; }
-  awk '/^## Validation$/{v=1} /^## Reporting$/{v=0} v' "$TPL" | grep -q '^driver: ' \
-    || { echo "'driver:' is outside the ## Validation block"; return 1; }
+@test "the config template declares the driver field" {
+  # A field the template does not carry is a field no project ever has, and every
+  # reader of it silently takes the absent branch.
+  grep -q '^\[DRIVER\] = \[' "$TPL" || { echo "no [DRIVER] field in the template"; return 1; }
 }
 
 @test "the config template ships auto and names no concrete driver plugin" {
   # `auto` is the shipped value, and it has to be: an explicit `—` means none, so a
   # template shipping it would opt every new project out of driving. A real plugin
   # name here would be core knowing an ecosystem.
-  awk '/^## Validation$/{v=1} /^## Reporting$/{v=0} v' "$TPL" \
-    | grep -E '^driver: ' | grep -qE '^driver: (auto|<[a-z-]+>)$' \
-    || { echo "'driver:' must ship 'auto' or a placeholder"; return 1; }
+  grep -qE '^\[DRIVER\] = \[(auto|<[a-z-]+>)\]' "$TPL" \
+    || { echo "[DRIVER] must ship 'auto' or a placeholder"; return 1; }
 }
 
 @test "both task templates offer the DRIVER override" {
@@ -147,17 +148,16 @@ catalog_words() {
   done
 }
 
-@test "the config template declares the phase_verification key" {
-  awk '/^## Validation$/{v=1} /^## Reporting$/{v=0} v' "$TPL" | grep -q '^phase_verification: ' \
-    || { echo "'phase_verification:' is missing from the ## Validation block"; return 1; }
+@test "the config template declares the phase_verification field" {
+  grep -q '^\[PHASE_VERIFICATION\] = \[' "$TPL" \
+    || { echo "no [PHASE_VERIFICATION] field in the template"; return 1; }
 }
 
-@test "the config template ships proportional and says off does not exist" {
-  block="$(awk '/^## Validation$/{v=1} /^## Reporting$/{v=0} v' "$TPL")"
-  grep -qx 'phase_verification: proportional' <<<"$block" \
-    || { echo "'phase_verification:' must ship proportional"; return 1; }
-  grep -qF 'There is no `off`' <<<"$block" \
-    || { echo "the template leaves a project guessing whether off exists"; return 1; }
+@test "the config template ships proportional and names no third value" {
+  # The trailing comment is the whole value list a project sees here, so an `off`
+  # absent from it is an `off` nobody goes looking for.
+  grep -qE '^\[PHASE_VERIFICATION\] = \[proportional\] +# proportional \| full$' "$TPL" \
+    || { echo "[PHASE_VERIFICATION] must ship proportional and name proportional | full"; return 1; }
 }
 
 @test "both task templates offer the PHASE_VERIFICATION override" {
@@ -167,15 +167,13 @@ catalog_words() {
   done
 }
 
-@test "the Budgets block ships guidance and no ceiling" {
-  block="$(awk '/^## Budgets$/{f=1;next} f&&/^## /{exit} f' "$TPL")"
-  [ -n "$block" ] || { echo "no ## Budgets block"; return 1; }
-  ! grep -qE '^[A-Za-z]+\.md *:' <<<"$block" || { echo "the template ships a ceiling a project did not choose"; return 1; }
-  grep -qF 'not when the lint turns red' <<<"$block" || { echo "nothing warns against raising a ceiling to silence the lint"; return 1; }
+@test "the Budgets field ships empty" {
+  grep -qE '^\[BUDGETS\] = \[\]' "$TPL" \
+    || { echo "the template ships a ceiling a project did not choose"; return 1; }
 }
 
-@test "the config template offers the settings key of ## Progress" {
-  block="$(awk '/^## Progress$/{f=1;next} f&&/^## /{exit} f' "$TPL")"
-  grep -qx 'settings: diff' <<<"$block" || { echo "## Progress does not ship 'settings: diff'"; return 1; }
-  grep -qF 'diff | full | off' <<<"$block" || { echo "the guidance does not list the three values"; return 1; }
+@test "the config template offers the settings_report field" {
+  grep -qE '^\[SETTINGS_REPORT\] = \[diff\]' "$TPL" \
+    || { echo "the template does not ship '[SETTINGS_REPORT] = [diff]'"; return 1; }
+  grep -qF 'diff | full | off' "$TPL" || { echo "the field does not name its three values"; return 1; }
 }
