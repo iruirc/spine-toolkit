@@ -203,7 +203,7 @@ security; OWASP; vulnerability; certificate pinning; безопасность
 `on` — значение, оставшееся от времён до оси глубины, поэтому этот прогон пишет `Walkthrough.md` на глубине `deep`: словарь терминов, порядок коммитов и раздел на каждый коммит, тогда как `on` давал сводку и журнал по буллету на коммит. Чтобы сохранить прежнюю форму, напишите `brief` — в `[WALKTHROUGH]` в `Task.md` или в `walkthrough` в разделе `## Reporting` файла `CLAUDE-spine-toolkit.md`.
 
 ## warn_walkthrough_unrecognised
-`{value}` — не одна из трёх глубин walkthrough, поэтому этот прогон пишет `deep`. Глубины такие: `brief`, `deep` и `off` — исправьте значение в `[WALKTHROUGH]` в `Task.md` или в `walkthrough` в разделе `## Reporting` файла `CLAUDE-spine-toolkit.md`.
+`{value}` — не одна из трёх глубин walkthrough, поэтому запись пропущена и решает следующий источник: `walkthrough` в разделе `## Reporting` проекта, если он что-то называет, иначе `deep`. Глубины такие: `brief`, `deep` и `off` — исправьте значение в `[WALKTHROUGH]` в `Task.md` или в `walkthrough` в разделе `## Reporting` файла `CLAUDE-spine-toolkit.md`. Глубину, до которой этот прогон в итоге дорезолвил, называет колонка настроек выше.
 
 ## warn_tuning_unrecognised
 `{entry}` в {source} — не ключ и значение, которые этот прогон умеет применить, поэтому запись пропущена и действует следующая настройка. Ключи моделей — `light` и восемь ролей, со значениями `opus`, `sonnet`, `haiku`, `fable` или `session`; ключи effort — восемь ролей, со значениями `low`, `medium`, `high`, `xhigh`, `max` или `session`.
