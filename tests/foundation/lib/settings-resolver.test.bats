@@ -69,12 +69,51 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   [ "$(source_of manual_checks <<<"$output")" = task ] || { echo "$output"; return 1; }
 }
 
+@test "an epic's [WALKTHROUGH] beats the lite gate for a step that names none of its own" {
+  printf '## Reporting\n\nwalkthrough: deep\n' >>"$PROJ/CLAUDE-spine-toolkit.md"
+  EPIC="$PROJ/Tasks/ACTIVE/054-an-epic"
+  STEP="$EPIC/1-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[SCALE] = [lite]\n[WALKTHROUGH] = [brief]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  run "$RESOLVE" json "$STEP"
+  [ "$(field walkthrough <<<"$output")" = brief ] || { echo "$output"; return 1; }
+  [ "$(source_of walkthrough <<<"$output")" = epic ] || { echo "$output"; return 1; }
+}
+
 @test "an unusable entry is reported, skipped, and the next source applies" {
   printf '## Validation\n\ndrive_app: off\n' >>"$PROJ/CLAUDE-spine-toolkit.md"
   printf '[TASK_TYPE] = [BUG]\n[DRIVE_APP] = [maybe]\n' >"$TASK/Task.md"
   out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
   [ "$(field drive_app <<<"$out")" = off ] || { echo "$out"; return 1; }
   grep -qF "Task.md [DRIVE_APP]: 'maybe' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+}
+
+@test "on is the pre-depth spelling of deep, and says so in words a typo does not get" {
+  printf '[TASK_TYPE] = [BUG]\n[WALKTHROUGH] = [on]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(field walkthrough <<<"$out")" = deep ] || { echo "$out"; return 1; }
+  [ "$(source_of walkthrough <<<"$out")" = task ] || { echo "$out"; return 1; }
+  grep -qF "Task.md [WALKTHROUGH]: 'on' is the pre-depth spelling, read as 'deep'" "$ERR" \
+    || { cat "$ERR"; return 1; }
+  ! grep -qF 'not recognized' "$ERR" || { echo "a migration was reported as a typo:"; cat "$ERR"; return 1; }
+}
+
+@test "a walkthrough value that is neither a depth nor a pre-depth spelling is reported as unusable" {
+  printf '## Reporting\n\nwalkthrough: brief\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[WALKTHROUGH] = [deeep]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  grep -qF "Task.md [WALKTHROUGH]: 'deeep' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+  ! grep -qF 'pre-depth' "$ERR" || { echo "a typo was reported as a migration:"; cat "$ERR"; return 1; }
+  [ "$(field walkthrough <<<"$out")" = brief ] || { echo "the chain did not continue: $out"; return 1; }
+}
+
+@test "on in the project's ## Reporting reads as deep too" {
+  printf '## Reporting\n\nwalkthrough: on\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(field walkthrough <<<"$out")" = deep ] || { echo "$out"; return 1; }
+  [ "$(source_of walkthrough <<<"$out")" = project ] || { echo "$out"; return 1; }
+  grep -qF "## Reporting: 'on' is the pre-depth spelling, read as 'deep'" "$ERR" || { cat "$ERR"; return 1; }
 }
 
 @test "a commented-out template line is documentation, not a value" {
@@ -92,6 +131,44 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   grep -qE '^\[SCALE\] += \[lite\] +# task$' <<<"$output" || { echo "$output"; return 1; }
   grep -qE '^\[WORKFLOW_MODE\] += \[auto\] +# project$' <<<"$output" || { echo "$output"; return 1; }
   grep -qE '^# [0-9]+ more at their default$' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "show names a field only when the value chosen differs from the built-in default" {
+  # The shipped template writes every field down explicitly, so a column keyed on "somebody
+  # chose it" prints sixteen lines in a project that has changed nothing.
+  cp "$ROOT/templates/claude-toolkit-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" show "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { echo "the template's guidance was read as entries:"; cat "$ERR"; return 1; }
+  # scale is the one field the template ships away from the built-in default, and walkthrough
+  # follows it; everything else the template writes is the default written down.
+  grep -qE '^\[SCALE\] += \[lite\] +# project$' <<<"$out" || { echo "$out"; return 1; }
+  grep -q '^\[WALKTHROUGH\]' <<<"$out" || { echo "$out"; return 1; }
+  for f in WORKFLOW_MODE DOCS DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION LANG MODELS EFFORT; do
+    ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
+  done
+  [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
+  grep -qxF '# 15 more at their default' <<<"$out" || { echo "$out"; return 1; }
+}
+
+@test "a project budget equal to the default is not a diff, and --all still names it" {
+  printf '## Budgets\n\nPlan.md: 200\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" show "$TASK"
+  ! grep -q '^\[BUDGETS\]' <<<"$output" || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK" --all
+  grep -qE '^\[BUDGETS\] += \[.*Plan\.md: 200.*\]' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "show annotates the scale-driven walkthrough with the value that decided and what it displaced" {
+  printf '## Reporting\n\nwalkthrough: deep\n\n## Scale\n\nlite\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" show "$TASK"
+  grep -qE '^\[WALKTHROUGH\] += \[off\] +# scale: lite \(project: deep\)$' <<<"$output" \
+    || { echo "$output"; return 1; }
+}
+
+@test "show annotates a scale-driven walkthrough the project never named with the scale alone" {
+  printf '## Scale\n\nlite\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" show "$TASK"
+  grep -qE '^\[WALKTHROUGH\] += \[off\] +# scale: lite$' <<<"$output" || { echo "$output"; return 1; }
 }
 
 @test "show --all prints a field left at its default, and plain show does not" {
@@ -260,6 +337,66 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   out="$("$RESOLVE" json "$STEP" 2>"$ERR")"
   [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
   [ "$(map_value models architect <<<"$out")" = opus ] || { echo "$out"; return 1; }
+}
+
+@test "init is not a key, because no profile dispatches it" {
+  printf '## Models\n\ninit: opus\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  "$RESOLVE" json "$TASK" 2>"$ERR" >/dev/null
+  grep -qF "## Models: 'init: opus' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+}
+
+@test "a task can name session over the project's model" {
+  printf '## Models\n\nvalidator: opus\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [validator: session]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  [ "$(map_value models validator <<<"$out")" = session ] || { echo "$out"; return 1; }
+}
+
+@test "the config's last entry for a repeated key wins, not the first" {
+  cp "$ROOT/templates/claude-toolkit-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
+  awk '{print} /^architect: session$/ && !done {print "architect: opus"; done=1}' \
+    "$PROJ/CLAUDE-spine-toolkit.md" >"$PROJ/CLAUDE-spine-toolkit.md.new"
+  mv "$PROJ/CLAUDE-spine-toolkit.md.new" "$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { echo "unexpected stderr:"; cat "$ERR"; return 1; }
+  [ "$(map_value models architect <<<"$out")" = opus ] || { echo "$out"; return 1; }
+}
+
+@test "the shipped config template resolves to the defaults and reports nothing" {
+  # The template is what a new project starts from, and its guidance paragraphs sit inside the
+  # very blocks the resolver reads. `scale` is the one deliberate exception: the template writes
+  # `lite` where an absent block resolves to `full`, and `walkthrough` follows it down.
+  cp "$ROOT/templates/claude-toolkit-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { echo "the template's guidance was read as entries:"; cat "$ERR"; return 1; }
+  while read -r name want; do
+    [ "$(field "$name" <<<"$out")" = "$want" ] || { echo "$name: $out"; return 1; }
+  done <<'FIELDS'
+lang en
+mode manual
+progress normal
+settings_report diff
+scale lite
+walkthrough off
+drive_app auto
+manual_checks auto
+driver auto
+phase_verification proportional
+docs_lever on
+docs_map DocsMap.md
+docs_strictness advisory
+docs_freshness on
+FIELDS
+  [ "$(source_of budgets <<<"$out")" = default ] || { echo "the empty ## Budgets block was read: $out"; return 1; }
+  [ "$(map_value budgets Plan.md <<<"$out")" = 200 ] || { echo "$out"; return 1; }
+  [ "$(map_value models light <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
+  [ "$(map_value models validator <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
+  for role in architect developer tester reviewer refactorer security diagnostics; do
+    [ "$(map_value models "$role" <<<"$out")" = session ] || { echo "$role: $out"; return 1; }
+    [ "$(map_value effort "$role" <<<"$out")" = session ] || { echo "$role: $out"; return 1; }
+  done
+  [ "$(map_value effort validator <<<"$out")" = session ] || { echo "$out"; return 1; }
 }
 
 @test "a budgets override is recorded with its own source, and show prints it" {
