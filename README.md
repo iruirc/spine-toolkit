@@ -114,11 +114,11 @@ copies to be restored to match core.
 
 ## Project configuration
 
-`CLAUDE-spine-toolkit.md` is toolkit-owned; `setup` writes it and `/lang` updates one block of
+`CLAUDE-spine-toolkit.md` is toolkit-owned; `setup` writes it and `/lang` updates one field of
 it. Your own project instructions stay in `CLAUDE.md`, which the toolkit only ever touches to insert
-the import line. The blocks the toolkit reads:
+the import line. The blocks and fields the toolkit reads:
 
-`## Language`, `## Platform`, `## Agents` (per-role overrides of the manifest), `## Stack`,
+`[LANG]`, `## Platform`, `## Agents` (per-role overrides of the manifest), `## Stack`,
 `## Mode`, `## Progress`, `## Validation`, `## Reporting`, `## Docs`, `## Scale`, `## Budgets`,
 `## Models`, `## Effort`, `## Modules` (per-module stack overrides), `## EstimationDeltas`,
 `## DeliveryMode`, `## AILeverage`, `## Paths`.
@@ -131,7 +131,7 @@ The template is `templates/claude-toolkit-md/en.md`.
 ## Internationalization
 
 English is the source of truth. User-facing strings live in `skills/<name>/locales/en.md` with a
-key-for-key `ru.md` beside it, and are referenced from skill bodies by key, never inlined. The active language is `## Language` in the
+key-for-key `ru.md` beside it, and are referenced from skill bodies by key, never inlined. The active language is `[LANG]` in the
 project config; `/lang en|ru` switches it. Skill triggers are bilingual regardless of the
 setting — only the response language changes. Convention: `conventions/i18n.md`.
 

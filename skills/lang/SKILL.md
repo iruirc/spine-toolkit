@@ -35,9 +35,11 @@ Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine
    ↓ If value not in {en, ru} → print error using key `error_unsupported_language`. Stop.
 
 3. Update CLAUDE-spine-toolkit.md:
-   - Locate the `[LANG]` field (regex: a line matching `^\[LANG\]\s*=\s*\[...\]`).
+   - Locate the `[LANG]` field (regex: a line matching `^\[LANG\]\s*=\s*\[[^\]]*\]`).
    - Replace the bracketed value in place, keeping the trailing comment.
-   - If the field is missing → insert `[LANG] = [<value>]` under `## Project settings`, right after the heading.
+   - If the field is missing but `## Project settings` is present → insert `[LANG] = [<value>]` right after the heading.
+   - If `## Project settings` itself is missing → the config predates 2.0. Stop; tell the user to run
+     `/setup` to migrate it. Do not insert a new heading.
 
 4. Print success using key `report_language_changed` with placeholders {old}, {new}.
 ```
