@@ -4,9 +4,10 @@ set -euo pipefail
 # Resolves every setting a task runs with: one chain, one reader of CLAUDE-spine-toolkit.md.
 # The fields, their values and their defaults: conventions/task-settings.md.
 #
-# Usage: scripts/resolve-settings.sh json <task-dir>     # every field as one JSON object
-#        scripts/resolve-settings.sh show <task-dir>     # the same as Task.md lines, with sources
-#        scripts/resolve-settings.sh raw  <dir> <block>  # the value lines of one config block
+# Usage: scripts/resolve-settings.sh json <task-dir>           # every field as one JSON object
+#        scripts/resolve-settings.sh show <task-dir> [--all]   # Task.md lines, with sources
+#                                                                # --all: every field, defaults included
+#        scripts/resolve-settings.sh raw  <dir> <block>        # the value lines of one config block
 # Exit:  0, or 2 on a usage error. One stderr line per entry it could not use.
 #
 # Key by key: Task.md [FIELD] -> for a .step/ folder, the epic's Task.md above it -> the nearest
@@ -22,9 +23,10 @@ EFFORTS="low medium high xhigh max session"
 # CAP map, and tests/foundation/lib/artifact-budget.test.bats fails when the two disagree.
 CAPS="Reproduce.md:120 Plan.md:200 Validation.md:100 Review.md:120 Done.md:80 Task.md:100"
 
-[ "$#" -ge 2 ] || { echo "usage: $0 json|show <task-dir> | raw <dir> <block>" >&2; exit 2; }
+[ "$#" -ge 2 ] || { echo "usage: $0 json|show <task-dir> [--all] | raw <dir> <block>" >&2; exit 2; }
 [ -d "$2" ] || { echo "not a directory: $2" >&2; exit 2; }
 [ "$1" != raw ] || [ "$#" -ge 3 ] || { echo "usage: $0 raw <dir> <block>" >&2; exit 2; }
+[ "$1" != show ] || [ "$#" -eq 2 ] || [ "$3" = --all ] || { echo "usage: $0 show <task-dir> [--all]" >&2; exit 2; }
 
 python3 - "$ROLES" "$MODELS" "$EFFORTS" "$UNSET_MODELS" "$CAPS" "$@" <<'PY'
 import json, os, re, sys
@@ -32,7 +34,9 @@ import json, os, re, sys
 ROLES, MODEL_VALUES, EFFORT_VALUES, UNSET_MODELS = (s.split() for s in sys.argv[1:5])
 CAPS = dict((n, int(v)) for n, v in (p.split(':') for p in sys.argv[5].split()))
 CMD, TARGET = sys.argv[6], sys.argv[7]
-BLOCK = sys.argv[8] if len(sys.argv) > 8 else None
+EXTRA = sys.argv[8] if len(sys.argv) > 8 else None
+BLOCK = EXTRA if CMD == 'raw' else None
+SHOW_ALL = CMD == 'show' and EXTRA == '--all'
 
 # field, Task.md field, config block, key (None = the block's first value line), values, default
 SCALARS = (
@@ -236,20 +240,22 @@ if CMD == 'json':
     sys.exit(0)
 
 # show: the column a human reads. Task.md spells a map as one bracketed list, so that is how
-# the column spells it too, and only the keys somebody chose are named.
+# the column spells it too. Only the keys somebody chose are named, unless --all was given, which
+# names every field and every map key — defaults included — and never prints the "more" line.
 FIELD_OF = {'mode': 'WORKFLOW_MODE', 'docs_lever': 'DOCS', 'settings_report': 'SETTINGS_REPORT'}
 rows, rest = [], 0
 for name in [s[0] for s in SCALARS] + ['models', 'effort', 'budgets']:
-    if sources[name] == 'default':
+    if sources[name] == 'default' and not SHOW_ALL:
         rest += 1
         continue
     value = resolved[name]
     if isinstance(value, dict):
         chosen = [k for k in value if sources.get('%s.%s' % (name, k))]
-        if not chosen:
+        keys = list(value) if SHOW_ALL else chosen
+        if not keys:
             rest += 1
             continue
-        text = ', '.join('%s: %s' % (k, value[k]) for k in chosen)
+        text = ', '.join('%s: %s' % (k, value[k]) for k in keys)
     else:
         text = value
     rows.append(('[%s]' % FIELD_OF.get(name, name.upper()), text, sources[name]))

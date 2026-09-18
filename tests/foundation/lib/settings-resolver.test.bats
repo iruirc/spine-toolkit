@@ -94,6 +94,16 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   grep -qE '^# [0-9]+ more at their default$' <<<"$output" || { echo "$output"; return 1; }
 }
 
+@test "show --all prints a field left at its default, and plain show does not" {
+  run "$RESOLVE" show "$TASK"
+  [ "$status" -eq 0 ]
+  ! grep -q '\[SCALE\]' <<<"$output" || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK" --all
+  [ "$status" -eq 0 ]
+  grep -qE '^\[SCALE\] += \[full\] +# default$' <<<"$output" || { echo "$output"; return 1; }
+  ! grep -q 'more at their default' <<<"$output" || { echo "$output"; return 1; }
+}
+
 @test "raw prints a block's value lines and drops its guidance" {
   printf '## Paths\n\n- External packages: Packages/*\n\n(guidance\nover two lines)\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$RESOLVE" raw "$PROJ" Paths
