@@ -69,12 +69,12 @@ The orchestrator does not activate on every user request — light commands bypa
    - **Driver pre-flight.** Run this only when the resolved stage range includes Validation **and**
      `drive_app` does not resolve to `off` — on a run that never reaches validation, or one told not
      to drive, none of it is needed and the driver's manifest is not invoked at all. Take `driver`
-     from the contract — the chain that used to read `Task.md [DRIVER]` and `CLAUDE-spine-toolkit.md
-     ## Validation → driver:` here now runs once, inside `resolve-settings.sh` (Resolution Algorithm
-     step 3) — then resolve it against the platform manifest's `## Driver → default`. A contract
-     value of `auto` falls through to that default; an explicit `—` is the project choosing none,
-     and ends the chain there. On `—`, say nothing: no driver is a supported configuration, not a
-     problem. Otherwise invoke `<driver>:manifest`. If it does not resolve, report with key
+     from the same `resolve-settings.sh json <task dir>` call Resolution Algorithm step 3 already
+     made, rather than reading `Task.md` or the project config directly a second time — then resolve
+     it against the platform manifest's `## Driver → default`. A value of `auto` falls through to
+     that default; an explicit `—` is the project choosing none, and ends the chain there. On `—`,
+     say nothing: no driver is a supported configuration, not a problem. Otherwise invoke
+     `<driver>:manifest`. If it does not resolve, report with key
      `warn_driver_plugin_missing`. If it resolves, read the `namespace` row of its `## Driver`
      block — it lists one or more prefixes — and look for a tool named `mcp__<prefix>__*` for each
      in turn. The first prefix with tools present is the one this session uses. If none of them
@@ -360,7 +360,6 @@ docs=on|off
 scale=lite|full
 drive_app=auto|off
 manual_checks=auto|always
-driver=<driver-plugin>|auto|—
 phase_verification=proportional|full
 budgets={Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100}
 models={light: sonnet, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}
@@ -421,8 +420,6 @@ size belongs to the task, not to one dispatch.
 `drive_app` — whether the Validation stage may drive the running app through the platform's own tooling. Resolved by the same run of `resolve-settings.sh json`, whose `drive_app` field walks `Task.md` `[DRIVE_APP]` → for a `.step/` folder, the epic's `Task.md` `[DRIVE_APP]` → `CLAUDE-spine-toolkit.md` `## Validation` → `drive_app` → `auto`; that field is this field. Always filled, for every profile. `auto` leaves the choice to the profile named in `## Validation`'s parenthetical; `off` is the project saying it has nothing to drive. The Driver pre-flight (**Routing**, check 4) reads this field to decide whether it runs at all.
 
 `manual_checks` — when the validator writes `ManualChecks.md`. Resolved by the same run, whose `manual_checks` field walks the same chain over `[MANUAL_CHECKS]` and `## Validation` → `manual_checks` → `auto`; that field is this field. Always filled, for every profile. `auto` writes the file only for the checks the validator was told not to run itself; `always` writes it every time, even when the validator drove the app and covered the happy path.
-
-`driver` — which driver plugin the project chose. Resolved by the same run, whose `driver` field walks the same chain over `[DRIVER]` and `## Validation` → `driver` → `auto`; that field is this field. Always filled, for every profile. It carries the project's own choice — `auto`, `—`, or a plugin name — never the plugin the Driver pre-flight resolves `auto` to: that resolution still happens there, against the platform manifest, reading this field instead of `Task.md` and the config directly (**Routing**, check 4).
 
 `phase_verification` — how much each phase checks before it commits. Resolved by the same run, whose `phase_verification` field walks the same chain over `[PHASE_VERIFICATION]` and `## Validation` → `phase_verification` → `proportional`; that field is this field. Always filled, for every profile. `proportional` leaves the full regression to Validation; `full` repeats it in every phase. The rungs themselves are `phase-verification`'s business, not this field's.
 
