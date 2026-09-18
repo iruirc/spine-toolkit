@@ -157,8 +157,9 @@ Algorithm:
                (Task.md ## 1. [Files] | fallback: plan's affected paths)
    4.4 {needed, resolved, unresolved} :=
           Skill stack-detect (task_files=scope, envelope=envelope, task_id=task_id)
-       # stack-detect owns the manifest's ## Heuristics (path + import scan)
-       # + the per-axis chain; the scan runs once
+       # stack-detect owns the manifest's ## Heuristics + the per-axis chain.
+       # Path matching is free; it opens a file only for an axis the chain
+       # left unresolved, so a configured project costs no read here
    4.4a if scope is empty (## 1. [Files] absent, blank, or comment-only
         AND no fallback affected paths):
           # defer: do NOT AUQ even for partially-unresolved axes — files
