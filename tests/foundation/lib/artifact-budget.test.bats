@@ -315,3 +315,39 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
       || { echo "workflow-$p/SKILL.md still reads the ceilings from the script's table"; return 1; }
   done
 }
+
+# Copies the lint next to a stub resolve-settings.sh, so a resolver failure can be forced without
+# touching the real script: ${BASH_SOURCE[0]} makes the lint look for its resolver beside itself.
+broken_resolver() {
+  cp "$LINT" "$BATS_TEST_TMPDIR/lint.sh"
+  printf '#!/usr/bin/env bash\necho "boom: resolver exploded" >&2\nexit 2\n' >"$BATS_TEST_TMPDIR/resolve-settings.sh"
+  chmod +x "$BATS_TEST_TMPDIR/resolve-settings.sh"
+}
+
+@test "a resolver failure is an error, not a default: measuring stops at exit 2, no silent pass" {
+  broken_resolver
+  lines "$TASK/Plan.md" 300
+  run "$BATS_TEST_TMPDIR/lint.sh" "$TASK"
+  [ "$status" -eq 2 ]
+  case "$output" in *"boom: resolver exploded"*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *"artifact budget passed"*) echo "still passed: $output"; return 1 ;; *) ;; esac
+}
+
+@test "a resolver failure is an error, not a default: --budgets stops at exit 2, never prints {}" {
+  broken_resolver
+  run "$BATS_TEST_TMPDIR/lint.sh" --budgets "$TASK"
+  [ "$status" -eq 2 ]
+  case "$output" in *"boom: resolver exploded"*) ;; *) echo "$output"; return 1 ;; esac
+  [ "$output" != "{}" ] || { echo "printed an empty map"; return 1; }
+}
+
+@test "a resolver warning shared by two task dirs is printed once, not once per directory" {
+  printf '## Scale\n\nfull\n\n## Budgets\n\nPlan.md: many\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  TASK2="$PROJ/Tasks/ACTIVE/043-b-task"
+  mkdir -p "$TASK2"
+  printf '[TASK_TYPE] = [BUG]\n' >"$TASK2/Task.md"
+  run "$LINT" "$TASK" "$TASK2"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  n="$(printf '%s\n' "$output" | grep -c "Plan.md: many' not recognized")"
+  [ "$n" -eq 1 ] || { echo "printed $n time(s): $output"; return 1; }
+}

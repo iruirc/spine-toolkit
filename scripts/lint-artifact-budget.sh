@@ -30,13 +30,32 @@ ANCHORS = ['### Expected behaviour', '### Questions for Research', '### Acceptan
 UNMEASURED = {'REVIEW', 'RESEARCH', 'EPIC'}
 
 RESOLVE = sys.argv[1]
+_SETTINGS_CACHE = {}
+_WARNED = set()
+
+
+def _emit_stderr(text):
+    """Print each resolver stderr line at most once per run: two directories under the same
+    project would otherwise repeat the same warning once per directory."""
+    for line in text.splitlines():
+        if line and line not in _WARNED:
+            _WARNED.add(line)
+            print(line, file=sys.stderr)
 
 
 def settings(task_dir):
-    """Every setting of this task dir, from the one reader (scripts/resolve-settings.sh)."""
+    """Every setting of this task dir, from the one reader (scripts/resolve-settings.sh).
+    Memoized per directory. A resolver failure is an error, not a default — it stops the run
+    with exit 2, the usage/malformed code this script already uses for input it cannot read."""
+    if task_dir in _SETTINGS_CACHE:
+        return _SETTINGS_CACHE[task_dir]
     out = subprocess.run([RESOLVE, 'json', task_dir], capture_output=True, text=True)
-    sys.stderr.write(out.stderr)
-    return json.loads(out.stdout) if out.returncode == 0 else {}
+    _emit_stderr(out.stderr)
+    if out.returncode != 0:
+        print('lint-artifact-budget.sh: resolve-settings.sh failed for %s' % task_dir, file=sys.stderr)
+        sys.exit(2)
+    _SETTINGS_CACHE[task_dir] = json.loads(out.stdout)
+    return _SETTINGS_CACHE[task_dir]
 
 
 args = sys.argv[2:]
@@ -103,7 +122,7 @@ def check_step(step_dir):
     status = field(task_md, 'STATUS')
     if status and status not in ('PENDING', 'TODO'):
         return
-    cap = settings(step_dir).get('budgets', {})['Task.md']
+    cap = settings(step_dir).get('budgets', {}).get('Task.md', 100)
     n = count(task_md)
     if n is None:
         return
