@@ -450,7 +450,7 @@ size belongs to the task, not to one dispatch.
 
 **Validation.** The orchestrator does NOT validate the chosen role against the catalog `{architect, diagnostics, security}` — that responsibility lies with workflow-research at dispatch entry (see `skills/workflow-research/SKILL.md` § 1, the `research_agent` bullet). An invalid value (e.g. a typo in `[RESEARCH_AGENT]`) propagates verbatim into the args; workflow-research rejects it with `{status: error, reason: <locale>}` rather than silently substituting a default.
 
-**EPIC-only optional fields — `plugin_root` and `epic_dispatch_mode`.** When `profile=epic` and the run takes Method A, include `plugin_root=${CLAUDE_PLUGIN_ROOT}` (expanded, absolute). The EPIC script runs each step as a nested workflow and has to build the step script's path; the sandbox cannot expand the variable itself, so without this field the epic falls back to handing the steps back rather than running them. `epic_dispatch_mode=push|pull` forces that choice — omit it and the script decides. Both fields are omitted for every other profile.
+**EPIC-only optional fields — `plugin_root` and `epic_dispatch_mode`.** When `profile=epic` and the run takes Method A, include `plugin_root=${CLAUDE_PLUGIN_ROOT}` (expanded, absolute). The EPIC script runs each step as a nested workflow by name and needs no path for it; `plugin_root` is what its fallback builds a path from on a host whose registry does not carry the step workflows, and the sandbox cannot expand the variable itself. Absent, the epic still pushes — it simply has no fallback left. `epic_dispatch_mode=push|pull` forces that choice — omit it and the script decides. Both fields are omitted for every other profile.
 
 ## Dispatch
 
@@ -487,12 +487,15 @@ Under Method B, when the contract's `effort` names any value other than `session
 
 ```
 Workflow({
-  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/profile-<profile>.js",
+  name: "spine-toolkit:profile-<profile>",
   args: { <the Outbound Contract, as a JSON object> }
 })
 ```
 
-`scriptPath` rather than `name`: the workflow registry is built at session start, so a plugin updated mid-session resolves by path but not yet by name. If `${CLAUDE_PLUGIN_ROOT}` does not expand, resolve the core root the way `conventions/agent-tooling.md` describes and build the path from there.
+`name` rather than `scriptPath`: the host registers a plugin's `workflows/*.js` under `<plugin>:<meta.name>` and materializes the script itself, while a path into the plugin's own install directory is a file the session has no claim to read — Claude Code refuses it from 2.1.275, and the refusal lands in front of the user before the task has started. Two fallbacks follow, in order:
+
+- The name does not resolve (`Workflow "…" not found`) — a host whose registry predates plugin workflows. Retry once with `scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/profile-<profile>.js"`; if `${CLAUDE_PLUGIN_ROOT}` does not expand, resolve the core root the way `conventions/agent-tooling.md` describes and build the path from there.
+- The path is refused too — Method B, and the run says so: the opening block has already gone out naming Method A, which makes this a deviation to declare under `conventions/stage-dispatch.md` → Declared deviation.
 
 Pass `args` as a real JSON object. A JSON-encoded string arrives at the script as a string.
 
