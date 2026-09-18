@@ -47,7 +47,7 @@ Key fields and their EPIC-specific semantics:
 - `need_test`, `need_review` — at the epic level only gate Plan/Research; at the step level the decision is made by each step's own workflow-* based on its own Task.md.
 - `archive_paths` — paths to backups already created (the orchestrator made them BEFORE the call; workflow-epic does not create them).
 - `epic_dispatch_mode` — **an additional optional field, EPIC-specific**: `push` (default) or `pull`. Forces the Execute dispatch model; omitted, the profile decides (see section 2, Execute).
-- `plugin_root` — **EPIC-specific, Method A only**: the expanded absolute path of the plugin root. Method A pushes a step by launching its profile script, and the workflow sandbox cannot expand `${CLAUDE_PLUGIN_ROOT}` itself. Absent, push degrades to pull. Method B ignores it.
+- `plugin_root` — **EPIC-specific, Method A only**: the expanded absolute path of the plugin root. Method A pushes a step by running its profile workflow by name; `plugin_root` is only what the fallback builds a path from when that name does not resolve, and the workflow sandbox cannot expand `${CLAUDE_PLUGIN_ROOT}` itself. Absent, push still runs — it just has no fallback. Method B ignores it.
 
 **Execution range.** Stages run in the order Research → Plan → Execute → Done, starting at `start_stage` and continuing through `end_stage` inclusive. If the Plan stage chose the **pure_research** branch — Execute is skipped, the workflow goes straight to Done with `branch=pure_research`. If `end_stage=null` — through the end of the profile. If `end_stage` is set but precedes `start_stage` in order, that is a contract error: return `{status: error, reason: "end_stage before start_stage"}`.
 
@@ -99,11 +99,11 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   **Push vs Pull dispatch models.**
 
-  - **Push (the recommended default):** the epic runs the step itself and awaits its result before moving on. Method B invokes the `Skill` tool with `name=spine-toolkit:orchestrator` and args describing the step (effectively as a new task: `task_id=<step_id>`, the epic context inherited via args). Method A launches the step's own profile script as a nested workflow run, building its path from `plugin_root`. Either way the outcome is recorded and the walk moves on.
+  - **Push (the recommended default):** the epic runs the step itself and awaits its result before moving on. Method B invokes the `Skill` tool with `name=spine-toolkit:orchestrator` and args describing the step (effectively as a new task: `task_id=<step_id>`, the epic context inherited via args). Method A runs the step's own profile workflow nested, by its registered name, falling back to a path built from `plugin_root` when the name does not resolve. Either way the outcome is recorded and the walk moves on.
 
   - **Pull (fallback):** workflow-epic **does NOT run the step**. Instead it walks every `.step/` folder, builds an ordered list of `[{step_id, task_id, profile, mode, …}]`, and returns it to the orchestrator via the `Output Contract` in the `pending_steps` field. The orchestrator then sequentially dispatches each step itself as ordinary tasks.
 
-  **Three things force pull, whatever `epic_dispatch_mode` says.** `manual` mode, because the orchestrator asks the user between steps and a running workflow cannot ask. A missing `plugin_root` under Method A, because the step script's path cannot be built. And a step whose own `[TASK_TYPE]` is `EPIC` under Method A, because the runtime allows exactly one level of nested workflow and a nested epic would need a second. In each case the epic stops at the step it cannot run and returns that step **and every step after it** as `pending_steps` — the walk is ordered, so resuming past a gap would run a step against a state that never existed.
+  **Two things force pull, whatever `epic_dispatch_mode` says.** `manual` mode, because the orchestrator asks the user between steps and a running workflow cannot ask. And a step whose own `[TASK_TYPE]` is `EPIC` under Method A, because the runtime allows exactly one level of nested workflow and a nested epic would need a second. In each case the epic stops at the step it cannot run and returns that step **and every step after it** as `pending_steps` — the walk is ordered, so resuming past a gap would run a step against a state that never existed.
 
   **Mode selection:**
   - If `epic_dispatch_mode=push` was passed in args — use push.

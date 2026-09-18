@@ -501,13 +501,15 @@ Finalize ${DIR}/Research.md. Plan.md is optional here and, if you write one, it 
 // A step runs as a nested workflow() call. That is exactly one level deep, which is all the
 // runtime allows — a child that calls workflow() throws — so EPIC is deliberately missing from
 // this map: a step that is itself an epic goes back to the orchestrator as a pending step.
-const STEP_SCRIPTS = {
-  FEATURE: 'profile-feature.js',
-  BUG: 'profile-bug.js',
-  REFACTOR: 'profile-refactor.js',
-  TEST: 'profile-test.js',
-  RESEARCH: 'profile-research.js',
-  REVIEW: 'profile-review.js',
+// A value serves twice — the registered workflow name after the plugin prefix, and the file
+// the path fallback loads.
+const STEP_WORKFLOWS = {
+  FEATURE: 'profile-feature',
+  BUG: 'profile-bug',
+  REFACTOR: 'profile-refactor',
+  TEST: 'profile-test',
+  RESEARCH: 'profile-research',
+  REVIEW: 'profile-review',
 }
 
 const SKIP_STATUS = ['DONE', 'DEFERRED', 'BLOCKED', 'SKIPPED']
@@ -572,15 +574,12 @@ if (runs('Execute')) {
     }
 
     // Manual mode cannot push: the orchestrator has to ask the user between steps, and a workflow
-    // run has no way to ask. Push also needs plugin_root to locate the step scripts, since the
-    // sandbox cannot expand ${CLAUDE_PLUGIN_ROOT} itself. Either gap degrades to the pull model.
+    // run has no way to ask. That is the only gap that degrades to the pull model.
     const wantsPush = (A.epic_dispatch_mode || 'push') === 'push'
-    const canPush = wantsPush && A.mode !== 'manual' && !!A.plugin_root
+    const canPush = wantsPush && A.mode !== 'manual'
     if (wantsPush && !canPush) {
       result.notes.push(
-        A.mode === 'manual'
-          ? 'Manual mode dispatches by pull: a workflow run cannot pause for the between-step confirmation, so the steps come back as pending_steps for the orchestrator to run one at a time.'
-          : 'Push needs plugin_root in the contract to locate the step profile scripts, and it was absent, so the steps come back as pending_steps.',
+        'Manual mode dispatches by pull: a workflow run cannot pause for the between-step confirmation, so the steps come back as pending_steps for the orchestrator to run one at a time.',
       )
     }
 
@@ -619,8 +618,8 @@ if (runs('Execute')) {
         continue
       }
 
-      const script = STEP_SCRIPTS[st.task_type]
-      if (!canPush || !script) {
+      const wf = STEP_WORKFLOWS[st.task_type]
+      if (!canPush || !wf) {
         if (canPush) result.notes.push(`Step ${st.step_id} is a ${st.task_type} and cannot be pushed from inside a workflow run; it and the steps after it are pending.`)
         for (const rest of walk.slice(i)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
         break
@@ -630,9 +629,20 @@ if (runs('Execute')) {
       let r = null
       let launchError = null
       try {
-        r = await workflow({ scriptPath: `${A.plugin_root}/workflows/${script}` }, stepArgs(st))
+        r = await workflow(`spine-toolkit:${wf}`, stepArgs(st))
       } catch (e) {
-        launchError = e && e.message ? e.message : String(e)
+        // Only an unresolved name falls back to the path: every other throw came from the step
+        // itself, and re-running it would do the step's work twice.
+        const msg = e && e.message ? e.message : String(e)
+        launchError = msg
+        if (/not found/i.test(msg) && A.plugin_root) {
+          launchError = null
+          try {
+            r = await workflow({ scriptPath: `${A.plugin_root}/workflows/${wf}.js` }, stepArgs(st))
+          } catch (e2) {
+            launchError = e2 && e2.message ? e2.message : String(e2)
+          }
+        }
       }
 
       if (r && r.status === 'cancelled') {
