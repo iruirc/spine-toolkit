@@ -32,15 +32,21 @@ UNMEASURED = {'REVIEW', 'RESEARCH', 'EPIC'}
 RESOLVE = sys.argv[1]
 _SETTINGS_CACHE = {}
 _WARNED = set()
+# The resolver reports every field it could not use; this script asked about only some of them,
+# and forwarding the rest makes a [MODELS] typo arrive as a budget problem.
+_MINE = []
 
 
-def _emit_stderr(text):
+def _emit_stderr(text, everything=False):
     """Print each resolver stderr line at most once per run: two directories under the same
     project would otherwise repeat the same warning once per directory."""
     for line in text.splitlines():
-        if line and line not in _WARNED:
-            _WARNED.add(line)
-            print(line, file=sys.stderr)
+        if not line or line in _WARNED:
+            continue
+        if not everything and not line.split(": '", 1)[0].endswith(tuple(_MINE)):
+            continue
+        _WARNED.add(line)
+        print(line, file=sys.stderr)
 
 
 def settings(task_dir):
@@ -50,7 +56,7 @@ def settings(task_dir):
     if task_dir in _SETTINGS_CACHE:
         return _SETTINGS_CACHE[task_dir]
     out = subprocess.run([RESOLVE, 'json', task_dir], capture_output=True, text=True)
-    _emit_stderr(out.stderr)
+    _emit_stderr(out.stderr, everything=out.returncode != 0)
     if out.returncode != 0:
         print('lint-artifact-budget.sh: resolve-settings.sh failed for %s' % task_dir, file=sys.stderr)
         sys.exit(2)
@@ -61,6 +67,9 @@ def settings(task_dir):
 args = sys.argv[2:]
 task_docs = '--task-docs' in args
 print_budgets = '--budgets' in args
+# --budgets reads the ceilings and nothing else, which is what lets the orchestrator announce
+# every line it forwards as a budget line.
+_MINE[:] = ['## Budgets'] if print_budgets else ['## Budgets', '## Scale', 'Task.md [SCALE]']
 dirs = [a for a in args if a not in ('--task-docs', '--budgets')]
 if any(a.startswith('--') for a in dirs) or not dirs or (print_budgets and (task_docs or len(dirs) != 1)):
     print('usage: lint-artifact-budget.sh [--task-docs] <task-dir> [<task-dir> ...] | --budgets <task-dir>', file=sys.stderr)

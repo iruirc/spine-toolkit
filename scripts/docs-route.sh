@@ -60,16 +60,22 @@ def opt(name, default=None):
 
 _SETTINGS_CACHE = {}
 _WARNED = set()
+# The resolver reports every field it could not use; this script asked about the documentation
+# ones, and forwarding the rest makes a [MODELS] typo arrive as a documentation problem.
+_MINE = ('## Docs', 'Task.md [DOCS]')
 
 
-def _emit_stderr(text):
+def _emit_stderr(text, everything=False):
     """Print each resolver stderr line at most once per run: `route` reads the same project's
     config through several directories (a task, then ROOT twice over), which would otherwise
     repeat the same warning once per call."""
     for line in text.splitlines():
-        if line and line not in _WARNED:
-            _WARNED.add(line)
-            print(line, file=sys.stderr)
+        if not line or line in _WARNED:
+            continue
+        if not everything and not line.split(": '", 1)[0].endswith(_MINE):
+            continue
+        _WARNED.add(line)
+        print(line, file=sys.stderr)
 
 
 def settings(start):
@@ -79,7 +85,7 @@ def settings(start):
     if start in _SETTINGS_CACHE:
         return _SETTINGS_CACHE[start]
     out = subprocess.run([RESOLVE, 'json', start], capture_output=True, text=True)
-    _emit_stderr(out.stderr)
+    _emit_stderr(out.stderr, everything=out.returncode != 0)
     if out.returncode != 0:
         print('docs-route.sh: resolve-settings.sh failed for %s' % start, file=sys.stderr)
         sys.exit(2)
@@ -134,7 +140,7 @@ def parse_map(path, prefix, errors):
 def package_roots():
     roots = []
     out = subprocess.run([RESOLVE, 'raw', ROOT, 'Paths'], capture_output=True, text=True)
-    _emit_stderr(out.stderr)
+    _emit_stderr(out.stderr, everything=out.returncode != 0)
     if out.returncode != 0:
         print('docs-route.sh: resolve-settings.sh raw failed for %s ## Paths' % ROOT, file=sys.stderr)
         sys.exit(2)

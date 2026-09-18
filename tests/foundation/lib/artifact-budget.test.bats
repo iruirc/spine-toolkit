@@ -341,6 +341,16 @@ broken_resolver() {
   [ "$output" != "{}" ] || { echo "printed an empty map"; return 1; }
 }
 
+@test "--budgets forwards only the resolver lines about the ceilings it asked for" {
+  # The orchestrator announces every line this call prints as a budget problem, so a tuning typo
+  # forwarded here reaches the user under the wrong name — and again from the tuning call.
+  printf '## Budgets\n\nPlan.md: many\n\n## Models\n\narchitect: gpt\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$LINT" --budgets "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  case "$output" in *"Plan.md: many' not recognized"*) ;; *) echo "dropped its own field: $output"; return 1 ;; esac
+  case "$output" in *"architect: gpt"*) echo "forwarded another field's line: $output"; return 1 ;; *) ;; esac
+}
+
 @test "a resolver warning shared by two task dirs is printed once, not once per directory" {
   printf '## Scale\n\nfull\n\n## Budgets\n\nPlan.md: many\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   TASK2="$PROJ/Tasks/ACTIVE/043-b-task"
