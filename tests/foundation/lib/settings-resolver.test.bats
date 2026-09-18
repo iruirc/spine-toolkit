@@ -182,6 +182,20 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   [ "$(map_value models light <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
 }
 
+@test "a config written by 1.11.0 keeps every model it had and reports nothing" {
+  printf '## Models\n\nlight: sonnet\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  for role in architect developer tester reviewer refactorer validator security diagnostics; do
+    printf '%s: platform\n' "$role" >>"$PROJ/CLAUDE-spine-toolkit.md"
+  done
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { echo "platform was reported:"; cat "$ERR"; return 1; }
+  [ "$(map_value models light <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
+  [ "$(map_value models validator <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
+  for role in architect developer tester reviewer refactorer security diagnostics; do
+    [ "$(map_value models "$role" <<<"$out")" = session ] || { echo "$role: $out"; return 1; }
+  done
+}
+
 @test "keys and values are read case-insensitively" {
   printf '[TASK_TYPE] = [BUG]\n[MODELS] = [Architect: Opus]\n' >"$TASK/Task.md"
   run "$RESOLVE" json "$TASK"
