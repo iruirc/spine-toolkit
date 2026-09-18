@@ -48,7 +48,7 @@ The minimum viable input is just `task_id`. All other fields are optional and re
 | `task_id` | string | NL/$ARGUMENTS (e.g. `026`, `052`, `001-foo`) | **required** — error using key `error_no_task_id` |
 | `action` | enum: `run` / `continue` / `redo` / `restart` / `restart-full` | parsed from the command (see triggers table) | `run` for a bare "run/do/execute N", `continue` for "continue N" |
 | `stage_target` | string (profile stage name) | required for `redo` / `restart`, or for `--from` / `--to` modifiers under `run` | not needed for `run` / `continue` / `restart-full` without modifiers |
-| `mode_override` | enum: `manual` / `auto` | explicit "automatically" / "step-by-step" in the request | resolved from Task.md → CLAUDE-spine-toolkit.md → `manual` |
+| `mode_override` | enum: `manual` / `auto` | explicit "automatically" / "step-by-step" in the request | resolved via `resolve-settings.sh` (Resolution Algorithm step 3); default `manual` |
 | `stack_override` | string | stack explicitly named in the request | resolved per-axis via stack-detect (see Resolution Algorithm step 4); AUQ only for unresolved needed axes |
 
 **Invariant:** the orchestrator does NOT crash on missing optional fields. It resolves them in the Resolution Algorithm and only then hands the fully populated contract to workflow-*.
@@ -417,11 +417,11 @@ Two cases write nothing. A run already resolved to `full` has nothing to raise. 
 file. Because the value lives in the file, a later `redo` of any stage runs at `full` as well — the
 size belongs to the task, not to one dispatch.
 
-`drive_app` — whether the Validation stage may drive the running app through the platform's own tooling. Resolved by the same run of `resolve-settings.sh json`, whose `drive_app` field walks `Task.md` `[DRIVE_APP]` → for a `.step/` folder, the epic's `Task.md` `[DRIVE_APP]` → `CLAUDE-spine-toolkit.md` `## Validation` → `drive_app` → `auto`; that field is this field. Always filled, for every profile. `auto` leaves the choice to the profile named in `## Validation`'s parenthetical; `off` is the project saying it has nothing to drive. The Driver pre-flight (**Routing**, check 4) reads this field to decide whether it runs at all.
+`drive_app` — whether the Validation stage may drive the running app through the platform's own tooling. Resolved by the same run of `resolve-settings.sh json`, whose `drive_app` field walks `Task.md` `[DRIVE_APP]` → for a `.step/` folder, the epic's `Task.md` `[DRIVE_APP]` → `CLAUDE-spine-toolkit.md` `## Validation` → `drive_app` → `auto`; that field is this field. Always filled, for every profile. `auto` leaves the choice to the profile named in `## Validation`'s parenthetical; `off` is the project saying it has nothing to drive. The Driver pre-flight (**Routing**, check 4) reads this field to decide whether it runs at all. The script is the one reader of `## Validation`'s `drive_app` key and `[DRIVE_APP]`: do not re-derive it from the config.
 
-`manual_checks` — when the validator writes `ManualChecks.md`. Resolved by the same run, whose `manual_checks` field walks the same chain over `[MANUAL_CHECKS]` and `## Validation` → `manual_checks` → `auto`; that field is this field. Always filled, for every profile. `auto` writes the file only for the checks the validator was told not to run itself; `always` writes it every time, even when the validator drove the app and covered the happy path.
+`manual_checks` — when the validator writes `ManualChecks.md`. Resolved by the same run, whose `manual_checks` field walks the same chain over `[MANUAL_CHECKS]` and `## Validation` → `manual_checks` → `auto`; that field is this field. Always filled, for every profile. `auto` writes the file only for the checks the validator was told not to run itself; `always` writes it every time, even when the validator drove the app and covered the happy path. The script is the one reader of `## Validation`'s `manual_checks` key and `[MANUAL_CHECKS]`: do not re-derive it from the config.
 
-`phase_verification` — how much each phase checks before it commits. Resolved by the same run, whose `phase_verification` field walks the same chain over `[PHASE_VERIFICATION]` and `## Validation` → `phase_verification` → `proportional`; that field is this field. Always filled, for every profile. `proportional` leaves the full regression to Validation; `full` repeats it in every phase. The rungs themselves are `phase-verification`'s business, not this field's.
+`phase_verification` — how much each phase checks before it commits. Resolved by the same run, whose `phase_verification` field walks the same chain over `[PHASE_VERIFICATION]` and `## Validation` → `phase_verification` → `proportional`; that field is this field. Always filled, for every profile. `proportional` leaves the full regression to Validation; `full` repeats it in every phase. The rungs themselves are `phase-verification`'s business, not this field's. The script is the one reader of `## Validation`'s `phase_verification` key and `[PHASE_VERIFICATION]`: do not re-derive it from the config.
 
 `budgets` — the line ceiling of every artifact core measures. Resolved by running `<core root>/scripts/lint-artifact-budget.sh --budgets <task dir>`, which reads the script's defaults and the project's `## Budgets` over them; the brace map it prints is this field. Always filled, for every profile, so a consumer reads one shape rather than testing for the field first. Method B takes that line as it is; Method A passes the same object as real JSON with integer values, so a script reads `A.budgets['Task.md']` and gets `100` by default. It travels in the contract for the reason `walkthrough` does — a Method A script names a ceiling in a brief and has no filesystem to read it from. The script is the one reader of `## Budgets`: do not re-derive the map from the config. Each line the script reports on stderr as not recognized is announced once with key `warn_budget_unrecognised` (placeholder `{line}`). Which artifact is measured at which scale is not this field's business: `conventions/task-scale.md`.
 
@@ -516,7 +516,7 @@ On a non-empty `handback` the orchestrator runs that stage itself in the main co
 
 ## Progress reporting
 
-`Progress` (Resolution Algorithm, step 3.5) governs reporting only. It never changes what runs,
+`Progress` (Resolution Algorithm, step 3) governs reporting only. It never changes what runs,
 and it never suppresses a question: the `manual` between-stage AUQ, the open-questions gate, and
 commit confirmations behave identically at all three values.
 
@@ -531,9 +531,12 @@ from `dispatch_method_a` / `dispatch_method_b`, then the stage-to-agent table, t
 `progress_open_live_hint` for Method A only, `{workflow}` being the script's `meta.name`.
 
 Then, unless `settings_report` is `off`, the settings column: `progress_open_settings`, then the
-lines of `bash "<core root>/scripts/resolve-settings.sh" show <task dir>` at `diff`, or of the same
-command with every field at `full`. A line the script printed on stderr is announced once, exactly
-as `models` and `effort` announce theirs.
+`[FIELD] = [...]` lines of `bash "<core root>/scripts/resolve-settings.sh" show <task dir>` at
+`diff`, or of `show <task dir> --all` at `full`. Drop the command's own trailing `# <n> more at
+their default` line — that line is the script talking to whoever ran it directly, in English
+regardless of `lang` — and render `progress_open_settings_rest` in its place, `{count}` filled
+from the same number; `--all` never prints that line, so nothing renders there. A line the script
+printed on stderr is announced once, exactly as `models` and `effort` announce theirs.
 
 Under Method A, every `Workflow` call is then preceded by `progress_dispatch` — the one per stage in
 `manual`, the single one in `auto`, and any re-dispatch after a hand-back or a retry. `{range}` is
