@@ -116,36 +116,39 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   [ "$(field progress <<<"$output")" = live ] || { echo "$output"; return 1; }
 }
 
-@test "models and effort resolve exactly as resolve-tuning.sh resolves them" {
-  printf '## Models\n\nlight: haiku\ntester: opus\nvalidator: platform\n\n## Effort\n\nreviewer: high\n' >>"$PROJ/CLAUDE-spine-toolkit.md"
-  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [architect: sonnet]\n[EFFORT] = [developer: low]\n' >"$TASK/Task.md"
-  "$ROOT/scripts/resolve-tuning.sh" "$TASK" 2>/dev/null >"$BATS_TEST_TMPDIR/old"
-  "$RESOLVE" json "$TASK" 2>/dev/null >"$BATS_TEST_TMPDIR/new"
-  python3 - "$BATS_TEST_TMPDIR/old" "$BATS_TEST_TMPDIR/new" <<'PY'
-import json, re, sys
-
-old = {}
-for line in open(sys.argv[1]):
-    m = re.match(r'^(models|effort)=\{(.*)\}$', line.strip())
-    if m:
-        old[m.group(1)] = dict(p.split(': ') for p in m.group(2).split(', '))
-new = json.load(open(sys.argv[2]))
-for field, want in old.items():
-    if want != new[field]:
-        print('%s: old %s vs new %s' % (field, want, new[field]))
-        sys.exit(1)
-PY
-}
-
-@test "two Task.md MODELS lines fold in file order, the last entry for a repeated key wins, matching resolve-tuning.sh" {
+@test "two Task.md MODELS lines fold in file order, the last entry for a repeated key wins" {
   printf '[TASK_TYPE] = [BUG]\n[MODELS] = [architect: opus]\n[MODELS] = [tester: haiku, architect: sonnet]\n' >"$TASK/Task.md"
   run "$RESOLVE" json "$TASK"
   [ "$status" -eq 0 ]
   [ "$(map_value models architect <<<"$output")" = sonnet ] || { echo "$output"; return 1; }
   [ "$(map_value models tester <<<"$output")" = haiku ] || { echo "$output"; return 1; }
-  old="$("$ROOT/scripts/resolve-tuning.sh" "$TASK" 2>/dev/null)"
-  grep -qF 'architect: sonnet' <<<"$old" || { echo "$old"; return 1; }
-  grep -qF 'tester: haiku' <<<"$old" || { echo "$old"; return 1; }
+}
+
+@test "a task's model key beats the project's, and a key the task does not name keeps the project's value" {
+  printf '## Models\n\narchitect: opus\nreviewer: opus\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [architect: sonnet]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(map_value models architect <<<"$output")" = sonnet ] || { echo "$output"; return 1; }
+  [ "$(map_value models reviewer <<<"$output")" = opus ] || { echo "$output"; return 1; }
+}
+
+@test "a task's platform model entry is skipped silently, leaving the project's value in place" {
+  printf '## Models\n\narchitect: opus\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [architect: platform]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  [ "$(map_value models architect <<<"$out")" = opus ] || { echo "$out"; return 1; }
+}
+
+@test "a step's [MODELS] falls back to the epic's Task.md" {
+  EPIC="$PROJ/Tasks/ACTIVE/050-an-epic"
+  STEP="$EPIC/1-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[MODELS] = [architect: opus]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  run "$RESOLVE" json "$STEP"
+  [ "$(map_value models architect <<<"$output")" = opus ] || { echo "$output"; return 1; }
+  [ "$(source_of models <<<"$output")" = epic ] || { echo "$output"; return 1; }
 }
 
 @test "a budgets override is recorded with its own source, and show prints it" {
@@ -165,4 +168,14 @@ PY
   [ "$(map_value budgets Plan.md <<<"$output")" = 200 ] || { echo "$output"; return 1; }
   [ "$(source_of budgets <<<"$output")" = project ] || { echo "$output"; return 1; }
   [ "$(source_of budgets.Plan.md <<<"$output")" = project ] || { echo "$output"; return 1; }
+}
+
+@test "no script but the resolver parses the config file" {
+  n=0
+  for f in "$ROOT"/scripts/*.sh; do
+    case "$(basename "$f")" in resolve-settings.sh) continue ;; esac
+    n=$((n + 1))
+    ! grep -q "CLAUDE-spine-toolkit.md'" "$f" || { echo "$(basename "$f") parses the config itself"; return 1; }
+  done
+  [ "$n" -ge 10 ] || { echo "scanned $n script(s), expected at least 10"; return 1; }
 }

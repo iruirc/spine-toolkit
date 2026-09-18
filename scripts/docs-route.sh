@@ -34,11 +34,14 @@ set -euo pipefail
 
 SRC=$(cat <<'PY'
 import glob as globlib
+import json
 import os
 import re
+import subprocess
 import sys
 
-ARGV = sys.argv[1:]
+RESOLVE = sys.argv[1]
+ARGV = sys.argv[2:]
 CMD = ARGV[0]
 ROOT = os.path.abspath(ARGV[1])
 
@@ -55,22 +58,11 @@ def opt(name, default=None):
     return default
 
 
-def block(path, name):
-    """Body of a `## <name>` section, up to the next H2. Absent is not an error."""
-    try:
-        text = open(path, encoding='utf-8').read()
-    except OSError:
-        return None
-    m = re.search(r'^## %s\s*$(.*?)(?=^## |\Z)' % re.escape(name), text, flags=re.M | re.S)
-    return m.group(1) if m else None
-
-
-def config(name, key, default=None):
-    body = block(os.path.join(ROOT, 'CLAUDE-spine-toolkit.md'), name)
-    if body is None:
-        return default
-    m = re.search(r'^\s*%s:\s*(.+?)\s*$' % re.escape(key), body, flags=re.M)
-    return m.group(1).strip() if m else default
+def settings(start):
+    """Every setting of this dir, from the one reader (scripts/resolve-settings.sh)."""
+    out = subprocess.run([RESOLVE, 'json', start], capture_output=True, text=True)
+    sys.stderr.write(out.stderr)
+    return json.loads(out.stdout) if out.returncode == 0 else {}
 
 
 def under(prefix, path):
@@ -118,9 +110,9 @@ def parse_map(path, prefix, errors):
 
 
 def package_roots():
-    body = block(os.path.join(ROOT, 'CLAUDE-spine-toolkit.md'), 'Paths') or ''
     roots = []
-    for pat in re.findall(r'^\s*-\s*External packages:\s*(.+?)\s*$', body, flags=re.M):
+    out = subprocess.run([RESOLVE, 'raw', ROOT, 'Paths'], capture_output=True, text=True)
+    for pat in re.findall(r'^\s*-\s*External packages:\s*(.+?)\s*$', out.stdout, flags=re.M):
         for p in sorted(globlib.glob(os.path.join(ROOT, pat.strip().lstrip('/')))):
             if os.path.isdir(p):
                 roots.append(os.path.relpath(p, ROOT))
@@ -131,7 +123,8 @@ def load_registry():
     """Every declared component, project map first, packages after in path order.
     The order is load-bearing: fed_by resolves to the first component that matched."""
     comps, errors = [], []
-    top = os.path.join(ROOT, config('Docs', 'map', 'DocsMap.md'))
+    s = settings(ROOT)
+    top = os.path.join(ROOT, s.get('docs_map', 'DocsMap.md'))
     if os.path.isfile(top):
         comps += parse_map(top, '', errors)
     for pkg in package_roots():
@@ -139,7 +132,7 @@ def load_registry():
         if os.path.isfile(pm):
             comps += parse_map(pm, pkg, errors)
 
-    default_level = config('Docs', 'strictness', 'advisory')
+    default_level = s.get('docs_strictness', 'advisory')
     seen = {}
     for c in comps:
         where = '%s: component "%s"' % (c['source'], c['name'])
@@ -234,18 +227,11 @@ def task_field(task_dir, name):
     return None
 
 
-def project_docs_enabled():
-    return (config('Docs', 'enabled', 'on') or 'on').strip().lower() != 'off'
-
-
 def docs_enabled(task_dir):
-    """A task's own value first, the project's lever second. An explicit [DOCS] wins in both
-    directions, the way every per-task override in this toolkit does — so a suspended project can
-    still opt one task back in."""
-    field = task_field(task_dir, 'DOCS')
-    if field:
-        return field.strip().lower() != 'off'
-    return project_docs_enabled()
+    """A task's own value first, the project's lever second: [DOCS] is already the first link of
+    the resolver's own chain, so an explicit override still wins in both directions. task_dir=None
+    reads the project's own lever."""
+    return settings(task_dir or ROOT).get('docs_lever', 'on') != 'off'
 
 
 def declared_new(task_dir):
@@ -430,7 +416,7 @@ def regenerate(path, table):
 
 
 if CMD == 'progress':
-    if not project_docs_enabled():
+    if not docs_enabled(None):
         sys.exit(0)
     comps, errors = load_registry()
     if errors:
@@ -460,7 +446,7 @@ if CMD == 'progress':
     sys.exit(1 if refused else 0)
 
 if CMD == 'audit':
-    if not project_docs_enabled():
+    if not docs_enabled(None):
         sys.exit(0)
     comps, errors = load_registry()
     if errors:
@@ -534,7 +520,7 @@ if CMD == 'route':
     if errors:
         die(errors)
     changed, _created = read_change_set()
-    default_level = config('Docs', 'strictness', 'advisory')
+    default_level = settings(ROOT).get('docs_strictness', 'advisory')
     rows = [(c['name'], c['genre'], c['strictness']) for c in affected(comps, changed)]
     known = {c['name'] for c in comps}
     for n, g in declared_new(task_dir):
@@ -611,4 +597,5 @@ print('unknown command "%s"' % CMD)
 sys.exit(2)
 PY
 )
-python3 -c "$SRC" "$@"
+RESOLVE="$(dirname -- "${BASH_SOURCE[0]}")/resolve-settings.sh"
+python3 -c "$SRC" "$RESOLVE" "$@"

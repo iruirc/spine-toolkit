@@ -230,13 +230,13 @@ setup() {
 @test "models and effort are resolved by the script, not by reading the config" {
   para="$(awk '/^`models` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`models\` paragraph in the Outbound Contract"; return 1; }
-  for token in 'resolve-tuning.sh' '## Models' '[MODELS]' '.step/' 'warn_tuning_unrecognised' 'Always filled' 'real JSON' 'Model and effort' \
+  for token in 'resolve-settings.sh' '## Models' '[MODELS]' '.step/' 'warn_tuning_unrecognised' 'Always filled' 'real JSON' 'Model and effort' \
               '`sonnet` for `light` and `validator`, `session` for every other role'; do
     grep -qF "$token" <<<"$para" || { echo "the models paragraph does not name $token"; return 1; }
   done
   para="$(awk '/^`effort` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`effort\` paragraph in the Outbound Contract"; return 1; }
-  for token in 'resolve-tuning.sh' '## Effort' '[EFFORT]' 'Always filled' '**Dispatch**'; do
+  for token in 'resolve-settings.sh' '## Effort' '[EFFORT]' 'Always filled' '**Dispatch**'; do
     grep -qF "$token" <<<"$para" || { echo "the effort paragraph does not name $token"; return 1; }
   done
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # A subagent's model and effort come from one rule (conventions/stage-dispatch.md → Model and effort)
-# and one resolver (scripts/resolve-tuning.sh). These tests hold every surface that restates a piece
+# and one resolver (scripts/resolve-settings.sh). These tests hold every surface that restates a piece
 # of the rule to it: a surface that drifts is how a project's choice stops reaching a dispatch.
 
 setup() {
@@ -66,7 +66,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 }
 
 @test "both task templates offer the MODELS and EFFORT overrides with the resolver's keys and values" {
-  var() { sed -n "s/^$1=\"\(.*\)\"$/\1/p" "$ROOT/scripts/resolve-tuning.sh" | tr ' ' '|'; }
+  var() { sed -n "s/^$1=\"\(.*\)\"$/\1/p" "$ROOT/scripts/resolve-settings.sh" | tr ' ' '|'; }
   models="# [MODELS] = [architect: opus]  # <light|$(var ROLES)>: <$(var MODELS)>, comma-separated"
   effort="# [EFFORT] = [reviewer: high]   # <$(var ROLES)>: <$(var EFFORTS)>, comma-separated"
   for t in task-root task-step; do
@@ -97,7 +97,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 }
 
 @test "the epic's copy of the vocabulary is the resolver's" {
-  verdict="$(python3 - "$ROOT/scripts/resolve-tuning.sh" "$ROOT/workflows/profile-epic.js" <<'PY'
+  verdict="$(python3 - "$ROOT/scripts/resolve-settings.sh" "$ROOT/workflows/profile-epic.js" <<'PY'
 import re, sys
 sh = open(sys.argv[1], encoding='utf-8').read()
 js = open(sys.argv[2], encoding='utf-8').read()
