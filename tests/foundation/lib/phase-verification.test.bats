@@ -63,8 +63,10 @@ section() { # $1 = file, $2 = heading text without "## "
 
 @test "the switch resolves to proportional and offers no off" {
   sw="$(section "$SKILL" 'The switch')"
-  grep -qF 'Task.md [PHASE_VERIFICATION]  →  CLAUDE-spine-toolkit.md ## Validation → phase_verification  →  proportional' <<<"$sw" \
-    || { echo "the resolution chain moved"; return 1; }
+  grep -qF 'The value arrives in the contract as `phase_verification`' <<<"$sw" \
+    || { echo "the switch does not point at the contract field"; return 1; }
+  grep -qF 'conventions/task-settings.md' <<<"$sw" \
+    || { echo "the switch does not point at the chain"; return 1; }
   grep -qF 'There is no `off`' <<<"$sw" || { echo "the switch does not rule out off"; return 1; }
 }
 

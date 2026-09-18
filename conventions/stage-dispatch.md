@@ -46,7 +46,9 @@ is the orchestrator's and needs no announcement.
 ## Model and effort
 
 Every dispatch runs on the model and at the effort the contract's `models` and `effort` maps give
-it, through one rule. A dispatch is one of three kinds:
+it, through one rule. `models` and `effort` resolve like every other task setting —
+`conventions/task-settings.md` holds their chain and field table; this section is what a dispatch
+does with the result. A dispatch is one of three kinds:
 
 - `stage` — the work a stage exists for: investigation, plan, a phase, validation, review.
 - `light` — work the script's own prompt defines that still takes judgement: `walkthrough`.

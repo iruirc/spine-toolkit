@@ -290,3 +290,23 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   done
   [ "$n" -ge 10 ] || { echo "scanned $n script(s), expected at least 10"; return 1; }
 }
+
+@test "no profile script tells an agent where to look a setting up" {
+  n=0
+  for p in "$ROOT"/workflows/profile-*.js; do
+    n=$((n + 1))
+    for token in '[DRIVE_APP]' '[MANUAL_CHECKS]' '[PHASE_VERIFICATION]' '## Validation'; do
+      ! grep -qF "$token" "$p" || { echo "$(basename "$p") still spells the chain for $token"; return 1; }
+    done
+  done
+  [ "$n" -eq 7 ] || { echo "scanned $n script(s), expected 7"; return 1; }
+}
+
+@test "the epic forwards every field a step can override" {
+  # driver stays off this list: it never rides the Outbound Contract
+  # (tests/foundation/lib/orchestrator-contract.test.bats — "the driver does not travel").
+  for field in drive_app manual_checks phase_verification; do
+    grep -qF "$field: st.$field === undefined ? A.$field : st.$field" "$ROOT/workflows/profile-epic.js" \
+      || { echo "profile-epic.js does not forward $field to a step"; return 1; }
+  done
+}

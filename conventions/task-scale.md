@@ -21,7 +21,9 @@ Task.md [SCALE]  →  CLAUDE-spine-toolkit.md ## Scale  →  full
 
 First hit wins. A missing section is the default, not an error. The orchestrator resolves this once
 per dispatch and ships the result in the Outbound Contract, for the same reason `walkthrough`
-travels there: a workflow script has no filesystem and cannot read the value for itself.
+travels there: a workflow script has no filesystem and cannot read the value for itself. Every
+other resolved field takes the same shape; `conventions/task-settings.md` holds the full chain and
+field table.
 
 ## Three levers, one value
 

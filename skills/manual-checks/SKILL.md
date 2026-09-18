@@ -102,7 +102,7 @@ Neither `**Scene:**` nor either expectation identifies a state by the name of a 
 
 ## Scale
 
-The axis decides depth, not existence: whether this file appears at all is `manual_checks` (`Task.md [MANUAL_CHECKS]` → `CLAUDE-spine-toolkit.md ## Validation`). At either value of `scale` it is written when that switch says so — it is the only record of ground nothing verified, and `conventions/task-scale.md ## The floor` keeps what carries a guarantee.
+The axis decides depth, not existence: whether this file appears at all is `manual_checks`. The value arrives in the contract as `manual_checks`; `conventions/task-settings.md` holds the chain it was resolved along. At either value of `scale` it is written when that switch says so — it is the only record of ground nothing verified, and `conventions/task-scale.md ## The floor` keeps what carries a guarantee.
 
 `lite` halves the section ceilings and drops `## Troubleshooting`, and cuts no required field of a case. A case missing its `**Failure looks like:**` is not shorter, it is unusable. `## Manual acceptance` at `lite` runs to about three lines, one when there is nothing to list — an expected size, not a ceiling: a task with five checks nothing can automate lists five.
 

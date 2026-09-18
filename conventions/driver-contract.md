@@ -11,7 +11,9 @@ what it can do. That is what lets a third party write an adapter for a server th
 
 A project says which driver serves it in one place: the `driver:` key of `## Validation` in its
 `CLAUDE-spine-toolkit.md`. The platform's manifest may name a default, and a single task overrides
-both with `[DRIVER]`.
+both with `[DRIVER]`. `drive_app`, `manual_checks` and `phase_verification` resolve along the same
+kind of chain and ride the Outbound Contract; `driver` is the one field of `## Validation` that does
+not (below). `conventions/task-settings.md` holds the chain and field table for all of them.
 
 A working example is `tests/fixtures/fixture-driver/`. `scripts/lint-driver-manifest.sh
 <plugin-dir>` checks a manifest against everything below that a script can check.
