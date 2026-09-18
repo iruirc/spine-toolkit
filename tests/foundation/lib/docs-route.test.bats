@@ -972,11 +972,23 @@ EOF
 
 @test "a resolver warning shared across route's several resolver calls is printed once" {
   task; two_components
-  printf '\n## Budgets\n\nPlan.md: many\n' >>"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Docs\n\nmap: DocsMap.md\nstrictness: strict\nfreshness: on\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run bash -c "printf 'M\tSources/Ledger/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-  n="$(printf '%s\n' "$output" | grep -c "Plan.md: many' not recognized")"
+  n="$(printf '%s\n' "$output" | grep -c "strict' not recognized")"
   [ "$n" -eq 1 ] || { echo "printed $n time(s): $output"; return 1; }
+}
+
+@test "the router forwards only the resolver lines about the fields it asked for" {
+  # Every caller shares one resolver, so an unfiltered forward reports a tuning typo as a
+  # documentation problem — and again, differently labelled, from the next caller.
+  task; two_components
+  printf '## Docs\n\nmap: DocsMap.md\nstrictness: strict\n\n## Models\n\narchitect: gpt\n' \
+    >"$PROJ/CLAUDE-spine-toolkit.md"
+  run bash -c "printf 'M\tSources/Ledger/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  case "$output" in *"strict' not recognized"*) ;; *) echo "dropped its own field: $output"; return 1 ;; esac
+  case "$output" in *"architect: gpt"*) echo "forwarded another field's line: $output"; return 1 ;; *) ;; esac
 }
 
 @test "an epic's [DOCS] = [off] reaches its .step/ children, same as every other field's chain" {
