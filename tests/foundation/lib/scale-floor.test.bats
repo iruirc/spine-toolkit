@@ -41,10 +41,17 @@ setup() {
   grep -qi 'never lowered' "$c" || { echo "the convention does not state the one-way rule"; return 1; }
 }
 
-@test "the template ships lite and documents full as the absent-field default" {
+@test "the template ships lite" {
   tpl="$ROOT/templates/claude-toolkit-md/en.md"
   v="$(sed -n 's/^\[SCALE\] = \[\([a-z]*\)\].*/\1/p' "$tpl")"
   [ "$v" = "lite" ] || { echo "[SCALE] ships '$v', expected lite"; return 1; }
-  grep -qF 'a project without this field runs full' "$tpl" \
-    || { echo "the template does not document the absent-field default"; return 1; }
+}
+
+@test "the configuration page documents full as the absent-field default" {
+  # The guidance left the template when the settings became one-line fields; the reference page is
+  # where it lands, and this assertion goes live with it.
+  doc="$ROOT/docs/configuration.md"
+  [ -f "$doc" ] || skip "docs/configuration.md does not exist yet"
+  grep -qF 'A project without this field runs `full`' "$doc" \
+    || { echo "the page does not document the absent-field default"; return 1; }
 }

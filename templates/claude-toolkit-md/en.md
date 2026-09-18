@@ -19,9 +19,9 @@
 ## Task defaults
 
 [WORKFLOW_MODE] = [manual]             # manual | auto
-[SCALE] = [lite]                       # lite | full; a project without this field runs full
+[SCALE] = [lite]                       # lite | full
 [DRIVE_APP] = [auto]                   # auto | off
-[MANUAL_CHECKS] = [auto]               # auto | always; what goes in the file is the manual-checks skill's
+[MANUAL_CHECKS] = [auto]               # auto | always
 [DRIVER] = [auto]                      # <driver-plugin> | auto | —
 [PHASE_VERIFICATION] = [proportional]  # proportional | full
 [WALKTHROUGH] = [deep]                 # brief | deep | off
