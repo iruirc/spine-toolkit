@@ -15,8 +15,8 @@ Creates a numbered task folder + Task.md scaffold and fills it with the user's f
 Before producing any user-facing string:
 
 1. Read `CLAUDE-spine-toolkit.md` from the project root.
-2. Find the `## Language` section.
-3. Take the first non-empty line in that section, lowercase and trim it. That is `<lang>`.
+2. Find the `[LANG]` field.
+3. Take the field's value, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
@@ -48,7 +48,7 @@ Section headings (`## 1. [Files]` … `## 6. [StackTrace]`), the `**Date:**` lab
 
 Localize ONLY the **prose the user composes inside the sections** (their natural language). The section headings themselves stay exactly as the template provides them.
 
-This is the canonical "Artifact authoring rule" — single source in `conventions/i18n.md` (structure EN, prose per project `## Language`). Every artifact-producing skill and agent references that rule; `task-new` is its first application (Task.md creation).
+This is the canonical "Artifact authoring rule" — single source in `conventions/i18n.md` (structure EN, prose per project `[LANG]`). Every artifact-producing skill and agent references that rule; `task-new` is its first application (Task.md creation).
 
 For reference, the templates contain these placeholders:
 

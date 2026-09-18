@@ -224,7 +224,7 @@ An epic makes no commits of its own; its steps do, each writing its own `Walkthr
 
 The depth switch reads the same, with the step standing in for the commit: at `deep`, `## Commit order` becomes the order of the steps and their dependencies, and `## Commits` becomes a section per step — what that step made possible for the next one, and which of the epic's intentions moved while it ran. Both headings keep their names: what the section holds changes, not what it is called. The glossary belongs here more than anywhere: an epic is where a reader meets the domain vocabulary first.
 
-## Language
+## Localization
 
 Prose in the project's language, structure in English — headings, the `[COVERS]` anchor, the trigger values. The English half covers `## Glossary`, `## Commit order`, `## Out of scope` and the five `####` sub-headings of a `deep` commit section: later tasks cite them by their exact spelling, and a translated heading breaks that citation.
 `conventions/i18n.md`, Artifact authoring rule.
