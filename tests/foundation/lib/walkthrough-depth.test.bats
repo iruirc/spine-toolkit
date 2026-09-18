@@ -122,11 +122,11 @@ NAMES
 @test "the section that holds those headings in English is still there" {
   # Deleted once on this branch with the whole suite green. Later tasks cite the
   # headings verbatim, and a translated one breaks the citation.
-  grep -q '^## Language$' "$SKILL" \
-    || { echo "## Language is gone; nothing keeps the structure untranslated"; return 1; }
-  lang="$(awk '/^## Language$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  grep -q '^## Localization$' "$SKILL" \
+    || { echo "## Localization is gone; nothing keeps the structure untranslated"; return 1; }
+  lang="$(awk '/^## Localization$/{f=1;next} /^## /{f=0} f' "$SKILL")"
   grep -qF "Prose in the project's language, structure in English" <<<"$lang" \
-    || { echo "## Language no longer states the split it exists for"; return 1; }
+    || { echo "## Localization no longer states the split it exists for"; return 1; }
 }
 
 @test "the config template ships the deep default and explains all three values" {

@@ -13,7 +13,7 @@ Bootstraps spine-toolkit in an **already existing** project. Two-file layout:
 - `CLAUDE-spine-toolkit.md` — toolkit-owned configuration; its sections are the ones `templates/claude-toolkit-md/en.md` carries. Created and updated by this skill.
 - `CLAUDE.md` — user-owned project instructions. Touched once to insert the `@./CLAUDE-spine-toolkit.md` line; otherwise unchanged.
 
-This skill owns the config **format** and every block that is core's: `## Language`, `## Mode`, `## Progress`, `## Platform`, `## Agents`, and the file-level scaffolding. It owns none of the stack: `## Stack` and `## Modules` are filled by the platform half (step 5), because which axes exist and which values they take is the platform manifest's `## Axes`, not core's.
+This skill owns the config **format** and every block or field that is core's: `[LANG]`, `## Mode`, `## Progress`, `## Platform`, `## Agents`, and the file-level scaffolding. It owns none of the stack: `## Stack` and `## Modules` are filled by the platform half (step 5), because which axes exist and which values they take is the platform manifest's `## Axes`, not core's.
 
 The skill creates no source files, modifies no code, and starts no workflow. Generating a project from scratch belongs to the platform plugin's `init` agent.
 
@@ -45,7 +45,7 @@ a value in the caller's own vocabulary costs one re-asked question, never a wron
 
 Special case for `setup`: `CLAUDE-spine-toolkit.md` does not yet exist on first install (we are creating it). The skill therefore asks for the language as the very first question (q0) using keys `auq_lang_label` and `auq_lang_options`. Until that answer arrives, the q0 prompt is shown bilingually (English label / Russian label). From q0 onward, `<lang>` is the chosen value (`en` or `ru`), and every subsequent AUQ / error / report uses `locales/<lang>.md`. If q0 is skipped (text fallback, harness limitation), default to `en`.
 
-The full resolution procedure used elsewhere — read `CLAUDE-spine-toolkit.md → ## Language` — applies after `setup` has finished.
+The full resolution procedure used elsewhere — read `CLAUDE-spine-toolkit.md`'s `[LANG]` field — applies after `setup` has finished.
 
 ## Agent Tooling
 
@@ -80,7 +80,7 @@ The skill's behavior is determined by the project state, computed from four chec
 1. Does `CLAUDE.md` exist in the project root?
 2. Does `CLAUDE-spine-toolkit.md` exist in the project root?
 3. Does a pre-split `CLAUDE-swift-toolkit.md` exist in the project root?
-4. Does `CLAUDE.md` contain any of `## Language`, `## Stack`, or `## Mode` headings? (Indicates the legacy single-file format.)
+4. Does `CLAUDE.md` contain any of the legacy block headings — Language, Stack, Mode? (Indicates the legacy single-file format.)
 
 | State | `CLAUDE.md` | `CLAUDE-spine-toolkit.md` | Pre-split config | Toolkit sections in `CLAUDE.md`? | Action branch |
 |---|---|---|---|---|---|
@@ -347,7 +347,7 @@ In `templates/claude-toolkit-md/en.md` (the toolkit file is EN-only):
 | first non-empty line under `## Mode` | qM | `manual` or `auto` |
 | first non-empty line under `## Progress` | qP | `quiet`, `normal` or `live` |
 | first non-empty line under `## DeliveryMode` | template default | `manual`; do not replace this when applying qM |
-| `en` value in `## Language` | q0 | `en` or `ru` |
+| the bracketed value in `[LANG]` | q0 | `en` or `ru` |
 | `<Communication Language>` in `## Persona` | q0 | `English` or `Russian` (the human-readable language name; drives Claude's communication language with the user) |
 
 `## Agents` keeps its template body verbatim. That body is explanatory prose with angle-bracket

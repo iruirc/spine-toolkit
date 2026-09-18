@@ -132,7 +132,7 @@ Write your output into the stage file the orchestrator names.
 ```
 
 The frontmatter `description` is the one place in an agent file where a language other than English
-belongs — triggers are bilingual regardless of the project's `## Language`, because a user types them
+belongs — triggers are bilingual regardless of the project's `[LANG]`, because a user types them
 in whichever language they think in. The body stays English.
 
 Three things every role agent needs:
@@ -399,7 +399,7 @@ covering on your side:
 
 English is the source of truth. A skill with user-facing strings puts them in
 `<plugin>/skills/<name>/locales/en.md` with a key-for-key `ru.md` beside it, and references them from the
-skill body by key — never inlined. The active language is `## Language` in the project config;
+skill body by key — never inlined. The active language is `[LANG]` in the project config;
 `/lang` switches it. Skill triggers stay bilingual regardless of the setting.
 
 The convention is `conventions/i18n.md`, and the lints are `lint-i18n.sh` and `lint-locales.sh`.
@@ -531,7 +531,7 @@ merge: for a role it names, your rows for that role — bare and axis-qualified 
 consulted at all. A block that names no role overrides nothing, which is the state to expect.
 
 The same file holds `## Stack` (resolved axis values), `## Modules` (per-module stack overrides), and
-core's own blocks: `## Language`, `## Platform`, `## Mode`, `## Progress`, `## Validation`,
+core's own blocks and fields: `[LANG]`, `## Platform`, `## Mode`, `## Progress`, `## Validation`,
 `## Reporting`, `## Docs`, `## Scale`, `## Budgets`, `## Models`, `## Effort`, `## EstimationDeltas`,
 `## DeliveryMode`, `## AILeverage`, `## Paths`.
 `## Docs`, `## Scale`, `## Budgets`, `## Models` and `## Effort` are core's alone — a platform

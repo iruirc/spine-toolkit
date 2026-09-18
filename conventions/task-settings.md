@@ -44,7 +44,7 @@ spelling, is read as `deep` and reported in words of its own, because a migratio
 
 | Field | `Task.md` | Config | Values | Default |
 |---|---|---|---|---|
-| `lang` | — | `## Language`, first value line | `en` `ru` | `en` |
+| `lang` | — | `[LANG]` | `en` `ru` | `en` |
 | `mode` | `[WORKFLOW_MODE]` | `## Mode`, first value line | `manual` `auto` | `manual` |
 | `progress` | — | `## Progress`, first value line | `quiet` `normal` `live` | `normal` |
 | `settings_report` | — | `## Progress` → `settings` | `diff` `full` `off` | `diff` |
