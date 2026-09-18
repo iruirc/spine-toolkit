@@ -51,36 +51,50 @@ step 3, where every other axis of the catalog is needed by default.
        return {needed: [], resolved: {}, unresolved: []}
        # orchestrator handles the ambient-info case; stack-detect is a no-op
 
-2. scan := one pass over task_files producing:
-       paths_implied   := axes flagged by the `path:` rows of rules
-       imports_implied := values pinned by the `import:` / `token:` / `file:`
-                          rows of rules
-   (the scan result is computed once and reused in step 4)
+2. paths := match task_files against the `path:` rows of rules. Names only —
+   this step opens no file:
+       paths_implied := the axes those rows flag outright
+       pending       := their conditional add-ons (`+ <axis> if …`), each one an
+                        (axis, condition, files) the content pass corroborates
 
 3. may := (envelope.may == all) ? axes : (envelope.may ∩ axes)
    never := (envelope.never == all) ? axes : envelope.never
-   needed := (may ∩ (paths_implied ∪ imports_implied)) − never
+   needed  := (may ∩ paths_implied) − never
+   pending := the entries of pending whose axis ∈ (may − never − needed)
    if task_files is empty:
-       needed := may          # early-stage fallback; AUQ deferred by orchestrator
+       needed := may; pending := {}
+       # early-stage fallback; AUQ deferred by orchestrator
 
-4. for axis in needed, resolve via the per-axis chain (first hit wins):
+4. for axis in needed ∪ pending.axes, resolve via the per-axis chain
+   (first hit wins; no link here opens a file):
        a. Task.md → ## 4. [Stack] line for axis
        b. project config → ## Modules (if a module entry matching a task file
           overrides the axis)
        c. project config → ## Stack line for axis
-       d. imports_implied[axis] from step 2 (only axes some rule pins)
-   resolved[axis]   := first hit
-   unresolved       := needed axes with no hit
 
-5. return {needed, resolved, unresolved}
+5. content pass — the one step that reads a file, so it runs only on what step 4
+   left open, and reads only the rows bearing on it:
+       • entry in pending: the condition's signal, in the files whose add-on
+         named it. Satisfied → the axis joins needed; unsatisfied → it is
+         dropped, along with any value step 4 found for it.
+       • axis in needed still unresolved after step 4: the `import:` / `token:` /
+         `file:` rows pinning that axis, over the task_files that flagged it.
+   Neither bullet has an entry → no file is read at all, which is the ordinary
+   case: a configured project answers every axis at link c, and every later
+   stage of the same task at link a.
+
+6. resolved[axis] := the chain hit, or the value the content pass pinned
+   unresolved      := needed axes with neither
+
+7. return {needed, resolved, unresolved}
 ```
 
 ## Reading the rules
 
 - A file matching no `path:` row implies no axis, and forces no question on its
   own.
-- A `path:` row's conditional add-on (`+ <axis> if …`) joins `paths_implied` only
-  for a file the scan of step 2 shows to satisfy the condition — corroborated,
+- A `path:` row's conditional add-on (`+ <axis> if …`) joins `needed` only for a
+  file the content pass of step 5 shows to satisfy the condition — corroborated,
   never asserted. Where the condition names a signal some `import:` or `token:`
   row pins, that row is the check.
 - Multi-module repo with no `## Modules` block: an axis takes the value fitting
@@ -92,7 +106,7 @@ step 3, where every other axis of the catalog is needed by default.
 ```
 needed     = [axis, ...]
 resolved   = {axis: value, ...}     # value ∈ catalog[axis]
-unresolved = [axis, ...]            # subset of needed with no chain hit
+unresolved = [axis, ...]            # subset of needed left without a value
 ```
 
 ## Invariants
@@ -102,5 +116,7 @@ unresolved = [axis, ...]            # subset of needed with no chain hit
   that axis: a heuristic hit outside them is discarded, leaving the axis
   unresolved rather than returning something the catalog does not list.
 - `resolved.keys ∪ unresolved == needed` (every needed axis is accounted for).
+- No file is read for an axis links a–c already answered: content is the last
+  resort, never the first pass.
 - `task_files` empty ⇒ `needed == may`, resolution still attempted from
   `Task.md`/project config; AUQ deferral is the orchestrator's responsibility.

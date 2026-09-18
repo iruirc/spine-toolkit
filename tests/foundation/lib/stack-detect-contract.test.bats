@@ -30,6 +30,19 @@ setup() {
   grep -qE '^ *axes +:= keys of catalog − ecosystem$' "$SD"
 }
 
+@test "the per-axis chain reaches no file content" {
+  # The scan used to run eagerly in step 2 and feed link d, so every task file was
+  # read for axes the config had already answered. Content is a step of its own
+  # now; a pinning row back inside the chain restores the eager read.
+  chain="$(sed -n '/^4\. for axis in needed/,/^$/p' "$SD")"
+  [ -n "$chain" ] || { echo "step 4 not found; the grep went vacuous"; return 1; }
+  # `import:`/`token:`/`file:` names a row; a fourth link is how the scan gets
+  # back in under any spelling, so pin the link count too.
+  run grep -cE 'import:|token:|file:|^ *d\.' <<<"$chain"
+  [ "$output" = "0" ]
+  grep -q 'No file is read for an axis links a–c already answered' "$SD"
+}
+
 @test "core references no conventions file it does not own" {
   missing=""
   refs="$(grep -rhoE 'conventions/[A-Za-z0-9._-]+\.md' \
