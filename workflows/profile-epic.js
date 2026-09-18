@@ -79,6 +79,9 @@ const runs = (stage) => {
 const DIR = A.task_dir
 const LANG = A.lang || 'en'
 const STACK = A.stack || 'unspecified'
+const DRIVE_APP = A.drive_app === 'off' ? 'off' : 'auto'
+const MANUAL_CHECKS = A.manual_checks === 'always' ? 'always' : 'auto'
+const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'
 
 // Documentation routing. Which declared component a change set may have touched is a script
 // (conventions/docs-components.md), because matching a diff against a dozen glob patterns by
@@ -598,9 +601,9 @@ if (runs('Execute')) {
       need_test: st.need_test === undefined ? A.need_test : st.need_test,
       need_review: st.need_review === undefined ? A.need_review : st.need_review,
       scale: st.scale === undefined ? scale : st.scale,
-      drive_app: st.drive_app === undefined ? A.drive_app : st.drive_app,
-      manual_checks: st.manual_checks === undefined ? A.manual_checks : st.manual_checks,
-      phase_verification: st.phase_verification === undefined ? A.phase_verification : st.phase_verification,
+      drive_app: st.drive_app === undefined ? DRIVE_APP : st.drive_app,
+      manual_checks: st.manual_checks === undefined ? MANUAL_CHECKS : st.manual_checks,
+      phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
       archive_paths: [],
       epic_id: A.task_id,
       epic_dir: DIR,

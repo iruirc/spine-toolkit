@@ -305,8 +305,22 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
 @test "the epic forwards every field a step can override" {
   # driver stays off this list: it never rides the Outbound Contract
   # (tests/foundation/lib/orchestrator-contract.test.bats — "the driver does not travel").
+  # The fallback is the prelude's guarded local (DRIVE_APP, …), not A.<field> directly — an
+  # absent contract field must not push a bare `undefined` into the pushed step's args.
   for field in drive_app manual_checks phase_verification; do
-    grep -qF "$field: st.$field === undefined ? A.$field : st.$field" "$ROOT/workflows/profile-epic.js" \
+    guarded="$(tr '[:lower:]' '[:upper:]' <<<"$field")"
+    grep -qF "$field: st.$field === undefined ? $guarded : st.$field" "$ROOT/workflows/profile-epic.js" \
       || { echo "profile-epic.js does not forward $field to a step"; return 1; }
+  done
+}
+
+@test "drive_app, manual_checks and phase_verification default like every other guarded local" {
+  for p in "$ROOT"/workflows/profile-*.js; do
+    grep -qxF "const DRIVE_APP = A.drive_app === 'off' ? 'off' : 'auto'" "$p" \
+      || { echo "$(basename "$p"): drive_app is not guarded"; return 1; }
+    grep -qxF "const MANUAL_CHECKS = A.manual_checks === 'always' ? 'always' : 'auto'" "$p" \
+      || { echo "$(basename "$p"): manual_checks is not guarded"; return 1; }
+    grep -qxF "const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'" "$p" \
+      || { echo "$(basename "$p"): phase_verification is not guarded"; return 1; }
   done
 }

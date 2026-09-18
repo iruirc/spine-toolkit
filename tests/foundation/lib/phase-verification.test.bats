@@ -67,6 +67,7 @@ section() { # $1 = file, $2 = heading text without "## "
     || { echo "the switch does not point at the contract field"; return 1; }
   grep -qF 'conventions/task-settings.md' <<<"$sw" \
     || { echo "the switch does not point at the chain"; return 1; }
+  grep -qF '`proportional`, the default,' <<<"$sw" || { echo "the switch does not name proportional the default"; return 1; }
   grep -qF 'There is no `off`' <<<"$sw" || { echo "the switch does not rule out off"; return 1; }
 }
 

@@ -16,7 +16,7 @@ There is no third value. A third needs two thresholds and a corpus calibrated fo
 ## Resolution
 
 ```
-Task.md [SCALE]  →  CLAUDE-spine-toolkit.md ## Scale  →  full
+Task.md [SCALE]  →  the epic's Task.md [SCALE] for a .step/ folder  →  CLAUDE-spine-toolkit.md ## Scale  →  full
 ```
 
 First hit wins. A missing section is the default, not an error. The orchestrator resolves this once

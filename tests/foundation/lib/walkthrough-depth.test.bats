@@ -196,21 +196,20 @@ NAMES
   done
 }
 
-@test "all five stage chains spell the lite step in the canonical position" {
-  # Three different chains for one field used to live here: epic named no `scale`
-  # step at all, the four siblings named it last. The spec's order puts the lite
-  # gate second, before the project config, and precedence is what the order means.
-  for p in feature bug refactor test epic; do
-    S="$ROOT/skills/workflow-$p/SKILL.md"
-    grep -qF 'in `Task.md`, else `off` when this run'"'"'s `scale` is `lite` (§2a), else `## Reporting`' "$S" \
-      || { echo "first miss — workflow-$p: the chain omits the lite step or orders it wrong"; return 1; }
-  done
+@test "the walkthrough chain spells the lite step in the canonical position" {
+  # Used to be five copies, one per workflow-*/SKILL.md (epic named no `scale` step at all, the
+  # four siblings named it last). The settings-resolver task consolidated the governance sentence
+  # to a contract pointer in every one of them, so the chain — and its precedence, lite gate
+  # before project config — is pinned once, here, instead.
+  C="$ROOT/conventions/task-settings.md"
+  grep -qF 'Task.md [WALKTHROUGH]  →  off when scale resolved to lite  →  CLAUDE-spine-toolkit.md ## Reporting → walkthrough  →  deep' "$C" \
+    || { echo "the chain omits the lite step or orders it wrong"; return 1; }
 }
 
-@test "the epic's own chain ends at the new default" {
-  S="$ROOT/skills/workflow-epic/SKILL.md"
-  grep -qF 'in `CLAUDE-spine-toolkit.md`, else `deep`' "$S" \
-    || { echo "workflow-epic still defaults to the pre-depth value"; return 1; }
+@test "the walkthrough chain ends at the new default" {
+  C="$ROOT/conventions/task-settings.md"
+  grep -qF '## Reporting → walkthrough  →  deep' "$C" \
+    || { echo "task-settings.md still defaults to the pre-depth value"; return 1; }
 }
 
 @test "the scale convention's worked example uses a value that still exists" {
