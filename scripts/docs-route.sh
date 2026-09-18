@@ -58,11 +58,33 @@ def opt(name, default=None):
     return default
 
 
+_SETTINGS_CACHE = {}
+_WARNED = set()
+
+
+def _emit_stderr(text):
+    """Print each resolver stderr line at most once per run: `route` reads the same project's
+    config through several directories (a task, then ROOT twice over), which would otherwise
+    repeat the same warning once per call."""
+    for line in text.splitlines():
+        if line and line not in _WARNED:
+            _WARNED.add(line)
+            print(line, file=sys.stderr)
+
+
 def settings(start):
-    """Every setting of this dir, from the one reader (scripts/resolve-settings.sh)."""
+    """Every setting of this dir, from the one reader (scripts/resolve-settings.sh). Memoized per
+    directory. A resolver failure is an error, not a default — it stops the run with exit 2, the
+    usage/malformed code this script already uses for input it cannot read."""
+    if start in _SETTINGS_CACHE:
+        return _SETTINGS_CACHE[start]
     out = subprocess.run([RESOLVE, 'json', start], capture_output=True, text=True)
-    sys.stderr.write(out.stderr)
-    return json.loads(out.stdout) if out.returncode == 0 else {}
+    _emit_stderr(out.stderr)
+    if out.returncode != 0:
+        print('docs-route.sh: resolve-settings.sh failed for %s' % start, file=sys.stderr)
+        sys.exit(2)
+    _SETTINGS_CACHE[start] = json.loads(out.stdout)
+    return _SETTINGS_CACHE[start]
 
 
 def under(prefix, path):
@@ -112,6 +134,10 @@ def parse_map(path, prefix, errors):
 def package_roots():
     roots = []
     out = subprocess.run([RESOLVE, 'raw', ROOT, 'Paths'], capture_output=True, text=True)
+    _emit_stderr(out.stderr)
+    if out.returncode != 0:
+        print('docs-route.sh: resolve-settings.sh raw failed for %s ## Paths' % ROOT, file=sys.stderr)
+        sys.exit(2)
     for pat in re.findall(r'^\s*-\s*External packages:\s*(.+?)\s*$', out.stdout, flags=re.M):
         for p in sorted(globlib.glob(os.path.join(ROOT, pat.strip().lstrip('/')))):
             if os.path.isdir(p):

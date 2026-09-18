@@ -918,3 +918,74 @@ EOF
   [ "$status" -eq 0 ]
   [ "$output" = "on" ]
 }
+
+@test "state fails loud on a resolver failure, and never turns a suspended project back on" {
+  printf '## Docs\n\nenabled: off\nmap: DocsMap.md\nstrictness: blocking\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$DR" state "$PROJ" --task-dir "$PROJ/Tasks/ACTIVE/does-not-exist"
+  [ "$status" -eq 2 ]
+  [ "$output" != "on" ] || { echo "a failed resolver call flipped off to on"; return 1; }
+  [ "$output" != "off" ] || { echo "a failed resolver call defaulted to off, silently"; return 1; }
+  case "$output" in *"resolve-settings.sh failed"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+# Copies the router next to a stub resolve-settings.sh, so a resolver failure can be forced
+# without touching the real script: ${BASH_SOURCE[0]} makes the router look for its resolver
+# beside itself.
+broken_resolver() {
+  cp "$DR" "$BATS_TEST_TMPDIR/dr.sh"
+  printf '#!/usr/bin/env bash\necho "boom: resolver exploded" >&2\nexit 2\n' >"$BATS_TEST_TMPDIR/resolve-settings.sh"
+  chmod +x "$BATS_TEST_TMPDIR/resolve-settings.sh"
+}
+
+@test "a resolver failure is an error, not a default: registry stops at exit 2" {
+  broken_resolver
+  map <<'EOF'
+## Ledger
+
+genre: state
+places:
+  - Documents/Ledger/
+covers:
+  - Sources/Ledger/**
+EOF
+  run "$BATS_TEST_TMPDIR/dr.sh" registry "$PROJ"
+  [ "$status" -eq 2 ]
+  case "$output" in *"boom: resolver exploded"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "package_roots treats a failed raw the same way — an error, not an empty package list" {
+  broken_resolver
+  paths_block
+  pkg Core <<'EOF'
+## Pricing
+
+genre: state
+places:
+  - Documents/Pricing/
+covers:
+  - Sources/Pricing/**
+EOF
+  run "$BATS_TEST_TMPDIR/dr.sh" registry "$PROJ"
+  [ "$status" -eq 2 ]
+  case "$output" in *"Pricing"*) echo "silently dropped the package registry instead of failing: $output"; return 1 ;; *) ;; esac
+}
+
+@test "a resolver warning shared across route's several resolver calls is printed once" {
+  task; two_components
+  printf '\n## Budgets\n\nPlan.md: many\n' >>"$PROJ/CLAUDE-spine-toolkit.md"
+  run bash -c "printf 'M\tSources/Ledger/Resolver.txt\n' | '$DR' route '$PROJ' --task-dir '$TASK' --phase 3"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  n="$(printf '%s\n' "$output" | grep -c "Plan.md: many' not recognized")"
+  [ "$n" -eq 1 ] || { echo "printed $n time(s): $output"; return 1; }
+}
+
+@test "an epic's [DOCS] = [off] reaches its .step/ children, same as every other field's chain" {
+  EPIC="$PROJ/Tasks/ACTIVE/060-an-epic"
+  STEP="$EPIC/1-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[DOCS] = [off]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  run "$DR" state "$PROJ" --task-dir "$STEP"
+  [ "$status" -eq 0 ]
+  [ "$output" = "off" ] || { echo "$output"; return 1; }
+}

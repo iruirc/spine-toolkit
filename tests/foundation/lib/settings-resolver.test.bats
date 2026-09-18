@@ -151,6 +151,93 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   [ "$(source_of models <<<"$output")" = epic ] || { echo "$output"; return 1; }
 }
 
+@test "a step's [MODELS] key overrides the epic's, and a key the step does not name still reaches it" {
+  EPIC="$PROJ/Tasks/ACTIVE/053-an-epic"
+  STEP="$EPIC/1-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[MODELS] = [architect: opus, reviewer: haiku]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n[MODELS] = [architect: sonnet]\n' >"$STEP/Task.md"
+  run "$RESOLVE" json "$STEP"
+  [ "$(map_value models architect <<<"$output")" = sonnet ] || { echo "the step's own key lost: $output"; return 1; }
+  [ "$(map_value models reviewer <<<"$output")" = haiku ] || { echo "the epic's key did not reach the step: $output"; return 1; }
+  [ "$(source_of models <<<"$output")" = task ] || { echo "$output"; return 1; }
+}
+
+@test "a project that says nothing resolves models and effort to their defaults, light and validator at sonnet" {
+  run "$RESOLVE" json "$TASK"
+  [ "$status" -eq 0 ]
+  [ "$(map_value models light <<<"$output")" = sonnet ] || { echo "$output"; return 1; }
+  [ "$(map_value models validator <<<"$output")" = sonnet ] || { echo "$output"; return 1; }
+  [ "$(map_value models architect <<<"$output")" = session ] || { echo "$output"; return 1; }
+  [ "$(map_value effort architect <<<"$output")" = session ] || { echo "$output"; return 1; }
+  [ "$(map_value effort validator <<<"$output")" = session ] || { echo "$output"; return 1; }
+  [ "$(source_of models <<<"$output")" = default ] || { echo "$output"; return 1; }
+  [ "$(source_of effort <<<"$output")" = default ] || { echo "$output"; return 1; }
+}
+
+@test "light: platform reads as absent, so light keeps its sonnet default" {
+  printf '## Models\n\nlight: platform\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  [ "$(map_value models light <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
+}
+
+@test "keys and values are read case-insensitively" {
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [Architect: Opus]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(map_value models architect <<<"$output")" = opus ] || { echo "$output"; return 1; }
+}
+
+@test "a folder that is not a step never reads the Task.md above it" {
+  printf '[TASK_TYPE] = [EPIC]\n[MODELS] = [architect: opus]\n' >"$PROJ/Tasks/ACTIVE/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(map_value models architect <<<"$output")" = session ] || { echo "$output"; return 1; }
+}
+
+@test "light is a model key and not an effort key" {
+  printf '## Effort\n\nlight: low\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  "$RESOLVE" json "$TASK" 2>"$ERR" >/dev/null
+  grep -qF "## Effort: 'light: low' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+}
+
+@test "two Task.md EFFORT lines fold in file order, the last entry for a repeated key wins" {
+  printf '[TASK_TYPE] = [BUG]\n[EFFORT] = [reviewer: low, developer: medium]\n[EFFORT] = [reviewer: high]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(map_value effort reviewer <<<"$output")" = high ] || { echo "$output"; return 1; }
+  [ "$(map_value effort developer <<<"$output")" = medium ] || { echo "the first line's other key was lost: $output"; return 1; }
+}
+
+@test "a step's [EFFORT] key overrides the epic's, and a key the step does not name still reaches it" {
+  printf '## Effort\n\nreviewer: max\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  EPIC="$PROJ/Tasks/ACTIVE/051-an-epic"
+  STEP="$EPIC/1-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[EFFORT] = [reviewer: high, tester: low]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n[EFFORT] = [tester: medium]\n' >"$STEP/Task.md"
+  run "$RESOLVE" json "$STEP"
+  [ "$(map_value effort tester <<<"$output")" = medium ] || { echo "the step's own key lost: $output"; return 1; }
+  [ "$(map_value effort reviewer <<<"$output")" = high ] || { echo "the epic's key did not reach the step: $output"; return 1; }
+}
+
+@test "platform is still reported under an unknown ## Models key, and in ## Effort" {
+  printf '## Models\n\nplanner: platform\n\n## Effort\n\nreviewer: platform\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  "$RESOLVE" json "$TASK" 2>"$ERR" >/dev/null
+  grep -qF "## Models: 'planner: platform' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+  grep -qF "## Effort: 'reviewer: platform' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+}
+
+@test "a platform entry in the epic's Task.md reads as absent for its step" {
+  printf '## Models\n\narchitect: opus\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  EPIC="$PROJ/Tasks/ACTIVE/052-an-epic"
+  STEP="$EPIC/1-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[MODELS] = [architect: platform]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  out="$("$RESOLVE" json "$STEP" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  [ "$(map_value models architect <<<"$out")" = opus ] || { echo "$out"; return 1; }
+}
+
 @test "a budgets override is recorded with its own source, and show prints it" {
   printf '## Budgets\n\nPlan.md: 150\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$RESOLVE" json "$TASK"
