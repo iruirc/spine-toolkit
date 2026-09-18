@@ -69,7 +69,7 @@ task_docs = '--task-docs' in args
 print_budgets = '--budgets' in args
 # --budgets reads the ceilings and nothing else, which is what lets the orchestrator announce
 # every line it forwards as a budget line.
-_MINE[:] = ['## Budgets'] if print_budgets else ['## Budgets', '## Scale', 'Task.md [SCALE]']
+_MINE[:] = ['[BUDGETS]'] if print_budgets else ['[BUDGETS]', '[SCALE]']
 dirs = [a for a in args if a not in ('--task-docs', '--budgets')]
 if any(a.startswith('--') for a in dirs) or not dirs or (print_budgets and (task_docs or len(dirs) != 1)):
     print('usage: lint-artifact-budget.sh [--task-docs] <task-dir> [<task-dir> ...] | --budgets <task-dir>', file=sys.stderr)

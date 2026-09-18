@@ -10,7 +10,7 @@ setup() {
   PROJ="$BATS_TEST_TMPDIR/proj"
   TASK="$PROJ/Tasks/ACTIVE/042-a-task"
   mkdir -p "$TASK"
-  printf '## Scale\n\nlite\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Task defaults\n\n[SCALE] = [lite]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   printf '[TASK_TYPE] = [BUG]\n[NEED_TEST] = [true]\n' >"$TASK/Task.md"
 }
 
@@ -25,7 +25,7 @@ lines() { python3 -c 'import sys; open(sys.argv[1],"w").write("x\n"*int(sys.argv
 
 @test "the same Plan.md passes at full" {
   lines "$TASK/Plan.md" 300
-  printf '## Scale\n\nfull\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Task defaults\n\n[SCALE] = [full]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ]
 }
@@ -46,16 +46,16 @@ lines() { python3 -c 'import sys; open(sys.argv[1],"w").write("x\n"*int(sys.argv
   [ "$status" -eq 1 ]
 }
 
-@test "an absent Scale block means full, and full is never measured" {
+@test "an absent [SCALE] means full, and full is never measured" {
   lines "$TASK/Plan.md" 300
-  printf '# CLAUDE-spine-toolkit.md\n\n## Mode\n\nmanual\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '# CLAUDE-spine-toolkit.md\n\n## Task defaults\n\n[WORKFLOW_MODE] = [manual]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ]
 }
 
-@test "an unrecognized Scale value resolves to full and is reported, not silent" {
+@test "an unrecognized [SCALE] resolves to full and is reported, not silent" {
   lines "$TASK/Plan.md" 300
-  printf '## Scale\n\ngarbage\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Task defaults\n\n[SCALE] = [garbage]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ]
   case "$output" in *"garbage"*"not recognized"*) ;; *) echo "$output"; return 1 ;; esac
@@ -138,7 +138,7 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
 }
 
 @test "--task-docs fails a step over its ceiling, at full" {
-  printf '## Scale\n\nfull\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Task defaults\n\n[SCALE] = [full]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   epic; step_task "$TASK/1.step" 101
   run "$LINT" --task-docs "$TASK"
   [ "$status" -eq 1 ]
@@ -175,8 +175,8 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }
 
-@test "## Budgets moves a step's ceiling" {
-  printf '## Scale\n\nfull\n\n## Budgets\n\nTask.md: 120\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+@test "[BUDGETS] moves a step's ceiling" {
+  printf '## Project settings\n\n[BUDGETS] = [Task.md: 120]\n\n## Task defaults\n\n[SCALE] = [full]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   epic; step_task "$TASK/1.step" 120
   run "$LINT" --task-docs "$TASK"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
@@ -185,27 +185,27 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
   [ "$status" -eq 1 ]
 }
 
-@test "## Budgets moves a lite ceiling, and only its number" {
-  printf '## Scale\n\nlite\n\n## Budgets\n\nPlan.md: 300\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+@test "[BUDGETS] moves a lite ceiling, and only its number" {
+  printf '## Project settings\n\n[BUDGETS] = [Plan.md: 300]\n\n## Task defaults\n\n[SCALE] = [lite]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   lines "$TASK/Plan.md" 250
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-  printf '## Scale\n\nfull\n\n## Budgets\n\nPlan.md: 10\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[BUDGETS] = [Plan.md: 10]\n\n## Task defaults\n\n[SCALE] = [full]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "a budget made a full task measured: $output"; return 1; }
 }
 
 @test "an unrecognized budget keeps the default and is reported" {
-  printf '## Scale\n\nlite\n\n## Budgets\n\nPlan.md: many\nNotes.md: 10\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[BUDGETS] = [Plan.md: many, Notes.md: 10]\n\n## Task defaults\n\n[SCALE] = [lite]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   lines "$TASK/Plan.md" 201
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ]
-  case "$output" in *"## Budgets: 'Plan.md: many' not recognized"*) ;; *) echo "$output"; return 1 ;; esac
-  case "$output" in *"## Budgets: 'Notes.md: 10' not recognized"*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *"[BUDGETS]: 'Plan.md: many' not recognized"*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *"[BUDGETS]: 'Notes.md: 10' not recognized"*) ;; *) echo "$output"; return 1 ;; esac
 }
 
-@test "the template's guidance under ## Budgets is not a budget" {
-  awk '/^## Budgets$/{f=1} f&&/^## /&&!/^## Budgets$/{exit} f' "$ROOT/templates/claude-toolkit-md/en.md" >>"$PROJ/CLAUDE-spine-toolkit.md"
+@test "the template's own [BUDGETS] line is not a budget" {
+  grep -F '[BUDGETS]' "$ROOT/templates/claude-toolkit-md/en.md" >>"$PROJ/CLAUDE-spine-toolkit.md"
   lines "$TASK/Plan.md" 199
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
@@ -213,7 +213,7 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
 }
 
 @test "--budgets prints the resolved map in the contract's brace syntax" {
-  printf '## Budgets\n\nTask.md: 120\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[BUDGETS] = [Task.md: 120]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$LINT" --budgets "$TASK"
   [ "$status" -eq 0 ]
   [ "$output" = "{Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 120, Validation.md: 100}" ] \
@@ -264,7 +264,7 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
 }
 
 @test "a budget value with a non-ASCII digit keeps the default and is reported, not a crash" {
-  printf '## Budgets\n\nPlan.md: ²\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[BUDGETS] = [Plan.md: ²]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$LINT" --budgets "$TASK"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   case "$output" in *"Plan.md: 200"*) ;; *) echo "$output"; return 1 ;; esac
@@ -297,7 +297,7 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
 }
 
 @test "--budgets keeps stdout to the map while a warning goes to stderr" {
-  printf '## Budgets\n\nPlan.md: ²\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[BUDGETS] = [Plan.md: ²]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   out="$("$LINT" --budgets "$TASK" 2>/dev/null)"
   [ "$out" = "{Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100}" ] \
     || { echo "$out"; return 1; }
@@ -344,7 +344,7 @@ broken_resolver() {
 @test "--budgets forwards only the resolver lines about the ceilings it asked for" {
   # The orchestrator announces every line this call prints as a budget problem, so a tuning typo
   # forwarded here reaches the user under the wrong name — and again from the tuning call.
-  printf '## Budgets\n\nPlan.md: many\n\n## Models\n\narchitect: gpt\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[BUDGETS] = [Plan.md: many]\n\n## Task defaults\n\n[MODELS] = [architect: gpt]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$LINT" --budgets "$TASK"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   case "$output" in *"Plan.md: many' not recognized"*) ;; *) echo "dropped its own field: $output"; return 1 ;; esac
@@ -352,7 +352,7 @@ broken_resolver() {
 }
 
 @test "a resolver warning shared by two task dirs is printed once, not once per directory" {
-  printf '## Scale\n\nfull\n\n## Budgets\n\nPlan.md: many\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '## Project settings\n\n[BUDGETS] = [Plan.md: many]\n\n## Task defaults\n\n[SCALE] = [full]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   TASK2="$PROJ/Tasks/ACTIVE/043-b-task"
   mkdir -p "$TASK2"
   printf '[TASK_TYPE] = [BUG]\n' >"$TASK2/Task.md"

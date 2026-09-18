@@ -22,3 +22,11 @@ mentions() {
   done < <(find "$ROOT/skills" "$ROOT/conventions" "$ROOT/commands" "$ROOT/docs" -name '*.md')
   [ "$n" -ge 60 ] || { echo "scanned $n file(s), expected at least 60"; return 1; }
 }
+
+@test "no script or workflow names a moved block of the config" {
+  for f in "$ROOT"/scripts/*.sh "$ROOT"/workflows/*.js; do
+    for block in Language Mode Progress Scale Reporting Validation Docs Budgets Models Effort; do
+      [ -z "$(mentions "$block" "$f")" ] || { echo "$f still names ## $block"; return 1; }
+    done
+  done
+}

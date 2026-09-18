@@ -1,6 +1,6 @@
 ---
 name: phase-verification
-description: "Use at Plan to decide how much each phase checks before it commits, at the implementing stage to run exactly that, and at Review to judge the choice. The rung follows from what a phase changes for the modules that depend on it, never from how risky the edit feels, and the full regression belongs to Validation. Governed by `[PHASE_VERIFICATION]` in Task.md and `## Validation` in CLAUDE-spine-toolkit.md."
+description: "Use at Plan to decide how much each phase checks before it commits, at the implementing stage to run exactly that, and at Review to judge the choice. The rung follows from what a phase changes for the modules that depend on it, never from how risky the edit feels, and the full regression belongs to Validation. Governed by `[PHASE_VERIFICATION]` in Task.md and CLAUDE-spine-toolkit.md."
 ---
 
 # Phase Verification

@@ -110,7 +110,7 @@ verbatim and a rename would leave it resolving to nothing.
 
 One Markdown file per agent at `<plugin>/agents/<name>.md`, frontmatter `name` + `description` (plus
 `color` or `tools` where your host supports them; leave `model` and `effort` out — the project's
-`## Models` and `## Effort` choose them, `conventions/platform-contract.md` → `## Roles`):
+`[MODELS]` and `[EFFORT]` choose them, `conventions/platform-contract.md` → `## Roles`):
 
 ```markdown
 ---
@@ -531,11 +531,11 @@ merge: for a role it names, your rows for that role — bare and axis-qualified 
 consulted at all. A block that names no role overrides nothing, which is the state to expect.
 
 The same file holds `## Stack` (resolved axis values), `## Modules` (per-module stack overrides), and
-core's own blocks and fields: `[LANG]`, `## Platform`, `## Mode`, `## Progress`, `## Validation`,
-`## Reporting`, `## Docs`, `## Scale`, `## Budgets`, `## Models`, `## Effort`, `## EstimationDeltas`,
-`## DeliveryMode`, `## AILeverage`, `## Paths`.
-`## Docs`, `## Scale`, `## Budgets`, `## Models` and `## Effort` are core's alone — a platform
-neither declares them nor reads them, and nothing in your manifest changes because of it.
+core's own: the blocks `## Platform`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`,
+`## Paths`, plus every `[FIELD] = [value]` line of `## Project settings` and `## Task defaults`
+(`conventions/task-settings.md` lists them all). Of those fields, `[SCALE]`, `[BUDGETS]`, `[MODELS]`,
+`[EFFORT]` and the four `[DOCS…]` ones are core's alone — a platform neither declares them nor reads
+them, and nothing in your manifest changes because of it.
 
 ## 8. Release checklist
 

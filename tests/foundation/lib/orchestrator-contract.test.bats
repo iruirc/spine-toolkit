@@ -49,7 +49,7 @@ section() {
 @test "the scale field documents the whole resolution chain" {
   para="$(awk '/^`scale` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`scale\` paragraph in the Outbound Contract"; return 1; }
-  for token in '[SCALE]' '## Scale' '`full`'; do
+  for token in '[SCALE]' 'CLAUDE-spine-toolkit.md' '`full`'; do
     case "$para" in
       *"$token"*) ;;
       *) echo "the scale chain does not name $token"; return 1 ;;
@@ -106,7 +106,7 @@ section() {
     || { echo "the pre-flight does not say it reads the resolver's driver field"; return 1; }
   ! grep -qF 'Task.md [DRIVER]' <<<"$preflight" \
     || { echo "the pre-flight still walks Task.md [DRIVER] itself"; return 1; }
-  ! grep -qF 'CLAUDE-spine-toolkit.md ## Validation' <<<"$preflight" \
+  ! grep -qF 'CLAUDE-spine-toolkit.md [DRIVER]' <<<"$preflight" \
     || { echo "the pre-flight still reads CLAUDE-spine-toolkit.md itself"; return 1; }
 }
 
@@ -148,7 +148,7 @@ section() {
 @test "the walkthrough field documents the whole resolution chain" {
   para="$(awk '/^`walkthrough` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`walkthrough\` paragraph in the Outbound Contract"; return 1; }
-  for token in '[WALKTHROUGH]' '## Reporting' '`deep`' '`brief`' '`off`'; do
+  for token in '[WALKTHROUGH]' 'CLAUDE-spine-toolkit.md' '`deep`' '`brief`' '`off`'; do
     grep -qF "$token" <<<"$para" \
       || { echo "the walkthrough paragraph never mentions $token"; return 1; }
   done
@@ -156,7 +156,7 @@ section() {
   # paragraph, so each link is asserted in place rather than by presence.
   grep -qF '`off` when `scale` is `lite`' <<<"$para" \
     || { echo "the paragraph's own chain omits the lite step"; return 1; }
-  grep -qF '`## Reporting` → `walkthrough` → `deep`' <<<"$para" \
+  grep -qF '`CLAUDE-spine-toolkit.md` `[WALKTHROUGH]` → `deep`' <<<"$para" \
     || { echo "the paragraph's chain does not end at the deep default"; return 1; }
   grep -qF 'Always filled' <<<"$para" \
     || { echo "the paragraph never says the field can be read unconditionally"; return 1; }
@@ -174,7 +174,7 @@ section() {
 }
 
 @test "scale still moves the walkthrough default, and to deep" {
-  grep -qF '`off` when `scale` is `lite` → `CLAUDE-spine-toolkit.md ## Reporting` → `deep`' "$SKILL" \
+  grep -qF '`off` when `scale` is `lite` → `CLAUDE-spine-toolkit.md [WALKTHROUGH]` → `deep`' "$SKILL" \
     || { echo "the scale-to-walkthrough chain still ends at the old default"; return 1; }
 }
 
@@ -190,7 +190,7 @@ section() {
     # Named twice: once as the source that decides after the skipped value, once as where to fix
     # it. A string that names it only as the place to fix is one still claiming a depth of its own.
     # Counted rather than grepped, both locales being one paragraph on one line.
-    n="$(grep -oF -- '## Reporting' <<<"$body" | wc -l | tr -d ' ')"
+    n="$(grep -oF -- '[WALKTHROUGH]' <<<"$body" | wc -l | tr -d ' ')"
     [ "$n" -ge 2 ] \
       || { echo "$lang.md: the announcement never names what decides after the value is skipped"; return 1; }
   done
@@ -226,7 +226,7 @@ section() {
 @test "the budgets field is resolved by the script, not by reading the config" {
   para="$(awk '/^`budgets` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`budgets\` paragraph in the Outbound Contract"; return 1; }
-  for token in 'lint-artifact-budget.sh --budgets' '## Budgets' 'warn_budget_unrecognised' 'Always filled' 'real JSON'; do
+  for token in 'lint-artifact-budget.sh --budgets' '[BUDGETS]' 'warn_budget_unrecognised' 'Always filled' 'real JSON'; do
     grep -qF "$token" <<<"$para" || { echo "the budgets paragraph does not name $token"; return 1; }
   done
 }
@@ -264,13 +264,13 @@ section() {
 @test "models and effort are resolved by the script, not by reading the config" {
   para="$(awk '/^`models` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`models\` paragraph in the Outbound Contract"; return 1; }
-  for token in 'resolve-settings.sh' '## Models' '[MODELS]' '.step/' 'warn_tuning_unrecognised' 'Always filled' 'real JSON' 'Model and effort' \
+  for token in 'resolve-settings.sh' 'CLAUDE-spine-toolkit.md' '[MODELS]' '.step/' 'warn_tuning_unrecognised' 'Always filled' 'real JSON' 'Model and effort' \
               '`sonnet` for `light` and `validator`, `session` for every other role'; do
     grep -qF "$token" <<<"$para" || { echo "the models paragraph does not name $token"; return 1; }
   done
   para="$(awk '/^`effort` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`effort\` paragraph in the Outbound Contract"; return 1; }
-  for token in 'resolve-settings.sh' '## Effort' '[EFFORT]' 'Always filled' '**Dispatch**'; do
+  for token in 'resolve-settings.sh' 'CLAUDE-spine-toolkit.md' '[EFFORT]' 'Always filled' '**Dispatch**'; do
     grep -qF "$token" <<<"$para" || { echo "the effort paragraph does not name $token"; return 1; }
   done
 }

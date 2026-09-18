@@ -107,20 +107,20 @@ For reference, the templates contain these placeholders:
    - Stack traces / crashlogs → `## 6. [StackTrace]` (only if present)
    The prose follows the user's natural language. The headings themselves are not touched.
    Apply the `task-documents` skill, its section on a root task's `Task.md`: keep the owner's words in the what-and-why layer, give an example only where the owner gave one, and write what the owner left open as an open question.
-9. **Optional override lines** — append via Edit immediately after the `[NEED_REVIEW]` line, one per line, only where the user explicitly asked for something other than the project default in `CLAUDE-spine-toolkit.md`. Otherwise leave the template as is (the commented-out lines stay as documentation).
-   - `[WORKFLOW_MODE] = [<manual|auto>]` — overrides `## Mode`.
-   - `[DRIVE_APP] = [<auto|off>]` — overrides `## Validation` → `drive_app`; write `off` when the user says the UI check of this particular task has to be done by hand.
-   - `[DRIVER] = [<plugin>|auto|—]` — overrides `## Validation` → `driver:`; write it only when this
+9. **Optional override lines** — append via Edit immediately after the `[NEED_REVIEW]` line, one per line, only where the user explicitly asked for something other than the project default. Each one overrides the field of the same name in `CLAUDE-spine-toolkit.md`. Otherwise leave the template as is (the commented-out lines stay as documentation).
+   - `[WORKFLOW_MODE] = [<manual|auto>]`.
+   - `[DRIVE_APP] = [<auto|off>]` — write `off` when the user says the UI check of this particular task has to be done by hand.
+   - `[DRIVER] = [<plugin>|auto|—]` — write it only when this
      one task must be driven by a different driver than the project's, by the platform's default, or
      by none. Do not ask about it: the project default is right for nearly every task, and a field
      the user has to decline is a field that costs more than it saves.
-   - `[MANUAL_CHECKS] = [<auto|always>]` — overrides `## Validation` → `manual_checks`; write `always` when the user wants a hand-run test script out of this task whether or not the agent drove the app itself.
-   - `[PHASE_VERIFICATION] = [<proportional|full>]` — overrides `## Validation` → `phase_verification`; write `full` when the user wants every phase of this task to run the full regression — a change risky enough that a wrong rung would cost more than the builds. Never written for `REVIEW` or `RESEARCH`, which have no phases to check.
-   - `[WALKTHROUGH] = [<brief|deep|off>]` — overrides `## Reporting` → `walkthrough`; write `off` to suppress `Walkthrough.md` for this task, `brief` when its readers already know the area and a section per commit would be ceremony, or `deep` to force the file onto a `lite` run, which is the one thing the default cannot do for itself (`conventions/task-scale.md`). Never written for `REVIEW` or `RESEARCH`, where the profile has nothing to write it from.
-   - `[SCALE] = [<lite|full>]` — overrides `## Scale`; write it only when the user sized the task themselves. `full` also switches off the raise a stage could otherwise perform, so writing it on a guess costs the task its cheap path; `lite` does not switch the raise off, since a declared-small task stays a hypothesis until something measures its perimeter.
-   - `[MODELS] = [<key>: <value>, …]` — overrides `## Models` key by key; write it only when the user chose a model for this task, such as `architect: opus` for a hard design or `developer: sonnet` for a sweep of mechanical phases. Keys are `light` and the eight roles the profiles dispatch; a key it does not name keeps the project's value, and an epic's keys reach every step that does not name them itself.
-   - `[EFFORT] = [<role>: <value>, …]` — overrides `## Effort` key by key; write it only when the user chose a reasoning level for this task. It takes effect only where the profile runs as a workflow script.
-   - `[DOCS] = [<on|off>]` — overrides `## Docs`; write `off` only when the user said this task
+   - `[MANUAL_CHECKS] = [<auto|always>]` — write `always` when the user wants a hand-run test script out of this task whether or not the agent drove the app itself.
+   - `[PHASE_VERIFICATION] = [<proportional|full>]` — write `full` when the user wants every phase of this task to run the full regression — a change risky enough that a wrong rung would cost more than the builds. Never written for `REVIEW` or `RESEARCH`, which have no phases to check.
+   - `[WALKTHROUGH] = [<brief|deep|off>]` — write `off` to suppress `Walkthrough.md` for this task, `brief` when its readers already know the area and a section per commit would be ceremony, or `deep` to force the file onto a `lite` run, which is the one thing the default cannot do for itself (`conventions/task-scale.md`). Never written for `REVIEW` or `RESEARCH`, where the profile has nothing to write it from.
+   - `[SCALE] = [<lite|full>]` — write it only when the user sized the task themselves. `full` also switches off the raise a stage could otherwise perform, so writing it on a guess costs the task its cheap path; `lite` does not switch the raise off, since a declared-small task stays a hypothesis until something measures its perimeter.
+   - `[MODELS] = [<key>: <value>, …]` — overrides the project's key by key; write it only when the user chose a model for this task, such as `architect: opus` for a hard design or `developer: sonnet` for a sweep of mechanical phases. Keys are `light` and the eight roles the profiles dispatch; a key it does not name keeps the project's value, and an epic's keys reach every step that does not name them itself.
+   - `[EFFORT] = [<role>: <value>, …]` — overrides the project's key by key; write it only when the user chose a reasoning level for this task. It takes effect only where the profile runs as a workflow script.
+   - `[DOCS] = [<on|off>]` — write `off` only when the user said this task
      changes strings, flags or tooling and raises no documentation question at all. The field is
      a blanket lever: it silences every component for the whole task, and it stays visible in
      `Task.md` at Review.

@@ -91,7 +91,7 @@ subagent dispatch verbatim, and the agent it names must exist as `<plugin>/agent
 `<name>` being the part after the colon.
 
 That file's frontmatter carries no `model` and no `effort`. Which model and effort a stage runs on
-belongs to the session and to the project's `## Models` and `## Effort`
+belongs to the session and to the project's `[MODELS]` and `[EFFORT]`
 (`conventions/stage-dispatch.md` → Model and effort), and a role whose work needs no heavier model,
 such as reading build logs, gets a lighter one there as core's default. A model pinned here decides
 for every project that leaves the role at `session`, whatever model its session runs.
@@ -241,7 +241,7 @@ default = <driver plugin name>
 ```
 
 The driver plugin this platform recommends. Core resolves the chain `Task.md [DRIVER]` →
-`CLAUDE-spine-toolkit.md ## Validation → driver:` → this row → `—`, so what is written here is the
+`CLAUDE-spine-toolkit.md [DRIVER]` → this row → `—`, so what is written here is the
 value a project gets when it never chose one. That is what the row is for: a platform that used to
 drive an app unconditionally names the driver it used, and its installed projects keep behaving as
 they did.

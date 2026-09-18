@@ -197,13 +197,13 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 `{step}`: `{anchor}` in its `Task.md` is missing, empty or a bare dash. Sending it back to the architect to fill the anchor, or to write `— <reason>` where it does not apply.
 
 ## warn_budget_unrecognised
-`{line}` in `## Budgets` of `CLAUDE-spine-toolkit.md` names no artifact the budget lint knows, or its ceiling is not a positive whole number, so the default stays. The artifacts are `Task.md`, `Reproduce.md`, `Plan.md`, `Validation.md`, `Review.md` and `Done.md`.
+`{line}` in `[BUDGETS]` of `CLAUDE-spine-toolkit.md` names no artifact the budget lint knows, or its ceiling is not a positive whole number, so the default stays. The artifacts are `Task.md`, `Reproduce.md`, `Plan.md`, `Validation.md`, `Review.md` and `Done.md`.
 
 ## warn_walkthrough_pre_depth
-`on` is the pre-depth value, so this run writes `Walkthrough.md` at `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. To keep the older shape, write `brief` — in `[WALKTHROUGH]` in `Task.md`, or under `walkthrough` in `## Reporting` in `CLAUDE-spine-toolkit.md`.
+`on` is the pre-depth value, so this run writes `Walkthrough.md` at `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. To keep the older shape, write `brief` in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`.
 
 ## warn_walkthrough_unrecognised
-`{value}` is not one of the three walkthrough depths, so it was skipped and the next source down decides: the project's `walkthrough` in `## Reporting` where it names one, `deep` where nothing does. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]` in `Task.md`, or under `walkthrough` in `## Reporting` in `CLAUDE-spine-toolkit.md`. The settings column above names the depth this run actually resolved to.
+`{value}` is not one of the three walkthrough depths, so it was skipped and the rest of the chain decides: `off` when this task's `scale` is `lite`, otherwise the project's `[WALKTHROUGH]` where it names one, and `deep` where nothing does. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`. The settings column above names the depth this run actually resolved to.
 
 ## warn_tuning_unrecognised
 `{entry}` in {source} is not a key and value this run can use, so it was skipped and the next setting down applies. Model keys are `light` and the eight roles, with `opus`, `sonnet`, `haiku`, `fable` or `session`; effort keys are the eight roles, with `low`, `medium`, `high`, `xhigh`, `max` or `session`.
@@ -214,10 +214,10 @@ The effort set for {roles} does not apply on this run: the profile runs through 
 ## warn_driver_plugin_missing
 Driver `{driver}` is the driver resolved for this run, but its manifest does not resolve — the
 plugin is not installed. Validation will hand its UI checks to you instead of driving the app. Install
-the plugin, or set `driver: —` in `## Validation` to say so deliberately.
+the plugin, or write `[DRIVER] = [—]` in `CLAUDE-spine-toolkit.md` to say so deliberately.
 
 ## warn_driver_server_missing
 Driver `{driver}` is installed, but this session has no tool under any of the prefixes it declares
 ({namespaces}) — its MCP server is not connected, or it is registered under a different name.
 Validation will hand its UI checks to you instead of driving the app. Start the server, register it
-under one of those names, or set `driver: —` in `## Validation` to say so deliberately.
+under one of those names, or write `[DRIVER] = [—]` in `CLAUDE-spine-toolkit.md` to say so deliberately.

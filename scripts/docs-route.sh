@@ -62,7 +62,7 @@ _SETTINGS_CACHE = {}
 _WARNED = set()
 # The resolver reports every field it could not use; this script asked about the documentation
 # ones, and forwarding the rest makes a [MODELS] typo arrive as a documentation problem.
-_MINE = ('## Docs', 'Task.md [DOCS]')
+_MINE = ('[DOCS]', '[DOCS_STRICTNESS]', '[DOCS_FRESHNESS]')
 
 
 def _emit_stderr(text, everything=False):

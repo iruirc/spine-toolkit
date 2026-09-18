@@ -16,10 +16,10 @@ There is no third value. A third needs two thresholds and a corpus calibrated fo
 ## Resolution
 
 ```
-Task.md [SCALE]  →  the epic's Task.md [SCALE] for a .step/ folder  →  CLAUDE-spine-toolkit.md ## Scale  →  full
+Task.md [SCALE]  →  the epic's Task.md [SCALE] for a .step/ folder  →  CLAUDE-spine-toolkit.md [SCALE]  →  full
 ```
 
-First hit wins. A missing section is the default, not an error. The orchestrator resolves this once
+First hit wins. A missing field is the default, not an error. The orchestrator resolves this once
 per dispatch and ships the result in the Outbound Contract, for the same reason `walkthrough`
 travels there: a workflow script has no filesystem and cannot read the value for itself. Every
 other resolved field takes the same shape; `conventions/task-settings.md` holds the full chain and
@@ -109,9 +109,9 @@ are budgeted **per unit** — per commit, per case, per divergence — in the sk
 so it is read like the rest of the artifact, by the stage that reviews it. Adding one of these to
 the lint's table would not make it measured; it would make the number arbitrary.
 
-A project may move a ceiling in its config's `## Budgets` block. The number still reaches an agent
+A project may move a ceiling in its config's `[BUDGETS]`. The number still reaches an agent
 only through the script: the orchestrator asks `lint-artifact-budget.sh --budgets` and ships the
-answer as the contract's `budgets` field, so there is one reader of that block, not two. A budget
+answer as the contract's `budgets` field, so there is one reader of that field, not two. A budget
 moves a number, never which scale an artifact is measured at. A step's `Task.md` is the one artifact
 measured at every scale, with `--task-docs`: its ceiling and its three anchors hold the what-and-why
 layer of `skills/task-documents/SKILL.md`, and that layer does not depend on the task's size.

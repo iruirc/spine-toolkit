@@ -13,7 +13,7 @@ Bootstraps spine-toolkit in an **already existing** project. Two-file layout:
 - `CLAUDE-spine-toolkit.md` — toolkit-owned configuration; its sections are the ones `templates/claude-toolkit-md/en.md` carries. Created and updated by this skill.
 - `CLAUDE.md` — user-owned project instructions. Touched once to insert the `@./CLAUDE-spine-toolkit.md` line; otherwise unchanged.
 
-This skill owns the config **format** and every block or field that is core's: `[LANG]`, `## Mode`, `## Progress`, `## Platform`, `## Agents`, and the file-level scaffolding. It owns none of the stack: `## Stack` and `## Modules` are filled by the platform half (step 5), because which axes exist and which values they take is the platform manifest's `## Axes`, not core's.
+This skill owns the config **format** and every block or field that is core's: `[LANG]`, `[WORKFLOW_MODE]`, `[PROGRESS]`, `## Platform`, `## Agents`, and the file-level scaffolding. It owns none of the stack: `## Stack` and `## Modules` are filled by the platform half (step 5), because which axes exist and which values they take is the platform manifest's `## Axes`, not core's.
 
 The skill creates no source files, modifies no code, and starts no workflow. Generating a project from scratch belongs to the platform plugin's `init` agent.
 
@@ -227,7 +227,7 @@ The skill's behavior is determined by the project state, computed from four chec
    (existing layouts, including manual symlinks, are NEVER overwritten).
 
 6b. Optional documentation registry (orthogonal to state):
-   If the registry named by ## Docs → map does not exist:
+   If the registry named by [DOCS_MAP] does not exist:
      AUQ using key `auq_create_docs_map`, unless the input's `docs_map` already answers it.
      ↓ Yes, or `docs_map = create` → copy templates/docs-map/DocsMap.md to that path;
        docs_map_status = `docs_map_status_created`.
@@ -291,7 +291,7 @@ Exact match only — no prefix-matching. `## Stack Cookbook` is NOT classified a
 <toolkit_sections in canonical order>
 ```
 
-For canonical sections missing from the source: fill from the template default (e.g. `## Mode\n\nmanual`). Track in `filled_default_sections` for the report.
+For canonical sections missing from the source: fill from the template default (e.g. `## DeliveryMode\n\nmanual`). Track in `filled_default_sections` for the report.
 
 `## Platform` is the one exception, in **both** migrating states, and it is unconditional: it is
 written from the platform resolved in step 1 and never appears in `filled_default_sections`, whether
@@ -302,9 +302,9 @@ supply it. A config carrying the placeholder is worse than one carrying nothing:
 Routing check 4 sees a config, so the run proceeds to step 5.7 and fails there naming a plugin that
 does not exist.
 
-`## Validation` is rewritten on the way through in both migrating states: a `mobile_mcp:` key in the
-migrated body becomes `drive_app:`, value preserved. The section is otherwise carried over verbatim
-like every other. A `[MOBILE_MCP]` line in a Task.md of a task already in flight is **not** migrated
+A `mobile_mcp` value in a migrating source is carried to `[DRIVE_APP]`, value preserved: the key was
+renamed, not retired, and dropping it would silence a project's own choice.
+A `[MOBILE_MCP]` line in a Task.md of a task already in flight is **not** migrated
 — core reads only `[DRIVE_APP]`, so such a task falls back to the project default; say so once in the
 migration report rather than rewriting task folders.
 
@@ -344,8 +344,8 @@ In `templates/claude-toolkit-md/en.md` (the toolkit file is EN-only):
 |---|---|---|
 | `<platform-plugin>` in `## Platform` | step 1 | the resolved platform plugin name |
 | the `<one … line per axis …>` placeholder in `## Stack` | step 5 | the axis lines the platform half wrote |
-| first non-empty line under `## Mode` | qM | `manual` or `auto` |
-| first non-empty line under `## Progress` | qP | `quiet`, `normal` or `live` |
+| the bracketed value in `[WORKFLOW_MODE]` | qM | `manual` or `auto` |
+| the bracketed value in `[PROGRESS]` | qP | `quiet`, `normal` or `live` |
 | first non-empty line under `## DeliveryMode` | template default | `manual`; do not replace this when applying qM |
 | the bracketed value in `[LANG]` | q0 | `en` or `ru` |
 | `<Communication Language>` in `## Persona` | q0 | `English` or `Russian` (the human-readable language name; drives Claude's communication language with the user) |
