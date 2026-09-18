@@ -4,10 +4,30 @@
 > **Do not edit by hand unless you know what you're doing** — running `/setup` again may overwrite your changes (after backup).
 > User-owned project instructions live in `CLAUDE.md`. This file is auto-imported into Claude's context via `@./CLAUDE-spine-toolkit.md`.
 > Task-orchestration logic is in the `spine-toolkit:*` skills (see "Orchestration" below).
+> Every field below is documented in the toolkit's `docs/configuration.md`.
 
-## Language
+## Project settings
 
-en
+[LANG] = [en]                          # en | ru
+[PROGRESS] = [normal]                  # quiet | normal | live
+[SETTINGS_REPORT] = [diff]             # diff | full | off
+[BUDGETS] = []                         # <artifact>: <lines>, comma-separated
+[DOCS_MAP] = [DocsMap.md]
+[DOCS_STRICTNESS] = [advisory]         # blocking | advisory | off
+[DOCS_FRESHNESS] = [on]                # on | off
+
+## Task defaults
+
+[WORKFLOW_MODE] = [manual]             # manual | auto
+[SCALE] = [lite]                       # lite | full
+[DRIVE_APP] = [auto]                   # auto | off
+[MANUAL_CHECKS] = [auto]               # auto | always
+[DRIVER] = [auto]                      # <driver-plugin> | auto | —
+[PHASE_VERIFICATION] = [proportional]  # proportional | full
+[WALKTHROUGH] = [deep]                 # brief | deep | off
+[DOCS] = [on]                          # on | off
+[MODELS] = [light: sonnet, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session]
+[EFFORT] = [architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session]
 
 ## Persona
 
@@ -56,175 +76,6 @@ the exception. Placeholders in angle brackets are not rows — only a line that 
 
 (axis names and values are proper nouns from that catalog — never translated, since they are matched
 back against it.)
-
-## Mode
-
-manual
-
-## Progress
-
-normal
-settings: diff
-
-(how much the orchestrator narrates a profile run: `quiet` — the final report only;
-`normal` — the stage-to-agent plan once, then a report after every stage; `live` — everything
-from `normal` plus each stage's token cost, a totals line when the run finishes, and the
-command for a live agent panel you can run in a second terminal pane.
-`settings` — how much of what the run resolved the opening block prints (`diff | full | off`):
-`diff` — the fields this task or this project chose a value for that is not the built-in default
-(a block below that writes the default down again is not a choice this run has to report),
-`full` — every field, `off` — none. The full
-list is one `scripts/resolve-settings.sh show <task dir> --all` away at any time.
-This setting governs reporting only — the between-stage confirmations of `manual` mode are
-unaffected by it.)
-
-## Validation
-
-drive_app: auto
-manual_checks: auto
-driver: auto
-phase_verification: proportional
-
-(`drive_app` — whether the Validation stage may drive the running app through this platform's own tooling: `auto` — the profile
-decides (FEATURE: when the feature has a UI layer; BUG: always, to replay the reproduction;
-REFACTOR: when UI code was touched; TEST: only for UI tests); `off` — never, because this project
-has nothing to drive or no way to drive it. A platform whose validator has no such tooling at all declares the deviation itself; this key is for the project's own choice.
-`off` does not delete the check: the validator writes the cases a human has to run into a separate
-`ManualChecks.md` in the task folder and marks the matching `OpsChecklist.md` items Pending.
-For BUG the deferred check is the reproduction replay itself.
-`manual_checks` — when the validator writes `ManualChecks.md`, the hand-run script for a human:
-`auto` — only for checks it was told not to run itself; `always` — every time, so a UI-bearing task
-ships a manual pass even when the validator drove the app and covered the happy path.
-What goes inside that file is fixed by the `manual-checks` skill, not by this key.
-`driver` — which driver plugin drives the running app: `auto` — the driver this platform recommends,
-which is what keeps a project that never touched this key behaving as it always did; a plugin name —
-that one instead of the recommendation; `—` — none at all. `—` is a deliberate choice, not a failure:
-the checks that needed driving are handed to a human exactly as `drive_app: off` hands them over, and
-the verdict is not lowered. What a driver can and cannot do is its own declaration, and what it
-cannot do becomes a manual check automatically.
-`phase_verification` — how much each phase checks before it commits: `proportional` — only what
-the phase can break, at the rung its `**Verification:**` line in `Plan.md` names, with the full
-regression left to Validation; `full` — the full regression in every phase, for a project whose
-whole suite is cheap enough that repeating it costs nothing. There is no `off`. The rungs and how
-a planner picks one are fixed by the `phase-verification` skill, not by this key.
-
-A single task overrides all four with `[DRIVE_APP] = [auto|off]`, `[MANUAL_CHECKS] = [auto|always]`, `[DRIVER] = [<driver-plugin>|auto|—]`, and `[PHASE_VERIFICATION] = [proportional|full]` in its `Task.md`.)
-
-## Reporting
-
-walkthrough: deep
-
-(whether a task writes `Walkthrough.md`, and at what depth. The artifact is the human-facing
-account of what actually landed, written for an engineer who did not write the code and was not on
-the task. Written at the end of the implementing stage, so it is readable before Validation and
-Review, and refreshed afterwards if later commits moved past it.
-`deep` and `brief` both carry diagrams where they help and follow-ups; the difference is below.
-`deep` — a glossary of the terms it uses, the commit order and why, then a section per commit: what
-appeared, the failure it is written against, how that is closed, which alternative was rejected.
-This is the value that makes the file worth opening a year later, and it is the default.
-`brief` — summary, divergences and a one-bullet-per-commit log, for a reader who already knows the
-area.
-`off` — never written.
-`on` is the pre-depth value and is read as `deep` — more than it used to write; a project that
-wants the old shape says `brief`.
-Not applicable to RESEARCH and REVIEW, whose deliverable is the artifact itself. A `lite` task
-writes nothing unless it says otherwise. A single task overrides with
-`[WALKTHROUGH] = [brief|deep|off]` in its `Task.md`.)
-
-## Docs
-
-enabled: on
-map: DocsMap.md
-strictness: advisory
-freshness: on
-
-(the documentation components this project declares, and how hard the run holds them.
-`enabled` — whether the mechanism runs at all. `off` suspends it project-wide: the four commands a
-run invokes do nothing and say nothing, while `registry` still reads the file, so a suspended
-project can still inspect what it suspended. A task that names `[DOCS]` explicitly overrides this
-in either direction.
-`map` — path to the registry, relative to the project root. The file is optional: without it
-the mechanism is off and the run says nothing about documentation.
-`strictness` — the default for a component that declares none: `blocking` — a phase does not
-close while the question a touched component raises is unanswered; `advisory` — the run names
-it and moves on; `off` — the component is routed and reported but never asked about.
-`freshness` — whether a component's files carry the Status / Synced / Owner / Source of truth
-header. `on` / `off`.
-
-What goes inside the registry is fixed by the `docs-route` skill and
-`conventions/docs-components.md`, not by this block — the same division `## Validation` has with
-`ManualChecks.md`. A single task overrides with `[DOCS] = [on|off]` in its `Task.md`, and names
-the components it creates in `[DOCS_NEW]`.)
-
-## Scale
-
-lite
-
-(how deep a task's pipeline goes. `lite` — investigation folds into the artifact that consumes it,
-each artifact carries a line ceiling, and no estimation section or ops checklist is produced;
-`full` — every stage gets its own agent and its own artifact. The floor is identical at both
-values: one commit per green phase, a reproduction before a bug fix, a Validation stage with its
-own agent, and a Review stage with an independent one. `lite` is cheaper, not looser.
-A `lite` run can be raised to `full` once — by the stage that first measures the perimeter, or by
-the planner — and is never lowered; the raise is written back into the task's `Task.md`.
-A single task overrides with `[SCALE] = [lite|full]` in its `Task.md`, and `[SCALE] = [full]`
-there also switches the raise off, the author having already decided.
-A project without this block runs `full`, which is what every project did before the block
-existed.)
-
-## Budgets
-
-(optional: per-artifact line ceilings overriding the defaults in the toolkit's
-`scripts/lint-artifact-budget.sh`, one `<artifact>: <lines>` line each — for example `Task.md: 120`.
-The artifacts are a step's `Task.md`, measured at every scale, and `Reproduce.md`, `Plan.md`,
-`Validation.md`, `Review.md`, `Done.md`, measured on a `lite` task. A line here moves a number,
-never which scale an artifact is measured at. Change a ceiling when a measurement of this project's
-documents says the default does not fit, not when the lint turns red: a ceiling raised to silence
-the lint measures nothing. A name the lint does not know, or a value that is not a positive whole
-number, keeps the default and is reported.)
-
-## Models
-
-light: sonnet
-architect: session
-developer: session
-tester: session
-reviewer: session
-refactorer: session
-validator: sonnet
-security: session
-diagnostics: session
-
-(which model a subagent runs on; the rule is `conventions/stage-dispatch.md` → Model and effort in
-the toolkit. A role's key covers every stage its agent runs. `light` covers the calls whose work
-the script's own prompt defines — writing `Walkthrough.md` and `Done.md`, reading `Plan.md` back,
-ticking an epic step, moving a reviewed task — and falls back to the role's key when it says
-`session`. Values: `opus`, `sonnet`, `haiku`, `fable`, or `session`, which passes no model, so
-`CLAUDE_CODE_SUBAGENT_MODEL`, then the session's model decide. `validator` starts on `sonnet`:
-building, running the tests and reading their logs need no heavier model. A `platform` left from
-1.11.0 reads as if its line were absent. `haiku` has a 200k context and no effort setting, too small
-for a phase or a walkthrough. On Amazon Bedrock, Google Cloud's Agent Platform and Microsoft Foundry
-`sonnet` means Sonnet 4.5. The orchestrator and any stage it runs in the main context stay on the
-session's model. A single task overrides any key with `[MODELS] = [<key>: <value>, …]` in its
-`Task.md`, and an epic's keys reach its steps.)
-
-## Effort
-
-architect: session
-developer: session
-tester: session
-reviewer: session
-refactorer: session
-validator: session
-security: session
-diagnostics: session
-
-(the reasoning effort a subagent runs at, per role. Values: `low`, `medium`, `high`, `xhigh`, `max`,
-or `session`, which passes none, so the session's level applies. The mechanical calls always run at
-`low`; the walkthrough runs at its writer's level. A level the model does not support drops to the
-nearest one it does. When the Workflow tool is unavailable and a profile runs through its skill, no
-effort can travel with a dispatch: every stage runs at the session's level, and the run says so
-once. A single task overrides any role with `[EFFORT] = [<role>: <value>, …]` in its `Task.md`.)
 
 ## Modules
 
