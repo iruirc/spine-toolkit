@@ -139,7 +139,6 @@ NAMES
   # The guidance left the template when the settings became one-line fields; the reference page is
   # where it lands, and these assertions go live with it.
   doc="$ROOT/docs/configuration.md"
-  [ -f "$doc" ] || skip "docs/configuration.md does not exist yet"
   # anchored: the migration sentence names every value too, and would satisfy a bare token
   for v in '^`deep` — ' '^`brief` — ' '^`off` — '; do
     grep -q "$v" "$doc" || { echo "the guidance does not enumerate $v"; return 1; }

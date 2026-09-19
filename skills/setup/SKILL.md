@@ -78,7 +78,7 @@ Confirming rather than assuming on the single-platform path is deliberate: the n
 The skill's behavior is determined by the project state, computed from four checks:
 
 1. Does `CLAUDE.md` exist in the project root?
-2. Does `CLAUDE-spine-toolkit.md` exist in the project root — and if it does, does it carry a heading from the first column of the block-to-field mapping below? (That heading is the 1.x block format, the one `scripts/resolve-settings.sh` refuses to read.)
+2. Does `CLAUDE-spine-toolkit.md` exist in the project root — and if it does, does it carry a heading from the first column of the block-to-field mapping below? (That heading is the 1.x block format, the one `scripts/resolve-settings.sh` refuses to read. Scan raw lines exactly as the resolver does, fences included — not the Parser's rule below: a file the resolver refuses must never classify as already configured, or the two readers send the user round a loop.)
 3. Does a pre-split `CLAUDE-swift-toolkit.md` exist in the project root?
 4. Does `CLAUDE.md` carry a `Language`, `Stack` or `Mode` heading? (That is the legacy single-file layout, where all three lived in `CLAUDE.md`.)
 
@@ -339,7 +339,9 @@ or pre-split source, F finds them in a config that is otherwise current.
 | `Effort` | every line | `[EFFORT]` | one `<role>: <level>` line per role → one comma-separated list |
 
 A value is copied, never re-derived: the old file's spelling is what 1.x resolved, and a migration
-that improves on it changes a project's behavior behind its back.
+that improves on it changes a project's behavior behind its back. The exception is a value 1.x read
+past — chiefly the pre-rename spelling of `drive_app` in the row above — which now lands on what the
+user wrote rather than on the default 1.x fell to.
 
 A field no block answered is written at **the value `scripts/resolve-settings.sh` resolves when the
 field is absent**, which is not the same thing as the template's line. Sixteen agree; `[SCALE]` does

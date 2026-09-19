@@ -6,6 +6,9 @@
 ## error_unsupported_language
 Неподдерживаемый язык: `{lang}`. Поддерживаются: `en`, `ru`.
 
+## error_config_predates_2_0
+В `CLAUDE-spine-toolkit.md` нет секции `## Project settings`: файл старше 2.0. Запусти `/setup`, чтобы мигрировать его, затем снова `/lang`.
+
 ## report_current_language
 Текущий язык: `{current}`.
 

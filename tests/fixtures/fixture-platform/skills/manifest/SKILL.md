@@ -18,8 +18,9 @@ use it as a template for a real platform's manifest, not as a stub to satisfy a 
 
 Optional, and the only block a platform may omit entirely. `default` names the driver plugin this
 platform recommends for driving a running app during Validation; a project overrides it with
-`driver:` in its config, and a task with `[DRIVER]`. Its purpose is continuity: a project that never
-set the key keeps the behaviour it had before drivers existed.
+`[DRIVER]` in its `CLAUDE-spine-toolkit.md`, and a task with the same field in its `Task.md`. Its
+purpose is continuity: a project that never set the field keeps the behaviour it had before drivers
+existed.
 
 `surfaces` names what this platform's projects run on, from core's surface vocabulary
 (`spine-toolkit: conventions/driver-contract.md`). A driver is compatible when its `## Targets`

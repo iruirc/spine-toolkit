@@ -51,7 +51,6 @@ setup() {
   # The guidance left the template when the settings became one-line fields; the reference page is
   # where it lands, and this assertion goes live with it.
   doc="$ROOT/docs/configuration.md"
-  [ -f "$doc" ] || skip "docs/configuration.md does not exist yet"
   grep -qF 'A project without this field runs `full`' "$doc" \
     || { echo "the page does not document the absent-field default"; return 1; }
 }
