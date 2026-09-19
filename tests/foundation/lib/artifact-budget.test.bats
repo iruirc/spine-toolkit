@@ -232,6 +232,13 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
   grep -qF 'at every scale' <<<"$sect" || { echo "the convention still reads every ceiling as lite-only"; return 1; }
 }
 
+@test "the configuration page says when a ceiling may be moved" {
+  # The only rule that stops [BUDGETS] from becoming the lint's off switch, and the one
+  # sentence of the guidance nothing else in the repo holds.
+  grep -qF 'not when the lint turns red' "$ROOT/docs/configuration.md" \
+    || { echo "the page no longer rules out raising a ceiling to silence the lint"; return 1; }
+}
+
 @test "every profile script reads the ceilings from the contract's budgets" {
   n=0
   for f in "$ROOT"/workflows/profile-*.js; do

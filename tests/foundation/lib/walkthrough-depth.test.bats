@@ -148,6 +148,8 @@ NAMES
     || { echo "the guidance does not say what happens to on"; return 1; }
   grep -qF '`[WALKTHROUGH] = [brief|deep|off]`' "$doc" \
     || { echo "the override spelling drifted from task-md and task-new"; return 1; }
+  # The slice runs from the `deep` line to the next line opening with a backtick, so each value's
+  # description must start its own line at column 0 — a bullet or a re-wrap breaks it.
   para="$(awk '
     index($0, "`deep` — ") == 1 { f = 1 }
     f && substr($0, 1, 1) == "`" && index($0, "`deep` — ") != 1 { exit }
