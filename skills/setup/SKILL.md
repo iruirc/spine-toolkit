@@ -86,7 +86,7 @@ The skill's behavior is determined by the project state, computed from four chec
 |---|---|---|---|---|---|
 | **A · new_install** | absent | absent | absent | — | Ask q0, qM, qP. Create both files. |
 | **B · existing_md** | present | absent | absent | no | Ask q0, qM, qP. Backup CLAUDE.md. Insert `@import` line. Create `CLAUDE-spine-toolkit.md`. |
-| **C · already_configured** | present | present | — | no | AUQ `auq_reconfigure_toolkit` on `CLAUDE-spine-toolkit.md` only. Self-heal `CLAUDE.md` if `@import` is missing. |
+| **C · already_configured** | present | present, 2.0 fields | — | no | AUQ `auq_reconfigure_toolkit` on `CLAUDE-spine-toolkit.md` only. Self-heal `CLAUDE.md` if `@import` is missing. |
 | **D · old_format** | present | absent | absent | yes | AUQ `auq_migrate_old_format`. Run the migration algorithm (see below). |
 | **E · renamed_config** | present | absent | present | — | AUQ `auq_migrate_config_name`. Rename the file, reconcile blocks, rewrite the `@import` line. |
 | **F · old_block_format** | present | present, 1.x headings | — | no | Migrate the config's format without asking. Back up, rewrite, report. |
@@ -213,11 +213,15 @@ anything — which is what lets F take the language and the platform from the fi
      a. Parse the existing CLAUDE-spine-toolkit.md with the section parser (it already splits
         on `## `).
      b. Map each moved block's value(s) onto the fields, per the mapping table below. A block
-        the file does not carry contributes nothing; its field is written at the default and
-        named in {filled_default_fields} — a 1.9.0 config, which has no Budgets, Models or
-        Effort block at all, migrates exactly as a full one does.
-     c. Keep every block that stays — Persona, Rules, Platform, Agents, Stack, Modules,
-        EstimationDeltas, DeliveryMode, AILeverage, Paths, Orchestration — verbatim, in place.
+        the file does not carry contributes nothing; its field is written at the absent-field
+        default named under that table — not always the template's line — and listed in
+        {filled_default_fields}. A 1.9.0 config, which has no Budgets, Models or Effort block
+        at all, migrates exactly as a full one does.
+     c. Keep verbatim, in place: the blocks that stay — Persona, Rules, Platform, Agents, Stack,
+        Modules, EstimationDeltas, DeliveryMode, AILeverage, Paths, Orchestration — and any
+        heading in neither the canonical list nor the mapping, a near-miss like `Validaton`
+        included. The resolver trips only on the ten exact names, so keeping one costs nothing
+        while dropping it loses the user's own content. All of them go in {kept_blocks}.
      d. Back up the file, write the new one atomically, and report with `report_block_migration`.
         CLAUDE.md is untouched: its import line already names this file.
      e. Ask nothing, and skip every step that would: step 5's platform half, step 6, step 6b.
@@ -241,7 +245,8 @@ anything — which is what lets F take the language and the platform from the fi
    ↓ state F → do not invoke it either: that state asks nothing, and its ## Stack already holds
      the answers.
 
-6. Optional Tasks/ structure (orthogonal to state):
+6. Optional Tasks/ structure (orthogonal to state, except F):
+   ↓ state F → skip; that state asks nothing (step 4(e)).
    If Tasks/ does not exist:
      AUQ using key `auq_create_tasks_structure`, unless the input's `tasks` already answers it.
      ↓ Yes, or `tasks = create` → mkdir -p Tasks/{TODO,ACTIVE,DONE,BACKLOG,RESEARCH,CHECK,UNABLE_FIX};
@@ -250,7 +255,8 @@ anything — which is what lets F take the language and the platform from the fi
    If Tasks/ exists (folder, symlink, or file) → tasks_status = `tasks_status_already_existed`
    (existing layouts, including manual symlinks, are NEVER overwritten).
 
-6b. Optional documentation registry (orthogonal to state):
+6b. Optional documentation registry (orthogonal to state, except F):
+   ↓ state F → skip; that state asks nothing (step 4(e)).
    If the registry named by [DOCS_MAP] does not exist:
      AUQ using key `auq_create_docs_map`, unless the input's `docs_map` already answers it.
      ↓ Yes, or `docs_map = create` → copy templates/docs-map/DocsMap.md to that path;
@@ -316,7 +322,7 @@ or pre-split source, F finds them in a config that is otherwise current.
 |---|---|---|---|
 | `Language` | — | `[LANG]` | the block's first value line |
 | `Mode` | — | `[WORKFLOW_MODE]` | the block's first value line |
-| `Progress` | — | `[PROGRESS]` | the block's first value line |
+| `Progress` | — | `[PROGRESS]` | the block's first value line that is not `<key>: <value>` |
 | `Progress` | `settings` | `[SETTINGS_REPORT]` | `settings: <value>` |
 | `Scale` | — | `[SCALE]` | the block's first value line |
 | `Reporting` | `walkthrough` | `[WALKTHROUGH]` | `walkthrough: <value>` |
@@ -335,7 +341,17 @@ or pre-split source, F finds them in a config that is otherwise current.
 A value is copied, never re-derived: the old file's spelling is what 1.x resolved, and a migration
 that improves on it changes a project's behavior behind its back.
 
+A field no block answered is written at **the value `scripts/resolve-settings.sh` resolves when the
+field is absent**, which is not the same thing as the template's line. Sixteen agree; `[SCALE]` does
+not — the template ships `lite`, the resolver resolves `full`. `lite` is what a *new* project is
+given; a 1.x config with no `Scale` block was running `full`, and writing `lite` would take
+`[WALKTHROUGH]` to `off` with it, so the project would silently stop writing `Walkthrough.md`.
+
 ### Preamble handling
+
+This concerns the source that becomes `CLAUDE.md`, which is state D's. States E and F rewrite the
+toolkit config, whose H1 and intro come from the toolkit template (see Output assembly), and leave
+`CLAUDE.md` alone apart from the import line.
 
 - **Toolkit preamble detected** if the H1 (first non-empty `# ...` line) matches any of these canonical strings (exact match, case-sensitive):
   - `# CLAUDE.md — Swift Toolkit` (legacy single-file template — both EN and RU legacy templates used the same H1 string; only the body was localized)
@@ -356,10 +372,11 @@ that improves on it changes a project's behavior behind its back.
 For canonical sections missing from the source: fill from the template default (e.g. `## DeliveryMode\n\nmanual`). Track in `filled_default_sections` for the report.
 
 The two field blocks are canonical sections no migrating source has, so they always arrive from the
-template, every field at its default. The mapping then replaces the bracketed value of each field a
-moved block answered; a field none answered keeps the default it arrived with and is named in
-`filled_default_fields`. The moved blocks themselves are not carried over — their headings are gone
-from the format, and one left in the file is what the resolver refuses.
+template. The mapping then replaces the bracketed value of each field a moved block answered; a
+field none answered is written at the absent-field default named under the mapping — the template's
+line for sixteen of them, `full` for `[SCALE]` — and listed in `filled_default_fields`. The moved
+blocks themselves are not carried over: their headings are gone from the format, and one left in
+the file is what the resolver refuses.
 
 `## Platform` is the one exception, in migrating states D and E, and it is unconditional: it is
 written from the platform resolved in step 1 and never appears in `filled_default_sections`, whether
