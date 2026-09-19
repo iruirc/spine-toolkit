@@ -33,7 +33,7 @@ teardown() { rm -rf "$TMP"; }
 @test "names the exact floor tag when core is a checkout" {
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"spine-toolkit 1.3.0"* ]]
+  [[ "$output" == *"spine-toolkit 2.0.0"* ]]
 }
 
 @test "degrades to the directory as it sits when core is not a checkout" {
@@ -105,7 +105,7 @@ JSON
 @test "a skill that exists only after the floor is a violation" {
   # The failure this whole check exists for: the platform starts using a skill
   # core gained later and leaves the floor where it was.
-  sed -i.bak 's|">=1.3.0 <2"|">=1.0.0 <2"|' "$TMP/p/.claude-plugin/plugin.json" \
+  sed -i.bak 's|">=2.0.0 <3"|">=1.0.0 <2"|' "$TMP/p/.claude-plugin/plugin.json" \
     && rm -f "$TMP/p/.claude-plugin/plugin.json.bak"
   sed -i.bak 's|spine-toolkit:ops-checklist|spine-toolkit:manual-checks|' \
     "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
@@ -118,7 +118,7 @@ JSON
   # The failure D-3 names outright: the platform starts using a skill core
   # gained later and leaves its own floor where it was. Nothing passes --ref
   # here, so the floor in plugin.json is the only thing driving the check.
-  sed -i.bak 's|">=1.3.0 <2"|">=1.0.0 <2"|' "$TMP/p/.claude-plugin/plugin.json" \
+  sed -i.bak 's|">=2.0.0 <3"|">=1.0.0 <2"|' "$TMP/p/.claude-plugin/plugin.json" \
     && rm -f "$TMP/p/.claude-plugin/plugin.json.bak"
   sed -i.bak 's|spine-toolkit:ops-checklist|spine-toolkit:manual-checks|' \
     "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
