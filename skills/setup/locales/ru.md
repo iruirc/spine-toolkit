@@ -75,11 +75,22 @@ DocsMap.md: {docs_map_status}
 Перенесено в `CLAUDE-spine-toolkit.md`: {moved_sections}
 Осталось в `CLAUDE.md`: {kept_sections}
 Заполнено дефолтами: {filled_default_sections}
+Поля, оставшиеся на дефолте: {filled_default_fields}
 Предупреждения: {warnings}
 Бэкап: {backup_path}
 {notes}
 
 Откат: `mv {backup_path} CLAUDE.md && rm CLAUDE-spine-toolkit.md`
+
+## report_block_migration
+✅ `CLAUDE-spine-toolkit.md` переведён в формат полей 2.0. Ничего не спрашивалось: все значения взяты из самого файла.
+
+Перенесено в поля: {moved_fields}
+Поля, оставшиеся на дефолте: {filled_default_fields}
+Сохранено без изменений: {kept_blocks}
+Бэкап: {backup_path}
+
+Откат: `mv {backup_path} CLAUDE-spine-toolkit.md`
 
 ## stack_status_deferred
 не задан — у этой платформы нет setup-скилла; оркестратор спросит по осям на первой задаче, которой они понадобятся
