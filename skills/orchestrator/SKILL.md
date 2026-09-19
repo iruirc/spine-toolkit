@@ -545,7 +545,8 @@ their default` line — that line is the script talking to whoever ran it direct
 regardless of `lang` — and render `progress_open_settings_rest` in its place, `{count}` filled
 from the same number; `--all` never prints that line, so nothing renders there. At `diff` the
 column names a field only where the value somebody chose is not the built-in default, so a project
-whose config writes every field down at its shipped value prints no column at all.
+left on the shipped template prints just two rows: `[SCALE]`, the one field whose shipped line and
+absent-field default differ, and the `[WALKTHROUGH]` that a `lite` scale drags to `off` with it.
 
 **Announcing what the resolver could not use.** Every such line is shaped `<source>: '<value>'
 <what happened>`, `<source>` being `Task.md [FIELD]` or a config path and the same `[FIELD]`. The source

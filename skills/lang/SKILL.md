@@ -38,8 +38,8 @@ Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine
    - Locate the `[LANG]` field (regex: a line matching `^\[LANG\]\s*=\s*\[[^\]]*\]`).
    - Replace the bracketed value in place, keeping the trailing comment.
    - If the field is missing but `## Project settings` is present → insert `[LANG] = [<value>]` right after the heading.
-   - If `## Project settings` itself is missing → the config predates 2.0. Stop; tell the user to run
-     `/setup` to migrate it. Do not insert a new heading.
+   - If `## Project settings` itself is missing → the config predates 2.0. Print error using key
+     `error_config_predates_2_0`. Stop. Do not insert a new heading.
 
 4. Print success using key `report_language_changed` with placeholders {old}, {new}.
 ```

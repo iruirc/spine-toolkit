@@ -20,7 +20,7 @@ Task.md  →  the epic's Task.md for a .step/ folder  →  the nearest CLAUDE-sp
 A missing field is the default, not an error: nothing stops because a setting was left unwritten. An
 unrecognized value is named on stderr and the chain continues past it, so a typo in a task lands on
 the project's choice rather than on the built-in default. `[PROGRESS]` is the one field whose bad
-value is skipped in silence — the opening report prints what it resolved to, so the mismatch with
+value is skipped in silence — the settings column prints what it resolved to, so the mismatch with
 the file is visible already.
 
 [`../conventions/task-settings.md`](../conventions/task-settings.md) is the normative statement of
@@ -67,7 +67,7 @@ you can run in a second terminal pane.
 **Values:** `diff` `full` `off` · **Default:** `diff` · **Task override:** no · **Defined by:** the
 `orchestrator` skill
 
-How much of what the run resolved the opening report prints: `diff` — the fields this task or this
+How much of what the run resolved the settings column prints: `diff` — the fields this task or this
 project chose a value for that is not the built-in default (a line that writes the default down
 again is not a choice this run has to report), `full` — every field, `off` — none. The full list is
 one `scripts/resolve-settings.sh show <task dir> --all` away at any time.

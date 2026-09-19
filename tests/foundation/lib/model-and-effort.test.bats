@@ -62,7 +62,6 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   # The guidance left the template when the settings became one-line fields; the reference page is
   # where it lands, and this assertion goes live with it.
   doc="$ROOT/docs/configuration.md"
-  [ -f "$doc" ] || skip "docs/configuration.md does not exist yet"
   for token in 'CLAUDE_CODE_SUBAGENT_MODEL' '200k' 'Sonnet 4.5' '[MODELS]' 'as if its line were absent'; do
     grep -qF "$token" "$doc" || { echo "the guidance does not mention $token"; return 1; }
   done

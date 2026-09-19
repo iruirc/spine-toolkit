@@ -41,7 +41,7 @@ EOF
 }
 
 @test "a component that declares no strictness inherits the block default" {
-  # The block's value differs from the code's own fallback on purpose: with both at `advisory`
+  # The field's value differs from the code's own fallback on purpose: with both at `advisory`
   # a stub config() that never opened the file would pass this test unchanged.
   printf '## Project settings\n\n[DOCS_MAP] = [DocsMap.md]\n[DOCS_STRICTNESS] = [blocking]\n[DOCS_FRESHNESS] = [on]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   map <<'EOF'

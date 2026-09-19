@@ -144,7 +144,6 @@ validation_brief() {
   # The guidance left the template when the settings became one-line fields; the reference page is
   # where it lands, and this assertion goes live with it.
   doc="$ROOT/docs/configuration.md"
-  [ -f "$doc" ] || skip "docs/configuration.md does not exist yet"
   grep -q 'manual-checks' "$doc" \
     || { echo "the manual_checks field documents when, and nothing documents what"; return 1; }
 }
