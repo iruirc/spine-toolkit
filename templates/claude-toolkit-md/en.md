@@ -4,7 +4,7 @@
 > **Do not edit by hand unless you know what you're doing** — running `/setup` again may overwrite your changes (after backup).
 > User-owned project instructions live in `CLAUDE.md`. This file is auto-imported into Claude's context via `@./CLAUDE-spine-toolkit.md`.
 > Task-orchestration logic is in the `spine-toolkit:*` skills (see "Orchestration" below).
-> Every field below is documented in [the toolkit's `docs/configuration.md`](https://github.com/iruirc/spine-toolkit) — what each governs, its values, its default, and whether a task can override it.
+> Every field below is documented in the toolkit's `docs/configuration.md` — what each governs, its values, its default, and whether a task can override it.
 
 ## Project settings
 
