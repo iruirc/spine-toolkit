@@ -107,7 +107,7 @@ scripts/lint-driver-manifest.sh <path-to-your-driver-plugin>
 — each pointed at the plugin's own checkout, not its installed copy.
 
 A platform plugin declares its dependency on core in `plugin.json` as
-`{ "name": "spine-toolkit", "version": ">=1.3.0 <2" }` and imports nothing from here: the two
+`{ "name": "spine-toolkit", "version": ">=2.0.0 <3" }` and imports nothing from here: the two
 plugins share no code. The lints it needs travel as **adapted forks** — each recording the core
 file it came from and that file's sha256, so drift is visible rather than silent. They are not
 copies to be restored to match core.

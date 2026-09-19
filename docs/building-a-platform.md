@@ -93,7 +93,7 @@ driver plugin that exists only inside core's test suite; Step 9 says what to do 
   "author": { "name": "…" },
   "repository": "https://github.com/…/spine-platform-kotlin",
   "dependencies": [
-    { "name": "spine-toolkit", "version": ">=1.3.0 <2" }
+    { "name": "spine-toolkit", "version": ">=2.0.0 <3" }
   ]
 }
 ```

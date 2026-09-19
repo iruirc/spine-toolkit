@@ -281,7 +281,7 @@ core, and that is one line of its `plugin.json`, in the object form with a semve
 {
   "name": "spine-platform-kotlin",
   "dependencies": [
-    { "name": "spine-toolkit", "version": ">=1.3.0 <2" }
+    { "name": "spine-toolkit", "version": ">=2.0.0 <3" }
   ]
 }
 ```
