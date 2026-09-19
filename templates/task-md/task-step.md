@@ -16,6 +16,7 @@
 # [SCALE] = [full]            # lite | full
 # [MODELS] = [architect: opus]  # <light|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <opus|sonnet|haiku|fable|session>, comma-separated
 # [EFFORT] = [reviewer: high]   # <architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <low|medium|high|xhigh|max|session>, comma-separated
+# [DOCS] = [off]              # on | off
 
 ## 1. [Files]
 
