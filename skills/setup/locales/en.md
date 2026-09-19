@@ -75,11 +75,22 @@ Next steps:
 Moved to `CLAUDE-spine-toolkit.md`: {moved_sections}
 Kept in `CLAUDE.md`: {kept_sections}
 Filled with defaults: {filled_default_sections}
+Fields left at their default: {filled_default_fields}
 Warnings: {warnings}
 Backup: {backup_path}
 {notes}
 
 To roll back: `mv {backup_path} CLAUDE.md && rm CLAUDE-spine-toolkit.md`
+
+## report_block_migration
+✅ `CLAUDE-spine-toolkit.md` is now in the 2.0 field format. Nothing was asked: every value came from the file itself.
+
+Moved into fields: {moved_fields}
+Fields left at their default: {filled_default_fields}
+Kept unchanged: {kept_blocks}
+Backup: {backup_path}
+
+To roll back: `mv {backup_path} CLAUDE-spine-toolkit.md`
 
 ## stack_status_deferred
 not set — this platform ships no setup skill; the orchestrator will ask per axis on the first task that needs one

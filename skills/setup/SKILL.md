@@ -1,7 +1,7 @@
 ---
 name: setup
 description: |
-  Configures spine-toolkit in an existing project: picks the platform plugin that serves it, creates CLAUDE-spine-toolkit.md from the template, inserts an @./ import line into CLAUDE.md, creates the Tasks/ structure and offers the documentation registry, and hands the platform half its own blocks. Migrates projects on the legacy single-file CLAUDE.md layout and on the pre-split config name.
+  Configures spine-toolkit in an existing project: picks the platform plugin that serves it, creates CLAUDE-spine-toolkit.md from the template, inserts an @./ import line into CLAUDE.md, creates the Tasks/ structure and offers the documentation registry, and hands the platform half its own blocks. Migrates projects on the legacy single-file CLAUDE.md layout, on the pre-split config name, and on the 1.x block format.
   Use when (en): "set up spine-toolkit", "configure spine-toolkit", "install toolkit in project", "add spine-toolkit to project", "init toolkit here", "/setup"
   Use when (ru): "настрой spine-toolkit", "подключи spine-toolkit", "установи toolkit в проект", "добавь spine-toolkit к проекту", "инициализируй toolkit здесь", "/setup"
 ---
@@ -78,7 +78,7 @@ Confirming rather than assuming on the single-platform path is deliberate: the n
 The skill's behavior is determined by the project state, computed from four checks:
 
 1. Does `CLAUDE.md` exist in the project root?
-2. Does `CLAUDE-spine-toolkit.md` exist in the project root?
+2. Does `CLAUDE-spine-toolkit.md` exist in the project root — and if it does, does it carry a heading from the first column of the block-to-field mapping below? (That heading is the 1.x block format, the one `scripts/resolve-settings.sh` refuses to read.)
 3. Does a pre-split `CLAUDE-swift-toolkit.md` exist in the project root?
 4. Does `CLAUDE.md` carry a `Language`, `Stack` or `Mode` heading? (That is the legacy single-file layout, where all three lived in `CLAUDE.md`.)
 
@@ -89,6 +89,11 @@ The skill's behavior is determined by the project state, computed from four chec
 | **C · already_configured** | present | present | — | no | AUQ `auq_reconfigure_toolkit` on `CLAUDE-spine-toolkit.md` only. Self-heal `CLAUDE.md` if `@import` is missing. |
 | **D · old_format** | present | absent | absent | yes | AUQ `auq_migrate_old_format`. Run the migration algorithm (see below). |
 | **E · renamed_config** | present | absent | present | — | AUQ `auq_migrate_config_name`. Rename the file, reconcile blocks, rewrite the `@import` line. |
+| **F · old_block_format** | present | present, 1.x headings | — | no | Migrate the config's format without asking. Back up, rewrite, report. |
+
+**F is decided before C**: a configured project whose file is 1.x is not already configured, it is a
+project that cannot run. All four checks are file reads, so the state is known before step 0 asks
+anything — which is what lets F take the language and the platform from the file instead of asking.
 
 ### Edge sub-states
 
@@ -104,10 +109,12 @@ The skill's behavior is determined by the project state, computed from four chec
    Store answer as <lang>; subsequent prompts/reports use locales/<lang>.md.
    Q0 is shown bilingually. If skipped, default <lang> = `en`.
    ↓ `lang` in the input → use it, ask nothing.
+   ↓ state F → the config's own language value answers it, ask nothing.
 
 1. Resolve the platform (see Platform Discovery).
    ↓ `platform` in the input → use it, skip discovery: the caller that named one is the
      platform itself.
+   ↓ state F → the config already names the platform; skip discovery.
    ↓ none installed → render `error_no_platform_installed`. Stop.
 
 2. Compute state (see State Detection table).
@@ -202,6 +209,21 @@ The skill's behavior is determined by the project state, computed from four chec
         succeeds. Rewrite the `@./CLAUDE-swift-toolkit.md` line in CLAUDE.md to the new name
         (backup first); if the line is absent, insert it per State B step (d).
 
+   STATE F (old_block_format):
+     a. Parse the existing CLAUDE-spine-toolkit.md with the section parser (it already splits
+        on `## `).
+     b. Map each moved block's value(s) onto the fields, per the mapping table below. A block
+        the file does not carry contributes nothing; its field is written at the default and
+        named in {filled_default_fields} — a 1.9.0 config, which has no Budgets, Models or
+        Effort block at all, migrates exactly as a full one does.
+     c. Keep every block that stays — Persona, Rules, Platform, Agents, Stack, Modules,
+        EstimationDeltas, DeliveryMode, AILeverage, Paths, Orchestration — verbatim, in place.
+     d. Back up the file, write the new one atomically, and report with `report_block_migration`.
+        CLAUDE.md is untouched: its import line already names this file.
+     e. Ask nothing, and skip every step that would: step 5's platform half, step 6, step 6b.
+        Every value came from the file; what the file did not answer takes the default, which is
+        what a 1.x project was already running on.
+
 5. Hand the platform its own blocks:
    The `setup` row of the platform manifest's ## Entrypoints names the skill that owns them.
    Invoke `<platform>:<that skill>` with {lang, state, config_path, stack} — `stack` being the
@@ -216,6 +238,8 @@ The skill's behavior is determined by the project state, computed from four chec
      at a time. A platform without a setup skill is a supported shape, not an error.
    ↓ the input's `stack` is `—` → do not invoke it either: same placeholders, reported as
      `stack_status_deferred_by_caller` — the caller's repository has no stack to ask about yet.
+   ↓ state F → do not invoke it either: that state asks nothing, and its ## Stack already holds
+     the answers.
 
 6. Optional Tasks/ structure (orthogonal to state):
    If Tasks/ does not exist:
@@ -240,7 +264,10 @@ The skill's behavior is determined by the project state, computed from four chec
    - States A/B/C/E → key `setup_done` with placeholders {platform}, {stack}, {mode},
      {progress}, {lang}, {tasks_status}, {docs_map_status}, {notes}.
    - State D → key `report_migration_success` with placeholders {moved_sections},
-     {kept_sections}, {filled_default_sections}, {warnings}, {backup_path}, {notes}.
+     {kept_sections}, {filled_default_sections}, {filled_default_fields}, {warnings},
+     {backup_path}, {notes}.
+   - State F → key `report_block_migration` with placeholders {moved_fields},
+     {filled_default_fields}, {kept_blocks}, {backup_path}.
    {notes} is the platform half's returned notes, one per line, already rendered in <lang>;
    empty when it reconciled nothing. It is the only place those lines surface, so a rewrite
    the platform performed silently would be a rewrite the user never sees.
@@ -249,7 +276,7 @@ The skill's behavior is determined by the project state, computed from four chec
 One report, rendered here: the platform half is a delegate, not a second entry point, so its
 returned axis lines fill `{stack}` rather than printing a report of their own.
 
-## Migration Algorithm (states D and E)
+## Migration Algorithm (states D, E and F)
 
 ### Parser
 
@@ -268,10 +295,45 @@ Canonical toolkit headings = the `## ` headings of `templates/claude-toolkit-md/
 Read the list rather than restating it here: a second copy falls behind the day the toolkit adds a section, and a section missing from the copy is silently never migrated into an existing project.
 
 - `toolkit_sections` = sections whose heading matches the canonical list.
+- `moved_blocks` = sections whose heading is in the first column of the mapping below. Their values
+  become fields and the heading itself does not survive.
 - `user_sections` = everything else, in original order.
 - `unknown_warnings` = headings that look toolkit-like but don't match exactly (e.g. `Stacks`, `Mode (custom)`). Kept in `user_sections`. Surfaced in the report.
 
+The canonical list and the mapping are one piece of knowledge read in two halves — what a toolkit
+config holds that stays a block, and what it holds that became a field. A heading in neither is the
+project's own. Neither half may be restated where the other is read: a heading missing from both
+classifies as a user section, and the project's own value for it is dropped.
+
 Exact match only — no prefix-matching. `## Stack Cookbook` is NOT classified as `Stack`.
+
+### Block-to-field mapping
+
+What a 1.x config's ten blocks become. Read by every migrating state: D and E find them in a legacy
+or pre-split source, F finds them in a config that is otherwise current.
+
+| Old block | Old key | New field | Value's shape in the old file |
+|---|---|---|---|
+| `Language` | — | `[LANG]` | the block's first value line |
+| `Mode` | — | `[WORKFLOW_MODE]` | the block's first value line |
+| `Progress` | — | `[PROGRESS]` | the block's first value line |
+| `Progress` | `settings` | `[SETTINGS_REPORT]` | `settings: <value>` |
+| `Scale` | — | `[SCALE]` | the block's first value line |
+| `Reporting` | `walkthrough` | `[WALKTHROUGH]` | `walkthrough: <value>` |
+| `Validation` | `drive_app` | `[DRIVE_APP]` | `drive_app: <value>`; spelled `mobile_mcp: <value>` before the rename, and that value is carried over, not dropped |
+| `Validation` | `manual_checks` | `[MANUAL_CHECKS]` | `manual_checks: <value>` |
+| `Validation` | `driver` | `[DRIVER]` | `driver: <value>` |
+| `Validation` | `phase_verification` | `[PHASE_VERIFICATION]` | `phase_verification: <value>` |
+| `Docs` | `enabled` | `[DOCS]` | `enabled: <value>` |
+| `Docs` | `map` | `[DOCS_MAP]` | `map: <value>` |
+| `Docs` | `strictness` | `[DOCS_STRICTNESS]` | `strictness: <value>` |
+| `Docs` | `freshness` | `[DOCS_FRESHNESS]` | `freshness: <value>` |
+| `Budgets` | every line | `[BUDGETS]` | one `<artifact>: <lines>` line per artifact → one comma-separated list |
+| `Models` | every line | `[MODELS]` | one `<key>: <model>` line per key → one comma-separated list |
+| `Effort` | every line | `[EFFORT]` | one `<role>: <level>` line per role → one comma-separated list |
+
+A value is copied, never re-derived: the old file's spelling is what 1.x resolved, and a migration
+that improves on it changes a project's behavior behind its back.
 
 ### Preamble handling
 
@@ -293,7 +355,13 @@ Exact match only — no prefix-matching. `## Stack Cookbook` is NOT classified a
 
 For canonical sections missing from the source: fill from the template default (e.g. `## DeliveryMode\n\nmanual`). Track in `filled_default_sections` for the report.
 
-`## Platform` is the one exception, in **both** migrating states, and it is unconditional: it is
+The two field blocks are canonical sections no migrating source has, so they always arrive from the
+template, every field at its default. The mapping then replaces the bracketed value of each field a
+moved block answered; a field none answered keeps the default it arrived with and is named in
+`filled_default_fields`. The moved blocks themselves are not carried over — their headings are gone
+from the format, and one left in the file is what the resolver refuses.
+
+`## Platform` is the one exception, in migrating states D and E, and it is unconditional: it is
 written from the platform resolved in step 1 and never appears in `filled_default_sections`, whether
 the source lacks the section (the normal case — the block did not exist before the split) or carries
 one (the pre-split stack axis was also called `Platform`, so such a section holds a version string,
@@ -302,13 +370,11 @@ supply it. A config carrying the placeholder is worse than one carrying nothing:
 Routing check 4 sees a config, so the run proceeds to step 5.7 and fails there naming a plugin that
 does not exist.
 
-A `mobile_mcp` value in a migrating source is carried to `[DRIVE_APP]`, value preserved: the key was
-renamed, not retired, and dropping it would silence a project's own choice.
 A `[MOBILE_MCP]` line in a Task.md of a task already in flight is **not** migrated
 — core reads only `[DRIVE_APP]`, so such a task falls back to the project default; say so once in the
 migration report rather than rewriting task folders.
 
-`CLAUDE.md` (state D only — state E leaves user sections alone):
+`CLAUDE.md` (state D only — states E and F leave that file alone):
 ```
 <preamble: stub or preserved>
 
@@ -323,8 +389,8 @@ Empty `user_sections` → the file ends at the `@import` line (with a trailing n
 
 1. **Backup always**: the source file → `<name>.bak` (or `.bak.YYYYMMDD-HHMMSS` on collision) **before** any disk write.
 2. **Atomic writes**: write to `*.new`, then atomic rename.
-3. **Idempotency**: if the toolkit file exists AND CLAUDE.md has the `@import` line, state detection routes to C, not D or E.
-4. **Rollback hint** in the report: `mv {backup_path} CLAUDE.md && rm CLAUDE-spine-toolkit.md`.
+3. **Idempotency**: if the toolkit file exists AND CLAUDE.md has the `@import` line, state detection routes to C, not D or E — and to F rather than C while that file is still in the 1.x block format.
+4. **Rollback hint** in the report: `mv {backup_path} CLAUDE.md && rm CLAUDE-spine-toolkit.md`. State F rewrote one file, so its hint is `mv {backup_path} CLAUDE-spine-toolkit.md`.
 5. **Line endings**: normalize to LF on write.
 
 ## Core Questions
