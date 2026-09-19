@@ -119,9 +119,11 @@ it. Your own project instructions stay in `CLAUDE.md`, which the toolkit only ev
 the import line. The blocks and fields the toolkit reads:
 
 `## Project settings` and `## Task defaults` — every setting a run resolves, one
-`[FIELD] = [value]` line each, `[LANG]` and `[MODELS]` among them — plus `## Platform`,
-`## Agents` (per-role overrides of the manifest), `## Stack`, `## Modules` (per-module stack
-overrides), `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`.
+`[FIELD] = [value]` line each, `[LANG]` and `[MODELS]` among them. **`docs/configuration.md`** is the
+reference: one section per field, what it governs, its values, its default, and whether a task can
+override it. Then `## Platform`, `## Agents` (per-role overrides of the manifest), `## Stack`,
+`## Modules` (per-module stack overrides), `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`,
+`## Paths`.
 
 The template writes three more — `## Persona`, `## Rules` and `## Orchestration`. Those are for the
 agents reading the file as context, not blocks the toolkit parses.

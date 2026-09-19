@@ -176,3 +176,13 @@ catalog_words() {
   grep -qE '^\[SETTINGS_REPORT\] = \[diff\] +# diff \| full \| off$' "$TPL" \
     || { echo "[SETTINGS_REPORT] must ship diff and name diff | full | off"; return 1; }
 }
+
+@test "the SCALE asymmetry holds: the template ships lite, an absent field resolves full" {
+  # The one field whose shipped line and its absent-field default differ on purpose, asserted in
+  # four places and held equal in none — so a "fix" to either half names the other two,
+  # skills/setup/SKILL.md's migration note and docs/configuration.md, instead of passing silently.
+  ships="$(sed -n 's/^\[SCALE\] = \[\([a-z]*\)\].*/\1/p' "$TPL")"
+  resolves="$(sed -n "s/^ *('scale', 'SCALE', \[[^]]*\], '\([a-z]*\)').*/\1/p" "$ROOT/scripts/resolve-settings.sh")"
+  [ "$ships" = lite ] || { echo "the template ships [SCALE] = [$ships], expected lite"; return 1; }
+  [ "$resolves" = full ] || { echo "the resolver's scale default is '$resolves', expected full"; return 1; }
+}
