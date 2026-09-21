@@ -115,3 +115,12 @@ section() {
   grep -qF 'research_experiment=on' "$ROOT/docs/building-a-platform.md" \
     || { echo "building-a-platform.md says nothing about the experiment"; return 1; }
 }
+
+@test "an epic never pushes an experiment step" {
+  E="$ROOT/workflows/profile-epic.js"
+  grep -qF "const experimentStep = st.task_type === 'RESEARCH' && st.research_experiment === 'on'" "$E" \
+    || { echo "the walk does not recognise an experiment step"; return 1; }
+  grep -qF 'if (!canPush || !wf || experimentStep) {' "$E" || { echo "an experiment step is still pushed"; return 1; }
+  grep -qF '[RESEARCH_EXPERIMENT] = [on]' "$ROOT/skills/workflow-epic/SKILL.md" \
+    || { echo "workflow-epic does not force pull for an experiment step"; return 1; }
+}
