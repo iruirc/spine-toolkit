@@ -137,6 +137,14 @@ For reference, the templates contain these placeholders:
    the steps that turn out to carry the work are usually raised by findings during it rather than
    foreseen in the plan — and a guess written here is a hand-maintained path list that rots. What
    is affected is computed from the actual diff, at Plan and at the end of each phase.
+
+   One more line of that kind, for `RESEARCH` only: `[RESEARCH_EXPERIMENT] = [on]`, the owner's
+   permission for the Research stage to answer by an experiment on a branch that is never merged
+   (`skills/workflow-research/SKILL.md` § 2c). Write it only when the user explicitly asked for the
+   answer to come from running something — the intent of locale key
+   `research_experiment_keywords`, matched across languages as in step 4 — and never on a guess:
+   it permits changing code. Never write `off`; an absent line already is.
+
 10. **Verify structural anchors are intact.** Read the just-written `Task.md`. Check that **every** one of the following literal strings is present (case-sensitive, byte-for-byte):
     - `**Date:**`
     - `[TASK_TYPE] = `

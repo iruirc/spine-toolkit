@@ -469,6 +469,11 @@ Core dispatches by role; which agent that means is yours. This is where each one
 A **panel** stage runs two agents on one stage; whether they go in parallel or in sequence is the
 orchestrator's choice and needs no announcement.
 
+With `research_experiment=on` the RESEARCH Research role — `architect` unless `research_agent`
+names another — also builds the project, runs it and drives it the way your validator does. The
+brief carries those rules (`skills/workflow-research/SKILL.md` § 2c) and says why the experiment's
+code is not implementation code, so an agent definition that forbids writing it need not change.
+
 Validation is where the ecosystem gap is widest, so core states the *policy* per profile and leaves
 the *means* to your validator:
 
