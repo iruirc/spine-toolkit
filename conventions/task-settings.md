@@ -26,6 +26,12 @@ The task's own `[WALKTHROUGH]` is checked before the `lite` gate and wins outrig
 config is checked *after* the gate, so it never overrides `lite` the way the task's own line can
 (the second decision below).
 
+`walkthrough_check` follows the depth it checks. Its chain is the ordinary one and ends at `auto`,
+but only `on` or `off` leaves the resolver: `auto` becomes `on` where `walkthrough` resolved to
+`deep` and `off` where it resolved to `brief`. Wherever `walkthrough` resolves to `off` — the `lite`
+gate included — `walkthrough_check` is `off` as well, there being no file to check; the source then
+reads `walkthrough`, and `show` names the value that was displaced.
+
 **A missing field is the default, not an error.** A task file that never names the field, a config
 that does not name it either — each is a link that contributes nothing and hands the question to
 the next. Nothing stops because a setting was left unwritten, and a project that has never opened
@@ -53,6 +59,7 @@ answers.
 | `settings_report` | — | `[SETTINGS_REPORT]` | `diff` `full` `off` | `diff` |
 | `scale` | `[SCALE]` | `[SCALE]` | `lite` `full` | `full` |
 | `walkthrough` | `[WALKTHROUGH]` | `[WALKTHROUGH]` | `brief` `deep` `off` | `off` when `scale` is `lite`, else `deep` |
+| `walkthrough_check` | `[WALKTHROUGH_CHECK]` | `[WALKTHROUGH_CHECK]` | `auto` `on` `off` | `auto`: `on` at `deep`, `off` at `brief`; `off` wherever `walkthrough` is `off` |
 | `drive_app` | `[DRIVE_APP]` | `[DRIVE_APP]` | `auto` `off` | `auto` |
 | `manual_checks` | `[MANUAL_CHECKS]` | `[MANUAL_CHECKS]` | `auto` `always` | `auto` |
 | `driver` | `[DRIVER]` | `[DRIVER]` | a plugin name, `auto`, `—` | `auto` |
@@ -62,7 +69,7 @@ answers.
 | `docs_strictness` | — | `[DOCS_STRICTNESS]` | `blocking` `advisory` `off` | `advisory` |
 | `docs_freshness` | — | `[DOCS_FRESHNESS]` | `on` `off` | `on` |
 | `budgets` | — | `[BUDGETS]`, entries `<artifact>: <lines>` | a positive integer | the `CAPS` table |
-| `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | `opus` `sonnet` `haiku` `fable` `session` | `sonnet` for `light` and `validator`, `session` for the other seven roles |
+| `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | `opus` `sonnet` `haiku` `fable` `session` | `sonnet` for `light` and `validator`, `session` for `walkthrough` and the other seven roles |
 | `effort` | `[EFFORT]` | `[EFFORT]`, entries `<role>: <value>` | `low` `medium` `high` `xhigh` `max` `session` | `session` |
 
 `driver` walks this same chain but never rides the Outbound Contract: a workflow script must not
