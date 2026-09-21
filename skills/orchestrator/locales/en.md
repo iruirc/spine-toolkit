@@ -115,6 +115,9 @@ audit; inventory; grep all
 ## research_agent_security_keywords
 security; OWASP; vulnerability; certificate pinning
 
+## research_experiment_announce
+Experiment: the Research agent may change code on branch `{branch}`, build it and run the app. The branch is never merged.
+
 ## dispatch_method_a
 Stages of the {profile} profile run through the workflow pipeline — the runtime holds the sequence, one agent per stage.
 

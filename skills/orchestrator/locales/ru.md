@@ -115,6 +115,9 @@ audit; inventory; grep all; аудит; найди все
 ## research_agent_security_keywords
 security; OWASP; vulnerability; certificate pinning; безопасность
 
+## research_experiment_announce
+Опыт: агент Research может менять код на ветке `{branch}`, собирать его и запускать приложение. Ветка не вливается.
+
 ## dispatch_method_a
 Стадии профиля {profile} идут через workflow-конвейер — последовательность держит рантайм, по агенту на стадию.
 
