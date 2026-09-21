@@ -34,7 +34,7 @@ core_grep() {
   done
   for f in LANG PROGRESS SETTINGS_REPORT BUDGETS DOCS_MAP DOCS_STRICTNESS DOCS_FRESHNESS \
            WORKFLOW_MODE SCALE DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION WALKTHROUGH \
-           DOCS MODELS EFFORT; do
+           WALKTHROUGH_CHECK DOCS MODELS EFFORT; do
     grep -q "^\[$f\] = \[" "$TPL" || { echo "missing field: [$f]"; return 1; }
   done
 }

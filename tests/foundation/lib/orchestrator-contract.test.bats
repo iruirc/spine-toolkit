@@ -255,9 +255,9 @@ section() {
 }
 
 @test "the outbound contract carries models and effort as filled brace maps" {
-  grep -qxF 'models={light: sonnet, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}' "$SKILL" \
+  grep -qxF 'models={light: sonnet, walkthrough: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}' "$SKILL" \
     || { echo "no filled models= line in the Outbound Contract block"; return 1; }
-  grep -qxF 'effort={architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}' "$SKILL" \
+  grep -qxF 'effort={walkthrough: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}' "$SKILL" \
     || { echo "no filled effort= line in the Outbound Contract block"; return 1; }
 }
 
@@ -288,6 +288,7 @@ section() {
     body="$(awk '/^## warn_tuning_unrecognised$/{p=1;next} /^## /{p=0} p' "$L")"
     grep -qF '{source}' <<<"$body" || { echo "$l: warn_tuning_unrecognised lacks {source}"; return 1; }
     grep -qF '{entry}' <<<"$body" || { echo "$l: warn_tuning_unrecognised lacks {entry}"; return 1; }
+    grep -qF '`walkthrough`' <<<"$body" || { echo "$l: warn_tuning_unrecognised does not list the walkthrough key"; return 1; }
     grep -qF '`session`; ' <<<"$body" || { echo "$l: warn_tuning_unrecognised does not list session among model values"; return 1; }
     ! grep -qF '`platform`' <<<"$body" || { echo "$l: warn_tuning_unrecognised still lists platform"; return 1; }
     body="$(awk '/^## warn_effort_method_b$/{p=1;next} /^## /{p=0} p' "$L")"
@@ -341,5 +342,15 @@ section() {
     f="$ROOT/skills/orchestrator/locales/$l.md"
     grep -qxF '## progress_open_settings' "$f" || { echo "$l.md lacks progress_open_settings"; return 1; }
     grep -qF '{count}' "$f" || { echo "$l.md lacks the {count} placeholder"; return 1; }
+  done
+}
+
+@test "the outbound contract carries walkthrough_check, on or off and never auto" {
+  grep -qxF 'walkthrough_check=on|off' "$SKILL" || { echo "no walkthrough_check= line in the contract block"; return 1; }
+  para="$(awk '/^`walkthrough_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`walkthrough_check\` paragraph in the Outbound Contract"; return 1; }
+  for token in 'resolve-settings.sh json' 'Always filled' '`auto` never reaches the contract' \
+               '`task-walkthrough` → `## Check`' 'wherever `walkthrough` is `off`'; do
+    grep -qF "$token" <<<"$para" || { echo "the walkthrough_check paragraph does not say $token"; return 1; }
   done
 }

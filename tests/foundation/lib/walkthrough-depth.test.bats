@@ -286,3 +286,26 @@ NAMES
     grep -qF "$token" <<<"$lang" || { echo "## Localization does not keep $token in English"; return 1; }
   done
 }
+
+@test "the check's field is offered and documented wherever a setting is" {
+  T="$ROOT/templates/claude-toolkit-md/en.md"
+  grep -qE '^\[WALKTHROUGH_CHECK\] = \[auto\] +# auto \| on \| off$' "$T" \
+    || { echo "the config template does not ship auto beside the three values"; return 1; }
+  for f in task-root task-step; do
+    grep -qxF '# [WALKTHROUGH_CHECK] = [off] # auto | on | off' "$ROOT/templates/task-md/$f.md" \
+      || { echo "$f.md does not offer the field"; return 1; }
+  done
+  D="$ROOT/docs/configuration.md"
+  grep -qxF '### [WALKTHROUGH_CHECK]' "$D" || { echo "docs/configuration.md has no section for the field"; return 1; }
+  grep -qF '`[WALKTHROUGH_CHECK] = [auto|on|off]`' "$D" || { echo "the override spelling is missing"; return 1; }
+  grep -qF '`[WALKTHROUGH_CHECK] = [<auto|on|off>]`' "$ROOT/skills/task-new/SKILL.md" \
+    || { echo "task-new does not offer the field"; return 1; }
+  grep -qF '| `walkthrough_check` | `[WALKTHROUGH_CHECK]` | `[WALKTHROUGH_CHECK]` | `auto` `on` `off` |' \
+    "$ROOT/conventions/task-settings.md" || { echo "task-settings.md has no row for the field"; return 1; }
+}
+
+@test "the depth guidance says what changed opens both depths" {
+  doc="$ROOT/docs/configuration.md"
+  grep -q '^`deep` — what changed' "$doc" || { echo "deep does not open with what changed"; return 1; }
+  grep -q '^`brief` — what changed' "$doc" || { echo "brief does not open with what changed"; return 1; }
+}

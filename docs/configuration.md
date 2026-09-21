@@ -212,12 +212,13 @@ Written at the end of the implementing stage, so it is readable before Validatio
 refreshed afterwards if later commits moved past it. `deep` and `brief` both carry diagrams where
 they help and follow-ups; the difference is below.
 
-`deep` — a glossary of the terms it uses, the commit order and why, then a section per commit: what
-appeared, the failure it is written against, how that is closed, which alternative was rejected.
-This is the value that makes the file worth opening a year later, and it is the default.
+`deep` — what changed, each change before and after on one concrete case; then a glossary of the
+terms it uses, the commit order and why, and a section per commit: what appeared, the failure it is
+written against, how that is closed, which alternative was rejected. This is the value that makes the
+file worth opening a year later, and it is the default.
 
-`brief` — summary, divergences and a one-bullet-per-commit log, for a reader who already knows the
-area.
+`brief` — what changed, one line per change; then a summary, divergences and a one-bullet-per-commit
+log, for a reader who already knows the area.
 
 `off` — never written.
 
@@ -227,6 +228,23 @@ the old shape says `brief`.
 Not applicable to RESEARCH and REVIEW, whose deliverable is the artifact itself. A `lite` task writes
 nothing unless it says otherwise: the project's own line is read *after* the `lite` gate and cannot
 out-rank it, while the task's own `[WALKTHROUGH]` is read before it and wins outright.
+
+### [WALKTHROUGH_CHECK]
+
+**Values:** `auto` `on` `off` · **Default:** `auto` — `on` at `deep`, `off` at `brief` ·
+**Task override:** `[WALKTHROUGH_CHECK] = [auto|on|off]` · **Defined by:** the `task-walkthrough`
+skill, `## Check`
+
+Whether `Walkthrough.md` is read back by a reader with none of the writer's context, and revised
+once from what that reader could not follow. The reader is a fresh agent of the writer's role that
+opens the file and nothing else. It retells every item of `## What changed` and names each place it
+had to guess; an empty list ends the check, otherwise the writer fixes the places named. One round,
+and the run notes how many places there were.
+
+`auto` follows the depth `[WALKTHROUGH]` resolves to: `on` at `deep`, `off` at `brief`. `on` checks
+a `brief` file too; `off` never checks. Where `[WALKTHROUGH]` resolves to `off` — a `lite` task
+included — nothing is checked, whatever this field says. The check costs one `light` dispatch per
+write that changed the file, and one more writer dispatch when it finds something.
 
 ### [DOCS]
 
