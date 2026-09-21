@@ -8,12 +8,15 @@ Both profiles can finish without writing application code. They are NOT redundan
 
 **Use when:** the task is known up-front to be investigation-only. No code will be written *because of this task* (follow-up tasks created from `## Follow-up` may write code; those are separate tasks of their own types).
 
+**An experiment is still investigation.** With `[RESEARCH_EXPERIMENT] = [on]` in `Task.md` the Research stage may change code on a branch that is never merged, build it and run it: the answer comes from a run, and nothing from the run lands in the project (`skills/workflow-research/SKILL.md` § 2c). A spike is this, not an EPIC.
+
 **Examples:**
 - Audit: "find every callsite that compares file paths without normalizing them first"
 - Feasibility: "can we replace the callback-based event bus with streams without losing back-pressure?"
 - Comparative analysis: "embedded SQL store vs document store for our offline cache"
 - Domain investigation: "how does ABC.Bank's new OpenBanking API differ from the old one"
 - Security audit: "OWASP audit of the new card-entry flow"
+- Spike: "does streaming the export keep peak memory under 200 MB? Measure it" — with `[RESEARCH_EXPERIMENT] = [on]`
 
 **Shape:** `Research → [Review] → Done`. Single deliverable: `Research.md`. Role: `architect` (default) / `diagnostics` (audits) / `security` (security audits).
 
@@ -33,6 +36,7 @@ Both profiles can finish without writing application code. They are NOT redundan
 
 - Will I write any application code *as a direct result of this task*?
   - **No** → RESEARCH
+  - **Only to find something out, on a branch that is never merged** → RESEARCH with `[RESEARCH_EXPERIMENT] = [on]`
   - **Probably no, but maybe** → EPIC (with `pure_research` as the contingency)
   - **Yes, decomposed into multiple chunks** → EPIC
   - **Yes, a single focused change** → FEATURE / BUG / REFACTOR (no Research profile needed)

@@ -94,3 +94,24 @@ section() {
   grep -qF 'research_experiment: st.research_experiment,' <<<"$block" || { echo "stepArgs drops research_experiment"; return 1; }
   grep -qF 'For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them.' "$E" || { echo "the step reader never reads the line"; return 1; }
 }
+
+@test "task-new writes the line only on an explicit request, for RESEARCH" {
+  TN="$ROOT/skills/task-new/SKILL.md"
+  grep -qF '[RESEARCH_EXPERIMENT] = [on]' "$TN" || { echo "task-new does not name the line"; return 1; }
+  grep -qF '`research_experiment_keywords`' "$TN" || { echo "task-new does not name the keyword key"; return 1; }
+  grep -qF 'never on a guess' "$TN" || { echo "task-new does not forbid guessing"; return 1; }
+  for l in en ru; do
+    grep -qx '## research_experiment_keywords' "$ROOT/skills/task-new/locales/$l.md" \
+      || { echo "locale $l lacks research_experiment_keywords"; return 1; }
+  done
+}
+
+@test "the RESEARCH-vs-EPIC decision sends a spike to RESEARCH with the line" {
+  quick="$(section "$ROOT/conventions/research-vs-epic.md" '## Quick decision')"
+  grep -qF '[RESEARCH_EXPERIMENT] = [on]' <<<"$quick" || { echo "Quick decision does not name the line"; return 1; }
+}
+
+@test "a platform author learns that the research role may build and drive" {
+  grep -qF 'research_experiment=on' "$ROOT/docs/building-a-platform.md" \
+    || { echo "building-a-platform.md says nothing about the experiment"; return 1; }
+}
