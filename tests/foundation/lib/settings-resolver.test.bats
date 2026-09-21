@@ -84,6 +84,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   [ "$(field mode <<<"$output")" = manual ] || { echo "$output"; return 1; }
   [ "$(field scale <<<"$output")" = full ] || { echo "$output"; return 1; }
   [ "$(field walkthrough <<<"$output")" = deep ] || { echo "$output"; return 1; }
+  [ "$(field walkthrough_check <<<"$output")" = on ] || { echo "$output"; return 1; }
   [ "$(field drive_app <<<"$output")" = auto ] || { echo "$output"; return 1; }
   [ "$(field manual_checks <<<"$output")" = auto ] || { echo "$output"; return 1; }
   [ "$(field driver <<<"$output")" = auto ] || { echo "$output"; return 1; }
@@ -195,7 +196,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
 
 @test "show names a field only when the value chosen differs from the built-in default" {
   # The shipped template writes every field down explicitly, so a column keyed on "somebody
-  # chose it" prints sixteen lines in a project that has changed nothing.
+  # chose it" prints seventeen lines in a project that has changed nothing.
   cp "$ROOT/templates/claude-toolkit-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
   out="$("$RESOLVE" show "$TASK" 2>"$ERR")"
   [ ! -s "$ERR" ] || { echo "the template's guidance was read as entries:"; cat "$ERR"; return 1; }
@@ -207,7 +208,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
     ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
   done
   [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
-  grep -qxF '# 15 more at their default' <<<"$out" || { echo "$out"; return 1; }
+  grep -qxF '# 16 more at their default' <<<"$out" || { echo "$out"; return 1; }
 }
 
 @test "a project budget equal to the default is not a diff, and --all still names it" {
@@ -440,6 +441,7 @@ progress normal
 settings_report diff
 scale lite
 walkthrough off
+walkthrough_check off
 drive_app auto
 manual_checks auto
 driver auto
@@ -453,6 +455,8 @@ FIELDS
   [ "$(map_value budgets Plan.md <<<"$out")" = 200 ] || { echo "$out"; return 1; }
   [ "$(map_value models light <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
   [ "$(map_value models validator <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
+  [ "$(map_value models walkthrough <<<"$out")" = session ] || { echo "$out"; return 1; }
+  [ "$(map_value effort walkthrough <<<"$out")" = session ] || { echo "$out"; return 1; }
   for role in architect developer tester reviewer refactorer security diagnostics; do
     [ "$(map_value models "$role" <<<"$out")" = session ] || { echo "$role: $out"; return 1; }
     [ "$(map_value effort "$role" <<<"$out")" = session ] || { echo "$role: $out"; return 1; }
@@ -521,4 +525,75 @@ FIELDS
     grep -qxF "const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'" "$p" \
       || { echo "$(basename "$p"): phase_verification is not guarded"; return 1; }
   done
+}
+
+@test "walkthrough_check follows the depth when nobody chose it" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(field walkthrough_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(source_of walkthrough_check <<<"$output")" = walkthrough ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[WALKTHROUGH] = [brief]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field walkthrough_check <<<"$output")" = off ] || { echo "$output"; return 1; }
+}
+
+@test "a chosen walkthrough_check beats the depth" {
+  printf '[TASK_TYPE] = [BUG]\n[WALKTHROUGH] = [brief]\n[WALKTHROUGH_CHECK] = [on]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field walkthrough_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(source_of walkthrough_check <<<"$output")" = task ] || { echo "$output"; return 1; }
+  printf '## Task defaults\n\n[WALKTHROUGH_CHECK] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field walkthrough_check <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(source_of walkthrough_check <<<"$output")" = project ] || { echo "$output"; return 1; }
+}
+
+@test "nothing is checked where nothing is written, and show names what that displaced" {
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n[WALKTHROUGH_CHECK] = [on]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field walkthrough <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(field walkthrough_check <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(source_of walkthrough_check <<<"$output")" = walkthrough ] || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK"
+  grep -qE '^\[WALKTHROUGH_CHECK\] += \[off\] +# walkthrough: off \(task: on\)$' <<<"$output" \
+    || { echo "$output"; return 1; }
+}
+
+@test "show leaves an auto walkthrough_check out, and --all names what it became" {
+  printf '## Task defaults\n\n[WALKTHROUGH_CHECK] = [auto]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" show "$TASK"
+  ! grep -q '^\[WALKTHROUGH_CHECK\]' <<<"$output" || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK" --all
+  grep -qE '^\[WALKTHROUGH_CHECK\] += \[on\] +# walkthrough: deep$' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "a step inherits the epic's walkthrough_check" {
+  EPIC="$PROJ/Tasks/ACTIVE/050-an-epic"
+  STEP="$EPIC/01-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[WALKTHROUGH_CHECK] = [off]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  run "$RESOLVE" json "$STEP"
+  [ "$(field walkthrough_check <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(source_of walkthrough_check <<<"$output")" = epic ] || { echo "$output"; return 1; }
+}
+
+@test "an unusable walkthrough_check is reported, and the next source applies" {
+  printf '## Task defaults\n\n[WALKTHROUGH_CHECK] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[WALKTHROUGH_CHECK] = [maybe]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  grep -qF "Task.md [WALKTHROUGH_CHECK]: 'maybe' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+  [ "$(field walkthrough_check <<<"$out")" = off ] || { echo "$out"; return 1; }
+  [ "$(source_of walkthrough_check <<<"$out")" = project ] || { echo "$out"; return 1; }
+}
+
+@test "walkthrough is a key of both maps, at session until somebody names it" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(map_value models walkthrough <<<"$output")" = session ] || { echo "$output"; return 1; }
+  [ "$(map_value effort walkthrough <<<"$output")" = session ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [walkthrough: opus]\n[EFFORT] = [walkthrough: high]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  [ "$(map_value models walkthrough <<<"$out")" = opus ] || { echo "$out"; return 1; }
+  [ "$(map_value effort walkthrough <<<"$out")" = high ] || { echo "$out"; return 1; }
 }
