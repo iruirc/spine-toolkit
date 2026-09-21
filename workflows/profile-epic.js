@@ -472,6 +472,8 @@ const STEP = {
     drive_app: { type: 'string', enum: ['auto', 'off'], description: "the step folder's own resolve-settings.sh drive_app value" },
     manual_checks: { type: 'string', enum: ['auto', 'always'], description: "the step folder's own resolve-settings.sh manual_checks value" },
     phase_verification: { type: 'string', enum: ['proportional', 'full'], description: "the step folder's own resolve-settings.sh phase_verification value" },
+    walkthrough: { type: 'string', enum: ['brief', 'deep', 'off'], description: "the step folder's own resolve-settings.sh walkthrough value" },
+    walkthrough_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh walkthrough_check value" },
     models: { type: 'string', description: 'only when the step declares its own [MODELS]: the text between its brackets' },
     effort: { type: 'string', description: 'only when the step declares its own [EFFORT]: the text between its brackets' },
   },
@@ -630,7 +632,7 @@ if (runs('Execute')) {
     const read = await agent(
       brief(
         'Execute',
-        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE] and [STATUS] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For each step folder also run "<core root>/scripts/resolve-settings.sh json <step folder>" and return its drive_app, manual_checks and phase_verification values. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
+        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE] and [STATUS] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For each step folder also run "<core root>/scripts/resolve-settings.sh json <step folder>" and return its drive_app, manual_checks, phase_verification, walkthrough and walkthrough_check values. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
       { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'mechanical') },
     )
@@ -680,6 +682,8 @@ if (runs('Execute')) {
       drive_app: st.drive_app === undefined ? DRIVE_APP : st.drive_app,
       manual_checks: st.manual_checks === undefined ? MANUAL_CHECKS : st.manual_checks,
       phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
+      walkthrough: st.walkthrough === undefined ? A.walkthrough : st.walkthrough,
+      walkthrough_check: st.walkthrough_check === undefined ? WALKTHROUGH_CHECK : st.walkthrough_check,
       archive_paths: [],
       epic_id: A.task_id,
       epic_dir: DIR,
