@@ -54,7 +54,9 @@ KIND_OF_LABEL = (
     (r'done:read-branch', 'mechanical'),
     (r'auto-move', 'mechanical'),
     (r'done', 'mechanical'),
-    (r'walkthrough', 'light'),
+    (r'walkthrough', 'walkthrough'),
+    (r'walkthrough:revise', 'walkthrough'),
+    (r'walkthrough:check', 'light'),
 )
 
 # Dispatches whose role is a variable, as (agentType expression, tuning role expression). An unlisted

@@ -592,7 +592,8 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/agent-metrics.sh" --format json --run <runId
 ```
 
 and render `progress_stage_metrics` from the entry in `phases[]` whose `title` equals the stage
-just reported — it folds every agent the stage ran, its read-plan and walkthrough calls included.
+just reported — it folds every agent the stage ran, its read-plan, walkthrough and
+walkthrough-check calls included.
 Fill `{tuning}`, `{out}`, `{ctx}`, `{tools}` and `{elapsed}` from that entry's `tuningText`,
 `outText`, `ctxText`, `tools` and `elapsedText` — the ready-to-print strings where the script gives
 one, never from the raw `out`, `ctx` and `elapsedMs` numbers beside them; `{elapsed}` is the time
