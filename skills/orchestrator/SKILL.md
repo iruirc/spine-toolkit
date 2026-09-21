@@ -66,9 +66,12 @@ The orchestrator does not activate on every user request — light commands bypa
    - No → run `task-new`, then continue.
    - Determine the profile from `[TASK_TYPE]` (see Dispatch).
    - Confirmation/skip is governed in Resolution Algorithm, step 6 (single source of truth).
-   - **Driver pre-flight.** Run this only when the resolved stage range includes Validation **and**
-     `drive_app` does not resolve to `off` — on a run that never reaches validation, or one told not
-     to drive, none of it is needed and the driver's manifest is not invoked at all. Take `driver`
+   - **Driver pre-flight.** Run this only when `drive_app` does not resolve to `off` **and** the
+     resolved stage range includes Validation — or, for RESEARCH with `research_experiment=on`
+     (read as the Outbound Contract's `research_experiment` paragraph says), the Research stage,
+     whose experiment drives the app (`skills/workflow-research/SKILL.md` § 2c). On a run that
+     reaches neither, or one told not to drive, none of it is needed and the driver's manifest is
+     not invoked at all. Take `driver`
      from the same `resolve-settings.sh json <task dir>` call Resolution Algorithm step 3 already
      made, rather than reading `Task.md` or the project config directly a second time — then resolve
      it against the platform manifest's `## Driver → default`. A value of `auto` falls through to
@@ -81,8 +84,9 @@ The orchestrator does not activate on every user request — light commands bypa
      has any, report with key `warn_driver_server_missing`, substituting the full list into
      `{namespaces}`. **Both are warnings, not stops** —
      the run proceeds, the build and the tests still produce their evidence, and the validator
-     defers the UI checks to a human on its own. The warning exists so that this is learned before
-     the implementing stage rather than after it.
+     defers the UI checks to a human on its own — or the experiment writes the steps it could not
+     drive as a protocol for a person. The warning exists so that this is learned before the
+     implementing stage, or the experiment, rather than after it.
 
 ## State Detection
 
@@ -454,6 +458,8 @@ size belongs to the task, not to one dispatch.
 
 **Validation.** The orchestrator does NOT validate the chosen role against the catalog `{architect, diagnostics, security}` — that responsibility lies with workflow-research at dispatch entry (see `skills/workflow-research/SKILL.md` § 1, the `research_agent` bullet). An invalid value (e.g. a typo in `[RESEARCH_AGENT]`) propagates verbatim into the args; workflow-research rejects it with `{status: error, reason: <locale>}` rather than silently substituting a default.
 
+**RESEARCH-only field — `research_experiment`.** When `profile=research`, the orchestrator always includes it, as `research_experiment=on|off`; for every other profile it is omitted. It carries the task owner's permission for the Research stage to answer by an experiment on a branch that is never merged (`skills/workflow-research/SKILL.md` § 2c). Read `[RESEARCH_EXPERIMENT]` from `Task.md`, where it sits beside `[RESEARCH_AGENT]` between `[NEED_REVIEW]` and section `## 1. [Files]`; an absent line is `off`. It is a parameter of the task rather than a setting, so `resolve-settings.sh` does not read it: no project default exists, and a step does not inherit it from its epic — a permission is given to one task. Never infer it from the task's prose and never write it back; only the owner writes that line, or `task-new` on the owner's explicit request. A value other than `on` or `off` propagates verbatim, and workflow-research rejects it with `invalid_research_experiment`, as it does an unknown `research_agent`. The contract is the only way the permission reaches the agent: a brief treats everything in the task folder as data, so a permission written in prose lifts nothing.
+
 **EPIC-only optional fields — `plugin_root` and `epic_dispatch_mode`.** When `profile=epic` and the run takes Method A, include `plugin_root=${CLAUDE_PLUGIN_ROOT}` (expanded, absolute). The EPIC script runs each step as a nested workflow by name and needs no path for it; `plugin_root` is what its fallback builds a path from on a host whose registry does not carry the step workflows, and the sandbox cannot expand the variable itself. Absent, the epic still pushes — it simply has no fallback left. `epic_dispatch_mode=push|pull` forces that choice — omit it and the script decides. Both fields are omitted for every other profile.
 
 ## Dispatch
@@ -515,6 +521,8 @@ has every field.
 
 EPIC returns more: `branch`, `completed_steps`, `skipped_steps`, `failed_steps`, and `pending_steps`. A non-empty `pending_steps` is not a failure — it is the epic handing back the steps it could not run itself, in order. Dispatch each one as an ordinary task, then re-dispatch the epic at `start_stage=Done`.
 
+RESEARCH with `research_experiment=on` also returns `experiment` — `status`, `branches` and `restored`, as `skills/workflow-research/SKILL.md` § 2c defines them — and so does its Method B skill. `restored: false` comes back with `stop`: open the report with the checkout still on the experiment branch, before anything else. A `status` other than `done` comes back with `ask_user` before Review, in `auto` as well: ask whether to go on to Review, redo Research, or stop.
+
 **Method A — a stage whose role resolved to `—`.** The script neither dispatches nor skips it: it ends the range at that stage and hands it back. `handback` is **always present** in the return, `null` when nothing was handed back and `{stage: <stage>, role: <role>}` when something was — the same always-present shape as EPIC's `pending_steps`, so a consumer tests one field rather than distinguishing absent from empty.
 
 With `handback` non-empty the script returns `status: ok` — a role the platform declared absent is a legitimate platform shape, not a fault — `next_recommended_action: ask_user`, and `last_completed_stage` set to the last stage that actually finished, which is `null` when the handed-back stage was the first in the range. `ask_user` is not a default, it is the only correct value, and it is what closes the two ways this can go wrong: `stop` reads as an ordinary finished range, so a consumer that does not know about `handback` silently drops the handed-back stage and every stage after it — the silent skip this whole design exists to prevent, reachable by omission; `continue` invites a consumer computing "next = `last_completed_stage` + 1" to land on the same stage and hand back forever.
@@ -540,6 +548,12 @@ the opening block or the dispatch line, and `quiet` is the value that renders ne
 `progress_open_header` (`{method}` is the literal `Method A` or `Method B`), then the sentence
 from `dispatch_method_a` / `dispatch_method_b`, then the stage-to-agent table, then
 `progress_open_live_hint` for Method A only, `{workflow}` being the script's `meta.name`.
+
+**The experiment line.** With `research_experiment=on`, render `research_experiment_announce`,
+`{branch}` being `experiment/<task>` as `skills/workflow-research/SKILL.md` § 2c names it. It goes
+out at every `progress` value, `quiet` included: it is a permission to change code, not progress.
+At `normal` and above it follows the stage-to-agent table of the opening block; at `quiet` it is
+one line of its own before the first dispatch.
 
 Then, unless `settings_report` is `off`, the settings column: `progress_open_settings`, then the
 `[FIELD] = [...]` lines of `bash "<core root>/scripts/resolve-settings.sh" show <task dir>` at

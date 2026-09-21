@@ -354,3 +354,34 @@ section() {
     grep -qF "$token" <<<"$para" || { echo "the walkthrough_check paragraph does not say $token"; return 1; }
   done
 }
+
+@test "the outbound contract carries research_experiment, for research only" {
+  contract="$(awk '/^## Outbound Contract$/{c=1;next} /^## Dispatch$/{c=0} c' "$SKILL")"
+  para="$(grep -F '**RESEARCH-only field — `research_experiment`.**' <<<"$contract")"
+  [ -n "$para" ] || { echo "no research_experiment paragraph in the Outbound Contract"; return 1; }
+  for token in 'research_experiment=on|off' '[RESEARCH_EXPERIMENT]' 'an absent line is `off`' \
+               '`resolve-settings.sh` does not read it' 'Never infer it' 'workflow-research rejects it'; do
+    grep -qF "$token" <<<"$para" || { echo "the paragraph does not say $token"; return 1; }
+  done
+}
+
+@test "the driver pre-flight runs for an experiment too" {
+  routing="$(awk '/^## Routing$/{r=1;next} /^## State Detection$/{r=0} r' "$SKILL")"
+  grep -qF 'research_experiment=on' <<<"$routing" \
+    || { echo "the pre-flight does not name the experiment"; return 1; }
+}
+
+@test "the experiment line is announced at every progress value" {
+  grep -qF '`research_experiment_announce`' "$SKILL" || { echo "key not referenced from the body"; return 1; }
+  grep -qF '`quiet` included' "$SKILL" || { echo "the line is not said to survive quiet"; return 1; }
+  for l in en ru; do
+    grep -A1 -x '## research_experiment_announce' "$ROOT/skills/orchestrator/locales/$l.md" \
+      | grep -qF '{branch}' || { echo "locale $l: research_experiment_announce lacks {branch}"; return 1; }
+  done
+}
+
+@test "the orchestrator reads the experiment a research run returns" {
+  dispatch="$(awk '/^## Dispatch$/{d=1;next} /^## Progress reporting$/{d=0} d' "$SKILL")"
+  grep -qF '`restored: false`' <<<"$dispatch" || { echo "restored is not read"; return 1; }
+  grep -qF '`experiment`' <<<"$dispatch" || { echo "experiment is not read"; return 1; }
+}
