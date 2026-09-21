@@ -108,7 +108,8 @@ the work: `Walkthrough.md` carries a section per commit at `deep` and a bullet a
 `ManualChecks.md` a case per check, and a
 single number for either file would strangle a large task or mean nothing on a small one. Those two
 are budgeted **per unit** — per commit, per case, per divergence — in the skill that governs each
-(`task-walkthrough`, `manual-checks`). A per-unit budget is not something a line count can decide,
+(`task-walkthrough`, `manual-checks`); at `deep` a commit's section carries no count at all and is
+bounded by the sub-headings it earns. A per-unit budget is not something a line count can decide,
 so it is read like the rest of the artifact, by the stage that reviews it. Adding one of these to
 the lint's table would not make it measured; it would make the number arbitrary.
 
