@@ -4,7 +4,7 @@ export const meta = {
   whenToUse:
     'Dispatched by spine-toolkit:orchestrator for a task with [TASK_TYPE]=RESEARCH, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
-    { title: 'Research', detail: 'architect, diagnostics or security, per research_agent; writes Research.md and changes no code', agent: 'per research_agent: architect, diagnostics or security' },
+    { title: 'Research', detail: 'architect, diagnostics or security, per research_agent; writes Research.md and changes no code, or with research_experiment=on only on a branch that is never merged', agent: 'per research_agent: architect, diagnostics or security' },
     { title: 'Review', detail: 'judges the research, not the codebase', agent: 'reviewer' },
     { title: 'Done', detail: 'final report with the follow-up count', agent: 'architect' },
   ],
@@ -462,6 +462,58 @@ Change no production code and no tests.`,
 // profile can dispatch.
 const ROLE_OF = { architect: 'architect', diagnostics: 'diagnostics', security: 'security' }
 
+// The owner's permission for an experiment (skills/workflow-research/SKILL.md § 2c). It arrives only
+// through the contract, since the brief treats Task.md as data; absent is an older orchestrator.
+const EXPERIMENT = A.research_experiment === undefined ? 'off' : A.research_experiment
+if (EXPERIMENT !== 'on' && EXPERIMENT !== 'off') {
+  return finish('stop', { status: 'error', reason: `research_experiment "${EXPERIMENT}" is not one of on, off` })
+}
+let experiment = null
+
+const DESK = 'The invariant of this profile: you modify NO source code and write no file other than Research.md. When you find yourself wanting to apply a fix, write it down as a follow-up item instead — that is the deliverable here.'
+
+const EXPERIMENT_RULES = `The owner of this task permitted an experiment: this run's research_experiment is on. No code from this task lands in the project; within that, you may change code, build it and run it, under these rules (skills/workflow-research/SKILL.md § 2c):
+
+1. Before anything else, note the current branch of every checkout the experiment will touch. If a tracked file outside ${DIR} has uncommitted changes, do not start: return experiment.status blocked with the reason, and change nothing.
+2. Work on the branch experiment/<task>, <task> being the path of ${DIR} below Tasks/<STATUS>/, cut from the current HEAD — the same name in every checkout you touch. If it exists already, switch to it and continue on top.
+3. Commit only the experiment's code to it, staging by explicit path; never commit ${DIR} there. Build what a finding rests on from a committed state, so the finding can name the commit. Commit messages follow conventions/commit-messages.md. The documentation routing above does not apply to this branch: nothing on it lands.
+4. You may build, run tests and run the app on a simulator, an emulator or as a local process — never on a physical device, which may hold real data. Drive the app through the project's driver, resolved the way this platform's validator resolves it (conventions/driver-contract.md). This run's drive_app is ${DRIVE_APP}; at off, drive nothing.
+5. Outside the experiment branch write only ${DIR}/Research.md and ${DIR}/experiment/ — data samples, logs, screenshots. A rerun adds to experiment/ and overwrites what it regenerates; Research.md names the files it relies on.
+6. Before you write the final Research.md, switch every checkout you touched back to the branch you noted and confirm its tree is clean. Wherever the task folder gets committed, experiment/ goes with Research.md, never onto the experiment branch.
+7. Under ## Method write ### Experiment — a literal English heading, like ## Follow-up: per checkout the branch, base commit and experiment commits; where it ran and from which commits the builds came; the steps that repeat it; what each file in experiment/ holds. Every finding under ## Findings carries a line **Evidence:** run or **Evidence:** reasoning. A step you could not run — no driver, drive_app off, a build that fails — goes there as a protocol for a person, and a finding it would have confirmed carries **Evidence:** reasoning and names that step.
+
+The experiment's code is not implementation code: its branch is never merged, and the owner permitted it, so your own rules against writing implementation code or applying patches do not cover it. Anything worth keeping from it is a follow-up item, never a commit outside the experiment branch.
+
+Return experiment with status done, partial, not_run or blocked; branches, one entry per checkout with its branch, base and head; and restored — whether every checkout you touched is back on its branch with a clean tree.`
+
+const REVIEW_EXPERIMENT = `\n\nThis research ran an experiment. Also check that ## Method → ### Experiment lets someone who was not there repeat it — per checkout the branch, base commit and commits, where it ran, the steps, what each file in experiment/ holds — and that every finding carries an **Evidence:** line. A finding backed by reasoning where the task asked for a run is a gap in coverage.`
+
+const DONE_EXPERIMENT = `An experiment ran on a branch that is never merged; Research.md → ## Method → ### Experiment names it per checkout. Name every such branch in Done.md and say that deleting it is the owner's call — delete nothing yourself. Keep the rest of the report about what is now known and what should happen next.`
+
+const EXPERIMENT_REPORT = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['status', 'branches', 'restored'],
+  properties: {
+    status: { type: 'string', enum: ['done', 'partial', 'not_run', 'blocked'] },
+    branches: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['checkout', 'branch', 'base', 'head'],
+        properties: {
+          checkout: { type: 'string' },
+          branch: { type: 'string' },
+          base: { type: 'string' },
+          head: { type: 'string' },
+        },
+      },
+    },
+    restored: { type: 'boolean', description: 'every checkout touched is back on its branch with a clean tree' },
+  },
+}
+
 if (runs('Research')) {
   const picked = A.research_agent || 'architect'
   if (!ROLE_OF[picked]) {
@@ -484,7 +536,7 @@ if (runs('Research')) {
 
 The heading ## Follow-up is a byte-for-byte literal. Do not translate, localize, or adapt it — it is a machine-parsed anchor. The bullets underneath it are prose and follow the output language.
 
-The invariant of this profile: you modify NO source code and write no file other than Research.md. When you find yourself wanting to apply a fix, write it down as a follow-up item instead — that is the deliverable here.
+${EXPERIMENT === 'on' ? EXPERIMENT_RULES : DESK}
 
 Apply the task-documents skill's rules for every document to Research.md — here the document is the deliverable, so the skill's layers and its per-document sections do not apply.`,
     ),
@@ -494,10 +546,11 @@ Apply the task-documents skill's rules for every document to Research.md — her
       agentType: A.agents[ROLE_OF[picked]], ...tuning(ROLE_OF[picked], 'stage'),
       schema: {
         ...ARTIFACT,
-        required: [...ARTIFACT.required, 'follow_up_count'],
+        required: [...ARTIFACT.required, 'follow_up_count', ...(EXPERIMENT === 'on' ? ['experiment'] : [])],
         properties: {
           ...ARTIFACT.properties,
           follow_up_count: { type: 'integer', description: 'how many items ended up under ## Follow-up' },
+          ...(EXPERIMENT === 'on' ? { experiment: EXPERIMENT_REPORT } : {}),
         },
       },
     },
@@ -505,6 +558,16 @@ Apply the task-documents skill's rules for every document to Research.md — her
   if (!research) return finish('stop', { status: 'error', reason: 'the Research agent returned nothing' })
   record('Research', research)
   log(`Research produced ${research.follow_up_count} follow-up item(s)`)
+  if (EXPERIMENT === 'on') {
+    experiment = research.experiment
+    const where = experiment.branches.map((b) => `${b.branch} in ${b.checkout}`).join(', ')
+    if (!experiment.restored) {
+      result.notes.unshift(`Not restored: a checkout is still on the experiment branch (${where || 'unnamed'}). Switch it back before anything else.`)
+      return finish('stop', { experiment })
+    }
+    result.notes.push(`Experiment ${experiment.status}${where ? `: code changed only on ${where}, left unmerged` : ''}.`)
+    if (experiment.status !== 'done') return finish('ask_user', { experiment })
+  }
 }
 
 // ── Review ──────────────────────────────────────────────────────────────────
@@ -518,7 +581,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-Judge the research and only the research: does it cover the goal it set itself, is the method sound, are the findings internally consistent, is the follow-up list actionable rather than a list of vague intentions.
+Judge the research and only the research: does it cover the goal it set itself, is the method sound, are the findings internally consistent, is the follow-up list actionable rather than a list of vague intentions.${EXPERIMENT === 'on' ? REVIEW_EXPERIMENT : ''}
 
 You are explicitly NOT verifying the findings against the codebase — the technical accuracy of a finding belongs to the research agent, and second-guessing it here duplicates that work at full cost while adding no gate. Modify nothing. Return the same status you wrote on the first line.`,
     ),
@@ -529,7 +592,7 @@ You are explicitly NOT verifying the findings against the codebase — the techn
 
   if (review.review_status !== 'APPROVED') {
     result.notes.push(`Review returned ${review.review_status}; Done was not run.`)
-    return finish('ask_user', { review_status: review.review_status })
+    return finish('ask_user', { review_status: review.review_status, ...(experiment ? { experiment } : {}) })
   }
 }
 
@@ -539,7 +602,7 @@ if (runs('Done')) {
   const done = await agent(
     brief(
       'Done',
-      `Write the final report ${DIR}/Done.md: what was investigated, the verdict or key finding in one paragraph, a pointer to Research.md, and the follow-up tasks — how many, briefly what they are, and the task-new invocation hint for each. Nothing was built here, so keep the report about what is now known and what should happen next.`,
+      `Write the final report ${DIR}/Done.md: what was investigated, the verdict or key finding in one paragraph, a pointer to Research.md, and the follow-up tasks — how many, briefly what they are, and the task-new invocation hint for each. ${EXPERIMENT === 'on' ? DONE_EXPERIMENT : 'Nothing was built here, so keep the report about what is now known and what should happen next.'}`,
     ),
     { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'mechanical') },
   )
@@ -549,4 +612,5 @@ if (runs('Done')) {
 
 return finish(result.last_completed_stage === 'Done' ? 'stop' : 'continue', {
   review_status: review ? review.review_status : null,
+  ...(experiment ? { experiment } : {}),
 })
