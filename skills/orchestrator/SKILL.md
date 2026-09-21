@@ -429,7 +429,7 @@ Two cases write nothing. A run already resolved to `full` has nothing to raise. 
 file. Because the value lives in the file, a later `redo` of any stage runs at `full` as well — the
 size belongs to the task, not to one dispatch.
 
-`drive_app` — whether the Validation stage may drive the running app through the platform's own tooling. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `auto` leaves the choice to the profile, which each `workflow-*` skill states for its own Validation stage; `off` is the project saying it has nothing to drive. The Driver pre-flight (**Routing**, check 4) reads this field to decide whether it runs at all.
+`drive_app` — whether the Validation stage may drive the running app through the platform's own tooling. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `auto` leaves the choice to the profile, which each `workflow-*` skill states for its own Validation stage; `off` is the project saying it has nothing to drive. The Driver pre-flight (**Routing**, check 4) reads this field to decide whether it runs at all. A RESEARCH experiment reads it too: at `off` it drives nothing (`skills/workflow-research/SKILL.md` § 2c).
 
 `manual_checks` — when the validator writes `ManualChecks.md`. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `auto` writes the file only for the checks the validator was told not to run itself; `always` writes it every time, even when the validator drove the app and covered the happy path.
 
@@ -521,7 +521,7 @@ has every field.
 
 EPIC returns more: `branch`, `completed_steps`, `skipped_steps`, `failed_steps`, and `pending_steps`. A non-empty `pending_steps` is not a failure — it is the epic handing back the steps it could not run itself, in order. Dispatch each one as an ordinary task, then re-dispatch the epic at `start_stage=Done`.
 
-RESEARCH with `research_experiment=on` also returns `experiment` — `status`, `branches` and `restored`, as `skills/workflow-research/SKILL.md` § 2c defines them — and so does its Method B skill. `restored: false` comes back with `stop`: open the report with the checkout still on the experiment branch, before anything else. A `status` other than `done` comes back with `ask_user` before Review, in `auto` as well: ask whether to go on to Review, redo Research, or stop.
+RESEARCH with `research_experiment=on` also returns `experiment` whenever its Research stage ran — `status`, `branches`, `restored` and, when something went wrong, `reason`, as `skills/workflow-research/SKILL.md` § 2c defines them — and so does its Method B skill. `restored: false` comes back with `stop`: open the report with the checkout still on the experiment branch, before anything else. A `status` other than `done` comes back with `ask_user` before the next stage, in `auto` as well: ask whether to go on (to Review, or to Done when `need_review=false`), redo Research, or stop. In `manual` this question replaces `stage_done_prompt` for that stage.
 
 **Method A — a stage whose role resolved to `—`.** The script neither dispatches nor skips it: it ends the range at that stage and hands it back. `handback` is **always present** in the return, `null` when nothing was handed back and `{stage: <stage>, role: <role>}` when something was — the same always-present shape as EPIC's `pending_steps`, so a consumer tests one field rather than distinguishing absent from empty.
 
@@ -549,11 +549,12 @@ the opening block or the dispatch line, and `quiet` is the value that renders ne
 from `dispatch_method_a` / `dispatch_method_b`, then the stage-to-agent table, then
 `progress_open_live_hint` for Method A only, `{workflow}` being the script's `meta.name`.
 
-**The experiment line.** With `research_experiment=on`, render `research_experiment_announce`,
-`{branch}` being `experiment/<task>` as `skills/workflow-research/SKILL.md` § 2c names it. It goes
-out at every `progress` value, `quiet` included: it is a permission to change code, not progress.
-At `normal` and above it follows the stage-to-agent table of the opening block; at `quiet` it is
-one line of its own before the first dispatch.
+**The experiment line.** With `research_experiment=on` and a range that includes the Research
+stage, render `research_experiment_announce`, `{branch}` being `experiment/<task>` as
+`skills/workflow-research/SKILL.md` § 2c names it. It goes out at every `progress` value,
+`quiet` included: it is a permission to change code, not progress. At `normal` and above it
+follows the stage-to-agent table of the opening block; at `quiet` it is one line of its own
+before the first dispatch.
 
 Then, unless `settings_report` is `off`, the settings column: `progress_open_settings`, then the
 `[FIELD] = [...]` lines of `bash "<core root>/scripts/resolve-settings.sh" show <task dir>` at
@@ -764,7 +765,7 @@ Action and archival semantics:
 | `run --from <stage>` | Skip previous stages | nothing | from `<stage>` |
 | `redo <stage>` | Redo one stage | `<stage>` artifact | from `<stage>`, after = untouched |
 | `restart <stage>` | Reset and rerun from stage to end | `<stage>` and all subsequent | from `<stage>` to end of profile |
-| `restart-full` | Full reset | all artifacts | from the profile's first stage |
+| `restart-full` | Full reset | all artifacts (a RESEARCH task's `experiment/` stays in place) | from the profile's first stage |
 
 **All redo / restart operations in manual mode require a structured confirmation BEFORE archiving.**
 
