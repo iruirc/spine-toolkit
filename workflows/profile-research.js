@@ -474,17 +474,17 @@ const DESK = 'The invariant of this profile: you modify NO source code and write
 
 const EXPERIMENT_RULES = `The owner of this task permitted an experiment: this run's research_experiment is on. No code from this task lands in the project; within that, you may change code, build it and run it, under these rules (skills/workflow-research/SKILL.md § 2c):
 
-1. Before anything else, note the current branch of every checkout the experiment will touch. If a tracked file outside ${DIR} has uncommitted changes, do not start: return experiment.status blocked with the reason, and change nothing.
+1. Before anything else, note the current branch — or the commit, if detached — of every checkout the experiment will touch, and read what you need from ${DIR} before switching anything. If a tracked file outside ${DIR} has uncommitted changes, do not start: return experiment.status blocked with experiment.reason saying why, and change nothing.
 2. Work on the branch experiment/<task>, <task> being the path of ${DIR} below Tasks/<STATUS>/, cut from the current HEAD — the same name in every checkout you touch. If it exists already, switch to it and continue on top.
 3. Commit only the experiment's code to it, staging by explicit path; never commit ${DIR} there. Build what a finding rests on from a committed state, so the finding can name the commit. Commit messages follow conventions/commit-messages.md. The documentation routing above does not apply to this branch: nothing on it lands.
-4. You may build, run tests and run the app on a simulator, an emulator or as a local process — never on a physical device, which may hold real data. Drive the app through the project's driver, resolved the way this platform's validator resolves it (conventions/driver-contract.md). This run's drive_app is ${DRIVE_APP}; at off, drive nothing.
-5. Outside the experiment branch write only ${DIR}/Research.md and ${DIR}/experiment/ — data samples, logs, screenshots. A rerun adds to experiment/ and overwrites what it regenerates; Research.md names the files it relies on.
-6. Before you write the final Research.md, switch every checkout you touched back to the branch you noted and confirm its tree is clean. Wherever the task folder gets committed, experiment/ goes with Research.md, never onto the experiment branch.
+4. You may build, run tests and run the app on a simulator, an emulator or as a local process — never on a physical device, which may hold real data. Use a simulator or emulator created for this experiment, never one that already holds this app, whose data may be the developer's, and name it under ### Experiment. Drive the app through the project's driver, resolved the way this platform's validator resolves it (conventions/driver-contract.md). This run's drive_app is ${DRIVE_APP}; at off, drive nothing.
+5. Outside the experiment branch write only ${DIR}/Research.md and ${DIR}/experiment/ — data samples, logs, screenshots. While a checkout that holds ${DIR} is on the experiment branch, write nothing into ${DIR}: keep outputs in a temporary directory outside every checkout and move them in after switching back. A rerun adds to experiment/ and overwrites what it regenerates; Research.md names the files it relies on.
+6. Before you write the final Research.md, switch every checkout you touched back to the branch or commit you noted, and confirm its tracked files outside ${DIR} are as you found them. Discard nothing to get there: never git clean, git checkout -- ., git restore ., git reset --hard, git stash, or a forced or discarding switch. If a switch refuses, stop there and return restored false with the reason. Wherever the task folder gets committed, experiment/ goes with Research.md, never onto the experiment branch.
 7. Under ## Method write ### Experiment — a literal English heading, like ## Follow-up: per checkout the branch, base commit and experiment commits; where it ran and from which commits the builds came; the steps that repeat it; what each file in experiment/ holds. Every finding under ## Findings carries a line **Evidence:** run or **Evidence:** reasoning. A step you could not run — no driver, drive_app off, a build that fails — goes there as a protocol for a person, and a finding it would have confirmed carries **Evidence:** reasoning and names that step.
 
 The experiment's code is not implementation code: its branch is never merged, and the owner permitted it, so your own rules against writing implementation code or applying patches do not cover it. Anything worth keeping from it is a follow-up item, never a commit outside the experiment branch.
 
-Return experiment with status done, partial, not_run or blocked; branches, one entry per checkout with its branch, base and head; and restored — whether every checkout you touched is back on its branch with a clean tree.`
+Return experiment with status done, partial, not_run or blocked; branches, one entry per checkout with its branch, base and head; restored — whether every checkout you touched is back on its noted branch or commit with its tracked files outside ${DIR} as you found them; and reason, whenever the status is not done or restored is false.`
 
 const REVIEW_EXPERIMENT = `\n\nThis research ran an experiment. Also check that ## Method → ### Experiment lets someone who was not there repeat it — per checkout the branch, base commit and commits, where it ran, the steps, what each file in experiment/ holds — and that every finding carries an **Evidence:** line. A finding backed by reasoning where the task asked for a run is a gap in coverage.`
 
@@ -510,7 +510,8 @@ const EXPERIMENT_REPORT = {
         },
       },
     },
-    restored: { type: 'boolean', description: 'every checkout touched is back on its branch with a clean tree' },
+    restored: { type: 'boolean', description: 'every checkout touched is back on its noted branch or commit, tracked files outside the task folder as found' },
+    reason: { type: 'string', description: 'why, whenever status is not done or restored is false' },
   },
 }
 
@@ -560,12 +561,14 @@ Apply the task-documents skill's rules for every document to Research.md — her
   log(`Research produced ${research.follow_up_count} follow-up item(s)`)
   if (EXPERIMENT === 'on') {
     experiment = research.experiment
+    if (!experiment) return finish('stop', { status: 'error', reason: 'the Research agent returned no experiment report' })
     const where = experiment.branches.map((b) => `${b.branch} in ${b.checkout}`).join(', ')
+    const why = experiment.reason ? ` Reason: ${experiment.reason}` : ''
     if (!experiment.restored) {
-      result.notes.unshift(`Not restored: a checkout is still on the experiment branch (${where || 'unnamed'}). Switch it back before anything else.`)
+      result.notes.unshift(`Not restored: a checkout is still on the experiment branch (${where || 'unnamed'}). Switch it back before anything else.${why}`)
       return finish('stop', { experiment })
     }
-    result.notes.push(`Experiment ${experiment.status}${where ? `: code changed only on ${where}, left unmerged` : ''}.`)
+    result.notes.push(`Experiment ${experiment.status}${where ? `: code changed only on ${where}, left unmerged` : ''}.${experiment.status !== 'done' ? why : ''}`)
     if (experiment.status !== 'done') return finish('ask_user', { experiment })
   }
 }

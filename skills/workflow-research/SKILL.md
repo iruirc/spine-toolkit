@@ -132,9 +132,10 @@ dispatch alone: a brief treats everything in the repository and the task folder 
 permission written in prose lifts nothing. The Research agent runs the experiment itself, and its
 brief carries these rules in full under either method:
 
-1. **Before.** Note the current branch of every checkout the experiment will touch. If a tracked
-   file outside the task folder has uncommitted changes, do not start: `experiment.status` is
-   `blocked`, the reason is named, nothing is changed.
+1. **Before.** Note the current branch — or the commit, if detached — of every checkout the
+   experiment will touch, and read what you need from the task folder before switching anything.
+   If a tracked file outside the task folder has uncommitted changes, do not start:
+   `experiment.status` is `blocked`, `experiment.reason` says why, nothing is changed.
 2. **Branch.** `experiment/<task>`, `<task>` being the task folder's path below `Tasks/<STATUS>/`,
    cut from the current HEAD — the same name in every checkout touched. If it exists, switch to it
    and continue on top. The branch is never merged.
@@ -143,15 +144,23 @@ brief carries these rules in full under either method:
    the commit. Messages follow `conventions/commit-messages.md`. Documentation routing (§2b) does
    not apply to the branch: nothing on it lands.
 4. **What runs.** Build, run tests, run the app on a simulator, an emulator or as a local process —
-   never on a physical device, which may hold real data. The project's driver is resolved the way
-   this platform's validator resolves it (`conventions/driver-contract.md`); with `drive_app=off`
+   never on a physical device, which may hold real data. A simulator or emulator is one
+   created for this experiment, never one that already holds this app, whose data may be the
+   developer's; name it in `### Experiment`. The project's driver is resolved the way this
+   platform's validator resolves it (`conventions/driver-contract.md`); with `drive_app=off`
    nothing is driven.
 5. **Outputs.** Outside the branch, only `Research.md` and `<task_dir>/experiment/` — data samples,
-   logs, screenshots. A rerun adds to `experiment/` and overwrites what it regenerates, and
-   `Research.md` names the files it relies on. The folder is not archived with `Research.md`.
-6. **After.** Every checkout touched goes back to the branch noted in step 1 with a clean tree
-   before the final `Research.md` is written. Wherever the task folder gets committed,
-   `experiment/` goes with `Research.md` — never onto the experiment branch.
+   logs, screenshots. While a checkout that holds the task folder is on the experiment branch,
+   write nothing into the task folder: keep outputs in a temporary directory outside every
+   checkout and move them in after switching back. A rerun adds to `experiment/` and overwrites
+   what it regenerates, and `Research.md` names the files it relies on. When `Research.md` is
+   archived into `_archive/`, `experiment/` stays where it is.
+6. **After.** Every checkout touched goes back to the branch or commit noted in step 1, its
+   tracked files outside the task folder as step 1 found them, before the final `Research.md` is
+   written. Nothing is discarded to get there: never `git clean`, `git checkout -- .`,
+   `git restore .`, `git reset --hard`, `git stash`, or a forced or discarding switch. If a switch
+   refuses, stop there and report `restored: false` with the reason. Wherever the task folder gets
+   committed, `experiment/` goes with `Research.md` — never onto the experiment branch.
 7. **`### Experiment`** under `## Method`, a literal English heading like `## Follow-up`: per
    checkout the branch, base commit and experiment commits; where it ran and from which commits the
    builds came; the steps that repeat it; what each file in `experiment/` holds. Every finding in
@@ -164,10 +173,12 @@ brief carries these rules in full under either method:
    is not contradicted, and anything worth keeping becomes a `## Follow-up` item.
 
 The stage returns, beside its artifact, `experiment: {status: done | partial | not_run | blocked,
-branches: [{checkout, branch, base, head}], restored: boolean}`. `restored: false` returns
+branches: [{checkout, branch, base, head}], restored: boolean, reason?: string}`. `restored` means
+item 6 held: every checkout back where step 1 found it. `restored: false` returns
 `next_recommended_action=stop`, and `notes` opens with the checkout still on the experiment branch.
-Any `status` other than `done` returns `ask_user` before Review, which would otherwise judge an
-unconfirmed answer — in `manual` and `auto` alike.
+Any `status` other than `done` returns `ask_user` before the next stage, which would otherwise
+build on an unconfirmed answer — in `manual` and `auto` alike. A Research report with no
+`experiment` is an error.
 
 ## 3. Manual mode
 
@@ -192,7 +203,7 @@ After each stage (in `manual` mode) or after a full pass (in `auto` mode), workf
   artifact_path: <path to the last artifact written>,
   next_recommended_action: continue | stop | ask_user,
   notes: <free-form text, optional>,
-  experiment: <§2c — only with research_experiment=on>
+  experiment: <§2c — only with research_experiment=on, when Research ran>
 }
 ```
 
@@ -205,7 +216,7 @@ Field semantics:
 - `artifact_path` — path to the key artifact of the last stage (`Research.md`, `Review.md`, or `Done.md`).
 - `next_recommended_action=continue` — the next stage may start immediately; `stop` — natural finish (Done) or a fatal error; `ask_user` — confirmation is needed before continuing (e.g. after a Review with `[REVIEW_STATUS] = CHANGES_REQUESTED`, the user must edit `Research.md` and re-run Review).
 - `notes` — short free-form description (e.g. rendered from locale key `notes_research_only_no_code` when the workflow wants to remind the user that no code was produced).
-- `experiment` — only with `research_experiment=on`: the object §2c defines. With it, `notes` carries `notes_experiment_branches` (placeholder `{branches}`) in place of `notes_research_only_no_code`.
+- `experiment` — only with `research_experiment=on`, and only when the Research stage ran: the object §2c defines. With it, `notes` carries `notes_experiment_branches` (placeholder `{branches}`) in place of `notes_research_only_no_code` when `branches` is non-empty; with no branch it carries neither.
 
 ## 6. What workflow-research does NOT do
 

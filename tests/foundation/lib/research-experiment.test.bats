@@ -30,7 +30,8 @@ section() {
   [ -n "$rules" ] || { echo "no ## 2c. Experiment"; return 1; }
   for token in 'experiment/<task>' 'blocked' 'physical device' 'drive_app=off' \
                '### Experiment' '**Evidence:** run' '**Evidence:** reasoning' \
-               '<task_dir>/experiment/' 'restored' 'never merged'; do
+               '<task_dir>/experiment/' 'restored' 'never merged' \
+               'explicit path' 'git clean' 'reset --hard' 'temporary directory' 'created for this experiment'; do
     grep -qF "$token" <<<"$rules" || { echo "§2c does not say $token"; return 1; }
   done
 }
@@ -73,10 +74,12 @@ section() {
 }
 
 @test "the experiment brief carries the rules the skill states" {
+  grep -q '^Return experiment ' "$SCRIPT" || { echo "EXPERIMENT_RULES lost its closing line"; return 1; }
   rules="$(sed -n '/^const EXPERIMENT_RULES = /,/^Return experiment /p' "$SCRIPT")"
   [ -n "$rules" ] || { echo "no EXPERIMENT_RULES"; return 1; }
   for token in 'experiment/<task>' 'blocked' 'physical device' 'drive_app' '### Experiment' \
-               '**Evidence:** run' '**Evidence:** reasoning' '/experiment/' 'never merged'; do
+               '**Evidence:** run' '**Evidence:** reasoning' '/experiment/' 'never merged' \
+               'explicit path' 'git clean' 'reset --hard' 'temporary directory' 'created for this experiment'; do
     grep -qF "$token" <<<"$rules" || { echo "EXPERIMENT_RULES does not say $token"; return 1; }
   done
 }
