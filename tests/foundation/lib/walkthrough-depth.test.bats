@@ -55,8 +55,8 @@ setup() {
   # This table is the axis. Without it the two depths are the same document.
   grep -qF '| Section | Content | `brief` | `deep` |' "$SKILL" \
     || { echo "the ## Structure table lost its header row, or one of its depth columns"; return 1; }
-  grep -qE '^\| header \|.*\| ≤ 6 lines \| ≤ 10 lines \|$' "$SKILL" \
-    || { echo "the header row no longer budgets both depths"; return 1; }
+  grep -qE '^\| header \|.*\| the four parts above \| the four parts above \|$' "$SKILL" \
+    || { echo "the header row no longer names its contents at both depths"; return 1; }
   for s in '`## Glossary`' '`## Commit order`' '`## Out of scope`'; do
     # `|| true`: a bare failing grep inside $() aborts the test before the echo.
     row="$(grep -F "| $s |" "$SKILL" || true)"
@@ -229,4 +229,60 @@ NAMES
   C="$ROOT/conventions/task-scale.md"
   grep -qF 'a section per commit at `deep` and a bullet at `brief`' "$C" \
     || { echo "the budget note still describes one shape"; return 1; }
+}
+
+@test "the file opens with what changed, at both depths, before the glossary" {
+  row="$(grep -F '| `## What changed` |' "$SKILL" || true)"
+  [ -n "$row" ] || { echo "the ## Structure table has no What changed row"; return 1; }
+  ! grep -qF '| absent |' <<<"$row" || { echo "What changed is absent at one depth"; return 1; }
+  wc_at="$(grep -nF '| `## What changed` |' "$SKILL" | head -1 | cut -d: -f1)"
+  gl_at="$(grep -nF '| `## Glossary` |' "$SKILL" | head -1 | cut -d: -f1)"
+  [ "$wc_at" -lt "$gl_at" ] || { echo "What changed is listed after the glossary it must not need"; return 1; }
+  grep -q '^### `## What changed`$' "$SKILL" || { echo "no subsection for What changed"; return 1; }
+  for label in '**Before:**' '**After:**' '**Commits:**' '**Behaviour:** unchanged' '**Steps:**'; do
+    grep -qF "$label" "$SKILL" || { echo "What changed does not show $label"; return 1; }
+  done
+  grep -qF 'one and the same concrete case' "$SKILL" || { echo "nothing ties before and after to one case"; return 1; }
+}
+
+@test "the header is named by its contents, and bookkeeping is kept out of it" {
+  grep -qF '| Repository | Range | Commits | ± lines |' "$SKILL" || { echo "no perimeter table"; return 1; }
+  grep -qF '**Bookkeeping in the header.**' "$SKILL" || { echo "no anti-pattern for a header full of bookkeeping"; return 1; }
+  ! grep -qF '≤ 10 lines' "$SKILL" || { echo "the header still carries a line count"; return 1; }
+}
+
+@test "a commit names the change it serves, and bookkeeping commits collapse into one list" {
+  grep -qF '**Changes:**' "$SKILL" || { echo "a commit does not say which change it serves"; return 1; }
+  grep -q '^### Bookkeeping commits$' "$SKILL" || { echo "no rule for bookkeeping commits"; return 1; }
+  grep -qxF '### Bookkeeping' "$SKILL" || { echo "the closing list of bookkeeping commits is not shown"; return 1; }
+}
+
+@test "deep's explanatory sections are bounded by scope, not by a line count" {
+  summary="$(grep -F '| `## Summary` |' "$SKILL" || true)"
+  ! grep -qF '≤ 12' <<<"$summary" || { echo "Summary at deep still carries a line count"; return 1; }
+  ! grep -qF '≤ 12 lines each' "$SKILL" || { echo "commit sub-headings still carry a line count"; return 1; }
+  grep -qF 'is bounded by its scope alone' "$SKILL" || { echo "nothing says what bounds a section with no number"; return 1; }
+}
+
+@test "an identifier is a reference, never the subject" {
+  st="$(awk '/^## Style$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  grep -qF '**An identifier is a reference, never the subject.**' <<<"$st" || { echo "## Style has no rule for identifiers"; return 1; }
+  grep -qF '**An identifier as the subject.**' "$SKILL" || { echo "no anti-pattern for an identifier as the subject"; return 1; }
+}
+
+@test "the check has a section of its own, and the writer never runs it" {
+  grep -q '^## Check$' "$SKILL" || { echo "no ## Check section"; return 1; }
+  ck="$(awk '/^## Check$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  for token in '`walkthrough_check`' '`[WALKTHROUGH_CHECK]`' 'The writer never checks its own file' \
+               'reads `Walkthrough.md` and nothing else' '`retelling`' '`unclear`' '**Revision.**' \
+               '**One round.**' 'append-only rule does not apply'; do
+    grep -qF "$token" <<<"$ck" || { echo "## Check does not say $token"; return 1; }
+  done
+}
+
+@test "the English structure list names the new sections and labels" {
+  lang="$(awk '/^## Localization$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  for token in '`## What changed`' '`### Bookkeeping`' '`**Changes:**`'; do
+    grep -qF "$token" <<<"$lang" || { echo "## Localization does not keep $token in English"; return 1; }
+  done
 }
