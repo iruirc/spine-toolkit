@@ -79,6 +79,7 @@ const STACK = A.stack || 'unspecified'
 const DRIVE_APP = A.drive_app === 'off' ? 'off' : 'auto'
 const MANUAL_CHECKS = A.manual_checks === 'always' ? 'always' : 'auto'
 const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'
+const WALKTHROUGH_CHECK = A.walkthrough_check === 'on' ? 'on' : 'off'
 
 // Documentation routing. Which declared component a change set may have touched is a script
 // (conventions/docs-components.md), because matching a diff against a dozen glob patterns by
@@ -270,8 +271,9 @@ const record = (stage, r) => {
 // passes nothing, leaving the choice to CLAUDE_CODE_SUBAGENT_MODEL and the session.
 const tuning = (role, kind) => {
   const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)
-  const model = (kind !== 'stage' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')
-  const effort = kind === 'mechanical' ? 'low' : pick(A.effort, role, 'session')
+  const own = (map) => (kind === 'walkthrough' ? pick(map, 'walkthrough', 'session') : null)
+  const model = own(A.models) || (kind !== 'stage' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')
+  const effort = kind === 'mechanical' ? 'low' : own(A.effort) || pick(A.effort, role, 'session')
   return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
 }
 
@@ -340,6 +342,76 @@ The phase is not done until every checkbox is ticked AND it is committed. If you
 // stage so it is readable before anything is validated or reviewed; refreshed later only when new
 // commits moved past the range its [COVERS] line records. Documentation — a failure here is noted
 // and never stops the run.
+const WALKTHROUGH_ARTIFACT = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['ok', 'artifact_path', 'summary', 'changed'],
+  properties: {
+    ...ARTIFACT.properties,
+    changed: { type: 'boolean', description: 'false when the file already covered every commit and was left as it was' },
+  },
+}
+
+const COLD_READ = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['retelling', 'unclear'],
+  properties: {
+    retelling: { type: 'array', items: { type: 'string' }, description: 'one sentence per item of ## What changed, in your own words' },
+    unclear: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['quote', 'missing'],
+        properties: { quote: { type: 'string' }, missing: { type: 'string' } },
+      },
+    },
+  },
+}
+
+// A reader with none of the writer's context, then one revision: task-walkthrough → ## Check.
+const checkWalkthrough = async (stage, agentType, depth) => {
+  const read = await agent(
+    brief(
+      stage,
+      `Apply the spine-toolkit:task-walkthrough skill, its ## Check section, as the reader it describes: an engineer of this stack who was not on this task. Of the task and the repository, read ${DIR}/Walkthrough.md and nothing else — open no other file of the task and no source file, and run no git command. Return retelling, one sentence in your own words for each item of its ## What changed, and unclear, every place you had to guess: a quote of at most one line, and what was missing. Change nothing on disk.`,
+    ),
+    { label: 'walkthrough:check', phase: stage, agentType, schema: COLD_READ, ...tuning(WALKTHROUGH_AGENT, 'light') },
+  )
+  if (!read) {
+    result.notes.push('The walkthrough check returned nothing, so Walkthrough.md went unchecked.')
+    return
+  }
+  const unclear = read.unclear || []
+  if (!unclear.length) {
+    result.notes.push('Walkthrough.md check: nothing unclear.')
+    return
+  }
+  const places = unclear.map((u, i) => `${i + 1}. "${u.quote}" — ${u.missing}`).join('\n')
+  const retold = (read.retelling || []).map((r, i) => `${i + 1}. ${r}`).join('\n')
+  const fix = await agent(
+    brief(
+      stage,
+      `A reader who was not on this task read ${DIR}/Walkthrough.md and nothing else, as the spine-toolkit:task-walkthrough skill's ## Check section describes. Revise the file at depth ${depth}: fix every place listed below, and wherever the retelling misreads a change, fix the text that led it there. [COVERS] stays as it is, and ## Commits is edited in place — this is the same version of the file, not a refresh.
+
+Places the reader had to guess:
+${places}
+
+How the reader retold ## What changed:
+${retold}
+
+Return changed true once the file is revised. Change no production code and no tests.`,
+    ),
+    { label: 'walkthrough:revise', phase: stage, agentType, schema: WALKTHROUGH_ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'walkthrough') },
+  )
+  result.notes.push(
+    fix && fix.artifact_path
+      ? `Walkthrough.md check: ${unclear.length} unclear place(s), revised.`
+      : `Walkthrough.md check: ${unclear.length} unclear place(s); the revision returned nothing, so the file stands as written.`,
+  )
+}
+
 const writeWalkthrough = async (stage, extra) => {
   if (!WALKTHROUGH_AGENT || A.walkthrough === 'off' || A.walkthrough === false) return
   const agentType = A.agents[WALKTHROUGH_AGENT]
@@ -353,22 +425,27 @@ const writeWalkthrough = async (stage, extra) => {
   const w = await agent(
     brief(
       stage,
-      `Write or refresh ${DIR}/Walkthrough.md at depth ${depth} by applying the spine-toolkit:task-walkthrough skill, which owns the section list, the per-section length budgets and the refresh rules. Read it first — its ## The switch section says what ${depth} changes, and its ## Reader section says who the file is for.
+      `Write or refresh ${DIR}/Walkthrough.md at depth ${depth} by applying the spine-toolkit:task-walkthrough skill, which owns the section list, the header rule and the refresh rules. Read it first — its ## The switch section says what ${depth} changes, and its ## Reader section says who the file is for.
 
 Derive the account from git — the task's own commits, git log over the range and git show for what each one carries — reconciled against ${DIR}/Plan.md. The plan is intent, the commits are fact, and the divergences between them, each labelled with its trigger, are what this artifact exists for. The second line is required to be exactly:
 
 [COVERS] = <first-sha>..<last-sha>
 
-If the file already exists and that range already ends at the task's last commit, change nothing and say so.${extra ? `
+If the file already exists and that range already ends at the task's last commit, change nothing and say so. Return changed true when you wrote the file, false when you left it as it was.${extra ? `
 
 ${extra}` : ''}
 
 Change no production code and no tests.`,
     ),
-    { label: 'walkthrough', phase: stage, agentType, schema: ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'light') },
+    { label: 'walkthrough', phase: stage, agentType, schema: WALKTHROUGH_ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'walkthrough') },
   )
-  if (w && w.artifact_path) log(`Walkthrough.md: ${w.summary || 'written'}`)
-  else result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
+  if (!w || !w.artifact_path) {
+    result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
+    return
+  }
+  log(`Walkthrough.md: ${w.summary || 'written'}`)
+  if (WALKTHROUGH_CHECK !== 'on' || w.changed === false) return
+  await checkWalkthrough(stage, agentType, depth)
 }
 // ── end prelude ──────────────────────────────────────────────────────────────
 

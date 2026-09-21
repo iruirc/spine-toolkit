@@ -11,11 +11,12 @@ setup() {
 
 section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
-@test "the rule names the three kinds and both closed lists" {
+@test "the rule names the four kinds and the three closed lists" {
   s="$(section "$RULE" '## Model and effort')"
   [ -n "$s" ] || { echo "no ## Model and effort section"; return 1; }
-  for token in '`stage`' '`light`' '`mechanical`' '`walkthrough`' '`<stage>:read-plan`' '`execute:read-steps`' \
-               '`execute:tick:<step>`' '`done:read-branch`' '`auto-move`' '`done`'; do
+  for token in '`stage`' '`light`' '`mechanical`' '`walkthrough`' '`walkthrough:check`' '`walkthrough:revise`' \
+               '`<stage>:read-plan`' '`execute:read-steps`' '`execute:tick:<step>`' '`done:read-branch`' \
+               '`auto-move`' '`done`'; do
     grep -qF "$token" <<<"$s" || { echo "the rule does not name $token"; return 1; }
   done
 }
@@ -23,6 +24,8 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 @test "the rule's table gives each kind its model and effort" {
   s="$(section "$RULE" '## Model and effort')"
   grep -qxF '| `stage` | `models[role]` | `effort[role]` |' <<<"$s" || { echo "no stage row"; return 1; }
+  grep -qxF '| `walkthrough` | `models.walkthrough`, else `models.light`, else `models[role]` | `effort.walkthrough`, else `effort[role]` |' <<<"$s" \
+    || { echo "no walkthrough row"; return 1; }
   grep -qxF '| `light` | `models.light`, else `models[role]` | `effort[role]` |' <<<"$s" || { echo "no light row"; return 1; }
   grep -qxF '| `mechanical` | `models.light`, else `models[role]` | `low` |' <<<"$s" || { echo "no mechanical row"; return 1; }
 }
@@ -63,7 +66,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   # The guidance left the template when the settings became one-line fields; the reference page is
   # where it lands, and this assertion goes live with it.
   doc="$ROOT/docs/configuration.md"
-  for token in 'CLAUDE_CODE_SUBAGENT_MODEL' '200k' 'Sonnet 4.5' '[MODELS]' 'as if its line were absent'; do
+  for token in 'CLAUDE_CODE_SUBAGENT_MODEL' '200k' 'Sonnet 4.5' '[MODELS]' 'as if its line were absent' 'walkthrough: opus'; do
     grep -qF "$token" "$doc" || { echo "the guidance does not mention $token"; return 1; }
   done
 }
@@ -90,8 +93,9 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     n=$((n + 1))
     for line in "const tuning = (role, kind) => {" \
                 "  const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)" \
-                "  const model = (kind !== 'stage' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')" \
-                "  const effort = kind === 'mechanical' ? 'low' : pick(A.effort, role, 'session')" \
+                "  const own = (map) => (kind === 'walkthrough' ? pick(map, 'walkthrough', 'session') : null)" \
+                "  const model = own(A.models) || (kind !== 'stage' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')" \
+                "  const effort = kind === 'mechanical' ? 'low' : own(A.effort) || pick(A.effort, role, 'session')" \
                 "  return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }"; do
       grep -qxF "$line" "$p" || { echo "$(basename "$p"): missing '$line'"; return 1; }
     done
@@ -143,7 +147,8 @@ PY
     [ -n "$para" ] || { echo "$f: no dispatch paragraph"; return 1; }
     grep -qF '`conventions/stage-dispatch.md` → Model and effort' <<<"$para" || { echo "$f: the paragraph does not point at the rule"; return 1; }
     grep -qF 'cannot pass an effort' <<<"$para" || { echo "$f: the paragraph does not say effort stays behind"; return 1; }
-    grep -qF 'a walkthrough takes `light`' <<<"$para" || { echo "$f: the paragraph does not give a walkthrough light first"; return 1; }
+    grep -qF 'a walkthrough takes its own `walkthrough` key, then `light`' <<<"$para" \
+      || { echo "$f: the paragraph does not give a walkthrough its own key first"; return 1; }
     grep -qF 'where the rule yields `session`' <<<"$para" || { echo "$f: the paragraph does not name session"; return 1; }
   done
   [ "$n" -eq 7 ] || { echo "scanned $n skill(s), expected 7"; return 1; }

@@ -516,7 +516,7 @@ FIELDS
   done
 }
 
-@test "drive_app, manual_checks and phase_verification default like every other guarded local" {
+@test "every contract field a script gates on defaults through a guarded local" {
   for p in "$ROOT"/workflows/profile-*.js; do
     grep -qxF "const DRIVE_APP = A.drive_app === 'off' ? 'off' : 'auto'" "$p" \
       || { echo "$(basename "$p"): drive_app is not guarded"; return 1; }
@@ -524,6 +524,8 @@ FIELDS
       || { echo "$(basename "$p"): manual_checks is not guarded"; return 1; }
     grep -qxF "const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'" "$p" \
       || { echo "$(basename "$p"): phase_verification is not guarded"; return 1; }
+    grep -qxF "const WALKTHROUGH_CHECK = A.walkthrough_check === 'on' ? 'on' : 'off'" "$p" \
+      || { echo "$(basename "$p"): walkthrough_check is not guarded"; return 1; }
   done
 }
 

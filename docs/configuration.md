@@ -260,31 +260,35 @@ it.
 
 ### [MODELS]
 
-**Values:** `<key>: <value>` entries, comma-separated; keys `light` and the eight role names, values
-`opus` `sonnet` `haiku` `fable` `session` · **Default:** `sonnet` for `light` and `validator`,
-`session` for the other seven roles · **Task override:** `[MODELS] = [<key>: <value>, …]` ·
+**Values:** `<key>: <value>` entries, comma-separated; keys `light`, `walkthrough` and the eight role
+names, values `opus` `sonnet` `haiku` `fable` `session` · **Default:** `sonnet` for `light` and
+`validator`, `session` for `walkthrough` and the other seven roles · **Task override:**
+`[MODELS] = [<key>: <value>, …]` ·
 **Defined by:** [`../conventions/stage-dispatch.md`](../conventions/stage-dispatch.md) → Model and
 effort
 
 Which model a subagent runs on. A role's key covers every stage its agent runs. `light` covers the
-calls whose work the script's own prompt defines — writing `Walkthrough.md` and `Done.md`, reading
-`Plan.md` back, ticking an epic step, moving a reviewed task — and falls back to the role's key when
-it says `session`. `session` passes no model, so `CLAUDE_CODE_SUBAGENT_MODEL`, then the session's
-model decide. `validator` starts on `sonnet`: building, running the tests and reading their logs need
-no heavier model. A `platform` left from 1.11.0 reads as if its line were absent. `haiku` has a 200k
-context and no effort setting, too small for a phase or a walkthrough. On Amazon Bedrock, Google
-Cloud's Agent Platform and Microsoft Foundry `sonnet` means Sonnet 4.5. The orchestrator and any
-stage it runs in the main context stay on the session's model. An epic's keys reach its steps.
+calls whose work the script's own prompt defines — writing `Done.md`, reading `Plan.md` back,
+ticking an epic step, moving a reviewed task, reading `Walkthrough.md` back for its check — and
+falls back to the role's key when it says `session`. `walkthrough` covers writing `Walkthrough.md`
+and revising it after the check, and falls back to `light` when it says `session`:
+`walkthrough: opus` puts that one file on a stronger model and moves no other call. `session` passes
+no model, so `CLAUDE_CODE_SUBAGENT_MODEL`, then the session's model decide. `validator` starts on
+`sonnet`: building, running the tests and reading their logs need no heavier model. A `platform` left
+from 1.11.0 reads as if its line were absent. `haiku` has a 200k context and no effort setting, too
+small for a phase or a walkthrough. On Amazon Bedrock, Google Cloud's Agent Platform and Microsoft
+Foundry `sonnet` means Sonnet 4.5. The orchestrator and any stage it runs in the main context stay on
+the session's model. An epic's keys reach its steps.
 
 ### [EFFORT]
 
-**Values:** `<role>: <value>` entries, comma-separated; keys the eight role names, values `low`
-`medium` `high` `xhigh` `max` `session` · **Default:** `session` · **Task override:**
+**Values:** `<role>: <value>` entries, comma-separated; keys `walkthrough` and the eight role names,
+values `low` `medium` `high` `xhigh` `max` `session` · **Default:** `session` · **Task override:**
 `[EFFORT] = [<role>: <value>, …]` · **Defined by:**
 [`../conventions/stage-dispatch.md`](../conventions/stage-dispatch.md) → Model and effort
 
 The reasoning effort a subagent runs at, per role. `session` passes none, so the session's level
-applies. The mechanical calls always run at `low`; the walkthrough runs at its writer's level. A
-level the model does not support drops to the nearest one it does. When the Workflow tool is
-unavailable and a profile runs through its skill, no effort can travel with a dispatch: every stage
-runs at the session's level, and the run says so once.
+applies. The mechanical calls always run at `low`; writing `Walkthrough.md` runs at the `walkthrough`
+level, and at its writer's where that says `session`. A level the model does not support drops to the
+nearest one it does. When the Workflow tool is unavailable and a profile runs through its skill, no
+effort can travel with a dispatch: every stage runs at the session's level, and the run says so once.

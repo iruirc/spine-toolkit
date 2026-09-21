@@ -309,3 +309,35 @@ NAMES
   grep -q '^`deep` — what changed' "$doc" || { echo "deep does not open with what changed"; return 1; }
   grep -q '^`brief` — what changed' "$doc" || { echo "brief does not open with what changed"; return 1; }
 }
+
+@test "every profile script checks a changed walkthrough when the contract says so" {
+  n=0
+  for p in "$ROOT"/workflows/profile-*.js; do
+    n=$((n + 1))
+    for line in "if (WALKTHROUGH_CHECK !== 'on' || w.changed === false) return" \
+                "label: 'walkthrough:check'" "label: 'walkthrough:revise'" \
+                "schema: COLD_READ, ...tuning(WALKTHROUGH_AGENT, 'light')" \
+                "schema: WALKTHROUGH_ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'walkthrough')" \
+                "required: ['ok', 'artifact_path', 'summary', 'changed']" \
+                'Return changed true when you wrote the file, false when you left it as it was.'; do
+      grep -qF "$line" "$p" || { echo "$(basename "$p"): missing '$line'"; return 1; }
+    done
+  done
+  [ "$n" -eq 7 ] || { echo "scanned $n script(s), expected 7"; return 1; }
+}
+
+@test "the reader of the check is kept away from everything but the file" {
+  for p in "$ROOT"/workflows/profile-*.js; do
+    grep -qF 'read ${DIR}/Walkthrough.md and nothing else' "$p" \
+      || { echo "$(basename "$p"): the reader is not confined to the file"; return 1; }
+    grep -qF 'run no git command' "$p" || { echo "$(basename "$p"): the reader may still read git"; return 1; }
+  done
+}
+
+@test "every profile that writes the file runs the check the contract asks for" {
+  for p in feature bug refactor test epic; do
+    S="$ROOT/skills/workflow-$p/SKILL.md"
+    grep -qF '`walkthrough_check` is `on`' "$S" || { echo "workflow-$p: the check is never mentioned"; return 1; }
+    grep -qF '`task-walkthrough` → `## Check`' "$S" || { echo "workflow-$p: the check does not point at its protocol"; return 1; }
+  done
+}
