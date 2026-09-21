@@ -92,5 +92,5 @@ section() {
   block="$(sed -n '/const stepArgs/,/^    })$/p' "$E")"
   grep -qF 'research_agent: st.research_agent,' <<<"$block" || { echo "stepArgs drops research_agent"; return 1; }
   grep -qF 'research_experiment: st.research_experiment,' <<<"$block" || { echo "stepArgs drops research_experiment"; return 1; }
-  grep -qF '[RESEARCH_EXPERIMENT]' "$E" || { echo "the step reader never reads the line"; return 1; }
+  grep -qF 'For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them.' "$E" || { echo "the step reader never reads the line"; return 1; }
 }
