@@ -480,6 +480,8 @@ const STEP = {
     walkthrough_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh walkthrough_check value" },
     models: { type: 'string', description: 'only when the step declares its own [MODELS]: the text between its brackets' },
     effort: { type: 'string', description: 'only when the step declares its own [EFFORT]: the text between its brackets' },
+    research_agent: { type: 'string', description: 'only for a RESEARCH step whose Task.md carries [RESEARCH_AGENT]' },
+    research_experiment: { type: 'string', enum: ['on', 'off'], description: 'only for a RESEARCH step whose Task.md carries [RESEARCH_EXPERIMENT]' },
   },
 }
 
@@ -636,7 +638,7 @@ if (runs('Execute')) {
     const read = await agent(
       brief(
         'Execute',
-        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE] and [STATUS] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For each step folder also run "<core root>/scripts/resolve-settings.sh json <step folder>" and return its drive_app, manual_checks, phase_verification, walkthrough and walkthrough_check values. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
+        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE] and [STATUS] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "<core root>/scripts/resolve-settings.sh json <step folder>" and return its drive_app, manual_checks, phase_verification, walkthrough and walkthrough_check values. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
       { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'mechanical') },
     )
@@ -688,6 +690,8 @@ if (runs('Execute')) {
       phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
       walkthrough: st.walkthrough === undefined ? A.walkthrough : st.walkthrough,
       walkthrough_check: st.walkthrough_check === undefined ? WALKTHROUGH_CHECK : st.walkthrough_check,
+      research_agent: st.research_agent,
+      research_experiment: st.research_experiment,
       archive_paths: [],
       epic_id: A.task_id,
       epic_dir: DIR,
