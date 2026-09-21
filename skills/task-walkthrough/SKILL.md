@@ -62,7 +62,7 @@ Second line of the file, byte-for-byte:
 [COVERS] = <first-sha>..<last-sha>
 ```
 
-Short shas of the task's own commits. This is what makes a refresh decidable without reading the whole file: the range already ends at the task's last commit → change nothing and say so; it is behind → refresh. The line is parsed by `scripts/docs-route.sh`, so its shape is fixed at both depths — a range spanning several repositories is described in the header prose, never by bending this line.
+Short shas of the task's own commits. This is what makes a refresh decidable without reading the whole file: the range already ends at the task's last commit → change nothing and say so; it is behind → refresh. The line is parsed by `scripts/docs-route.sh`, so its shape is fixed at both depths — a range spanning several repositories is described in the header's perimeter table, never by bending this line.
 
 ## Structure
 
@@ -144,7 +144,9 @@ What counts as a change depends on the profile:
 | EPIC | a change of the delivery as a whole, with `**Steps:**` in place of `**Commits:**` |
 
 At `brief` every item keeps its before and after, on one line:
-`1. A promo code no longer discounts the delivery fee: 1170 → 1200 on the same order (commits 3, 4).`
+``1. A promo code no longer discounts the delivery fee: 1170 → 1200 on the same order (commits `a1b2c3d`, `e4f5a6b`).``
+
+At `brief` the log is not numbered, so an item cites its commits by short sha.
 
 ### `## Glossary` (`deep`)
 
@@ -177,7 +179,7 @@ Each row names its **trigger**: `implementation` (reality differed once the code
 
 ### `## Commits` — `brief`
 
-Per commit: short sha, subject, then what it does, which files carry it, and what it unlocks for the next one. Not a re-reading of the diff — the reason the commit exists. The bullet ends on `**Changes:**`, the items of `## What changed` it serves.
+Per commit: short sha, subject, then what it does, which files carry it, and what it unlocks for the next one. Not a re-reading of the diff — the reason the commit exists. The bullet ends on `**Changes:**`, the items of `## What changed` it serves. A bullet that serves none ends on `**Changes:** —` and says why the commit exists.
 
 ```markdown
 - `a1b2c3d` `feat(domain): add CartReader` — introduces the read side as a protocol over the existing

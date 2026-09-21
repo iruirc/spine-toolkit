@@ -282,13 +282,14 @@ the session's model. An epic's keys reach its steps.
 
 ### [EFFORT]
 
-**Values:** `<role>: <value>` entries, comma-separated; keys `walkthrough` and the eight role names,
+**Values:** `<key>: <value>` entries, comma-separated; keys `walkthrough` and the eight role names,
 values `low` `medium` `high` `xhigh` `max` `session` · **Default:** `session` · **Task override:**
-`[EFFORT] = [<role>: <value>, …]` · **Defined by:**
+`[EFFORT] = [<key>: <value>, …]` · **Defined by:**
 [`../conventions/stage-dispatch.md`](../conventions/stage-dispatch.md) → Model and effort
 
 The reasoning effort a subagent runs at, per role. `session` passes none, so the session's level
-applies. The mechanical calls always run at `low`; writing `Walkthrough.md` runs at the `walkthrough`
-level, and at its writer's where that says `session`. A level the model does not support drops to the
-nearest one it does. When the Workflow tool is unavailable and a profile runs through its skill, no
-effort can travel with a dispatch: every stage runs at the session's level, and the run says so once.
+applies. The mechanical calls always run at `low`; writing and revising `Walkthrough.md` run at the
+`walkthrough` level, and at its writer's where that says `session`. A level the model does not
+support drops to the nearest one it does. When the Workflow tool is unavailable and a profile runs
+through its skill, no effort can travel with a dispatch: every stage runs at the session's level,
+and the run says so once.

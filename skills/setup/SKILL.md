@@ -348,6 +348,8 @@ field is absent**, which is not the same thing as the template's line. Seventeen
 not — the template ships `lite`, the resolver resolves `full`. `lite` is what a *new* project is
 given; a 1.x config with no `Scale` block was running `full`, and writing `lite` would take
 `[WALKTHROUGH]` to `off` with it, so the project would silently stop writing `Walkthrough.md`.
+`[WALKTHROUGH_CHECK]` agrees by its declared default `auto` — the resolver's own output for it is
+the derived `on`/`off`, which is never what the file is written with.
 
 ### Preamble handling
 
