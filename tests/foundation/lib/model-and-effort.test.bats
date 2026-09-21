@@ -84,7 +84,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 @test "task-new says when a task overrides a model or an effort" {
   f="$ROOT/skills/task-new/SKILL.md"
   grep -qF '`[MODELS] = [<key>: <value>, …]`' "$f" || { echo "task-new lacks [MODELS]"; return 1; }
-  grep -qF '`[EFFORT] = [<role>: <value>, …]`' "$f" || { echo "task-new lacks [EFFORT]"; return 1; }
+  grep -qF '`[EFFORT] = [<key>: <value>, …]`' "$f" || { echo "task-new lacks [EFFORT]"; return 1; }
 }
 
 @test "every profile script defines tuning() as the rule states it" {
