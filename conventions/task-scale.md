@@ -41,12 +41,15 @@ calibrate them against.
 
 ## The floor
 
-Not one of these is removed at any value:
+No value of `scale` removes any of these:
 
 - one git commit per green phase, with the phase's tests run before it;
 - `Reproduce` for BUG — a proven red run before the fix;
 - `Validation` — a build and a test run, by an agent of its own;
 - `Review` — by an independent agent, with a verdict on the artifact's first line.
+
+`[NEED_REVIEW] = [false]` in `Task.md` still removes `Review`: it is the author's own switch, and
+the axis does not override one (see "Explicit beats the axis").
 
 An artifact that a `lite` run does write is shorter. An artifact that carries a guarantee is still
 written, and still by the agent whose independence is the point.
