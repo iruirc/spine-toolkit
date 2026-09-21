@@ -481,7 +481,7 @@ const STEP = {
     models: { type: 'string', description: 'only when the step declares its own [MODELS]: the text between its brackets' },
     effort: { type: 'string', description: 'only when the step declares its own [EFFORT]: the text between its brackets' },
     research_agent: { type: 'string', description: 'only for a RESEARCH step whose Task.md carries [RESEARCH_AGENT]' },
-    research_experiment: { type: 'string', enum: ['on', 'off'], description: 'only for a RESEARCH step whose Task.md carries [RESEARCH_EXPERIMENT]' },
+    research_experiment: { type: 'string', description: 'only for a RESEARCH step whose Task.md carries [RESEARCH_EXPERIMENT]: the value between its brackets' },
   },
 }
 
@@ -708,8 +708,11 @@ if (runs('Execute')) {
       }
 
       const wf = STEP_WORKFLOWS[st.task_type]
-      if (!canPush || !wf) {
-        if (canPush) result.notes.push(`Step ${st.step_id} is a ${st.task_type} and cannot be pushed from inside a workflow run; it and the steps after it are pending.`)
+      // Only the orchestrator announces an experiment, pre-flights its driver and stops on its gates.
+      const experimentStep = st.task_type === 'RESEARCH' && st.research_experiment === 'on'
+      if (!canPush || !wf || experimentStep) {
+        if (canPush && !wf) result.notes.push(`Step ${st.step_id} is a ${st.task_type} and cannot be pushed from inside a workflow run; it and the steps after it are pending.`)
+        if (canPush && wf && experimentStep) result.notes.push(`Step ${st.step_id} runs an experiment, which only the orchestrator announces, pre-flights and gates; it and the steps after it are pending.`)
         for (const rest of walk.slice(i)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
         break
       }
