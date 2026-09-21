@@ -1,0 +1,60 @@
+#!/usr/bin/env bats
+# An experiment is the one way a RESEARCH task changes code, and only on a branch that is never
+# merged. The permission travels as a contract field; these tests hold every surface to it.
+
+setup() {
+  # BATS_TEST_FILENAME, not BASH_SOURCE[0]: bats sources a preprocessed copy of
+  # the test file from a tmp dir, so BASH_SOURCE[0] there resolves to the copy.
+  ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
+  SKILL="$ROOT/skills/workflow-research/SKILL.md"
+  SCRIPT="$ROOT/workflows/profile-research.js"
+}
+
+# A section's body, heading excluded, up to the next H2. $2 carries its own "## ".
+section() {
+  awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"
+}
+
+@test "workflow-research takes research_experiment and rejects any other value" {
+  contract="$(section "$SKILL" '## 1. Input Contract')"
+  grep -qF '`research_experiment`' <<<"$contract" || { echo "§1 does not name the field"; return 1; }
+  grep -qF 'invalid_research_experiment' <<<"$contract" || { echo "§1 does not reject a bad value"; return 1; }
+  for l in en ru; do
+    grep -qx '## invalid_research_experiment' "$ROOT/skills/workflow-research/locales/$l.md" \
+      || { echo "locale $l lacks invalid_research_experiment"; return 1; }
+  done
+}
+
+@test "the experiment rules live in one section of the skill" {
+  rules="$(section "$SKILL" '## 2c. Experiment')"
+  [ -n "$rules" ] || { echo "no ## 2c. Experiment"; return 1; }
+  for token in 'experiment/<task>' 'blocked' 'physical device' 'drive_app=off' \
+               '### Experiment' '**Evidence:** run' '**Evidence:** reasoning' \
+               '<task_dir>/experiment/' 'restored' 'never merged'; do
+    grep -qF "$token" <<<"$rules" || { echo "§2c does not say $token"; return 1; }
+  done
+}
+
+@test "the desk invariant still stands when the experiment is off" {
+  grep -qF 'With `research_experiment=off` the agent MUST NOT modify any source code' "$SKILL" \
+    || { echo "the off invariant is gone"; return 1; }
+}
+
+@test "Review and Done name what the experiment left behind" {
+  stages="$(section "$SKILL" '## 2. Stages')"
+  review="$(grep -F -e '- **Review**' <<<"$stages")"
+  grep -qF '### Experiment' <<<"$review" || { echo "Review does not check ### Experiment"; return 1; }
+  grep -qF '**Evidence:**' <<<"$review" || { echo "Review does not check the evidence lines"; return 1; }
+  done_="$(grep -F -e '- **Done**' <<<"$stages")"
+  grep -qF 'unmerged' <<<"$done_" || { echo "Done does not name the branches"; return 1; }
+}
+
+@test "the output contract carries experiment and its note key" {
+  out="$(section "$SKILL" '## 5. Output Contract')"
+  grep -qF 'experiment:' <<<"$out" || { echo "no experiment in the return shape"; return 1; }
+  grep -qF 'notes_experiment_branches' <<<"$out" || { echo "no note key"; return 1; }
+  for l in en ru; do
+    grep -A1 -x '## notes_experiment_branches' "$ROOT/skills/workflow-research/locales/$l.md" \
+      | grep -qF '{branches}' || { echo "locale $l: notes_experiment_branches lacks {branches}"; return 1; }
+  done
+}

@@ -14,3 +14,9 @@
 
 ## notes_research_only_no_code
 Профиль research-only: исходный код не менялся, тесты не запускались.
+
+## invalid_research_experiment
+Некорректный `research_experiment`. Ожидалось одно из значений: on, off.
+
+## notes_experiment_branches
+Опыт поставлен: код менялся только на {branches}, ветки не влиты. Удалять ли их — решает владелец.
