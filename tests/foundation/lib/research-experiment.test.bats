@@ -86,3 +86,11 @@ section() {
   grep -qF "if (experiment.status !== 'done') return finish('ask_user', { experiment })" "$SCRIPT" \
     || { echo "an unfinished experiment goes on to Review"; return 1; }
 }
+
+@test "an epic hands a pushed RESEARCH step its own agent and experiment" {
+  E="$ROOT/workflows/profile-epic.js"
+  block="$(sed -n '/const stepArgs/,/^    })$/p' "$E")"
+  grep -qF 'research_agent: st.research_agent,' <<<"$block" || { echo "stepArgs drops research_agent"; return 1; }
+  grep -qF 'research_experiment: st.research_experiment,' <<<"$block" || { echo "stepArgs drops research_experiment"; return 1; }
+  grep -qF '[RESEARCH_EXPERIMENT]' "$E" || { echo "the step reader never reads the line"; return 1; }
+}
