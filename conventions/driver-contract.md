@@ -232,7 +232,7 @@ One line of `plugin.json`, the object form with a semver range, exactly as a pla
 {
   "name": "neutral-driver",
   "dependencies": [
-    { "name": "spine-toolkit", "version": ">=2.0.0 <3" }
+    { "name": "spine-toolkit", "version": ">=2.1.0 <3" }
   ]
 }
 ```
