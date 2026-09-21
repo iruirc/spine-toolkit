@@ -58,3 +58,31 @@ section() {
       | grep -qF '{branches}' || { echo "locale $l: notes_experiment_branches lacks {branches}"; return 1; }
   done
 }
+
+@test "the research script validates research_experiment and reads absent as off" {
+  grep -qF "const EXPERIMENT = A.research_experiment === undefined ? 'off' : A.research_experiment" "$SCRIPT" \
+    || { echo "no EXPERIMENT constant"; return 1; }
+  grep -qF 'is not one of on, off' "$SCRIPT" || { echo "a bad value is not rejected"; return 1; }
+}
+
+@test "with the experiment off the research brief keeps the desk invariant verbatim" {
+  grep -qF "const DESK = 'The invariant of this profile: you modify NO source code and write no file other than Research.md. When you find yourself wanting to apply a fix, write it down as a follow-up item instead — that is the deliverable here.'" "$SCRIPT" \
+    || { echo "the desk invariant changed"; return 1; }
+  grep -qxF "\${EXPERIMENT === 'on' ? EXPERIMENT_RULES : DESK}" "$SCRIPT" \
+    || { echo "the Research brief does not choose between the two"; return 1; }
+}
+
+@test "the experiment brief carries the rules the skill states" {
+  rules="$(sed -n '/^const EXPERIMENT_RULES = /,/^Return experiment /p' "$SCRIPT")"
+  [ -n "$rules" ] || { echo "no EXPERIMENT_RULES"; return 1; }
+  for token in 'experiment/<task>' 'blocked' 'physical device' 'drive_app' '### Experiment' \
+               '**Evidence:** run' '**Evidence:** reasoning' '/experiment/' 'never merged'; do
+    grep -qF "$token" <<<"$rules" || { echo "EXPERIMENT_RULES does not say $token"; return 1; }
+  done
+}
+
+@test "an experiment that did not finish, or left a checkout behind, stops before Review" {
+  grep -qF 'if (!experiment.restored) {' "$SCRIPT" || { echo "restored is not checked"; return 1; }
+  grep -qF "if (experiment.status !== 'done') return finish('ask_user', { experiment })" "$SCRIPT" \
+    || { echo "an unfinished experiment goes on to Review"; return 1; }
+}
