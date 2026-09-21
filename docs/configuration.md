@@ -34,7 +34,7 @@ to, run `scripts/resolve-settings.sh show <task-dir> --all`.
 the config's line, or the default, is the answer.
 
 **`## Task defaults`** is what a task can change, by writing the same field into its own `Task.md`.
-The config's line is the project's default for these ten fields, and the task's own line beats it.
+The config's line is the project's default for these eleven fields, and the task's own line beats it.
 
 Every other block of the file — `## Persona`, `## Rules`, `## Platform`, `## Agents`, `## Stack`,
 `## Modules`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`,
