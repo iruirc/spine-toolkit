@@ -338,10 +338,6 @@ The phase is not done until every checkbox is ticked AND it is committed. If you
   return `${phases.length} phase(s) committed`
 }
 
-// Walkthrough.md is the human-facing account of what landed. Written at the end of the implementing
-// stage so it is readable before anything is validated or reviewed; refreshed later only when new
-// commits moved past the range its [COVERS] line records. Documentation — a failure here is noted
-// and never stops the run.
 const WALKTHROUGH_ARTIFACT = {
   type: 'object',
   additionalProperties: false,
@@ -371,7 +367,7 @@ const COLD_READ = {
 }
 
 // A reader with none of the writer's context, then one revision: task-walkthrough → ## Check.
-const checkWalkthrough = async (stage, agentType, depth) => {
+const checkWalkthrough = async (stage, agentType, depth, extra) => {
   const read = await agent(
     brief(
       stage,
@@ -393,7 +389,9 @@ const checkWalkthrough = async (stage, agentType, depth) => {
   const fix = await agent(
     brief(
       stage,
-      `A reader who was not on this task read ${DIR}/Walkthrough.md and nothing else, as the spine-toolkit:task-walkthrough skill's ## Check section describes. Revise the file at depth ${depth}: fix every place listed below, and wherever the retelling misreads a change, fix the text that led it there. [COVERS] stays as it is, and ## Commits is edited in place — this is the same version of the file, not a refresh.
+      `A reader who was not on this task read ${DIR}/Walkthrough.md and nothing else, as the spine-toolkit:task-walkthrough skill's ## Check section describes. Revise the file at depth ${depth} by applying the spine-toolkit:task-walkthrough skill: fix every place listed below, and wherever the retelling misreads a change, fix the text that led it there. Where a place needs a fact the file lacks, take it from the task's own commits with git log and git show. [COVERS] stays as it is, and ## Commits is edited in place — this is the same version of the file, not a refresh.${extra ? `
+
+${extra}` : ''}
 
 Places the reader had to guess:
 ${places}
@@ -407,11 +405,17 @@ Return changed true once the file is revised. Change no production code and no t
   )
   result.notes.push(
     fix && fix.artifact_path
-      ? `Walkthrough.md check: ${unclear.length} unclear place(s), revised.`
+      ? fix.changed === false
+        ? `Walkthrough.md check: ${unclear.length} unclear place(s); the revision found nothing to change.`
+        : `Walkthrough.md check: ${unclear.length} unclear place(s), revised.`
       : `Walkthrough.md check: ${unclear.length} unclear place(s); the revision returned nothing, so the file stands as written.`,
   )
 }
 
+// Walkthrough.md is the human-facing account of what landed. Written at the end of the implementing
+// stage so it is readable before anything is validated or reviewed; refreshed later only when new
+// commits moved past the range its [COVERS] line records. Documentation — a failure here is noted
+// and never stops the run.
 const writeWalkthrough = async (stage, extra) => {
   if (!WALKTHROUGH_AGENT || A.walkthrough === 'off' || A.walkthrough === false) return
   const agentType = A.agents[WALKTHROUGH_AGENT]
@@ -445,7 +449,7 @@ Change no production code and no tests.`,
   }
   log(`Walkthrough.md: ${w.summary || 'written'}`)
   if (WALKTHROUGH_CHECK !== 'on' || w.changed === false) return
-  await checkWalkthrough(stage, agentType, depth)
+  await checkWalkthrough(stage, agentType, depth, extra)
 }
 // ── end prelude ──────────────────────────────────────────────────────────────
 
