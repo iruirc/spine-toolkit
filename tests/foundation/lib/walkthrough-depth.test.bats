@@ -315,6 +315,7 @@ NAMES
   for p in "$ROOT"/workflows/profile-*.js; do
     n=$((n + 1))
     for line in "if (WALKTHROUGH_CHECK !== 'on' || w.changed === false) return" \
+                "await checkWalkthrough(stage, agentType, depth, extra)" \
                 "label: 'walkthrough:check'" "label: 'walkthrough:revise'" \
                 "schema: COLD_READ, ...tuning(WALKTHROUGH_AGENT, 'light')" \
                 "schema: WALKTHROUGH_ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'walkthrough')" \
@@ -328,7 +329,7 @@ NAMES
 
 @test "the reader of the check is kept away from everything but the file" {
   for p in "$ROOT"/workflows/profile-*.js; do
-    grep -qF 'read ${DIR}/Walkthrough.md and nothing else' "$p" \
+    grep -qF 'open no other file of the task and no source file' "$p" \
       || { echo "$(basename "$p"): the reader is not confined to the file"; return 1; }
     grep -qF 'run no git command' "$p" || { echo "$(basename "$p"): the reader may still read git"; return 1; }
   done
