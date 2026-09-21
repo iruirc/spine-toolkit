@@ -110,7 +110,7 @@ unset = re.search(r'^const TUNING_UNSET = \{ models: \[([^\]]*)\], effort: \[([^
 if not keys or not values or not unset:
     print('profile-epic.js carries no TUNING_KEYS / TUNING_VALUES / TUNING_UNSET line'); raise SystemExit
 q = lambda s: re.findall(r"'([a-z]+)'", s)
-want = (['light'] + var('ROLES'), var('ROLES'), var('MODELS'), var('EFFORTS'), var('UNSET_MODELS'), [])
+want = (['light', 'walkthrough'] + var('ROLES'), ['walkthrough'] + var('ROLES'), var('MODELS'), var('EFFORTS'), var('UNSET_MODELS'), [])
 have = (q(keys.group(1)), q(keys.group(2)), q(values.group(1)), q(values.group(2)), q(unset.group(1)), q(unset.group(2)))
 print('same' if want == have else 'differ: %s vs %s' % (want, have))
 PY

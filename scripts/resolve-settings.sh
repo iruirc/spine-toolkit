@@ -13,6 +13,7 @@ set -euo pipefail
 # Key by key: Task.md [FIELD] -> for a .step/ folder, the epic's Task.md above it -> the nearest
 # CLAUDE-spine-toolkit.md -> the defaults below. walkthrough has one more step: off when the
 # resolved scale is lite, which beats the project and loses to the task's own [WALKTHROUGH].
+# walkthrough_check then follows it: auto is on at deep and off at brief, and off where no file is written.
 ROLES="architect developer tester reviewer refactorer validator security diagnostics"
 MODELS="opus sonnet haiku fable session"
 # A `platform` left by 1.11.0 reads as if its line were absent, not as `session`,
@@ -46,6 +47,7 @@ SCALARS = (
     ('settings_report', 'SETTINGS_REPORT', ['diff', 'full', 'off'], 'diff'),
     ('scale', 'SCALE', ['lite', 'full'], 'full'),
     ('walkthrough', 'WALKTHROUGH', ['brief', 'deep', 'off'], 'deep'),
+    ('walkthrough_check', 'WALKTHROUGH_CHECK', ['auto', 'on', 'off'], 'auto'),
     ('drive_app', 'DRIVE_APP', ['auto', 'off'], 'auto'),
     ('manual_checks', 'MANUAL_CHECKS', ['auto', 'always'], 'auto'),
     ('driver', 'DRIVER', None, 'auto'),
@@ -60,9 +62,10 @@ PROJECT_ONLY = {'lang', 'progress', 'settings_report', 'docs_map', 'docs_strictn
                 'docs_freshness', 'budgets'}
 # A map's field is one bracketed, comma-separated list, in the config exactly as in a Task.md.
 MAPS = (
-    ('models', 'MODELS', ['light'] + ROLES, MODEL_VALUES, UNSET_MODELS,
-     dict({r: 'session' for r in ROLES}, light='sonnet', validator='sonnet')),
-    ('effort', 'EFFORT', ROLES, EFFORT_VALUES, [], {r: 'session' for r in ROLES}),
+    ('models', 'MODELS', ['light', 'walkthrough'] + ROLES, MODEL_VALUES, UNSET_MODELS,
+     dict({r: 'session' for r in ROLES}, light='sonnet', walkthrough='session', validator='sonnet')),
+    ('effort', 'EFFORT', ['walkthrough'] + ROLES, EFFORT_VALUES, [],
+     dict({r: 'session' for r in ROLES}, walkthrough='session')),
 )
 # A spelling an older release wrote, still applied. Reported in words a caller can tell apart from
 # a typo's, so the two get different announcements.
@@ -254,6 +257,16 @@ if resolved['scale'] == 'lite' and sources['walkthrough'] in ('default', 'projec
     resolved['walkthrough'], sources['walkthrough'] = 'off', 'scale'
     show_source['walkthrough'] = 'scale: lite' + (' (project: %s)' % displaced if displaced else '')
 
+# walkthrough_check follows the depth it checks. CHOSEN keeps what the chain picked, so show can
+# tell a value derived from auto from one somebody wrote down.
+CHOSEN = {'walkthrough_check': resolved['walkthrough_check']}
+chosen, depth = CHOSEN['walkthrough_check'], resolved['walkthrough']
+check = 'off' if depth == 'off' else ('on' if depth == 'deep' else 'off') if chosen == 'auto' else chosen
+if check != chosen:
+    show_source['walkthrough_check'] = ('walkthrough: %s' % depth if chosen == 'auto' else
+                                        'walkthrough: off (%s: %s)' % (sources['walkthrough_check'], chosen))
+    resolved['walkthrough_check'], sources['walkthrough_check'] = check, 'walkthrough'
+
 for name, field, keys, values, unset, map_defaults in MAPS:
     out, decided = dict(map_defaults), set()
     found = [(('Task.md [%s]' % field), label, task_map_entries(path, field))
@@ -318,7 +331,9 @@ for name in [s[0] for s in SCALARS] + ['models', 'effort', 'budgets']:
             continue
         text = ', '.join('%s: %s' % (k, value[k]) for k in keys)
     else:
-        if not SHOW_ALL and (sources[name] == 'default' or value == defaults[name]):
+        # A value derived from the default (walkthrough_check's auto) is nobody's choice either.
+        if not SHOW_ALL and (sources[name] == 'default' or value == defaults[name]
+                             or CHOSEN.get(name) == defaults[name]):
             rest += 1
             continue
         text = value
