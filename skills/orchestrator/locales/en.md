@@ -216,11 +216,13 @@ The effort set for {roles} does not apply on this run: the profile runs through 
 
 ## warn_driver_plugin_missing
 Driver `{driver}` is the driver resolved for this run, but its manifest does not resolve — the
-plugin is not installed. Validation will hand its UI checks to you instead of driving the app. Install
-the plugin, or write `[DRIVER] = [—]` in `CLAUDE-spine-toolkit.md` to say so deliberately.
+plugin is not installed. The stage that drives the app — Validation, or a RESEARCH experiment —
+will hand its UI checks to you instead. Install the plugin, or write `[DRIVER] = [—]` in
+`CLAUDE-spine-toolkit.md` to say so deliberately.
 
 ## warn_driver_server_missing
-Driver `{driver}` is installed, but this session has no tool under any of the prefixes it declares
-({namespaces}) — its MCP server is not connected, or it is registered under a different name.
-Validation will hand its UI checks to you instead of driving the app. Start the server, register it
-under one of those names, or write `[DRIVER] = [—]` in `CLAUDE-spine-toolkit.md` to say so deliberately.
+Driver `{driver}` is installed, but this session has no tool under any of the prefixes it
+declares ({namespaces}) — its MCP server is not connected, or it is registered under a
+different name. The stage that drives the app — Validation, or a RESEARCH experiment — will
+hand its UI checks to you instead. Start the server, register it under one of those names, or
+write `[DRIVER] = [—]` in `CLAUDE-spine-toolkit.md` to say so deliberately.
