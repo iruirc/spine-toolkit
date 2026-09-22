@@ -145,3 +145,24 @@ PY
   grep -qx 'MIN_LETTERS = 200' "$LINT" && grep -qx 'FLOOR_PERCENT = 10' "$LINT" \
     || { echo "the script's thresholds moved away from the convention's"; return 1; }
 }
+
+@test "every profile names the language in words, and says it again after the body" {
+  n=0
+  for f in "$ROOT"/workflows/profile-*.js; do
+    n=$((n + 1))
+    for token in "const LANG_NAME = { en: 'English', ru: 'Russian' }[LANG] || LANG" \
+                 'Output language: ${LANG_NAME} — every sentence of prose' \
+                 '${DOCS_NOTE}${body}' 'Prose language: ${LANG_NAME}.`'; do
+      grep -qF -- "$token" "$f" || { echo "$(basename "$f") lacks: $token"; return 1; }
+    done
+    ! grep -qF 'Output language: ${LANG} ' "$f" || { echo "$(basename "$f") still names the language by its code"; return 1; }
+  done
+  [ "$n" -eq 7 ] || { echo "scanned $n profile script(s), expected 7"; return 1; }
+}
+
+@test "the walkthrough revision does not take its language from the reader's notes" {
+  for f in "$ROOT"/workflows/profile-*.js; do
+    grep -qF "The reader's notes above may be in another language; the file's prose stays \${LANG_NAME}." "$f" \
+      || { echo "$(basename "$f"): the revision brief does not pin the language"; return 1; }
+  done
+}
