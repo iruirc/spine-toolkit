@@ -173,3 +173,13 @@ review_brief() {
     return 1
   fi
 }
+
+@test "the platform guide sends test discipline to core and boundaries to the platform" {
+  # Without this line the next platform author writes the discipline into their own
+  # tester, which is the duplication this skill was widened to end.
+  guide="$ROOT/docs/building-a-platform.md"
+  grep -qF 'what a good test is comes from core too' "$guide" \
+    || { echo "the guide does not say the discipline is core's"; return 1; }
+  grep -qF 'what counts as a boundary here' "$guide" \
+    || { echo "the guide does not leave the boundaries to the platform"; return 1; }
+}
