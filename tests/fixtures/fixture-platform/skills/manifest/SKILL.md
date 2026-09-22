@@ -88,6 +88,7 @@ persistence      → —
 concurrency      → `task-scheduler`
 deep links       → —
 release ops      → —
+testing          → `suite-runner`
 
 ## Entrypoints
 
