@@ -94,3 +94,31 @@ section() { # $1 = file, $2 = heading text without "## "
   grep -qF '`[SECURITY] = [<auto|on|off>]`' "$f" || { echo "task-new never offers [SECURITY]"; return 1; }
   grep -qF 'let the triage decide' "$f" || { echo "task-new does not leave the default to the triage"; return 1; }
 }
+
+@test "every prelude runs the triage and the lens by the skill's sections" {
+  for p in "$ROOT"/workflows/profile-*.js; do
+    for token in 'const securityLens = async (stage, role, agentType) => {' \
+                 'its ## Triage section' 'its ## Lens section, the ${PROFILE} row' \
+                 "label: 'security:triage'" "...tuning(role, 'light')" \
+                 'label: `${stage.toLowerCase()}:security`' "...tuning(role, 'stage')" \
+                 'const securityNote = (sec, where) =>'; do
+      grep -qF -- "$token" "$p" || { echo "$(basename "$p"): the prelude lacks $token"; return 1; }
+    done
+  done
+}
+
+@test "the prelude errs toward the lens and records why it did not run" {
+  p="$ROOT/workflows/profile-feature.js"
+  for token in 'Security triage returned nothing; the lens ran anyway.' \
+               "'Security lens: off by [SECURITY]'" "'Security lens: no agent on this platform'" \
+               '`Security lens: skipped by triage — ${t.reason}`' "'Security lens: returned nothing'"; do
+    grep -qF -- "$token" "$p" || { echo "the prelude lacks $token"; return 1; }
+  done
+}
+
+@test "no role is named inside the prelude" {
+  # scripts/lint-workflows.sh would count one as dispatched by all seven scripts.
+  pre="$(awk '/^\/\/ ── prelude ─/{f=1} f{print} /^\/\/ ── end prelude ─/{exit}' "$ROOT/workflows/profile-feature.js")"
+  [ -n "$pre" ] || { echo "no prelude found"; return 1; }
+  ! grep -qE "tuning\('[a-z]+'|lens\('[a-z]+'\)|A\.agents\.[a-z]+" <<<"$pre" || { echo "the prelude names a role"; return 1; }
+}

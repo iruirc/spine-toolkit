@@ -512,7 +512,7 @@ FIELDS
   # The fallback is the prelude's guarded local (DRIVE_APP, …), not A.<field> directly — an
   # absent contract field must not push a bare `undefined` into the pushed step's args.
   E="$ROOT/workflows/profile-epic.js"
-  for field in drive_app manual_checks phase_verification walkthrough_check; do
+  for field in drive_app manual_checks phase_verification security walkthrough_check; do
     guarded="$(tr '[:lower:]' '[:upper:]' <<<"$field")"
     grep -qF "$field: st.$field === undefined ? $guarded : st.$field" "$E" \
       || { echo "profile-epic.js does not forward $field to a step"; return 1; }
@@ -520,10 +520,12 @@ FIELDS
   # walkthrough has no guarded local: the gate and the depth read A.walkthrough, so the epic's own does.
   grep -qF 'walkthrough: st.walkthrough === undefined ? A.walkthrough : st.walkthrough' "$E" \
     || { echo "profile-epic.js does not forward walkthrough to a step"; return 1; }
-  grep -qF 'return its drive_app, manual_checks, phase_verification, walkthrough and walkthrough_check values' "$E" \
+  grep -qF 'return its drive_app, manual_checks, phase_verification, security, walkthrough and walkthrough_check values' "$E" \
     || { echo "read-steps never asks for the step's own depth and check"; return 1; }
   grep -qF "walkthrough_check: { type: 'string', enum: ['on', 'off']" "$E" \
     || { echo "the step record has no walkthrough_check"; return 1; }
+  grep -qF "security: { type: 'string', enum: ['auto', 'on', 'off']" "$E" \
+    || { echo "the step record has no security"; return 1; }
 }
 
 @test "every contract field a script gates on defaults through a guarded local" {
@@ -536,6 +538,8 @@ FIELDS
       || { echo "$(basename "$p"): phase_verification is not guarded"; return 1; }
     grep -qxF "const WALKTHROUGH_CHECK = A.walkthrough_check === 'on' ? 'on' : 'off'" "$p" \
       || { echo "$(basename "$p"): walkthrough_check is not guarded"; return 1; }
+    grep -qxF "const SECURITY = A.security === 'on' || A.security === 'off' ? A.security : 'auto'" "$p" \
+      || { echo "$(basename "$p"): security is not guarded"; return 1; }
   done
 }
 
