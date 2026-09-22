@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Core's four methodology skills are the process layer: they say which topic a
+# Core's five methodology skills are the process layer: they say which topic a
 # decision belongs to and never which skill answers it. The skills that answer
 # are the platform's, listed in its manifest `## Topics`, and a name written back
 # into core re-binds core to one ecosystem — silently, because it still reads

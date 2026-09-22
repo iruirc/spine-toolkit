@@ -155,6 +155,10 @@ Three things every role agent needs:
    framework looks like is yours, behind topic **testing** (Step 7). This binds your tester, the
    regression test your developer adds, the test your diagnostics agent sketches and the first test
    your init skill writes — and your validator, which reads failures of every value the axis allows.
+   The same skill says what a good test is comes from core too — form, name, size, isolation, and the
+   vocabulary of test doubles — so your tester says only what core cannot:
+   what counts as a boundary here, what resets state, which library makes the double. Your reviewer
+   judges tests by that skill's `## Review` section rather than by a list of its own.
 
 Two artifacts have a machine-read first line — a contract shared between your agent, every
 `workflow-*`, and the orchestrator. Get them wrong and the run stalls:
