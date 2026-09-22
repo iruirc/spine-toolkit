@@ -202,6 +202,12 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 ## warn_budget_unrecognised
 `{line}` in `[BUDGETS]` of `CLAUDE-spine-toolkit.md` names no artifact the budget lint knows, or its ceiling is not a positive whole number, so the default stays. The artifacts are `Task.md`, `Reproduce.md`, `Plan.md`, `Validation.md`, `Review.md` and `Done.md`.
 
+## lang_mismatch
+`{artifact}` → `{section}`: the prose is not in the project language (`{lang}`). Sending the file back to its author to rewrite that prose in `{lang}`, structure untouched.
+
+## lang_mismatch_persists
+`{artifact}` → `{section}` is still not in the project language after one rewrite. Leaving it as it is; the run carries on.
+
 ## warn_walkthrough_pre_depth
 `on` is the pre-depth value, so it is read as `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. A project's `on` still ends at `off` when this task's `scale` is `lite`, the gate sitting below the task's own field and above the project's. To keep the older shape, write `brief` in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`.
 
