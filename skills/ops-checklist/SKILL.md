@@ -197,11 +197,12 @@ Structure:
 ## ...
 ```
 
-**Language.** The category headings and each item's own text from the catalog above stay English:
-they are the list the reviewer cross-checks against the diff. Everything after the dash — the
+**Language.** The category headings and each item's own text from `## Checklist categories` stay
+English: they are the list the reviewer cross-checks against the diff. Everything after the dash — the
 evidence for an Applicable item, the reason for an N/A, what a Pending item waits for — is prose in
-the project's `[LANG]` (`conventions/i18n.md` → Artifact authoring rule). With `[LANG] = [ru]`,
-`- N/A: Forced-upgrade — internal beta only, no public release` keeps `N/A: Forced-upgrade` and
+the project's `[LANG]` (`conventions/i18n.md` → Artifact authoring rule). A line with no dash, like
+the Pending one above, carries only its status and its item, and has no prose to translate. With
+`[LANG] = [ru]`, `- N/A: Forced-upgrade — internal beta only, no public release` keeps `N/A: Forced-upgrade` and
 writes the reason in Russian.
 
 **Idempotency:** if `OpsChecklist.md` already exists, prompt the user — overwrite / merge / skip. Re-checking a list mid-feature is normal; preserve prior entries with timestamps if merging.
