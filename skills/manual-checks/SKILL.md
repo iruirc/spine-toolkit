@@ -83,6 +83,11 @@ Three rules on top of the fields:
 - **A case names its delta, not its neighbour.** Reusing another case's steps is legal when the step number and the change are both named and the case carries its own `**Scene:**` — "repeat case 1, but hold four to five seconds at step 4" is executable. A bare "as in case 1" with no delta is not.
 - **Data is named.** A case needing data the repository does not carry says how to get it. When there is a lot of it, it moves to `## Preparation` and `**Scene:**` names the set it wants.
 
+**Language.** The section headings, `[COVERS]` and the field labels above stay English: they are the
+file's structure. A case's title after `### N.`, the text after each label, the steps, and every line
+under `## Scope` and `## Not covered` are prose in the project's `[LANG]` (`conventions/i18n.md` →
+Artifact authoring rule).
+
 ## The instrument rule
 
 An expectation is written in what a person can **see**. When the verdict comes from an instrument — a trace, a log, a parser, a profiler — that instrument has to be runnable from this file: the command in full, and the value in its output that decides.

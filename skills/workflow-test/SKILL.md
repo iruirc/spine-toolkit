@@ -40,7 +40,7 @@ The fields that directly drive this workflow's behavior:
 - `task_dir` — the resolved task folder; every artifact this profile writes lands there.
 - `mode` — `manual` / `auto` (see sections 3 and 4).
 - `stack` — passed to subagents as context (including the chosen test framework, if already determined).
-- `lang` — project language for artifact prose + the final report; artifact structure (headings, field labels, status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed through to every subagent.
+- `lang` — project language for artifact prose + the final report; artifact structure (headings, field labels, status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed through to every subagent. Every subagent prompt names it in words (`English`, `Russian`) at its start and again as its last line.
 - `need_review` — gates the inclusion of `[reviewer]` (the `need_test` flag is meaningless for the TEST profile: tests ARE the primary artifact).
 - `archive_paths` — paths to backups already created (the orchestrator made them BEFORE the call; workflow-test does not create them).
 

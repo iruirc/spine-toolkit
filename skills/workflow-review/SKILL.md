@@ -43,7 +43,7 @@ REVIEW-profile specifics (differences from other workflows):
 - `mode` — `manual` / `auto` (see sections 3 and 4): only affects whether auto-move is confirmed with the user.
 - `task_dir` — the resolved task folder; `Review.md` and anything auto-move writes land there.
 - `stack`, `archive_paths` — standard (context for `[reviewer]` and information about backups created by the orchestrator).
-- `lang` — project language for `Review.md` prose + the final report; structure (`[REVIEW_STATUS] = …`, headings) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed to `[reviewer]`.
+- `lang` — project language for `Review.md` prose + the final report; structure (`[REVIEW_STATUS] = …`, headings) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed to `[reviewer]`. Every subagent prompt names it in words (`English`, `Russian`) at its start and again as its last line.
 
 ## 2. Stages
 

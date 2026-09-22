@@ -43,7 +43,7 @@ Key fields and their EPIC-specific semantics:
 - `stage_scope=single` — for EPIC means **"a single step"**, not a single stage. Used for `redo` or pinpoint re-runs of one step.
 - `mode` — `manual` / `auto` (see sections 3 and 4). The epic's mode is inherited by each step at delegation time, unless the step has its own `[WORKFLOW_MODE]` in its `Task.md`.
 - `stack` — passed to Research/Plan subagents, and inherited by the steps (unless they have their own `## 4. [Stack]`).
-- `lang` — project language for artifact prose + the final report; artifact structure (headings, field labels, status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed through to Research/Plan subagents and inherited by every step workflow-*.
+- `lang` — project language for artifact prose + the final report; artifact structure (headings, field labels, status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed through to Research/Plan subagents and inherited by every step workflow-*. Every subagent prompt names it in words (`English`, `Russian`) at its start and again as its last line.
 - `need_test`, `need_review` — at the epic level only gate Plan/Research; at the step level the decision is made by each step's own workflow-* based on its own Task.md.
 - `archive_paths` — paths to backups already created (the orchestrator made them BEFORE the call; workflow-epic does not create them).
 - `epic_dispatch_mode` — **an additional optional field, EPIC-specific**: `push` (default) or `pull`. Forces the Execute dispatch model; omitted, the profile decides (see section 2, Execute).

@@ -166,3 +166,24 @@ PY
       || { echo "$(basename "$f"): the revision brief does not pin the language"; return 1; }
   done
 }
+
+@test "every workflow skill names the language in words, first and last, in every subagent prompt" {
+  n=0
+  for s in "$ROOT"/skills/workflow-*/SKILL.md; do
+    n=$((n + 1))
+    grep -F -- '- `lang` — ' "$s" | grep -qF 'names it in words (`English`, `Russian`) at its start and again as its last line' \
+      || { echo "$s hands the language over as a bare code"; return 1; }
+  done
+  [ "$n" -eq 7 ] || { echo "scanned $n workflow skill(s), expected 7"; return 1; }
+}
+
+@test "the skills whose examples are English say which part of a line is translated" {
+  ops="$ROOT/skills/ops-checklist/SKILL.md"
+  mc="$ROOT/skills/manual-checks/SKILL.md"
+  for token in "Everything after the dash" "is prose in" "keeps \`N/A: Forced-upgrade\` and"; do
+    grep -qF -- "$token" "$ops" || { echo "ops-checklist does not say: $token"; return 1; }
+  done
+  for token in 'field labels above stay English' "A case's title after \`### N.\`" 'are prose in the project'; do
+    grep -qF -- "$token" "$mc" || { echo "manual-checks does not say: $token"; return 1; }
+  done
+}
