@@ -159,10 +159,14 @@ INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:
 }
 
 @test "every panel lens is pointed at the skill" {
-  for pair in feature:Research bug:Diagnose test:Analyze; do
+  for pair in bug:Diagnose test:Analyze; do
     stage_brief "${pair%%:*}" "${pair##*:}" | grep -qF "apply the task-documents skill's Research.md section to what you look for" \
       || { echo "profile-${pair%%:*}.js ${pair##*:}: the lens is never pointed at the skill"; return 1; }
   done
+  # FEATURE's lens is the security lens, whose brief lives in the shared prelude (securityLens).
+  pre="$(awk '/^\/\/ ── prelude ─/{f=1} f{print} /^\/\/ ── end prelude ─/{exit}' "$ROOT/workflows/profile-feature.js")"
+  grep -qF "apply the task-documents skill's Research.md section to what you look for" <<<"$pre" \
+    || { echo "the security lens in the prelude is never pointed at the skill"; return 1; }
 }
 
 @test "the step process verifies structural anchors before reporting" {

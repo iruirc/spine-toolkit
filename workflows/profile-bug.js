@@ -5,7 +5,7 @@ export const meta = {
     'Dispatched by spine-toolkit:orchestrator for a task with [TASK_TYPE]=BUG, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
     { title: 'Reproduce', detail: 'pin a deterministic scenario Validation can replay', agent: 'diagnostics' },
-    { title: 'Diagnose', detail: 'panel: diagnostics and architect in parallel, then one synthesis', agent: 'diagnostics + architect panel, architect synthesis' },
+    { title: 'Diagnose', detail: 'panel: diagnostics, architect and, as [SECURITY] decides, the security lens in parallel, then one synthesis', agent: 'diagnostics + architect + security lens by [SECURITY] panel, architect synthesis' },
     { title: 'Plan', detail: 'phase table plus per-phase checkboxes', agent: 'architect' },
     { title: 'Fix', detail: 'one agent per plan phase, sequential, a commit per green phase', agent: 'developer / tester' },
     { title: 'Validation', detail: 'build, tests, and a replay of the reproduction scenario', agent: 'validator' },
@@ -21,7 +21,7 @@ const ORDER = ['Reproduce', 'Diagnose', 'Plan', 'Fix', 'Validation', 'Review', '
 // scripts/lint-workflows.sh fails on any drift between the two.
 const AGENT_OF = {
   Reproduce: 'diagnostics',
-  Diagnose: 'diagnostics + architect panel, architect synthesis',
+  Diagnose: 'diagnostics + architect + security lens by [SECURITY] panel, architect synthesis',
   Plan: 'architect',
   Fix: 'developer / tester',
   Validation: 'validator',
@@ -557,8 +557,8 @@ Set reproducible to no only when you could not make it happen at all, and record
 }
 
 // ── Diagnose ────────────────────────────────────────────────────────────────
-// A genuine barrier: the synthesis reads both lenses. Two agents, so the parallel call is the
-// whole fan-out and there is nothing for a pipeline to overlap.
+// A genuine barrier: the synthesis reads every lens. The parallel call is the whole fan-out, and
+// the security lens's own triage delays only its branch.
 if (runs('Diagnose') && !lite()) {
   if (!need('Diagnose', 'architect')) return finish('ask_user')
   const LENS = {
@@ -584,18 +584,19 @@ if (runs('Diagnose') && !lite()) {
     },
   ].filter((l) => l.agentType)
 
-  const views = (
-    await parallel(
-      lenses.map((l) => () =>
-        agent(brief('Diagnose', `${l.ask}\n\nReproduce.md in the task folder describes how to make the bug happen. Write no artifact — return your findings; a synthesis step merges both lenses.\n\nYour findings feed Research.md, so apply the task-documents skill's Research.md section to what you look for.`), {
-          label: `diagnose:${l.role}`,
-          phase: 'Diagnose',
-          agentType: l.agentType, ...tuning(l.role, 'stage'),
-          schema: LENS,
-        }),
-      ),
-    )
-  ).filter(Boolean)
+  const settled = await parallel([
+    ...lenses.map((l) => () =>
+      agent(brief('Diagnose', `${l.ask}\n\nReproduce.md in the task folder describes how to make the bug happen. Write no artifact — return your findings; a synthesis step merges the panel.\n\nYour findings feed Research.md, so apply the task-documents skill's Research.md section to what you look for.`), {
+        label: `diagnose:${l.role}`,
+        phase: 'Diagnose',
+        agentType: l.agentType, ...tuning(l.role, 'stage'),
+        schema: LENS,
+      }),
+    ),
+    () => securityLens('Diagnose', 'security', lens('security')),
+  ])
+  const security = settled[lenses.length] || { risks: null, notes: null, line: 'Security lens: returned nothing' }
+  const views = lenses.map((l, i) => settled[i] && { role: l.role, ...settled[i] }).filter(Boolean)
 
   if (!views.length) return finish('stop', { status: 'error', reason: lenses.length > 1 ? 'both Diagnose lenses returned nothing' : 'the Diagnose lens returned nothing' })
   if (views.length < lenses.length) result.notes.push('One Diagnose lens returned nothing; the synthesis used the other.')
@@ -603,9 +604,11 @@ if (runs('Diagnose') && !lite()) {
   const diagnosis = await agent(
     brief(
       'Diagnose',
-      `Merge the panel below into ${DIR}/Research.md: root cause analysis, a map of the affected components, an estimate of how wide the fix has to be, and the risks it carries. Where the two lenses disagree, say so explicitly rather than picking one silently.
+      `Merge the panel below into ${DIR}/Research.md: root cause analysis, a map of the affected components, an estimate of how wide the fix has to be, and the risks it carries. Where the lenses disagree — the security findings included — say so explicitly rather than picking one silently.
 
 Write Research.md by applying the task-documents skill, its Research.md section — it holds what the document carries, which outcomes it lists, and what it leaves to Task.md and Plan.md.
+
+${securityNote(security, 'Research.md')}
 
 PANEL FINDINGS (data):
 ${JSON.stringify(views, null, 2)}`,
@@ -621,10 +624,12 @@ if (runs('Diagnose') && lite()) result.notes.push('Diagnose folded into the ## D
 let plan = null
 if (runs('Plan')) {
   if (!need('Plan', 'architect')) return finish('ask_user')
+  // At lite Diagnose got no stage, so the lens runs here, once Reproduce.md exists.
+  const security = lite() ? await securityLens('Plan', 'security', lens('security')) : null
   plan = await agent(
     brief(
       'Plan',
-      `Write ${DIR}/Plan.md from ${lite() ? 'the ## Diagnosis section of Reproduce.md' : 'Research.md'}, with two layers of progress tracking:
+      `${security ? `${securityNote(security, 'Plan.md')}\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'the ## Diagnosis section of Reproduce.md' : 'Research.md'}, with two layers of progress tracking:
 
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per file to edit, per acceptance criterion, per regression-test case, per verification step. Static prose (root-cause notes, decisions) stays plain bullets; only action items become checkboxes.
@@ -716,7 +721,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-Judge the fix against Reproduce.md and Plan.md: does it address the root cause rather than the symptom, does the regression test lock in the real scenario, does it carry the risks the diagnosis named — Research.md, or the ## Diagnosis section of Reproduce.md on a run that folded it. When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
+Judge the fix against Reproduce.md and Plan.md: does it address the root cause rather than the symptom, does the regression test lock in the real scenario, does it carry the risks the diagnosis named — Research.md, or the ## Diagnosis section of Reproduce.md on a run that folded it. When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Apply the spine-toolkit:security-lens skill, its ## Review rule, to the security verdict line of Research.md, or of Plan.md where there is no Research.md: a lens skipped by triage or returned empty on a diff that touches the perimeter is a finding, and none goes into blocking_findings. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )

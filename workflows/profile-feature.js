@@ -4,7 +4,7 @@ export const meta = {
   whenToUse:
     'Dispatched by spine-toolkit:orchestrator for a task with [TASK_TYPE]=FEATURE, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
-    { title: 'Research', detail: 'security lens, then the architect writes Requirements and Landscape', agent: 'security lens, then architect' },
+    { title: 'Research', detail: 'security lens as [SECURITY] decides, then the architect writes Requirements and Landscape', agent: 'security lens by [SECURITY], then architect' },
     { title: 'Plan', detail: 'phase table, per-phase checkboxes, and the estimation gate', agent: 'architect' },
     { title: 'Execute', detail: 'one agent per plan phase, sequential, a commit per green phase', agent: 'developer / tester' },
     { title: 'Validation', detail: 'build, tests, and the ops checklist', agent: 'validator' },
@@ -19,7 +19,7 @@ const ORDER = ['Research', 'Plan', 'Execute', 'Validation', 'Review', 'Done']
 // Mirrors meta.phases[].agent, which the sandbox does not expose to the script body;
 // scripts/lint-workflows.sh fails on any drift between the two.
 const AGENT_OF = {
-  Research: 'security lens, then architect',
+  Research: 'security lens by [SECURITY], then architect',
   Plan: 'architect',
   Execute: 'developer / tester',
   Validation: 'validator',
@@ -526,32 +526,7 @@ ${JSON.stringify({ risks: sec.risks, notes: sec.notes || '' }, null, 2)}`
 // architect writes it. Two agents racing on Research.md would cost more than the wait saves.
 if (runs('Research') && !lite()) {
   if (!need('Research', 'architect')) return finish('ask_user')
-  const securityAgentType = lens('security')
-  const security = securityAgentType
-    ? await agent(
-        brief(
-          'Research',
-          `Read ${DIR}/Task.md and assess the security surface this feature would add: credential and token handling, data at rest, transport security policy, deeplink entry points, permissions, third-party SDKs, and anything touching PII. Write no artifact — return your findings; the architect folds them into Research.md.
-
-Your findings feed Research.md, so apply the task-documents skill's Research.md section to what you look for.`,
-        ),
-        {
-          label: 'research:security',
-          phase: 'Research',
-          agentType: securityAgentType, ...tuning('security', 'stage'),
-          schema: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['risks'],
-            properties: {
-              risks: { type: 'array', items: { type: 'string' } },
-              notes: { type: 'string' },
-            },
-          },
-        },
-      )
-    : null
-  if (securityAgentType && !security) result.notes.push('The security lens returned nothing; Research.md carries the architect view only.')
+  const security = await securityLens('Research', 'security', lens('security'))
 
   const research = await agent(
     brief(
@@ -562,12 +537,9 @@ Your findings feed Research.md, so apply the task-documents skill's Research.md 
 ## Landscape — Entity graph / Layer map / Integration points / Work items / Implementation sequence
 ## Architectural Analysis — options, the recommendation, and what it costs
 
-Fold the security findings below into the risk discussion; do not drop one silently.
+${securityNote(security, 'Research.md')}
 
-Write Research.md by applying the task-documents skill, its Research.md section — it holds what the document carries, which outcomes it lists, and what it leaves to Task.md and Plan.md.
-
-SECURITY FINDINGS (data):
-${JSON.stringify(security || { risks: [] }, null, 2)}`,
+Write Research.md by applying the task-documents skill, its Research.md section — it holds what the document carries, which outcomes it lists, and what it leaves to Task.md and Plan.md.`,
     ),
     { label: 'research:architect', phase: 'Research', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'stage') },
   )
@@ -583,10 +555,12 @@ if (runs('Research') && lite()) result.notes.push('Research folded into the ## R
 let plan = null
 if (runs('Plan')) {
   if (!need('Plan', 'architect')) return finish('ask_user')
+  // At lite Research got no stage, so the lens runs here, before the plan is written.
+  const security = lite() ? await securityLens('Plan', 'security', lens('security')) : null
   plan = await agent(
     brief(
       'Plan',
-      `${lite() ? `This run is at scale lite, so Research got no stage of its own and there is no Research.md. Open ${DIR}/Plan.md with a "## Research" section carrying what that stage would have produced: the Primary and Secondary requirements, the work-item list, and the integration points a phase will cross. Then write the plan from it. That section is Research.md folded into Plan.md, so the task-documents skill's Research.md section applies to it as well.\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'that section' : 'Research.md'}, with two layers of progress tracking:
+      `${lite() ? `This run is at scale lite, so Research got no stage of its own and there is no Research.md. Open ${DIR}/Plan.md with a "## Research" section carrying what that stage would have produced: the Primary and Secondary requirements, the work-item list, and the integration points a phase will cross. Then write the plan from it. That section is Research.md folded into Plan.md, so the task-documents skill's Research.md section applies to it as well.\n\n` : ''}${security ? `${securityNote(security, 'that ## Research section')}\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'that section' : 'Research.md'}, with two layers of progress tracking:
 
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per file to edit, per acceptance criterion, per test to add, per verification step. Static prose (rationale, decisions, design notes) stays plain bullets; only action items become checkboxes.
@@ -701,7 +675,7 @@ if (runs('Review') && A.need_review !== false) {
 
 When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed.
 
-Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
+Apply the spine-toolkit:security-lens skill, its ## Review rule, to the security verdict line of Research.md, or of Plan.md where there is no Research.md: a lens skipped by triage or returned empty on a diff that touches the perimeter is a finding, and none goes into blocking_findings. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )
