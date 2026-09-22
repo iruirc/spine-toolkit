@@ -22,15 +22,16 @@ findings() { grep -c ' § ' <<<"$output" || true; }
   [ "${lines[${#lines[@]}-1]}" = "artifact language passed" ]
 }
 
-@test "English prose in a ru project is a finding in every long section and in the file" {
+@test "English prose in a ru project is a finding in every long section, and the file is not named again" {
   cp "$FIX/research.en.md" "$TASK/Research.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$output"; return 1; }
-  for part in '## Summary' '## Root cause' '## Evidence' '(file)'; do
+  for part in '## Summary' '## Root cause' '## Evidence'; do
     grep -qF "Research.md § $part: 0% Cyrillic" <<<"$output" || { echo "$output"; echo "no finding for $part"; return 1; }
   done
-  [ "$(findings)" -eq 4 ] || { echo "$output"; return 1; }
-  [ "${lines[${#lines[@]}-1]}" = "artifact language failed: 4 finding(s)" ]
+  ! grep -qF '(file)' <<<"$output" || { echo "a file with a part finding is named again as a whole"; echo "$output"; return 1; }
+  [ "$(findings)" -eq 3 ] || { echo "$output"; return 1; }
+  [ "${lines[${#lines[@]}-1]}" = "artifact language failed: 3 finding(s)" ]
 }
 
 @test "one English section in a Russian file is exactly one finding" {
@@ -46,10 +47,10 @@ findings() { grep -c ' § ' <<<"$output" || true; }
   cp "$FIX/paragraph.ru.md" "$TASK/Research.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$output"; return 1; }
-  grep -qF 'Research.md § (file): 0% Latin' <<<"$output" || { echo "$output"; return 1; }
+  grep -qF 'Research.md § (preamble): 0% Latin' <<<"$output" || { echo "$output"; return 1; }
 }
 
-@test "code, tables, subjects, paths, fields, labels, comments, URLs and file names are not prose" {
+@test "code, tables, subjects, paths, fields, labels, comments, URLs, file names and quotes are not prose" {
   # Each construct carries far more English than the Russian paragraph beside it, so a construct
   # counted as prose drops the share under the floor. The plain-English control proves it would.
   build() { # $1 = construct
@@ -64,6 +65,8 @@ block = {
     'tilde-fence': '~~~\n' + '\n'.join([words] * n) + '\n~~~',
     'table': '| Case | Note |\n|---|---|\n' + '\n'.join('| %s | %s |' % (words, words) for _ in range(n)),
     'subjects': '\n'.join('- `a1b2c3d` fix(cart): ' + words for _ in range(n)),
+    'bare-subjects': '\n'.join('- `a1b2c3d` fix: ' + words for _ in range(n)),
+    'blockquote': '\n'.join('> ' + words for _ in range(n)),
     'paths': ' '.join(['src/cart/promo/discount/delivery/rules'] * n * 3),
     'fields': '\n'.join('[PROMO_FIELD] = [%s]' % words for _ in range(n)),
     'labels': ' '.join(['**Failure looks like:**'] * n * 3),
@@ -78,11 +81,23 @@ PY
   build control
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "the control passed, so this test proves nothing"; echo "$output"; return 1; }
-  for kind in indented-fence tilde-fence table subjects paths fields labels inline-code comment urls file-names; do
+  for kind in indented-fence tilde-fence table subjects bare-subjects blockquote paths fields labels inline-code comment urls file-names; do
     build "$kind"
     run "$LINT" "$TASK"
     [ "$status" -eq 0 ] || { echo "$kind was counted as prose"; echo "$output"; return 1; }
   done
+}
+
+@test "a fence opens and closes where CommonMark says it does" {
+  english() { for _ in $(seq 40); do echo 'the promo code is taken from the goods and the delivery is priced after it'; done; }
+  # A backtick run with a backtick after it on the line opens nothing: what follows is prose.
+  { printf '## Summary\n\n'; cat "$FIX/paragraph.ru.md"; echo '```text``` is quoted inline'; english; } >"$TASK/Research.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "an inline run opened a fence"; echo "$output"; return 1; }
+  # A fence line with an info string closes nothing: what follows is still code.
+  { printf '## Summary\n\n'; cat "$FIX/paragraph.ru.md"; printf '```\nval promo = 1\n```python\n'; english; echo '```'; } >"$TASK/Research.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "a line with an info string closed the fence"; echo "$output"; return 1; }
 }
 
 @test "a file of short English sections is caught as a whole" {
@@ -91,6 +106,16 @@ PY
   [ "$status" -eq 1 ] || { echo "$output"; return 1; }
   [ "$(findings)" -eq 1 ] || { echo "$output"; return 1; }
   grep -qF 'OpsChecklist.md § (file):' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "a checklist that keeps its item text English and writes its reasons in Russian passes" {
+  cp "$FIX/ops-compliant.ru.md" "$TASK/OpsChecklist.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  # Only OpsChecklist.md reads a list line from its dash: anywhere else the item text is prose.
+  mv "$TASK/OpsChecklist.md" "$TASK/Validation.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "the dash rule reached a file other than OpsChecklist.md"; echo "$output"; return 1; }
 }
 
 @test "Task.md, Questions.md, _archive/ and step folders are not read" {
@@ -111,6 +136,36 @@ PY
   [ "$status" -eq 2 ]
   run "$LINT" --all "$TASK"
   [ "$status" -eq 2 ]
+}
+
+@test "a resolver failure is exit 2, and each line the resolver printed appears once" {
+  printf '## Scale\n\nlite\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  cp "$FIX/research.ru.md" "$TASK/Research.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  [ "$(grep -c '2.0-incompatible' <<<"$output")" -eq 1 ] || { echo "$output"; return 1; }
+  # A [LANG] line before the failure is the one both forwarding paths would take: a stub forces it.
+  cp "$LINT" "$BATS_TEST_TMPDIR/lint.sh"
+  printf '#!/usr/bin/env bash\necho "CLAUDE-spine-toolkit.md [LANG]: '"'fr'"' not recognized, skipped" >&2\nexit 2\n' \
+    >"$BATS_TEST_TMPDIR/resolve-settings.sh"
+  chmod +x "$BATS_TEST_TMPDIR/resolve-settings.sh"
+  run "$BATS_TEST_TMPDIR/lint.sh" "$TASK"
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  [ "$(grep -c "\[LANG\]: 'fr'" <<<"$output")" -eq 1 ] || { echo "$output"; return 1; }
+}
+
+@test "several task folders in one call are each measured, and a warning they share is printed once" {
+  printf '## Project settings\n\n[LANG] = [fr]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  TASK2="$PROJ/Tasks/ACTIVE/043-cart"
+  mkdir -p "$TASK2"
+  printf '[TASK_TYPE] = [BUG]\n' >"$TASK2/Task.md"
+  cp "$FIX/research.en.md" "$TASK/Research.md"
+  cp "$FIX/paragraph.ru.md" "$TASK2/Research.md"
+  run "$LINT" "$TASK" "$TASK2"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+  [ "$(findings)" -eq 1 ] || { echo "$output"; return 1; }
+  grep -qF "$TASK2/Research.md § (preamble)" <<<"$output" || { echo "$output"; return 1; }
+  [ "$(grep -c "\[LANG\]: 'fr' not recognized" <<<"$output")" -eq 1 ] || { echo "$output"; return 1; }
 }
 
 @test "the language is the project's, read through the resolver" {
