@@ -221,7 +221,7 @@ security; OWASP; vulnerability; certificate pinning; безопасность
 `{value}` — не одна из трёх глубин walkthrough, поэтому запись пропущена и решает остаток цепочки: `off`, если `scale` этой задачи — `lite`; иначе `[WALKTHROUGH]` проекта, если он что-то называет, и `deep`, если не называет ничего. Глубины такие: `brief`, `deep` и `off` — исправьте значение в `[WALKTHROUGH]` — в `Task.md` или в `CLAUDE-spine-toolkit.md`. Глубину, до которой этот прогон в итоге дорезолвил, называет колонка настроек выше.
 
 ## warn_tuning_unrecognised
-`{entry}` в {source} — не ключ и значение, которые этот прогон умеет применить, поэтому запись пропущена и действует следующая настройка. Ключи моделей — `light`, `walkthrough` и восемь ролей, со значениями `opus`, `sonnet`, `haiku`, `fable` или `session`; ключи effort — `walkthrough` и восемь ролей, со значениями `low`, `medium`, `high`, `xhigh`, `max` или `session`.
+`{entry}` в {source} — не ключ и значение, которые этот прогон умеет применить, поэтому запись пропущена и действует следующая настройка. Ключи моделей — `light`, `walkthrough`, `done` и восемь ролей, со значениями `opus`, `sonnet`, `haiku`, `fable` или `session`; ключи effort — `walkthrough`, `done` и восемь ролей, со значениями `low`, `medium`, `high`, `xhigh`, `max` или `session`.
 
 ## warn_effort_method_b
 Effort, заданный для {roles}, в этом прогоне не действует: профиль идёт через свой скилл, а вызов агента из скилла не передаёт effort, поэтому все стадии работают на effort этой сессии. Выбор моделей по-прежнему действует.

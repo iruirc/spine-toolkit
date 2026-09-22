@@ -285,9 +285,9 @@ section() {
 }
 
 @test "the outbound contract carries models and effort as filled brace maps" {
-  grep -qxF 'models={light: sonnet, walkthrough: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}' "$SKILL" \
+  grep -qxF 'models={light: sonnet, walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}' "$SKILL" \
     || { echo "no filled models= line in the Outbound Contract block"; return 1; }
-  grep -qxF 'effort={walkthrough: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}' "$SKILL" \
+  grep -qxF 'effort={walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}' "$SKILL" \
     || { echo "no filled effort= line in the Outbound Contract block"; return 1; }
 }
 

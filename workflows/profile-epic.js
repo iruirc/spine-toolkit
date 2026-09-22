@@ -676,7 +676,7 @@ let cancelled = false
 
 // A step's own [MODELS] and [EFFORT] keys over the epic's resolved maps: the chain
 // scripts/resolve-settings.sh walks for a step, whose vocabulary these three lines copy.
-const TUNING_KEYS = { models: ['light', 'walkthrough', 'architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'], effort: ['walkthrough', 'architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'] }
+const TUNING_KEYS = { models: ['light', 'walkthrough', 'done', 'architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'], effort: ['walkthrough', 'done', 'architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'] }
 const TUNING_VALUES = { models: ['opus', 'sonnet', 'haiku', 'fable', 'session'], effort: ['low', 'medium', 'high', 'xhigh', 'max', 'session'] }
 const TUNING_UNSET = { models: ['platform'], effort: [] }
 const overlay = (field, st) => {

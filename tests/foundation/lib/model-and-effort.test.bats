@@ -46,7 +46,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
 @test "the config template ships every Models key at its default, and no init" {
   field="$(grep -F '[MODELS] = [' "$TPL")"
-  for entry in 'light: sonnet' 'walkthrough: session' 'architect: session' 'developer: session' 'tester: session' 'reviewer: session' \
+  for entry in 'light: sonnet' 'walkthrough: session' 'done: session' 'architect: session' 'developer: session' 'tester: session' 'reviewer: session' \
                'refactorer: session' 'validator: sonnet' 'security: session' 'diagnostics: session'; do
     grep -qF "$entry" <<<"$field" || { echo "[MODELS] lacks '$entry'"; return 1; }
   done
@@ -60,6 +60,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     grep -qF "$role: session" <<<"$field" || { echo "[EFFORT] lacks '$role: session'"; return 1; }
   done
   grep -qF 'walkthrough: session' <<<"$field" || { echo "[EFFORT] lacks 'walkthrough: session'"; return 1; }
+  grep -qF 'done: session' <<<"$field" || { echo "[EFFORT] lacks 'done: session'"; return 1; }
   ! grep -qF 'light:' <<<"$field" || { echo "[EFFORT] carries light, which no effort reads"; return 1; }
 }
 
@@ -74,8 +75,8 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
 @test "both task templates offer the MODELS and EFFORT overrides with the resolver's keys and values" {
   var() { sed -n "s/^$1=\"\(.*\)\"$/\1/p" "$ROOT/scripts/resolve-settings.sh" | tr ' ' '|'; }
-  models="# [MODELS] = [architect: opus]  # <light|walkthrough|$(var ROLES)>: <$(var MODELS)>, comma-separated"
-  effort="# [EFFORT] = [reviewer: high]   # <walkthrough|$(var ROLES)>: <$(var EFFORTS)>, comma-separated"
+  models="# [MODELS] = [architect: opus]  # <light|walkthrough|done|$(var ROLES)>: <$(var MODELS)>, comma-separated"
+  effort="# [EFFORT] = [reviewer: high]   # <walkthrough|done|$(var ROLES)>: <$(var EFFORTS)>, comma-separated"
   for t in task-root task-step; do
     grep -qxF "$models" "$ROOT/templates/task-md/$t.md" || { echo "$t.md: [MODELS] is not '$models'"; return 1; }
     grep -qxF "$effort" "$ROOT/templates/task-md/$t.md" || { echo "$t.md: [EFFORT] is not '$effort'"; return 1; }
@@ -116,7 +117,7 @@ unset = re.search(r'^const TUNING_UNSET = \{ models: \[([^\]]*)\], effort: \[([^
 if not keys or not values or not unset:
     print('profile-epic.js carries no TUNING_KEYS / TUNING_VALUES / TUNING_UNSET line'); raise SystemExit
 q = lambda s: re.findall(r"'([a-z]+)'", s)
-want = (['light', 'walkthrough'] + var('ROLES'), ['walkthrough'] + var('ROLES'), var('MODELS'), var('EFFORTS'), var('UNSET_MODELS'), [])
+want = (['light', 'walkthrough', 'done'] + var('ROLES'), ['walkthrough', 'done'] + var('ROLES'), var('MODELS'), var('EFFORTS'), var('UNSET_MODELS'), [])
 have = (q(keys.group(1)), q(keys.group(2)), q(values.group(1)), q(values.group(2)), q(unset.group(1)), q(unset.group(2)))
 print('same' if want == have else 'differ: %s vs %s' % (want, have))
 PY
