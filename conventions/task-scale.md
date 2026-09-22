@@ -122,9 +122,9 @@ layer of `skills/task-documents/SKILL.md`, and that layer does not depend on the
 
 ## What the axis does not govern
 
-Role `security` is a subject-matter question, not a size one: it is not invoked on a `lite` task
-unless the perimeter touches credentials, network, deep links, storage or authentication — and it
-is invoked on such a task at any size.
+Role `security` is a subject-matter question, not a size one. Whether the lens runs is decided by
+`[SECURITY]` and the triage the `security-lens` skill defines, the same way at `lite` as at `full`:
+a task that touches the perimeter gets the lens at any size, and one that does not gets none.
 
 Documentation `strictness` is not a size question either. `lite` writes shorter artifacts; it
 does not lower what a component demands, and `scripts/docs-route.sh` never reads this block.
