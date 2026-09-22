@@ -285,8 +285,8 @@ const record = (stage, r) => {
 // passes nothing, leaving the choice to CLAUDE_CODE_SUBAGENT_MODEL and the session.
 const tuning = (role, kind) => {
   const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)
-  const own = (map) => (kind === 'walkthrough' ? pick(map, 'walkthrough', 'session') : null)
-  const model = own(A.models) || (kind !== 'stage' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')
+  const own = (map) => (kind === 'walkthrough' || kind === 'done' ? pick(map, kind, 'session') : null)
+  const model = own(A.models) || (kind !== 'stage' && kind !== 'done' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')
   const effort = kind === 'mechanical' ? 'low' : own(A.effort) || pick(A.effort, role, 'session')
   return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
 }
@@ -711,7 +711,7 @@ if (runs('Done')) {
 
 When ${DIR}/Plan.md has a ## Estimation section, a ## Estimate retrospective section is mandatory, following the hybrid model in the feature-estimation skill. Always record the automatic git proxy — the commit span of this task's phase commits plus the phase and rework counts, labelled proxy and never presented as human-days — and add the user-provided human effort when it was offered. The in-range verdict uses human effort when it exists and the proxy otherwise; only when neither exists write unknown and name the missing signal. In AI-assisted mode break the actual down per leverage class. Append this feature's data point to the calibration log.${cap('Done.md')}`,
     ),
-    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'mechanical') },
+    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'done') },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)

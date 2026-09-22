@@ -48,29 +48,31 @@ is the orchestrator's and needs no announcement.
 Every dispatch runs on the model and at the effort the contract's `models` and `effort` maps give
 it, through one rule. `models` and `effort` resolve like every other task setting —
 `conventions/task-settings.md` holds their chain and field table; this section is what a dispatch
-does with the result. A dispatch is one of four kinds:
+does with the result. A dispatch is one of five kinds:
 
 - `stage` — the work a stage exists for: investigation, plan, a phase, validation, review.
 - `walkthrough` — writing `Walkthrough.md`, and revising it after its check: `walkthrough`,
   `walkthrough:revise`.
+- `done` — writing the final report, which on a Done run again is checking a report against the
+  task: `done`.
 - `light` — work the script's own prompt defines that still takes judgement: `walkthrough:check`,
   `security:triage`.
-- `mechanical` — reading a file back, ticking a box, moving a task, writing the final report:
-  `<stage>:read-plan`, `execute:read-steps`, `execute:tick:<step>`, `done:read-branch`, `auto-move`,
-  `done`.
+- `mechanical` — reading a file back, ticking a box, moving a task: `<stage>:read-plan`,
+  `execute:read-steps`, `execute:tick:<step>`, `done:read-branch`, `auto-move`.
 
-The `walkthrough`, `light` and `mechanical` lists are closed, and `scripts/lint-workflows.sh` holds
+The `walkthrough`, `done`, `light` and `mechanical` lists are closed, and `scripts/lint-workflows.sh` holds
 them.
 
 | Kind | model | effort |
 |---|---|---|
 | `stage` | `models[role]` | `effort[role]` |
 | `walkthrough` | `models.walkthrough`, else `models.light`, else `models[role]` | `effort.walkthrough`, else `effort[role]` |
+| `done` | `models.done`, else `models[role]` | `effort.done`, else `effort[role]` |
 | `light` | `models.light`, else `models[role]` | `effort[role]` |
 | `mechanical` | `models.light`, else `models[role]` | `low` |
 
-`session` means pass nothing; in the `walkthrough` and `light` keys it hands the choice to the next
-key of the row. From Claude Code 2.1.251 a model the dispatch passes outranks everything; without one
+`session` means pass nothing; in the `walkthrough`, `done` and `light` keys it hands the choice to
+the next key of the row. From Claude Code 2.1.251 a model the dispatch passes outranks everything; without one
 `CLAUDE_CODE_SUBAGENT_MODEL` decides, then the session's model. Before 2.1.251 the environment
 variable outranked everything. An effort not passed is the session's.
 Neither falls to the agent's frontmatter, because a platform agent declares no model and no effort
@@ -80,5 +82,5 @@ Method A passes both through the prelude's `tuning(role, kind)`. Method B passes
 dispatch and cannot pass effort: the host's dispatch takes no such parameter, so every stage runs at
 the session's effort and the orchestrator says so once. Under Method B the walkthrough, its check and
 its revision, and the security triage, are the calls outside a stage that still get an agent, and
-the `mechanical` ones run in the main context. Work in the main context — the orchestrator, a
+the `mechanical` ones and Done run in the main context. Work in the main context — the orchestrator, a
 handed-back stage, a Method B stage without an agent — runs on the session's model and effort.

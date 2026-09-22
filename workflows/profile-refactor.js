@@ -285,8 +285,8 @@ const record = (stage, r) => {
 // passes nothing, leaving the choice to CLAUDE_CODE_SUBAGENT_MODEL and the session.
 const tuning = (role, kind) => {
   const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)
-  const own = (map) => (kind === 'walkthrough' ? pick(map, 'walkthrough', 'session') : null)
-  const model = own(A.models) || (kind !== 'stage' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')
+  const own = (map) => (kind === 'walkthrough' || kind === 'done' ? pick(map, kind, 'session') : null)
+  const model = own(A.models) || (kind !== 'stage' && kind !== 'done' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')
   const effort = kind === 'mechanical' ? 'low' : own(A.effort) || pick(A.effort, role, 'session')
   return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
 }
@@ -672,7 +672,7 @@ if (runs('Done')) {
       'Done',
       `Write the final report ${DIR}/Done.md: what was refactored, why the result is better (readability, separation of concerns, reduced coupling), whatever measurable metrics you have (file size, cyclomatic complexity of the key functions, dependency count), the validation status, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries.${cap('Done.md')}`,
     ),
-    { label: 'done', phase: 'Done', agentType: A.agents.refactorer, schema: ARTIFACT, ...tuning('refactorer', 'mechanical') },
+    { label: 'done', phase: 'Done', agentType: A.agents.refactorer, schema: ARTIFACT, ...tuning('refactorer', 'done') },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)

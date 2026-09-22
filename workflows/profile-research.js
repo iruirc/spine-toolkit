@@ -279,8 +279,8 @@ const record = (stage, r) => {
 // passes nothing, leaving the choice to CLAUDE_CODE_SUBAGENT_MODEL and the session.
 const tuning = (role, kind) => {
   const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)
-  const own = (map) => (kind === 'walkthrough' ? pick(map, 'walkthrough', 'session') : null)
-  const model = own(A.models) || (kind !== 'stage' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')
+  const own = (map) => (kind === 'walkthrough' || kind === 'done' ? pick(map, kind, 'session') : null)
+  const model = own(A.models) || (kind !== 'stage' && kind !== 'done' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')
   const effort = kind === 'mechanical' ? 'low' : own(A.effort) || pick(A.effort, role, 'session')
   return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
 }
@@ -676,7 +676,7 @@ if (runs('Done')) {
       'Done',
       `Write the final report ${DIR}/Done.md: what was investigated, the verdict or key finding in one paragraph, a pointer to Research.md, and the follow-up tasks — how many, briefly what they are, and the task-new invocation hint for each. ${EXPERIMENT === 'on' ? DONE_EXPERIMENT : 'Nothing was built here, so keep the report about what is now known and what should happen next.'}`,
     ),
-    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'mechanical') },
+    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'done') },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
