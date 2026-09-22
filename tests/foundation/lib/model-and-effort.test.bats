@@ -38,7 +38,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   s="$(section "$RULE" '## Model and effort')"
   list="$(awk '/^- `mechanical` —/{f=1; print; next} f&&(/^$/||/^- /){exit} f' <<<"$s")"
   [ -n "$list" ] || { echo "no mechanical list"; return 1; }
-  ! grep -qF '`done`.' <<<"$list" || { echo "done is still listed as mechanical"; return 1; }
+  ! grep -qF '`done`' <<<"$list" || { echo "done is still listed as mechanical"; return 1; }
   grep -qF -- '- `done` — writing the final report' <<<"$s" || { echo "the rule does not define the done kind"; return 1; }
   grep -qxF "    (r'done', 'done')," "$ROOT/scripts/lint-workflows.sh" || { echo "the lint does not hold done at its own kind"; return 1; }
   n=0
