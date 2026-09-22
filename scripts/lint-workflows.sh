@@ -53,7 +53,7 @@ KIND_OF_LABEL = (
     (r'execute:tick:\$\{st\.step_id\}', 'mechanical'),
     (r'done:read-branch', 'mechanical'),
     (r'auto-move', 'mechanical'),
-    (r'done', 'mechanical'),
+    (r'done', 'done'),
     (r'walkthrough', 'walkthrough'),
     (r'walkthrough:revise', 'walkthrough'),
     (r'walkthrough:check', 'light'),

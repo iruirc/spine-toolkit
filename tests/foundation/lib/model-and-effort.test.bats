@@ -11,10 +11,10 @@ setup() {
 
 section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
-@test "the rule names the four kinds and the three closed lists" {
+@test "the rule names the five kinds and the four closed lists" {
   s="$(section "$RULE" '## Model and effort')"
   [ -n "$s" ] || { echo "no ## Model and effort section"; return 1; }
-  for token in '`stage`' '`light`' '`mechanical`' '`walkthrough`' '`walkthrough:check`' '`walkthrough:revise`' \
+  for token in '`stage`' '`light`' '`mechanical`' '`walkthrough`' '`done`' '`walkthrough:check`' '`walkthrough:revise`' \
                '`security:triage`' \
                '`<stage>:read-plan`' '`execute:read-steps`' '`execute:tick:<step>`' '`done:read-branch`' \
                '`auto-move`' '`done`'; do
@@ -29,6 +29,25 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     || { echo "no walkthrough row"; return 1; }
   grep -qxF '| `light` | `models.light`, else `models[role]` | `effort[role]` |' <<<"$s" || { echo "no light row"; return 1; }
   grep -qxF '| `mechanical` | `models.light`, else `models[role]` | `low` |' <<<"$s" || { echo "no mechanical row"; return 1; }
+  grep -qxF '| `done` | `models.done`, else `models[role]` | `effort.done`, else `effort[role]` |' <<<"$s" || { echo "no done row"; return 1; }
+}
+
+@test "writing Done.md is its own kind, off the light model and off low" {
+  # A Done that runs again checks a report against the task: judgement, which the mechanical
+  # kind's light model and fixed low effort were never meant to carry.
+  s="$(section "$RULE" '## Model and effort')"
+  list="$(awk '/^- `mechanical` —/{f=1; print; next} f&&(/^$/||/^- /){exit} f' <<<"$s")"
+  [ -n "$list" ] || { echo "no mechanical list"; return 1; }
+  ! grep -qF '`done`.' <<<"$list" || { echo "done is still listed as mechanical"; return 1; }
+  grep -qF -- '- `done` — writing the final report' <<<"$s" || { echo "the rule does not define the done kind"; return 1; }
+  grep -qF "(r'done', 'done')," "$ROOT/scripts/lint-workflows.sh" || { echo "the lint does not hold done at its own kind"; return 1; }
+  n=0
+  for p in bug epic feature refactor research test; do
+    line="$(grep -F "label: 'done'," "$ROOT/workflows/profile-$p.js")"
+    grep -qE "\.\.\.tuning\('[a-z]+', 'done'\)" <<<"$line" || { echo "profile-$p.js: the done call is not tuned done"; return 1; }
+    n=$((n + 1))
+  done
+  [ "$n" -eq 6 ] || { echo "checked $n profile(s), expected 6"; return 1; }
 }
 
 @test "the rule states the host's order with its version, and what Method B cannot pass" {
@@ -95,8 +114,8 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     n=$((n + 1))
     for line in "const tuning = (role, kind) => {" \
                 "  const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)" \
-                "  const own = (map) => (kind === 'walkthrough' ? pick(map, 'walkthrough', 'session') : null)" \
-                "  const model = own(A.models) || (kind !== 'stage' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')" \
+                "  const own = (map) => (kind === 'walkthrough' || kind === 'done' ? pick(map, kind, 'session') : null)" \
+                "  const model = own(A.models) || (kind !== 'stage' && kind !== 'done' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')" \
                 "  const effort = kind === 'mechanical' ? 'low' : own(A.effort) || pick(A.effort, role, 'session')" \
                 "  return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }"; do
       grep -qxF "$line" "$p" || { echo "$(basename "$p"): missing '$line'"; return 1; }

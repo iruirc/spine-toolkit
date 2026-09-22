@@ -281,8 +281,8 @@ const record = (stage, r) => {
 // passes nothing, leaving the choice to CLAUDE_CODE_SUBAGENT_MODEL and the session.
 const tuning = (role, kind) => {
   const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)
-  const own = (map) => (kind === 'walkthrough' ? pick(map, 'walkthrough', 'session') : null)
-  const model = own(A.models) || (kind !== 'stage' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')
+  const own = (map) => (kind === 'walkthrough' || kind === 'done' ? pick(map, kind, 'session') : null)
+  const model = own(A.models) || (kind !== 'stage' && kind !== 'done' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')
   const effort = kind === 'mechanical' ? 'low' : own(A.effort) || pick(A.effort, role, 'session')
   return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }
 }
@@ -907,7 +907,7 @@ if (runs('Done') && !failed_steps.length && !cancelled && !pending_steps.length)
 - A ## Estimate retrospective section that rolls up every completed step's own retrospective: the aggregate estimated epic range against the summed actual effort, an in-range verdict, and the reason for any variance. Take actual effort per feature-estimation ## Estimate retrospective — the user's own figure when there is one, otherwise the git proxy, labelled as a proxy, otherwise unknown. Sum step rows only in matching units; never add human-days to proxy values in one total. Append or refresh this epic's data point in the calibration log.
 - Objections, aggregated from the steps' Done.md files where the user insisted on a contested decision.`,
     ),
-    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'mechanical') },
+    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'done') },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
