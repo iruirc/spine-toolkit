@@ -19,7 +19,9 @@ setup() {
     for token in "const PRIOR_DONE = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Done-[^/]*\.md\$/.test(p))" \
                  'const doneBrief = (body) => brief(' \
                  'may already hold the report of an earlier Done of this task' \
-                 'every claim in it is unverified' 'Never confirm a claim you did not check.'; do
+                 'every claim in it is unverified' \
+                 'say how many claims you corrected and name the weightiest' \
+                 'Never confirm a claim you did not check.'; do
       grep -qF -- "$token" "$f" || { echo "$(basename "$f"): the prelude lacks: $token"; return 1; }
     done
   done
@@ -44,7 +46,7 @@ setup() {
   for s in bug epic feature refactor research test; do
     f="$ROOT/skills/workflow-$s/SKILL.md"
     awk '/^- \*\*Done\*\*/{f=1} f{print} f&&/^$/{exit}' "$f" \
-      | grep -qF 'When `Done.md` already exists — a redo, a restart, a continue after a hand-back — every claim in it is checked against the current artifacts and `git log` before it is kept' \
+      | grep -qF 'When `Done.md` already exists — a redo, a restart, a continue after a hand-back — every claim in it is checked against the current artifacts and the `git log` of every repository the task touched before it is kept, and the report says how many claims were corrected, or that every claim held.' \
       || { echo "workflow-$s: the Done bullet does not say a prior report is claims to check"; return 1; }
     n=$((n + 1))
   done

@@ -118,7 +118,7 @@ const doneBrief = (body) => brief(
   'Done',
   `${body}
 
-${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold. Never confirm a claim you did not check.`,
+${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.`,
 )
 
 const ARTIFACT = {
