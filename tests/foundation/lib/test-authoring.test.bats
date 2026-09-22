@@ -143,3 +143,33 @@ section() { # $1 = file, $2 = heading text without "## "
     return 1
   fi
 }
+
+# The Review brief's text only, stopping at the agent() options object — the same
+# extractor phase-verification.test.bats uses.
+review_brief() {
+  awk -v stop="label: .review." '/^\/\/ ── Review ─/{p=1;next} p&&$0~stop{exit} p' "$1"
+}
+
+@test "every phased profile's Review judges the tests by the skill" {
+  for p in feature bug refactor test; do
+    b="$(review_brief "$ROOT/workflows/profile-$p.js")"
+    grep -qF "the way the test-authoring skill's ## Review section does" <<<"$b" \
+      || { echo "profile-$p.js: Review never judges test quality"; return 1; }
+    grep -qF 'these are defects in what was delivered and may block' <<<"$b" \
+      || { echo "profile-$p.js: the clause reads as non-blocking, like its neighbour"; return 1; }
+  done
+}
+
+@test "exactly the four phased profiles carry the test-quality clause" {
+  n="$(grep -l "the way the test-authoring skill's ## Review section does" "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the clause, expected 4"; return 1; }
+}
+
+@test "the TEST profile keeps no second copy of the criteria" {
+  # It carried the only written-out criteria in core; leaving them beside the clause
+  # is two sources that drift, which is the defect this change exists to remove.
+  if grep -qF 'What counts here: edge-case coverage' "$ROOT/workflows/profile-test.js"; then
+    echo "profile-test.js still lists the criteria inline"
+    return 1
+  fi
+}
