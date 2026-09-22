@@ -88,3 +88,9 @@ section() { # $1 = file, $2 = heading text without "## "
     || { echo "task-scale.md does not point the security question at the skill"; return 1; }
   ! grep -qF 'it is not invoked on a `lite` task' "$f" || { echo "task-scale.md still states the old rule"; return 1; }
 }
+
+@test "task-new writes [SECURITY] only on the user's word" {
+  f="$ROOT/skills/task-new/SKILL.md"
+  grep -qF '`[SECURITY] = [<auto|on|off>]`' "$f" || { echo "task-new never offers [SECURITY]"; return 1; }
+  grep -qF 'let the triage decide' "$f" || { echo "task-new does not leave the default to the triage"; return 1; }
+}

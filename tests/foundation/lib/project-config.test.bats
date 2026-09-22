@@ -34,7 +34,7 @@ core_grep() {
   done
   for f in LANG PROGRESS SETTINGS_REPORT BUDGETS DOCS_MAP DOCS_STRICTNESS DOCS_FRESHNESS \
            WORKFLOW_MODE SCALE DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION WALKTHROUGH \
-           WALKTHROUGH_CHECK DOCS MODELS EFFORT; do
+           WALKTHROUGH_CHECK SECURITY DOCS MODELS EFFORT; do
     grep -q "^\[$f\] = \[" "$TPL" || { echo "missing field: [$f]"; return 1; }
   done
 }
@@ -185,4 +185,16 @@ catalog_words() {
   resolves="$(sed -n "s/^ *('scale', 'SCALE', \[[^]]*\], '\([a-z]*\)').*/\1/p" "$ROOT/scripts/resolve-settings.sh")"
   [ "$ships" = lite ] || { echo "the template ships [SCALE] = [$ships], expected lite"; return 1; }
   [ "$resolves" = full ] || { echo "the resolver's scale default is '$resolves', expected full"; return 1; }
+}
+
+@test "the config template ships security at auto and names its three values" {
+  grep -qxF '[SECURITY] = [auto]                    # auto | on | off' "$TPL" \
+    || { echo "[SECURITY] must ship auto and name auto | on | off"; return 1; }
+}
+
+@test "both task templates offer the SECURITY override" {
+  for t in task-root task-step; do
+    grep -qxF '# [SECURITY] = [on]           # auto | on | off' "$ROOT/templates/task-md/$t.md" \
+      || { echo "no [SECURITY] in $t.md"; return 1; }
+  done
 }

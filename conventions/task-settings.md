@@ -65,6 +65,7 @@ answers.
 | `manual_checks` | `[MANUAL_CHECKS]` | `[MANUAL_CHECKS]` | `auto` `always` | `auto` |
 | `driver` | `[DRIVER]` | `[DRIVER]` | a plugin name, `auto`, `—` | `auto` |
 | `phase_verification` | `[PHASE_VERIFICATION]` | `[PHASE_VERIFICATION]` | `proportional` `full` | `proportional` |
+| `security` | `[SECURITY]` | `[SECURITY]` | `auto` `on` `off` | `auto` |
 | `docs_lever` | `[DOCS]` | `[DOCS]` | `on` `off` | `on` |
 | `docs_map` | — | `[DOCS_MAP]` | a path | `DocsMap.md` |
 | `docs_strictness` | — | `[DOCS_STRICTNESS]` | `blocking` `advisory` `off` | `advisory` |

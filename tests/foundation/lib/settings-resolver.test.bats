@@ -197,7 +197,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
 
 @test "show names a field only when the value chosen differs from the built-in default" {
   # The shipped template writes every field down explicitly, so a column keyed on "somebody
-  # chose it" prints seventeen lines in a project that has changed nothing.
+  # chose it" prints eighteen lines in a project that has changed nothing.
   cp "$ROOT/templates/claude-toolkit-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
   out="$("$RESOLVE" show "$TASK" 2>"$ERR")"
   [ ! -s "$ERR" ] || { echo "the template's guidance was read as entries:"; cat "$ERR"; return 1; }
@@ -205,7 +205,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   # follows it; everything else the template writes is the default written down.
   grep -qE '^\[SCALE\] += \[lite\] +# project$' <<<"$out" || { echo "$out"; return 1; }
   grep -q '^\[WALKTHROUGH\]' <<<"$out" || { echo "$out"; return 1; }
-  for f in WORKFLOW_MODE DOCS DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION LANG MODELS EFFORT; do
+  for f in WORKFLOW_MODE DOCS DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION SECURITY LANG MODELS EFFORT; do
     ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
   done
   [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
