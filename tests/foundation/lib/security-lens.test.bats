@@ -122,3 +122,43 @@ section() { # $1 = file, $2 = heading text without "## "
   [ -n "$pre" ] || { echo "no prelude found"; return 1; }
   ! grep -qE "tuning\('[a-z]+'|lens\('[a-z]+'\)|A\.agents\.[a-z]+" <<<"$pre" || { echo "the prelude names a role"; return 1; }
 }
+
+@test "each profile runs the lens at its investigating stage, and before Plan at lite" {
+  for pair in feature:Research bug:Diagnose refactor:Analyze; do
+    p="$ROOT/workflows/profile-${pair%%:*}.js"; stage="${pair#*:}"
+    grep -qF "securityLens('$stage', 'security', lens('security'))" "$p" \
+      || { echo "$(basename "$p") does not run the lens at $stage"; return 1; }
+    grep -qF "const security = lite() ? await securityLens('Plan', 'security', lens('security')) : null" "$p" \
+      || { echo "$(basename "$p") does not run the lens before Plan at lite"; return 1; }
+    [ "$(grep -c 'securityNote(security, ' "$p")" -ge 2 ] \
+      || { echo "$(basename "$p") does not hand both writers the lens"; return 1; }
+  done
+}
+
+@test "no other profile runs the lens" {
+  for p in review research test epic; do
+    ! grep -qF "securityLens('" "$ROOT/workflows/profile-$p.js" || { echo "profile-$p.js runs the lens"; return 1; }
+  done
+}
+
+@test "every Review brief applies the review rule" {
+  for p in feature bug refactor; do
+    grep -qF 'Apply the spine-toolkit:security-lens skill, its ## Review rule, to the security verdict line of Research.md, or of Plan.md where there is no Research.md' "$ROOT/workflows/profile-$p.js" \
+      || { echo "profile-$p.js: Review does not apply the review rule"; return 1; }
+  done
+}
+
+@test "Method B runs the same lens, from the same skill" {
+  for p in feature bug refactor; do
+    f="$ROOT/skills/workflow-$p/SKILL.md"
+    [ "$(grep -c '`security-lens` skill' "$f")" -ge 3 ] \
+      || { echo "workflow-$p does not name the skill at its stage, at lite and at Review"; return 1; }
+  done
+}
+
+@test "the platform guide says where the security role is dispatched" {
+  g="$ROOT/docs/building-a-platform.md"
+  grep -qF '`spine-toolkit:security-lens`' "$g" || { echo "the role table does not point at the skill"; return 1; }
+  awk '/^Do \*\*not\*\* name that skill `setup`/{f=1} f' "$g" | grep -qF '`security-lens`' \
+    || { echo "security-lens is missing from the reserved core skill names"; return 1; }
+}

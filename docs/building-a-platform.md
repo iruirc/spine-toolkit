@@ -305,7 +305,7 @@ Do **not** name that skill `setup`. It would collide with core's own in every na
 trigger — which is exactly why the binding goes through this table instead of a naming convention.
 The same applies to every other core skill name: `orchestrator`, `stack-detect`, `lang`,
 `agent-status`, `task-new`, `task-move`, `task-status`, `task-walkthrough`, `workflow-*`,
-`feature-*`, `ops-checklist`, `manual-checks`, `phase-verification`, `task-documents`.
+`feature-*`, `ops-checklist`, `manual-checks`, `phase-verification`, `security-lens`, `task-documents`.
 
 The direction runs both ways: wherever your own files reference a core skill by name — an agent
 brief, a reference doc, a manifest row — write it namespaced, `spine-toolkit:<skill>`. A bare
@@ -456,17 +456,17 @@ Core dispatches by role; which agent that means is yours. This is where each one
 
 | Role | Dispatched at |
 |---|---|
-| `architect` | FEATURE Research (panel with `security`), Plan, Done · BUG Diagnose (panel with `diagnostics`), Plan · REFACTOR Analyze, Plan · TEST Analyze (panel with `tester`) · EPIC Research, Plan · RESEARCH Research (default) |
+| `architect` | FEATURE Research (after the `security` lens), Plan, Done · BUG Diagnose (panel with `diagnostics` and the `security` lens), Plan · REFACTOR Analyze (after the `security` lens), Plan · TEST Analyze (panel with `tester`) · EPIC Research, Plan · RESEARCH Research (default) |
 | `developer` | FEATURE Execute · BUG Fix |
 | `tester` | FEATURE Execute and BUG Fix when `need_test` · REFACTOR Refactor, for a test-only phase · TEST Analyze (panel), Plan, Write |
 | `reviewer` | Review, on every profile that has one, plus the whole REVIEW profile |
 | `refactorer` | REFACTOR Refactor |
 | `validator` | Validation, on FEATURE / BUG / REFACTOR / TEST |
-| `security` | FEATURE Research (panel) · RESEARCH Research, when `research_agent=security` |
+| `security` | the lens at FEATURE Research, BUG Diagnose and REFACTOR Analyze, or before Plan at `lite`, and its triage as a `light` call — whether either runs is `[SECURITY]` and `spine-toolkit:security-lens` · RESEARCH Research, when `research_agent=security` |
 | `diagnostics` | BUG Reproduce, Diagnose (panel) · RESEARCH Research, when `research_agent=diagnostics` |
 | `init` | Never dispatched by a workflow. Core's routing points the user at it for "create a project", and the platform usually also exposes it as its own command (`/swift-init`). |
 
-A **panel** stage runs two agents on one stage; whether they go in parallel or in sequence is the
+A **panel** stage runs two or three agents on one stage; whether they go in parallel or in sequence is the
 orchestrator's choice and needs no announcement.
 
 With `research_experiment=on` the RESEARCH Research role — `architect` unless `research_agent`
