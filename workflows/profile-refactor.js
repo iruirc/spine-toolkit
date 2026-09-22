@@ -119,6 +119,15 @@ ${DOCS_NOTE}${body}
 
 Prose language: ${LANG_NAME}.`
 
+// A report an earlier Done left is claims to check, never a draft to confirm.
+const PRIOR_DONE = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Done-[^/]*\.md$/.test(p))
+const doneBrief = (body) => brief(
+  'Done',
+  `${body}
+
+${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold. Never confirm a claim you did not check.`,
+)
+
 const ARTIFACT = {
   type: 'object',
   additionalProperties: false,
@@ -668,8 +677,7 @@ if (runs('Done') && !runs('Refactor')) await writeWalkthrough('Done')
 if (runs('Done')) {
   if (!need('Done', 'refactorer')) return finish('ask_user')
   const done = await agent(
-    brief(
-      'Done',
+    doneBrief(
       `Write the final report ${DIR}/Done.md: what was refactored, why the result is better (readability, separation of concerns, reduced coupling), whatever measurable metrics you have (file size, cyclomatic complexity of the key functions, dependency count), the validation status, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries.${cap('Done.md')}`,
     ),
     { label: 'done', phase: 'Done', agentType: A.agents.refactorer, schema: ARTIFACT, ...tuning('refactorer', 'done') },
