@@ -139,6 +139,13 @@ Reserved, not load-bearing. It stays out of detection either way: `stack-detect`
 Every other axis and every value is the platform's own choice; core recommends but does not impose
 `ui`, `async`, `di`, `architecture`, `baseline`, `tests`.
 
+One of those recommendations has a fixed meaning wherever a platform takes it. Where `tests` is
+declared, its values name the frameworks a project's tests are written in — one per project, or one
+per module through `## Modules`. Declaring the axis stays optional; declaring it under another name,
+or with values that are not frameworks, is not. A platform that declares it answers topic
+**testing** below, and `spine-toolkit:test-authoring` is what reads the two together on every test
+a run writes.
+
 ## `## Heuristics`
 
 How axis values are read off a repository. A `path:` row flags one or more axes as relevant to the
@@ -172,7 +179,7 @@ persistence      → —
 ```
 
 The topic vocabulary is open — a platform names the topics it actually has — but core's own
-methodology skills ask for exactly these ten, and match them literally:
+methodology skills ask for exactly these eleven, and match them literally:
 
 ```topics
 state management
@@ -185,11 +192,18 @@ errors
 packaging
 deep links
 release ops
+testing
 ```
 
-Rows beyond the ten are the platform's own business; core never reads them. Every row is a topic
+Rows beyond the eleven are the platform's own business; core never reads them. Every row is a topic
 and nothing else: a skill core invokes by name belongs in `## Entrypoints`, not here, so a consumer
 may iterate these rows generically without special-casing one of them.
+
+**testing** is the one row with a required shape, because core resolves it per file rather than per
+task: the skill it names carries one section per value of the `tests` axis, and a list of
+the surfaces that force a framework whatever the axis says. `spine-toolkit:test-authoring` decides
+which value a given file is written in and then reads that section for its syntax. A platform with no
+`tests` axis writes an em dash here like any other topic it does not cover.
 
 **What a consumer does with it.** Core's methodology skills name topics in bold and resolve them
 here rather than naming a skill — an enumeration of which ones belongs in no file but their own,

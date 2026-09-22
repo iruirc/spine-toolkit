@@ -54,3 +54,41 @@ section() { # $1 = file, $2 = heading text without "## "
   grep -qF 'manifest `## Topics`' "$SKILL" || { echo "no path from the topic to a skill"; return 1; }
   grep -qF 'conventions/platform-contract.md' "$SKILL" || { echo "the skill does not point at the contract"; return 1; }
 }
+
+@test "the contract fixes what the tests axis means when a platform declares it" {
+  contract="$ROOT/conventions/platform-contract.md"
+  grep -qF 'its values name the frameworks a project'"'"'s tests are written in' "$contract" \
+    || { echo "the axis is still recommended with no fixed meaning"; return 1; }
+}
+
+@test "the topic vocabulary core publishes includes testing" {
+  contract="$ROOT/conventions/platform-contract.md"
+  topics="$(sed -n '/^```topics$/,/^```$/p' "$contract" | sed '1d;$d')"
+  [ -n "$topics" ] || { echo "the topics block is gone"; return 1; }
+  grep -qx 'testing' <<<"$topics" || { echo "no testing row in the published vocabulary"; return 1; }
+}
+
+@test "the contract says what the testing row must carry" {
+  contract="$ROOT/conventions/platform-contract.md"
+  grep -qF 'one section per value of the `tests` axis' "$contract" \
+    || { echo "the testing row has no required shape"; return 1; }
+  grep -qF 'the surfaces that force a framework' "$contract" \
+    || { echo "the forced surfaces are not asked for"; return 1; }
+}
+
+@test "the fixture platform answers the testing topic" {
+  fix="$ROOT/tests/fixtures/fixture-platform/skills/manifest/SKILL.md"
+  grep -qE '^testing[[:space:]]*→[[:space:]]*`[a-z-]+`$' "$fix" \
+    || { echo "the reference manifest has no testing row"; return 1; }
+}
+
+@test "the platform guide publishes the same topic vocabulary as the contract" {
+  contract="$ROOT/conventions/platform-contract.md"
+  guide="$ROOT/docs/building-a-platform.md"
+  missing=""
+  while IFS= read -r topic; do
+    [ -n "$topic" ] || continue
+    grep -qE "^$topic[[:space:]]+→" "$guide" || missing="$missing$topic, "
+  done < <(sed -n '/^```topics$/,/^```$/p' "$contract" | sed '1d;$d')
+  [ -z "$missing" ] || { echo "topics the guide never shows: ${missing%, }"; return 1; }
+}

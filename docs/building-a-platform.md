@@ -32,7 +32,7 @@ repository it is working in.
 | The artifacts (`Research.md`, `Plan.md`, `Validation.md`, `Review.md`, …) | How this ecosystem builds, tests and runs |
 | The nine **role** names | The **agents** behind them |
 | The `ecosystem` axis name | Every other stack axis and every value |
-| Ten topic names its methodology skills ask for | The skills that answer them |
+| Eleven topic names its methodology skills ask for | The skills that answer them |
 | The config file `CLAUDE-spine-toolkit.md` and its core blocks | The `## Stack` and `## Modules` blocks |
 
 Core's stage briefs are written to stay tool-agnostic on purpose — "a build and a full test run are
@@ -149,6 +149,12 @@ Three things every role agent needs:
    same split holds per phase: core names a `**Verification:**` rung — `surface` means a build of
    every dependent — and your agent turns it into the narrowest command that covers it
    (`skills/phase-verification/SKILL.md`).
+4. **An agent that writes test code takes the framework from core and the syntax from you.** Which
+   framework a given file is written in is `skills/test-authoring/SKILL.md`: the file being
+   extended, then the surface, then the value the project gives your `tests` axis. What that
+   framework looks like is yours, behind topic **testing** (Step 7). This binds your tester, the
+   regression test your developer adds, the test your diagnostics agent sketches and the first test
+   your init skill writes — and your validator, which reads failures of every value the axis allows.
 
 Two artifacts have a machine-read first line — a contract shared between your agent, every
 `workflow-*`, and the orchestrator. Get them wrong and the run stalls:
@@ -266,20 +272,30 @@ errors           → `error-architecture`
 packaging        → `pkg-gradle-modules`
 deep links       → `nav-deeplinks`
 release ops      → `release-ops`
+testing          → `test-frameworks`
 ```
 
 The vocabulary is open — you may add rows of your own, and core never reads them. But core's
 methodology skills (`feature-requirements`, `feature-landscape`, `feature-estimation`,
-`ops-checklist`) ask for exactly these ten names and **match them literally**. Copy them before
+`ops-checklist`, `test-authoring`) ask for exactly these eleven names and **match them literally**.
+Copy them before
 writing your platform, not after: a platform that spells `deep links` as `deeplinks` has no row for
 the topic core asked for, and the skills behind it go unconsulted on every task, silently.
 
 An em dash, or no row at all, means the same thing — you cover that topic with no skill of your own.
 The consumer proceeds on its own knowledge and says so. Neither is an error.
 
-`release ops` is the newest of the ten and the one most likely to be missing from an older
-manifest: it holds everything core deliberately does not know about shipping — store review,
-crash reporting, push delivery, permission prompts, OS-version fragmentation, binary distribution.
+`release ops` holds everything core deliberately does not know about shipping — store review, crash
+reporting, push delivery, permission prompts, OS-version fragmentation, binary distribution — and is
+the one most likely to be missing from an older manifest.
+
+`testing` is the newest of the eleven, the one core resolves per file rather than per task, and the
+only one with a shape. The skill behind it carries one section per value of your `tests` axis: how a
+test is declared so the runner collects it, how it asserts, its lifecycle hooks, parameterization,
+asynchronous tests, how a failure reads in the runner's output, and what a project needs to run that
+framework at all. It also lists the surfaces that force a framework whatever the axis says. Core's
+`test-authoring` picks the value; your section is what the agent writes from. Skip the row and every
+agent of yours writes in whatever framework its own text happens to know.
 
 ### Step 8 — `## Entrypoints`
 
