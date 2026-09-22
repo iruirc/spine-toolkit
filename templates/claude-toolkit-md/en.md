@@ -26,6 +26,7 @@
 [PHASE_VERIFICATION] = [proportional]  # proportional | full
 [WALKTHROUGH] = [deep]                 # brief | deep | off
 [WALKTHROUGH_CHECK] = [auto]           # auto | on | off
+[SECURITY] = [auto]                    # auto | on | off
 [DOCS] = [on]                          # on | off
 [MODELS] = [light: sonnet, walkthrough: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session]
 [EFFORT] = [walkthrough: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session]

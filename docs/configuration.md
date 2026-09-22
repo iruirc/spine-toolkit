@@ -34,7 +34,7 @@ to, run `scripts/resolve-settings.sh show <task-dir> --all`.
 the config's line, or the default, is the answer.
 
 **`## Task defaults`** is what a task can change, by writing the same field into its own `Task.md`.
-The config's line is the project's default for these eleven fields, and the task's own line beats it.
+The config's line is the project's default for these twelve fields, and the task's own line beats it.
 
 Every other block of the file — `## Persona`, `## Rules`, `## Platform`, `## Agents`, `## Stack`,
 `## Modules`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`,
@@ -245,6 +245,19 @@ and the run notes how many places there were.
 a `brief` file too; `off` never checks. Where `[WALKTHROUGH]` resolves to `off` — a `lite` task
 included — nothing is checked, whatever this field says. The check costs one `light` dispatch per
 write that changed the file, and one more writer dispatch when it finds something.
+
+### [SECURITY]
+
+**Values:** `auto` `on` `off` · **Default:** `auto` · **Task override:** `[SECURITY] = [auto|on|off]` ·
+**Defined by:** the `security-lens` skill
+
+Whether a FEATURE, BUG or REFACTOR task gets the security lens: one look at what the task adds or
+changes that an attacker can reach, before its code is written. `auto` asks a `light` triage first
+and runs the lens only when the task touches credentials, the network, stored data, an external
+entry point, authentication, personal data, permissions or a third-party dependency; `on` runs it
+on every task, `off` on none. `scale` does not move it: a `lite` task that touches any of these gets
+the lens, and a `full` one that touches none of them does not. The triage costs one `light`
+dispatch, the lens one dispatch of the `security` role.
 
 ### [DOCS]
 

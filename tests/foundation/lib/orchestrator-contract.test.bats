@@ -385,3 +385,13 @@ section() {
   grep -qF '`restored: false`' <<<"$dispatch" || { echo "restored is not read"; return 1; }
   grep -qF '`experiment`' <<<"$dispatch" || { echo "experiment is not read"; return 1; }
 }
+
+@test "the outbound contract carries security as resolved, auto included" {
+  grep -qxF 'security=auto|on|off' "$SKILL" || { echo "no security= line in the contract block"; return 1; }
+  para="$(awk '/^`security` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`security\` paragraph in the Outbound Contract"; return 1; }
+  for token in 'resolve-settings.sh json' 'Always filled' '`auto` reaches the contract' \
+               '`security-lens`' '`scale` does not move it'; do
+    grep -qF "$token" <<<"$para" || { echo "the security paragraph does not say $token"; return 1; }
+  done
+}

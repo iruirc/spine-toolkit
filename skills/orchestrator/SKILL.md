@@ -371,6 +371,7 @@ scale=lite|full
 drive_app=auto|off
 manual_checks=auto|always
 phase_verification=proportional|full
+security=auto|on|off
 budgets={Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100}
 models={light: sonnet, walkthrough: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}
 effort={walkthrough: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}
@@ -434,6 +435,8 @@ size belongs to the task, not to one dispatch.
 `manual_checks` — when the validator writes `ManualChecks.md`. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `auto` writes the file only for the checks the validator was told not to run itself; `always` writes it every time, even when the validator drove the app and covered the happy path.
 
 `phase_verification` — how much each phase checks before it commits. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `proportional` leaves the full regression to Validation; `full` repeats it in every phase. The rungs themselves are `phase-verification`'s business, not this field's.
+
+`security` — whether the security lens runs on a FEATURE, BUG or REFACTOR task. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile, and passed as resolved: `auto` reaches the contract, because what it becomes depends on what the task touches, and only the run's triage can find that out. `on` runs the lens without a triage; `off` runs neither. `scale` does not move it. The triage, the lens and what the writer does with them are the `security-lens` skill's.
 
 `budgets` — the line ceiling of every artifact core measures. Resolved by running `<core root>/scripts/lint-artifact-budget.sh --budgets <task dir>`, which reads the script's defaults and the project's `[BUDGETS]` over them; the brace map it prints is this field. Always filled, for every profile, so a consumer reads one shape rather than testing for the field first. Method B takes that line as it is; Method A passes the same object as real JSON with integer values, so a script reads `A.budgets['Task.md']` and gets `100` by default. It travels in the contract for the reason `walkthrough` does — a Method A script names a ceiling in a brief and has no filesystem to read it from. The script is the one reader of `[BUDGETS]`: do not re-derive the map from the config. Each line the script reports on stderr as not recognized is announced once with key `warn_budget_unrecognised` (placeholder `{line}`); it forwards only the resolver lines about the ceilings it asked for, which is what makes every line it prints a budget line. Which artifact is measured at which scale is not this field's business: `conventions/task-scale.md`.
 

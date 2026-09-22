@@ -13,6 +13,7 @@
 # [PHASE_VERIFICATION] = [full] # proportional | full
 # [WALKTHROUGH] = [off]       # brief | deep | off
 # [WALKTHROUGH_CHECK] = [off] # auto | on | off
+# [SECURITY] = [on]           # auto | on | off
 # [SCALE] = [full]            # lite | full
 # [MODELS] = [architect: opus]  # <light|walkthrough|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <opus|sonnet|haiku|fable|session>, comma-separated
 # [EFFORT] = [reviewer: high]   # <walkthrough|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <low|medium|high|xhigh|max|session>, comma-separated
