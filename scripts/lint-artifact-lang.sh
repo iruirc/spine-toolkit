@@ -36,11 +36,12 @@ INLINE = [
     re.compile(r'\b\w+\.[A-Za-z][A-Za-z0-9]{0,5}\b'),
 ]
 HEADING = re.compile(r'^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$')
-FENCE = re.compile(r'^\s*(`{3,}|~{3,})')
-DROPPED_LINE = re.compile(r'^\s*(\||\[[A-Z_]+\]\s*=)')
+FENCE = re.compile(r'^\s*(`{3,}|~{3,})(.*)$')
+DROPPED_LINE = re.compile(r'^\s*(\||>|\[[A-Z_]+\]\s*=)')
+LIST_ITEM = re.compile(r'^\s*[-*+]\s')
 
 
-def chunks(text):
+def chunks(text, checklist=False):
     """(heading, prose) pairs: the text before the first heading, then the text under each
     heading up to the next one of any level. A fence may be indented under a list item, and
     what it holds is code whatever the indentation."""
@@ -49,10 +50,12 @@ def chunks(text):
     for line in text.split('\n'):
         m = FENCE.match(line)
         if fence:
-            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
+            # CommonMark: only the run alone, at least as long as the opening one, closes a fence.
+            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence) and not m.group(2).strip():
                 fence = None
             continue
-        if m:
+        # CommonMark: a backtick fence's info string holds no backtick, or the line opens nothing.
+        if m and not (m.group(1)[0] == '`' and '`' in m.group(2)):
             fence = m.group(1)
             continue
         h = HEADING.match(line)
@@ -62,6 +65,12 @@ def chunks(text):
             continue
         if DROPPED_LINE.match(line):
             continue
+        if checklist and LIST_ITEM.match(line):
+            # A checklist item's own text is the catalog's, English at any [LANG]: prose is what
+            # follows its first dash, and an item with no dash has none.
+            if ' — ' not in line:
+                continue
+            line = line.split(' — ', 1)[1]
         buf.append(line)
     out.append((title, '\n'.join(buf)))
     return out
@@ -85,13 +94,30 @@ def count(text, lang):
     return own, foreign
 
 
+def finding(path, title, body, lang):
+    own, foreign = count(body, lang)
+    total = own + foreign
+    if total >= MIN_LETTERS and own * 100 < FLOOR_PERCENT * total:
+        return '%s § %s: %d%% %s in %d letters of prose (lang %s)' % (
+            path, title, own * 100 // total, SCRIPTS[lang][0], total, lang)
+    return None
+
+
+_WARNED = set()
+
+
 def settings(task_dir, resolve):
+    """Forwards the resolver's [LANG] lines, or every line when it failed, each once per run:
+    task folders under one project share their warnings."""
     out = subprocess.run([resolve, 'json', task_dir], capture_output=True, text=True)
     for line in out.stderr.splitlines():
-        if line.split(": '", 1)[0].endswith('[LANG]'):
-            print(line, file=sys.stderr)
+        if not line or line in _WARNED:
+            continue
+        if out.returncode == 0 and not line.split(": '", 1)[0].endswith('[LANG]'):
+            continue
+        _WARNED.add(line)
+        print(line, file=sys.stderr)
     if out.returncode != 0:
-        print(out.stderr, end='', file=sys.stderr)
         print('lint-artifact-lang.sh: resolve-settings.sh failed for %s' % task_dir, file=sys.stderr)
         sys.exit(2)
     return json.loads(out.stdout)
@@ -112,7 +138,6 @@ for d in dirs:
     if lang not in SCRIPTS:
         print('lint-artifact-lang.sh: no script is declared for lang %s' % lang, file=sys.stderr)
         sys.exit(2)
-    name = SCRIPTS[lang][0]
     for artifact in ARTIFACTS:
         path = os.path.join(d, artifact)
         if not os.path.isfile(path):
@@ -123,14 +148,13 @@ for d in dirs:
         except (OSError, UnicodeDecodeError):
             print('%s: unreadable, skipping' % path, file=sys.stderr)
             continue
-        parts = [(title, prose(body)) for title, body in chunks(text)]
-        whole = '\n'.join(body for _, body in parts)
-        for title, body in parts + [('(file)', whole)]:
-            own, foreign = count(body, lang)
-            total = own + foreign
-            if total >= MIN_LETTERS and own * 100 < FLOOR_PERCENT * total:
-                findings.append('%s § %s: %d%% %s in %d letters of prose (lang %s)'
-                                % (path, title, own * 100 // total, name, total, lang))
+        parts = [(title, prose(body)) for title, body in chunks(text, artifact == 'OpsChecklist.md')]
+        found = [f for f in (finding(path, title, body, lang) for title, body in parts) if f]
+        # The whole file is for one made of short parts: a file already named needs no second line.
+        if not found:
+            whole = finding(path, '(file)', '\n'.join(body for _, body in parts), lang)
+            found = [whole] if whole else []
+        findings.extend(found)
 
 for f in findings:
     print(f)
