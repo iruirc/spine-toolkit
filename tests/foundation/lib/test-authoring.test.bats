@@ -41,10 +41,10 @@ section() { # $1 = file, $2 = heading text without "## "
     || { echo "an unresolved axis lets an agent bring in a framework of its own"; return 1; }
 }
 
-@test "the skill binds every agent that writes test code, and the validator that reads failures" {
+@test "the skill binds every agent that writes test code, the validator, and the reviewer" {
   who="$(section "$SKILL" 'Who follows it')"
   [ -n "$who" ] || { echo "no ## Who follows it"; return 1; }
-  for role in tester developer diagnostics init validator; do
+  for role in tester developer diagnostics init validator reviewer; do
     grep -qF "$role" <<<"$who" || { echo "## Who follows it does not bind $role"; return 1; }
   done
 }
@@ -91,4 +91,55 @@ section() { # $1 = file, $2 = heading text without "## "
     grep -qE "^$topic[[:space:]]+→" "$guide" || missing="$missing$topic, "
   done < <(sed -n '/^```topics$/,/^```$/p' "$contract" | sed '1d;$d')
   [ -z "$missing" ] || { echo "topics the guide never shows: ${missing%, }"; return 1; }
+}
+
+@test "the skill carries the neutral discipline" {
+  d="$(section "$SKILL" 'What a good test is')"
+  [ -n "$d" ] || { echo "no ## What a good test is"; return 1; }
+  for rule in 'Arrange → Act → Assert' 'methodName_condition_expectedResult' \
+              'One behaviour per test' 'Isolated' 'Written to fail'; do
+    grep -qF "$rule" <<<"$d" || { echo "the discipline lost '$rule'"; return 1; }
+  done
+}
+
+@test "the skill names the five doubles and how to choose between them" {
+  d="$(section "$SKILL" 'Test doubles')"
+  [ -n "$d" ] || { echo "no ## Test doubles"; return 1; }
+  for w in dummy stub spy mock fake; do
+    grep -qF "| $w |" <<<"$d" || { echo "## Test doubles has no row for $w"; return 1; }
+  done
+  grep -qF 'Verifying state' <<<"$d" || { echo "no rule for choosing between them"; return 1; }
+  grep -qF 'Where it never belongs' <<<"$d" || { echo "a double may replace the code under test"; return 1; }
+}
+
+@test "the checklist before delivery is five lines of its own" {
+  # Five bullets, not a pointer back at the prose: the gate is read at the end of
+  # the work, when the sections above have scrolled out of the agent's attention.
+  d="$(section "$SKILL" 'Before you deliver')"
+  n="$(grep -c '^- ' <<<"$d")"
+  [ "$n" -ge 5 ] || { echo "## Before you deliver has $n item(s)"; return 1; }
+}
+
+@test "the Review section lists the findings and says they may block" {
+  r="$(section "$SKILL" 'Review')"
+  [ -n "$r" ] || { echo "no ## Review"; return 1; }
+  for f in 'cannot fail' 'standing in for the behaviour under test' \
+           'state crossing between tests' 'no test names' 'more than one behaviour'; do
+    grep -qF "$f" <<<"$r" || { echo "## Review lost the finding '$f'"; return 1; }
+  done
+  # Both neighbouring skills end their ## Review with "none of them blocks". Without
+  # the opposite said out loud, a reviewer reads the nearest rule and waves the lot through.
+  grep -qF 'may block' <<<"$r" || { echo "## Review does not say a finding may block"; return 1; }
+  grep -qF '[NEED_TEST]' <<<"$r" || { echo "## Review invents findings on a task that owed no test"; return 1; }
+}
+
+@test "test quality is no longer sent to the platforms" {
+  nb="$(section "$SKILL" "Not this skill's business")"
+  [ -n "$nb" ] || { echo "no ## Not this skill's business"; return 1; }
+  # The bullet's own words wrap; its bold lead does not, and inside this section it
+  # can only be the delegation this change removes.
+  if grep -qF '**What a good test is**' <<<"$nb"; then
+    echo "the bullet that moved into this skill is still delegating"
+    return 1
+  fi
 }
