@@ -207,6 +207,7 @@ PY
     n=$((n + 1))
     for token in "const LANG_NAME = { en: 'English', ru: 'Russian' }[LANG] || LANG" \
                  'Output language: ${LANG_NAME} — every sentence of prose' \
+                 'commit subjects and quoted logs and messages stay English' \
                  '${DOCS_NOTE}${body}' 'Prose language: ${LANG_NAME}.`'; do
       grep -qF -- "$token" "$f" || { echo "$(basename "$f") lacks: $token"; return 1; }
     done
