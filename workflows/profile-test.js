@@ -496,8 +496,8 @@ const securityLens = async (stage, role, agentType) => {
       { label: 'security:triage', phase: stage, agentType, schema: TRIAGE, ...tuning(role, 'light') },
     )
     if (!t) result.notes.push('Security triage returned nothing; the lens ran anyway.')
-    else if (!t.touches) return skip(`Security lens: skipped by triage — ${t.reason}`, `Security lens skipped by triage: ${t.reason}.`)
-    else if (t.perimeter.length) perimeter = t.perimeter
+    else if (!t.touches) return skip(`Security lens: skipped by triage — ${t.reason}`, `Security lens skipped by triage: ${t.reason}`)
+    else if ((t.perimeter || []).length) perimeter = t.perimeter
   }
   const f = await agent(
     brief(

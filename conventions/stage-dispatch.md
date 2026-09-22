@@ -40,7 +40,7 @@ On that cause a workflow script can do neither — no main context to run in, no
 so it ends the range at that stage and hands it back for the orchestrator to run and announce
 (`skills/orchestrator/SKILL.md` → Dispatch).
 
-A panel stage (two agents on one stage) may run its agents in parallel or sequentially — that choice
+A panel stage (two or three agents on one stage) may run its agents in parallel or sequentially — that choice
 is the orchestrator's and needs no announcement.
 
 ## Model and effort
@@ -79,6 +79,6 @@ Neither falls to the agent's frontmatter, because a platform agent declares no m
 Method A passes both through the prelude's `tuning(role, kind)`. Method B passes the model with the
 dispatch and cannot pass effort: the host's dispatch takes no such parameter, so every stage runs at
 the session's effort and the orchestrator says so once. Under Method B the walkthrough, its check and
-its revision are the calls outside a stage that still get an agent, and the `mechanical` ones run in
-the main context. Work in the main context — the orchestrator, a handed-back stage, a Method B stage
-without an agent — runs on the session's model and effort.
+its revision, and the security triage, are the calls outside a stage that still get an agent, and
+the `mechanical` ones run in the main context. Work in the main context — the orchestrator, a
+handed-back stage, a Method B stage without an agent — runs on the session's model and effort.
