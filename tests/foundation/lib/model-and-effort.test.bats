@@ -106,6 +106,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   f="$ROOT/skills/task-new/SKILL.md"
   grep -qF '`[MODELS] = [<key>: <value>, …]`' "$f" || { echo "task-new lacks [MODELS]"; return 1; }
   grep -qF '`[EFFORT] = [<key>: <value>, …]`' "$f" || { echo "task-new lacks [EFFORT]"; return 1; }
+  grep -qF 'Keys are `light`, `walkthrough`, `done` and the eight roles' "$f" || { echo "task-new does not list the done key"; return 1; }
 }
 
 @test "every profile script defines tuning() as the rule states it" {
