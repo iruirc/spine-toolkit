@@ -254,6 +254,32 @@ section() {
   done
 }
 
+@test "the artifact language is measured at the budget's boundaries and each file goes back once" {
+  para="$(awk '/^\*\*Artifact language\.\*\*/{f=1} f&&/^\*\*Per-phase commits/{exit} f' "$SKILL")"
+  [ -n "$para" ] || { echo "no Artifact language paragraph in the orchestrator"; return 1; }
+  for token in 'lint-artifact-lang.sh <task_dir>' 'conventions/artifact-language.md' 'stage_done_prompt' \
+               '`auto` Method A range' '`lang_mismatch`' '`lang_mismatch_persists`' '**once**' \
+               '`research_agent`' 'names the' 'language goes first'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the Artifact language paragraph does not name $token"; return 1; }
+  done
+  for artifact in Research Reproduce Plan Validation OpsChecklist ManualChecks Review ChangesRequested Walkthrough Done Docs; do
+    grep -qF "\`$artifact.md\`" <<<"$para" || { echo "no owner for $artifact.md"; return 1; }
+  done
+}
+
+@test "both language keys exist in both locales" {
+  for key in lang_mismatch lang_mismatch_persists; do
+    for l in en ru; do
+      grep -qx "## $key" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no $key"; return 1; }
+    done
+  done
+}
+
+@test "a subagent is told the language in words, first and last" {
+  grep -qF 'at the start of the prompt and again as its last' "$SKILL" \
+    || { echo "Subagent Context still hands the language over as a bare code"; return 1; }
+}
+
 @test "the outbound contract carries models and effort as filled brace maps" {
   grep -qxF 'models={light: sonnet, walkthrough: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}' "$SKILL" \
     || { echo "no filled models= line in the Outbound Contract block"; return 1; }
