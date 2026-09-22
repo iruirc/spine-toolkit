@@ -84,9 +84,10 @@ Three rules on top of the fields:
 - **Data is named.** A case needing data the repository does not carry says how to get it. When there is a lot of it, it moves to `## Preparation` and `**Scene:**` names the set it wants.
 
 **Language.** The section headings, `[COVERS]` and the field labels above stay English: they are the
-file's structure. A case's title after `### N.`, the text after each label, the steps, and every line
-under `## Scope` and `## Not covered` are prose in the project's `[LANG]` (`conventions/i18n.md` →
-Artifact authoring rule).
+file's structure. A case's title after `### N.`, the text after each label, the steps, and the text
+of every section — `## Scope`, `## Preparation`, `## Reading the verdict`, `## Troubleshooting`,
+`## Not covered` — are prose in the project's `[LANG]` (`conventions/i18n.md` → Artifact authoring
+rule).
 
 ## The instrument rule
 
