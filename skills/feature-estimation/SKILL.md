@@ -509,7 +509,7 @@ In AI-assisted mode, break actual down **per leverage class** (`mechanical` / `p
 
 ### Calibration log write-back
 
-Every retrospective MUST append one row to the project's calibration log at **`Tasks/_calibration/estimation-log.md`** (create the file with a header if absent). One row per finished feature/epic: date, task id, estimated range, actual (human ?? proxy with its source label), and — in AI-assisted mode — the per-class observed divisors. This file is the durable evidence base; a single `## Estimate retrospective` in one `Done.md` is not enough to calibrate against after it scrolls out of context.
+Every retrospective MUST record one row in the project's calibration log at **`Tasks/_calibration/estimation-log.md`** (create the file with a header if absent). One row per finished feature/epic — a Done that runs again corrects its own task's row instead of appending a second: date, task id, estimated range, actual (human ?? proxy with its source label), and — in AI-assisted mode — the per-class observed divisors. This file is the durable evidence base; a single `## Estimate retrospective` in one `Done.md` is not enough to calibrate against after it scrolls out of context.
 
 The log is a single Markdown table with a **fixed, parseable column order** so the mean-per-knob computation can read it back mechanically. When the file is absent, create it with exactly this header (verbatim, in this order); never reorder or rename columns:
 
@@ -517,7 +517,8 @@ The log is a single Markdown table with a **fixed, parseable column order** so t
 # Estimation calibration log
 
 > Durable evidence base for `feature-estimation` calibration. One row per finished feature/epic.
-> Append-only. Columns are fixed-order and machine-read — do not reorder or rename.
+> One row per task, corrected in place when its Done runs again; no other row is reordered or removed.
+> Columns are fixed-order and machine-read — do not reorder or rename.
 > `actual` is in the unit named by `source`: `human` = engineering days; `proxy` = wall-clock span + phase/rework counts (NOT days); `unknown` = no signal.
 
 | date | task_id | type | posture | estimated_range | actual | source | in_range | variance_reason | observed_divisors |
@@ -525,6 +526,8 @@ The log is a single Markdown table with a **fixed, parseable column order** so t
 | 2026-06-04 | 041-photo-feed | FEATURE | ai-assisted | 3.0–6.0d | span 1h35m / 3 phases / 0 rework | proxy | n/a (proxy unit) | agent-executed; human-days not logged | mechanical=÷20; novel-domain=÷2.5 |
 | 2026-05-28 | 038-auth | FEATURE | human | 10.7–16.6d | 18.0d | human | over (+8%) | backend changed response shape | — |
 ```
+
+A log created before this rule says `Append-only` in its header; that forbids moving or removing another task's row, not correcting a task's own.
 
 Column semantics: `type` ∈ {FEATURE, EPIC, BUG, REFACTOR, TEST, RESEARCH}; `posture` ∈ {human, ai-assisted}; `estimated_range` is the named best–worst range as reported; `source` ∈ {human, proxy, unknown} and fixes the unit of `actual`; `in_range` is the verdict computed from `human ?? proxy` (use `n/a (proxy unit)` when only a proxy exists); `observed_divisors` is a `;`-separated `class=÷N` list in AI-assisted mode, else `—`. Epics append one rolled-up row (summed step actuals in matching units) in addition to each step's own row.
 

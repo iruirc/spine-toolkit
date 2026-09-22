@@ -115,6 +115,15 @@ ${DOCS_NOTE}${body}
 
 Prose language: ${LANG_NAME}.`
 
+// A report an earlier Done left is claims to check, never a draft to confirm.
+const PRIOR_DONE = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Done-[^/]*\.md$/.test(p))
+const doneBrief = (body) => brief(
+  'Done',
+  `${body}
+
+${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold. Never confirm a claim you did not check.`,
+)
+
 const ARTIFACT = {
   type: 'object',
   additionalProperties: false,
@@ -895,8 +904,7 @@ if (runs('Done') && !failed_steps.length && !cancelled && !pending_steps.length)
   }
 
   const done = await agent(
-    brief(
-      'Done',
+    doneBrief(
       branch === 'pure_research'
         ? `Write a short final report ${DIR}/Done.md: what was investigated, the verdict in one paragraph, and a pointer to Research.md as the epic's actual deliverable. This epic took the pure_research branch — there are no steps, no implementation followed, and no estimate retrospective is required.`
         : `Write the epic's final report ${DIR}/Done.md:
@@ -904,7 +912,7 @@ if (runs('Done') && !failed_steps.length && !cancelled && !pending_steps.length)
 - Which were skipped and why (DEFERRED / BLOCKED / SKIPPED / already DONE).
 - Which BLOCKED steps need the user to act, listed explicitly with the blocker.
 - Overall progress: X of Y steps complete.
-- A ## Estimate retrospective section that rolls up every completed step's own retrospective: the aggregate estimated epic range against the summed actual effort, an in-range verdict, and the reason for any variance. Take actual effort per feature-estimation ## Estimate retrospective — the user's own figure when there is one, otherwise the git proxy, labelled as a proxy, otherwise unknown. Sum step rows only in matching units; never add human-days to proxy values in one total. Append or refresh this epic's data point in the calibration log.
+- A ## Estimate retrospective section that rolls up every completed step's own retrospective: the aggregate estimated epic range against the summed actual effort, an in-range verdict, and the reason for any variance. Take actual effort per feature-estimation ## Estimate retrospective — the user's own figure when there is one, otherwise the git proxy, labelled as a proxy, otherwise unknown. Sum step rows only in matching units; never add human-days to proxy values in one total. Record this epic's data point in the calibration log: correct its row if the log already has one, otherwise append it.
 - Objections, aggregated from the steps' Done.md files where the user insisted on a contested decision.`,
     ),
     { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'done') },

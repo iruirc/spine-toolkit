@@ -262,7 +262,7 @@ section() {
                '`research_agent`' 'names the' 'language goes first' 'before sending either rewrite' \
                '`moved-to-done`' 'Tasks/DONE/<folder>' '`<task_dir>/<step_id>`' '`completed_steps`' '`failed_steps`' \
                '`[TASK_TYPE]` names' 'is not sent again' '`lang_mismatch_unowned`' '`lang_readers_disagree`' \
-               '`mechanical` for `Done.md` and `ChangesRequested.md`' 'quoted logs and messages' "case title" \
+               'for `Done.md`, `mechanical` for what REVIEW'"'"'s `auto-move` writes' 'quoted logs and messages' "case title" \
                'Exit 0 reports only what the script printed on'; do
     grep -qF -- "$token" <<<"$para" || { echo "the Artifact language paragraph does not name $token"; return 1; }
   done

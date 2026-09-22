@@ -771,8 +771,9 @@ A file already sent back in this run is not sent again: a later boundary reports
 key `lang_mismatch_persists` instead.
 
 The role resolves through the contract's `agents` map, on the model of the call that writes the file
-(`conventions/stage-dispatch.md` → Model and effort: kind `walkthrough` for `Walkthrough.md`,
-`mechanical` for `Done.md` and `ChangesRequested.md`, `stage` for the rest); the effort is the
+(`conventions/stage-dispatch.md` → Model and effort: kind `walkthrough` for `Walkthrough.md`, `done`
+for `Done.md`, `mechanical` for what REVIEW's `auto-move` writes — its `Done.md` and
+`ChangesRequested.md` — and `stage` for the rest); the effort is the
 session's, since this dispatch takes none. The brief names the language in words and asks for one
 thing: the prose of the named sections rewritten in it. Headings stay as they are, except a title the
 artifact's own skill calls prose, such as a manual check's case title; field labels, status words,

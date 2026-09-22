@@ -112,6 +112,15 @@ ${DOCS_NOTE}${body}
 
 Prose language: ${LANG_NAME}.`
 
+// A report an earlier Done left is claims to check, never a draft to confirm.
+const PRIOR_DONE = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Done-[^/]*\.md$/.test(p))
+const doneBrief = (body) => brief(
+  'Done',
+  `${body}
+
+${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold. Never confirm a claim you did not check.`,
+)
+
 const ARTIFACT = {
   type: 'object',
   additionalProperties: false,

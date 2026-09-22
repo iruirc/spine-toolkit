@@ -113,6 +113,15 @@ ${DOCS_NOTE}${body}
 
 Prose language: ${LANG_NAME}.`
 
+// A report an earlier Done left is claims to check, never a draft to confirm.
+const PRIOR_DONE = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Done-[^/]*\.md$/.test(p))
+const doneBrief = (body) => brief(
+  'Done',
+  `${body}
+
+${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold. Never confirm a claim you did not check.`,
+)
+
 const ARTIFACT = {
   type: 'object',
   additionalProperties: false,
@@ -672,8 +681,7 @@ You are explicitly NOT verifying the findings against the codebase — the techn
 if (runs('Done')) {
   if (!need('Done', 'architect')) return finish('ask_user')
   const done = await agent(
-    brief(
-      'Done',
+    doneBrief(
       `Write the final report ${DIR}/Done.md: what was investigated, the verdict or key finding in one paragraph, a pointer to Research.md, and the follow-up tasks — how many, briefly what they are, and the task-new invocation hint for each. ${EXPERIMENT === 'on' ? DONE_EXPERIMENT : 'Nothing was built here, so keep the report about what is now known and what should happen next.'}`,
     ),
     { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'done') },
