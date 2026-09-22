@@ -15,8 +15,8 @@
 # [WALKTHROUGH_CHECK] = [off] # auto | on | off
 # [SECURITY] = [on]           # auto | on | off
 # [SCALE] = [full]            # lite | full
-# [MODELS] = [architect: opus]  # <light|walkthrough|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <opus|sonnet|haiku|fable|session>, comma-separated
-# [EFFORT] = [reviewer: high]   # <walkthrough|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <low|medium|high|xhigh|max|session>, comma-separated
+# [MODELS] = [architect: opus]  # <light|walkthrough|done|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <opus|sonnet|haiku|fable|session>, comma-separated
+# [EFFORT] = [reviewer: high]   # <walkthrough|done|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <low|medium|high|xhigh|max|session>, comma-separated
 # [DOCS] = [off]              # on | off
 # [DOCS_NEW] = [Name:state]   # components this task creates: <name>:<state|progress>, comma-separated
 

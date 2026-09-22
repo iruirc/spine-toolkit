@@ -71,7 +71,7 @@ answers.
 | `docs_strictness` | — | `[DOCS_STRICTNESS]` | `blocking` `advisory` `off` | `advisory` |
 | `docs_freshness` | — | `[DOCS_FRESHNESS]` | `on` `off` | `on` |
 | `budgets` | — | `[BUDGETS]`, entries `<artifact>: <lines>` | a positive integer | the `CAPS` table |
-| `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | `opus` `sonnet` `haiku` `fable` `session` | `sonnet` for `light` and `validator`, `session` for `walkthrough` and the other seven roles |
+| `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | `opus` `sonnet` `haiku` `fable` `session` | `sonnet` for `light` and `validator`, `session` for `walkthrough`, `done` and the other seven roles |
 | `effort` | `[EFFORT]` | `[EFFORT]`, entries `<key>: <value>` | `low` `medium` `high` `xhigh` `max` `session` | `session` |
 
 `driver` walks this same chain but never rides the Outbound Contract: a workflow script must not

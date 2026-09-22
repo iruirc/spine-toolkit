@@ -614,6 +614,19 @@ FIELDS
   [ "$(map_value effort walkthrough <<<"$out")" = high ] || { echo "$out"; return 1; }
 }
 
+@test "done is a key of both maps, at session until somebody names it" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(map_value models done <<<"$output")" = session ] || { echo "$output"; return 1; }
+  [ "$(map_value effort done <<<"$output")" = session ] || { echo "$output"; return 1; }
+  printf '## Task defaults\n\n[MODELS] = [done: haiku]\n[EFFORT] = [done: low]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [done: sonnet]\n[EFFORT] = [done: medium]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  [ "$(map_value models done <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
+  [ "$(map_value effort done <<<"$out")" = medium ] || { echo "$out"; return 1; }
+  [ "$(source_of models.done <<<"$out")" = task ] || { echo "$out"; return 1; }
+}
+
 @test "security resolves along the ordinary chain, and scale does not move it" {
   run "$RESOLVE" json "$TASK"
   [ "$(field security <<<"$output")" = auto ] || { echo "$output"; return 1; }

@@ -63,10 +63,11 @@ PROJECT_ONLY = {'lang', 'progress', 'settings_report', 'docs_map', 'docs_strictn
                 'docs_freshness', 'budgets'}
 # A map's field is one bracketed, comma-separated list, in the config exactly as in a Task.md.
 MAPS = (
-    ('models', 'MODELS', ['light', 'walkthrough'] + ROLES, MODEL_VALUES, UNSET_MODELS,
-     dict({r: 'session' for r in ROLES}, light='sonnet', walkthrough='session', validator='sonnet')),
-    ('effort', 'EFFORT', ['walkthrough'] + ROLES, EFFORT_VALUES, [],
-     dict({r: 'session' for r in ROLES}, walkthrough='session')),
+    ('models', 'MODELS', ['light', 'walkthrough', 'done'] + ROLES, MODEL_VALUES, UNSET_MODELS,
+     dict({r: 'session' for r in ROLES}, light='sonnet', walkthrough='session', done='session',
+          validator='sonnet')),
+    ('effort', 'EFFORT', ['walkthrough', 'done'] + ROLES, EFFORT_VALUES, [],
+     dict({r: 'session' for r in ROLES}, walkthrough='session', done='session')),
 )
 # A spelling an older release wrote, still applied. Reported in words a caller can tell apart from
 # a typo's, so the two get different announcements.
