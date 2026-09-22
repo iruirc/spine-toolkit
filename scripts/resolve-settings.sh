@@ -52,6 +52,7 @@ SCALARS = (
     ('manual_checks', 'MANUAL_CHECKS', ['auto', 'always'], 'auto'),
     ('driver', 'DRIVER', None, 'auto'),
     ('phase_verification', 'PHASE_VERIFICATION', ['proportional', 'full'], 'proportional'),
+    ('security', 'SECURITY', ['auto', 'on', 'off'], 'auto'),
     ('docs_lever', 'DOCS', ['on', 'off'], 'on'),
     ('docs_map', 'DOCS_MAP', None, 'DocsMap.md'),
     ('docs_strictness', 'DOCS_STRICTNESS', ['blocking', 'advisory', 'off'], 'advisory'),
