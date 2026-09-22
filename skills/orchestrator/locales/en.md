@@ -208,6 +208,12 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 ## lang_mismatch_persists
 `{artifact}` → `{section}` is still not in the project language after one rewrite. Leaving it as it is; the run carries on.
 
+## lang_mismatch_unowned
+`{artifact}` → `{section}`: the prose is not in the project language (`{lang}`). No role of this run writes that file, so it is not sent back and stays as it is.
+
+## lang_readers_disagree
+The language check measured the prose against `{measured}`, while this run writes in `{lang}`: the two readings of `[LANG]` disagree, so no file is sent back to be rewritten.
+
 ## warn_walkthrough_pre_depth
 `on` is the pre-depth value, so it is read as `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. A project's `on` still ends at `off` when this task's `scale` is `lite`, the gate sitting below the task's own field and above the project's. To keep the older shape, write `brief` in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`.
 
