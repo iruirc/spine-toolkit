@@ -259,7 +259,11 @@ section() {
   [ -n "$para" ] || { echo "no Artifact language paragraph in the orchestrator"; return 1; }
   for token in 'lint-artifact-lang.sh <task_dir>' 'conventions/artifact-language.md' 'stage_done_prompt' \
                '`auto` Method A range' '`lang_mismatch`' '`lang_mismatch_persists`' '**once**' \
-               '`research_agent`' 'names the' 'language goes first'; do
+               '`research_agent`' 'names the' 'language goes first' 'before sending either rewrite' \
+               '`moved-to-done`' 'Tasks/DONE/<folder>' '`<task_dir>/<step_id>`' '`completed_steps`' '`failed_steps`' \
+               '`[TASK_TYPE]` names' 'is not sent again' '`lang_mismatch_unowned`' '`lang_readers_disagree`' \
+               '`mechanical` for `Done.md` and `ChangesRequested.md`' 'quoted logs and messages' "case title" \
+               'Exit 0 reports only what the script printed on'; do
     grep -qF -- "$token" <<<"$para" || { echo "the Artifact language paragraph does not name $token"; return 1; }
   done
   for artifact in Research Reproduce Plan Validation OpsChecklist ManualChecks Review ChangesRequested Walkthrough Done Docs; do
@@ -267,8 +271,8 @@ section() {
   done
 }
 
-@test "both language keys exist in both locales" {
-  for key in lang_mismatch lang_mismatch_persists; do
+@test "every language key exists in both locales" {
+  for key in lang_mismatch lang_mismatch_persists lang_mismatch_unowned lang_readers_disagree; do
     for l in en ru; do
       grep -qx "## $key" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no $key"; return 1; }
     done

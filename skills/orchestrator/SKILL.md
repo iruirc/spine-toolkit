@@ -740,11 +740,19 @@ measurement runs between them: measured after the range, a step would already ha
 `stage_done_prompt`, or once when an `auto` Method A range returns, over what the range wrote — run
 `<core root>/scripts/lint-artifact-lang.sh <task_dir>`. It reads `lang` through `resolve-settings.sh`
 and measures the prose of the task folder's own artifacts; which files, what counts as prose and
-where a finding starts are `conventions/artifact-language.md`'s. Exit 0 says nothing. Exit 2 is
-reported as the script printed it, and the run carries on.
+where a finding starts are `conventions/artifact-language.md`'s. When a REVIEW result reports
+`moved-to-done` (`action_taken` under Method A, `moved-to-DONE` in the notes under Method B), the
+folder has moved: run the check at the task's new `Tasks/DONE/<folder>` path. After an EPIC Method A
+range, name in the same call the folder of every step the range ran, completed or failed:
+`<task_dir>/<step_id>` for each entry of `completed_steps` and `failed_steps`, `step_id` being the
+step folder's own name, `.step` suffix included. Exit 0 reports only what the script printed on
+stderr, if anything. Exit 2 is reported as the script printed it, and the run carries on.
 
-On exit 1, report each finding with key `lang_mismatch` (`{artifact}`, `{section}`, `{lang}`), then
-send each file it names back **once** to the role whose call writes it:
+On exit 1, act only when the `(lang …)` the findings end with is the contract's `lang`. The two are
+separate readers of `[LANG]`; when they disagree, report it once with key `lang_readers_disagree`
+(`{measured}`, `{lang}`) and send nothing. Otherwise report each finding with key `lang_mismatch`
+(`{artifact}`, `{section}`, `{lang}`), then send each file it names back **once** to the role whose
+call writes it — for a file in a step folder, the column its own `Task.md` `[TASK_TYPE]` names:
 
 | Artifact | FEATURE | BUG | REFACTOR | TEST | EPIC | RESEARCH | REVIEW |
 |---|---|---|---|---|---|---|---|
@@ -757,16 +765,23 @@ send each file it names back **once** to the role whose call writes it:
 | `Done.md` | architect | developer | refactorer | tester | architect | architect | reviewer |
 | `Docs.md` | developer | developer | refactorer | tester | architect | — | — |
 
+A `—` owner, whether a `—` cell above or a role the `agents` map resolved to `—`, sends nothing: the
+finding is reported with key `lang_mismatch_unowned` (`{artifact}`, `{section}`, `{lang}`) instead.
+A file already sent back in this run is not sent again: a later boundary reports its findings with
+key `lang_mismatch_persists` instead.
+
 The role resolves through the contract's `agents` map, on the model of the call that writes the file
-(`conventions/stage-dispatch.md` → Model and effort: kind `walkthrough` for `Walkthrough.md`, `stage`
-for the rest); the effort is the session's, since this dispatch takes none. The brief names the
-language in words and asks for one thing: the prose of the named sections rewritten in it.
-Headings, field labels, status words, code, identifiers, paths and commit subjects stay as they
-are; no new finding, no re-investigation, no change to any verdict line. Then run the script again.
-A finding still there is reported with key `lang_mismatch_persists` (`{artifact}`, `{section}`) and
-the run carries on — a second round would cost more than the file is worth to the run, and the
-finding stays in front of the user. When the budget and the language both name one file, the
-language goes first: a trim is easier in the language the file keeps.
+(`conventions/stage-dispatch.md` → Model and effort: kind `walkthrough` for `Walkthrough.md`,
+`mechanical` for `Done.md` and `ChangesRequested.md`, `stage` for the rest); the effort is the
+session's, since this dispatch takes none. The brief names the language in words and asks for one
+thing: the prose of the named sections rewritten in it. Headings stay as they are, except a title the
+artifact's own skill calls prose, such as a manual check's case title; field labels, status words,
+code, identifiers, paths, commit subjects and quoted logs and messages stay as they are too; no new
+finding, no re-investigation, no change to any verdict line. Then run the script again. A finding
+still there is reported with key `lang_mismatch_persists` (`{artifact}`, `{section}`) and the run
+carries on — a second round would cost more than the file is worth to the run, and the finding stays
+in front of the user. Run this script and the budget's both before sending either rewrite; when both
+name one file, the language goes first: a trim is easier in the language the file keeps.
 
 **Per-phase commits vs flow-level commits.** The "commit always confirmed with user" rule applies ONLY to flow-level wrap commits the orchestrator itself initiates (squash, merge, push) — these are user-confirmed regardless of mode. **Per-phase commits inside a workflow-* multi-phase stage (Refactor / Execute / Fix / Write) are autonomous** — the workflow-* skill creates one commit per green phase without a user prompt, in both manual and auto modes. The orchestrator MUST NOT misread "does not confirm commit with user" inside workflow-* skills as "does not commit at all"; per-phase commits are mandatory for the phase invariant ("each phase independently buildable+test-passing+committed") to hold against interrupts.
 
