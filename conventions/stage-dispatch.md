@@ -60,8 +60,8 @@ does with the result. A dispatch is one of five kinds:
 - `mechanical` — reading a file back, ticking a box, moving a task: `<stage>:read-plan`,
   `execute:read-steps`, `execute:tick:<step>`, `done:read-branch`, `auto-move`.
 
-The `walkthrough`, `done`, `light` and `mechanical` lists are closed, and `scripts/lint-workflows.sh` holds
-them.
+The `walkthrough`, `done`, `light` and `mechanical` lists are closed, and
+`scripts/lint-workflows.sh` holds them.
 
 | Kind | model | effort |
 |---|---|---|
@@ -72,7 +72,8 @@ them.
 | `mechanical` | `models.light`, else `models[role]` | `low` |
 
 `session` means pass nothing; in the `walkthrough`, `done` and `light` keys it hands the choice to
-the next key of the row. From Claude Code 2.1.251 a model the dispatch passes outranks everything; without one
+the next key of the row.
+From Claude Code 2.1.251 a model the dispatch passes outranks everything; without one
 `CLAUDE_CODE_SUBAGENT_MODEL` decides, then the session's model. Before 2.1.251 the environment
 variable outranked everything. An effort not passed is the session's.
 Neither falls to the agent's frontmatter, because a platform agent declares no model and no effort
@@ -82,5 +83,6 @@ Method A passes both through the prelude's `tuning(role, kind)`. Method B passes
 dispatch and cannot pass effort: the host's dispatch takes no such parameter, so every stage runs at
 the session's effort and the orchestrator says so once. Under Method B the walkthrough, its check and
 its revision, and the security triage, are the calls outside a stage that still get an agent, and
-the `mechanical` ones and Done run in the main context. Work in the main context — the orchestrator, a
+the `mechanical` ones and Done run in the main context.
+Work in the main context — the orchestrator, a
 handed-back stage, a Method B stage without an agent — runs on the session's model and effort.

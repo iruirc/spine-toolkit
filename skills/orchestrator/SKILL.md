@@ -444,7 +444,7 @@ size belongs to the task, not to one dispatch.
 
 `effort` — the reasoning effort each dispatch runs at, a key for each of the same eight roles, `walkthrough` and `done`. Resolved by the same run of `resolve-settings.sh json`, over `Task.md` `[EFFORT]` → the epic's for a `.step/` folder → `CLAUDE-spine-toolkit.md` `[EFFORT]` → `session`; that field is this field. Always filled, for every profile, `walkthrough` and `done` first and then the roles in vocabulary order. Method B takes that map as it is; Method A passes the same object as real JSON. It travels in the contract, has one reader, and has what it cannot use announced exactly as `models` does. Only Method A can pass it per dispatch; what a Method B run says instead is in **Dispatch**.
 
-`archive_paths` — list of paths to backups already created in `_archive/` for stages that will be overwritten (filled before handing off control). Format: `[path1, path2, path3]`. Empty list = `[]`.
+`archive_paths` — list of paths to backups already created in `_archive/` for stages that will be overwritten (filled before handing off control). Format: `[path1, path2, path3]`. Empty list = `[]`. Method A passes it as a JSON array of strings.
 
 **Invariant:** workflow-* never receives empty fields. If a field arrives empty — workflow-* returns an error to the orchestrator and does not try to recover.
 

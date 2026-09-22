@@ -306,7 +306,6 @@ names, values `low` `medium` `high` `xhigh` `max` `session` · **Default:** `ses
 The reasoning effort a subagent runs at, per role. `session` passes none, so the session's level
 applies. The mechanical calls always run at `low`; writing and revising `Walkthrough.md` run at the
 `walkthrough` level, and writing `Done.md` at the `done` level, each at its writer's where that says
-`session`. A level the model does not
-support drops to the nearest one it does. When the Workflow tool is unavailable and a profile runs
-through its skill, no effort can travel with a dispatch: every stage runs at the session's level,
-and the run says so once.
+`session`. A level the model does not support drops to the nearest one it does. When the Workflow
+tool is unavailable and a profile runs through its skill, no effort can travel with a dispatch:
+every stage runs at the session's level, and the run says so once.
