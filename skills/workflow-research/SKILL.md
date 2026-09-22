@@ -46,7 +46,7 @@ RESEARCH-profile specifics:
 - `task_dir` — the resolved task folder; every artifact this profile writes lands there.
 - `mode` — `manual` / `auto` (see sections 3 and 4).
 - `stack` — see envelope (`never: all`) below.
-- `lang` — project language for `Research.md` / `Review.md` / `Done.md` prose + the final report; artifact structure stays EN. See `conventions/i18n.md` → "Artifact authoring rule".
+- `lang` — project language for `Research.md` / `Review.md` / `Done.md` prose + the final report; artifact structure stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Every subagent prompt names it in words (`English`, `Russian`) at its start and again as its last line.
 - `archive_paths` — paths to backups already created by the orchestrator.
 - `research_agent` — **RESEARCH-specific optional field** (added in the orchestrator's Outbound Contract for this profile only). Values are BARE role names: `architect` (default) | `diagnostics` | `security`. Workflow-research resolves the role through the contract's `agents` map at dispatch time, mirroring how `[TASK_TYPE]` carries `FEATURE` rather than `spine-toolkit:workflow-feature`. If unset or empty → fall back to `architect`. If set to any other value → return `{status: error, reason: invalid_research_agent}` before dispatching a subagent.
 - `research_experiment` — **RESEARCH-specific field**, `on` or `off`, always filled for this profile. `on` is the task owner's permission for the Research stage to answer by an experiment (§2c); `off` is the profile exactly as it was. Absent reads as `off` — an orchestrator from before the field. Any other value → return `{status: error, reason: invalid_research_experiment}` before dispatching a subagent.
