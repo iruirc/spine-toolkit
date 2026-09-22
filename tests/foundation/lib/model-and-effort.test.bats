@@ -15,6 +15,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   s="$(section "$RULE" '## Model and effort')"
   [ -n "$s" ] || { echo "no ## Model and effort section"; return 1; }
   for token in '`stage`' '`light`' '`mechanical`' '`walkthrough`' '`walkthrough:check`' '`walkthrough:revise`' \
+               '`security:triage`' \
                '`<stage>:read-plan`' '`execute:read-steps`' '`execute:tick:<step>`' '`done:read-branch`' \
                '`auto-move`' '`done`'; do
     grep -qF "$token" <<<"$s" || { echo "the rule does not name $token"; return 1; }

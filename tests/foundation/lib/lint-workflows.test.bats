@@ -78,3 +78,8 @@ REVIEW_LINE="{ label: 'review', phase: 'Review', agentType: A.agents.reviewer, s
   n="$(grep -n "label: 'review', phase: 'Review'" "$T/workflows/profile-review.js" | cut -d: -f1)"
   expect_violation "workflows/profile-review.js:$n: dispatch 'review'"
 }
+
+@test "the security triage tuned as a stage fails" {
+  mutate profile-review.js "schema: TRIAGE, ...tuning(role, 'light') }" "schema: TRIAGE, ...tuning(role, 'stage') }"
+  expect_violation "dispatch 'security:triage' is tuned stage; conventions/stage-dispatch.md → Model and effort makes it light"
+}

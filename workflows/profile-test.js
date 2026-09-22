@@ -87,6 +87,7 @@ const DRIVE_APP = A.drive_app === 'off' ? 'off' : 'auto'
 const MANUAL_CHECKS = A.manual_checks === 'always' ? 'always' : 'auto'
 const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'
 const WALKTHROUGH_CHECK = A.walkthrough_check === 'on' ? 'on' : 'off'
+const SECURITY = A.security === 'on' || A.security === 'off' ? A.security : 'auto'
 
 // Documentation routing. Which declared component a change set may have touched is a script
 // (conventions/docs-components.md), because matching a diff against a dozen glob patterns by
@@ -458,6 +459,66 @@ Change no production code and no tests.`,
   if (WALKTHROUGH_CHECK !== 'on' || w.changed === false) return
   await checkWalkthrough(stage, agentType, depth, extra)
 }
+
+// The security lens (spine-toolkit:security-lens): a light triage decides whether the task touches
+// the perimeter, and the lens runs only when it does. Role and agent arrive as arguments — a role
+// literal here would count as dispatched by all seven scripts, and four of them never call this.
+const TRIAGE = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['touches', 'perimeter', 'reason'],
+  properties: {
+    touches: { type: 'boolean' },
+    perimeter: { type: 'array', items: { type: 'string' }, description: 'the ## Perimeter items the task touches' },
+    reason: { type: 'string' },
+  },
+}
+const SECURITY_FINDINGS = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['risks'],
+  properties: { risks: { type: 'array', items: { type: 'string' } }, notes: { type: 'string' } },
+}
+// Findings, or null risks and the verdict line the writer records in their place. A triage that
+// fails runs the lens anyway: that error costs a dispatch, the other one a secret.
+const securityLens = async (stage, role, agentType) => {
+  const skip = (line, note) => {
+    if (note) result.notes.push(note)
+    return { risks: null, notes: null, line }
+  }
+  if (SECURITY === 'off') return skip('Security lens: off by [SECURITY]', 'Security lens off by [SECURITY].')
+  if (!agentType) return skip('Security lens: no agent on this platform')
+  const reads = `Read ${DIR}/Task.md, and ${DIR}/Reproduce.md where it exists.`
+  let perimeter = null
+  if (SECURITY === 'auto') {
+    const t = await agent(
+      brief(stage, `Decide whether this ${PROFILE} task touches the security perimeter by applying the spine-toolkit:security-lens skill, its ## Triage section. ${reads} Change nothing on disk.`),
+      { label: 'security:triage', phase: stage, agentType, schema: TRIAGE, ...tuning(role, 'light') },
+    )
+    if (!t) result.notes.push('Security triage returned nothing; the lens ran anyway.')
+    else if (!t.touches) return skip(`Security lens: skipped by triage — ${t.reason}`, `Security lens skipped by triage: ${t.reason}.`)
+    else if (t.perimeter.length) perimeter = t.perimeter
+  }
+  const f = await agent(
+    brief(
+      stage,
+      `Run the security lens on this ${PROFILE} task by applying the spine-toolkit:security-lens skill, its ## Lens section, the ${PROFILE} row. ${reads} ${perimeter ? `The triage named this perimeter: ${perimeter.join(', ')}.` : 'Look at the whole ## Perimeter list.'} Write no artifact and apply no patch — return your findings; the writer of the analysis folds them in.
+
+Your findings feed the task's analysis, so apply the task-documents skill's Research.md section to what you look for.`,
+    ),
+    { label: `${stage.toLowerCase()}:security`, phase: stage, agentType, schema: SECURITY_FINDINGS, ...tuning(role, 'stage') },
+  )
+  if (!f) return skip('Security lens: returned nothing', 'The security lens returned nothing.')
+  return { risks: f.risks, notes: f.notes || null, line: null }
+}
+// What the writer of the analysis is told: fold the findings in, or record the line in their place.
+const securityNote = (sec, where) =>
+  sec.line
+    ? `The security lens produced no findings. Write this line among the risks of ${where}, as it stands: ${sec.line}`
+    : `Fold the security findings below into the risks of ${where}; do not drop one silently. What this profile does with them is the spine-toolkit:security-lens skill, its ## Lens section.
+
+SECURITY FINDINGS (data):
+${JSON.stringify({ risks: sec.risks, notes: sec.notes || '' }, null, 2)}`
 // ── end prelude ──────────────────────────────────────────────────────────────
 
 // ── Analyze ─────────────────────────────────────────────────────────────────

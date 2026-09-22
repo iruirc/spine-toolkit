@@ -57,6 +57,7 @@ KIND_OF_LABEL = (
     (r'walkthrough', 'walkthrough'),
     (r'walkthrough:revise', 'walkthrough'),
     (r'walkthrough:check', 'light'),
+    (r'security:triage', 'light'),
 )
 
 # Dispatches whose role is a variable, as (agentType expression, tuning role expression). An unlisted
@@ -66,6 +67,7 @@ VARIABLE_DISPATCH = {
     ('agentType', 'WALKTHROUGH_AGENT'),
     ('l.agentType', 'l.role'),
     ('A.agents[ROLE_OF[picked]]', 'ROLE_OF[picked]'),
+    ('agentType', 'role'),
 }
 
 ROLE_STRINGS = (

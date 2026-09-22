@@ -53,7 +53,8 @@ does with the result. A dispatch is one of four kinds:
 - `stage` — the work a stage exists for: investigation, plan, a phase, validation, review.
 - `walkthrough` — writing `Walkthrough.md`, and revising it after its check: `walkthrough`,
   `walkthrough:revise`.
-- `light` — work the script's own prompt defines that still takes judgement: `walkthrough:check`.
+- `light` — work the script's own prompt defines that still takes judgement: `walkthrough:check`,
+  `security:triage`.
 - `mechanical` — reading a file back, ticking a box, moving a task, writing the final report:
   `<stage>:read-plan`, `execute:read-steps`, `execute:tick:<step>`, `done:read-branch`, `auto-move`,
   `done`.
