@@ -89,6 +89,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   [ "$(field manual_checks <<<"$output")" = auto ] || { echo "$output"; return 1; }
   [ "$(field driver <<<"$output")" = auto ] || { echo "$output"; return 1; }
   [ "$(field phase_verification <<<"$output")" = proportional ] || { echo "$output"; return 1; }
+  [ "$(field security <<<"$output")" = auto ] || { echo "$output"; return 1; }
   [ "$(field docs_lever <<<"$output")" = on ] || { echo "$output"; return 1; }
   [ "$(field settings_report <<<"$output")" = diff ] || { echo "$output"; return 1; }
 }
@@ -208,7 +209,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
     ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
   done
   [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
-  grep -qxF '# 16 more at their default' <<<"$out" || { echo "$out"; return 1; }
+  grep -qxF '# 17 more at their default' <<<"$out" || { echo "$out"; return 1; }
 }
 
 @test "a project budget equal to the default is not a diff, and --all still names it" {
@@ -446,6 +447,7 @@ drive_app auto
 manual_checks auto
 driver auto
 phase_verification proportional
+security auto
 docs_lever on
 docs_map DocsMap.md
 docs_strictness advisory
@@ -606,4 +608,48 @@ FIELDS
   [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
   [ "$(map_value models walkthrough <<<"$out")" = opus ] || { echo "$out"; return 1; }
   [ "$(map_value effort walkthrough <<<"$out")" = high ] || { echo "$out"; return 1; }
+}
+
+@test "security resolves along the ordinary chain, and scale does not move it" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(field security <<<"$output")" = auto ] || { echo "$output"; return 1; }
+  [ "$(source_of security <<<"$output")" = default ] || { echo "$output"; return 1; }
+  printf '## Task defaults\n\n[SECURITY] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [FEATURE]\n[SCALE] = [lite]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field security <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(source_of security <<<"$output")" = project ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [FEATURE]\n[SCALE] = [lite]\n[SECURITY] = [on]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field security <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(source_of security <<<"$output")" = task ] || { echo "$output"; return 1; }
+}
+
+@test "a step inherits the epic's security" {
+  EPIC="$PROJ/Tasks/ACTIVE/050-an-epic"
+  STEP="$EPIC/01-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[SECURITY] = [on]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  run "$RESOLVE" json "$STEP"
+  [ "$(field security <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(source_of security <<<"$output")" = epic ] || { echo "$output"; return 1; }
+}
+
+@test "an unusable security value is reported, and the next source applies" {
+  printf '## Task defaults\n\n[SECURITY] = [on]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[SECURITY] = [maybe]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  grep -qF "Task.md [SECURITY]: 'maybe' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+  [ "$(field security <<<"$out")" = on ] || { echo "$out"; return 1; }
+  [ "$(source_of security <<<"$out")" = project ] || { echo "$out"; return 1; }
+}
+
+@test "show names a chosen security and leaves auto out" {
+  printf '[TASK_TYPE] = [BUG]\n[SECURITY] = [off]\n' >"$TASK/Task.md"
+  run "$RESOLVE" show "$TASK"
+  grep -qE '^\[SECURITY\] += \[off\] +# task$' <<<"$output" || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[SECURITY] = [auto]\n' >"$TASK/Task.md"
+  run "$RESOLVE" show "$TASK"
+  ! grep -q '^\[SECURITY\]' <<<"$output" || { echo "$output"; return 1; }
 }
