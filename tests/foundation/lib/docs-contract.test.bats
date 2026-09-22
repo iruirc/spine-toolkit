@@ -75,7 +75,7 @@ setup() {
     grep -q 'docs-route.sh' "$f" || { echo "no script call in $f"; return 1; }
     # The constant is interpolated and gated, not merely declared: a prelude that defined it and
     # never used it would satisfy the two greps above, since its own text names the script.
-    grep -q '^\${DOCS_NOTE}\${body}`$' "$f" || { echo "DOCS_NOTE not interpolated before the body in $f"; return 1; }
+    grep -q '^\${DOCS_NOTE}\${body}$' "$f" || { echo "DOCS_NOTE not interpolated before the body in $f"; return 1; }
     grep -q "A.docs === 'off'" "$f" || { echo "DOCS_NOTE is not gated on the contract field in $f"; return 1; }
   done
 }
