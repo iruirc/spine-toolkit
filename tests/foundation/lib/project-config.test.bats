@@ -34,7 +34,7 @@ core_grep() {
   done
   for f in LANG PROGRESS SETTINGS_REPORT BUDGETS DOCS_MAP DOCS_STRICTNESS DOCS_FRESHNESS \
            WORKFLOW_MODE SCALE DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION WALKTHROUGH \
-           WALKTHROUGH_CHECK SECURITY DOCS MODELS EFFORT; do
+           WALKTHROUGH_CHECK SECURITY DOCS MODELS EFFORT LONG_RUN; do
     grep -q "^\[$f\] = \[" "$TPL" || { echo "missing field: [$f]"; return 1; }
   done
 }
@@ -196,5 +196,17 @@ catalog_words() {
   for t in task-root task-step; do
     grep -qxF '# [SECURITY] = [on]           # auto | on | off' "$ROOT/templates/task-md/$t.md" \
       || { echo "no [SECURITY] in $t.md"; return 1; }
+  done
+}
+
+@test "the config template ships long_run at its defaults" {
+  grep -qE '^\[LONG_RUN\] = \[stall: 5, max: 30\] +# minutes: stall \| max$' "$TPL" \
+    || { echo "[LONG_RUN] must ship stall: 5, max: 30"; return 1; }
+}
+
+@test "both task templates offer the LONG_RUN override" {
+  for t in task-root task-step; do
+    grep -qF '# [LONG_RUN] = [max: 60]' "$ROOT/templates/task-md/$t.md" \
+      || { echo "no [LONG_RUN] in $t.md"; return 1; }
   done
 }

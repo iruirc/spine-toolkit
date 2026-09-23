@@ -33,6 +33,17 @@ python3 - "$ROLES" "$MODELS" "$EFFORTS" "$UNSET_MODELS" "$CAPS" "$@" <<'PY'
 import json, os, re, sys
 
 ROLES, MODEL_VALUES, EFFORT_VALUES, UNSET_MODELS = (s.split() for s in sys.argv[1:5])
+
+# The value kind of a map whose values are whole minutes rather than words.
+MINUTES = 'minutes'
+
+
+def map_value(values, raw):
+    if values == MINUTES:
+        return int(raw) if re.fullmatch(r'[1-9][0-9]*', raw) else None
+    return raw if raw in values else None
+
+
 CAPS = dict((n, int(v)) for n, v in (p.split(':') for p in sys.argv[5].split()))
 CMD, TARGET = sys.argv[6], sys.argv[7]
 EXTRA = sys.argv[8] if len(sys.argv) > 8 else None
@@ -68,6 +79,7 @@ MAPS = (
           validator='sonnet')),
     ('effort', 'EFFORT', ['walkthrough', 'done'] + ROLES, EFFORT_VALUES, [],
      dict({r: 'session' for r in ROLES}, walkthrough='session', done='session')),
+    ('long_run', 'LONG_RUN', ['stall', 'max'], MINUTES, [], {'stall': 5, 'max': 30}),
 )
 # A spelling an older release wrote, still applied. Reported in words a caller can tell apart from
 # a typo's, so the two get different announcements.
@@ -278,11 +290,12 @@ for name, field, keys, values, unset, map_defaults in MAPS:
     for label, source, entries in found:
         seen = {}
         for entry in entries:
-            m = re.fullmatch(r'([A-Za-z]+)\s*:\s*([A-Za-z]+)', entry)
-            k, v = (m.group(1).lower(), m.group(2).lower()) if m else (None, None)
-            if k in keys and v in unset:
+            m = re.fullmatch(r'([A-Za-z]+)\s*:\s*(\S+)', entry)
+            k, raw = (m.group(1).lower(), m.group(2).lower()) if m else (None, None)
+            if k in keys and raw in unset:
                 continue
-            if k not in keys or v not in values:
+            v = map_value(values, raw) if k in keys else None
+            if v is None:
                 warn(label, entry)
                 continue
             seen[k] = v
@@ -296,6 +309,11 @@ for name, field, keys, values, unset, map_defaults in MAPS:
     # task beats epic beats project, so a task-chosen key is never reported as the project's.
     order = ['task', 'epic', 'project']
     sources[name] = min((key_source.values()), key=order.index, default='default')
+
+lr = resolved['long_run']
+if lr['stall'] >= lr['max']:
+    print('long_run: stall %d is not below max %d, the budget fires first' % (lr['stall'], lr['max']),
+          file=sys.stderr)
 
 caps, budget_source = dict(CAPS), 'default'
 for entry in config_entries('BUDGETS'):
@@ -322,7 +340,7 @@ if CMD == 'json':
 # map key — defaults included — and never prints the "more" line.
 FIELD_OF = dict((s[0], s[1]) for s in SCALARS)
 rows, rest = [], 0
-for name in [s[0] for s in SCALARS] + ['models', 'effort', 'budgets']:
+for name in [s[0] for s in SCALARS] + ['models', 'effort', 'long_run', 'budgets']:
     value = resolved[name]
     if isinstance(value, dict):
         chosen = [k for k in value

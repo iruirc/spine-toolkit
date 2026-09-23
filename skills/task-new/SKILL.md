@@ -122,6 +122,7 @@ For reference, the templates contain these placeholders:
    - `[SCALE] = [<lite|full>]` — write it only when the user sized the task themselves. `full` also switches off the raise a stage could otherwise perform, so writing it on a guess costs the task its cheap path; `lite` does not switch the raise off, since a declared-small task stays a hypothesis until something measures its perimeter.
    - `[MODELS] = [<key>: <value>, …]` — overrides the project's key by key; write it only when the user chose a model for this task, such as `architect: opus` for a hard design or `developer: sonnet` for a sweep of mechanical phases. Keys are `light`, `walkthrough`, `done` and the eight roles the profiles dispatch; a key it does not name keeps the project's value, and an epic's keys reach every step that does not name them itself.
    - `[EFFORT] = [<key>: <value>, …]` — overrides the project's key by key; write it only when the user chose a reasoning level for this task. It takes effect only where the profile runs as a workflow script.
+   - `[LONG_RUN] = [<key>: <minutes>, …]` — overrides the project's key by key; write it only when the user named a budget for this task's long commands, such as a full UI test run. Never written for `REVIEW` or `RESEARCH`.
    - `[DOCS] = [<on|off>]` — write `off` only when the user said this task
      changes strings, flags or tooling and raises no documentation question at all. The field is
      a blanket lever: it silences every component for the whole task, and it stays visible in
