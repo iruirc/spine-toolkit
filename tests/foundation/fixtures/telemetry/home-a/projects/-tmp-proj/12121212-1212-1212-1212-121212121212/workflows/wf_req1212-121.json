@@ -1,0 +1,18 @@
+{
+  "runId": "wf_req1212-121",
+  "workflowName": "profile-bug",
+  "status": "completed",
+  "durationMs": 150000,
+  "args": {"task_id": "121", "profile": "bug"},
+  "phases": [{"title": "Reproduce"}, {"title": "Fix"}],
+  "workflowProgress": [
+    {"type": "workflow_phase", "index": 1, "title": "Reproduce"},
+    {"type": "workflow_phase", "index": 2, "title": "Fix"},
+    {"type": "workflow_agent", "index": 1, "phaseIndex": 1, "phaseTitle": "Reproduce",
+     "agentId": "r0000000000000001", "agentType": "fixture-platform:fixture-diagnostics",
+     "model": "claude-opus-5", "state": "done", "durationMs": 60000},
+    {"type": "workflow_agent", "index": 2, "phaseIndex": 2, "phaseTitle": "Fix",
+     "agentId": "r0000000000000002", "agentType": "fixture-platform:fixture-developer",
+     "model": "claude-opus-5", "state": "done", "durationMs": 90000}
+  ]
+}

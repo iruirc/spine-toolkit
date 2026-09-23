@@ -87,6 +87,8 @@ def text_fields(record):
     # from what the panel shows for the same run.
     return {"outText": human_tokens(record["out"]),
             "ctxText": human_tokens(record["ctx"]),
+            "cacheWriteText": human_tokens(record["cacheWrite"]),
+            "cacheReadText": human_tokens(record["cacheRead"]),
             "elapsedText": human_time(record["elapsedMs"])}
 
 
@@ -116,6 +118,9 @@ def phase_totals(mine):
         pair["agents"] += 1
     totals = {"agents": len(mine), "tuning": tuning,
               "out": sum(a["out"] for a in mine),
+              "reqs": sum(a["reqs"] for a in mine),
+              "cacheWrite": sum(a["cacheWrite"] for a in mine),
+              "cacheRead": sum(a["cacheRead"] for a in mine),
               "tools": sum(a["tools"] or 0 for a in mine),
               "ctx": max([a["ctx"] or 0 for a in mine] or [0]),
               "elapsedMs": sum(a["elapsedMs"] or 0 for a in mine) or None}
@@ -137,12 +142,13 @@ def render_md(doc):
         lines += ["**%s** — %s · %s" % (head, run["status"] or "—",
                                         human_time(run["elapsedMs"])),
                   "",
-                  "| Stage | Agent | Tuning | out | ctx | tools | time |",
-                  "|---|---|---|---|---|---|---|"]
+                  "| Stage | Agent | Tuning | reqs | out | ctx | cache-w | cache-r | tools | time |",
+                  "|---|---|---|---|---|---|---|---|---|---|"]
         for agent in run["agents"]:
-            lines.append("| %s | %s | %s | %s | %s | %s | %s |" % (
+            lines.append("| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
                 agent["phase"] or "—", short(agent["agentType"]), agent["tuningText"],
-                human_tokens(agent["out"]), human_tokens(agent["ctx"]),
+                agent["reqs"], human_tokens(agent["out"]), human_tokens(agent["ctx"]),
+                agent["cacheWriteText"], agent["cacheReadText"],
                 agent["tools"] or 0, human_time(agent["elapsedMs"])))
         lines.append("")
     totals = doc["totals"]
@@ -264,11 +270,13 @@ def ms(stamp):
 
 
 def transcript(path):
-    out = tools = ctx = 0
-    in_tok = cache_write = cache_read = 0
+    tools = ctx = 0
     model = first = last = None
     effort = None
-    for row in load_jsonl(path):
+    # A request writes one row per content block, each repeating its input usage; the last
+    # row carries the final output count. A row with neither id stands for itself.
+    requests = {}
+    for n, row in enumerate(load_jsonl(path)):
         stamp = row.get("timestamp")
         if stamp:
             first = first or stamp
@@ -279,10 +287,8 @@ def transcript(path):
         model = message.get("model") or model
         effort = row.get("effort") or effort
         usage = message.get("usage") or {}
-        out += usage.get("output_tokens") or 0
-        in_tok += usage.get("input_tokens") or 0
-        cache_write += usage.get("cache_creation_input_tokens") or 0
-        cache_read += usage.get("cache_read_input_tokens") or 0
+        key = row.get("requestId") or message.get("id") or n
+        requests[key] = usage or requests.get(key) or {}
         # Context is the size of the last request, not a sum over requests.
         ctx = (usage.get("input_tokens", 0)
                + usage.get("cache_creation_input_tokens", 0)
@@ -290,8 +296,12 @@ def transcript(path):
         for block in message.get("content") or []:
             if isinstance(block, dict) and block.get("type") == "tool_use":
                 tools += 1
-    return {"out": out, "ctx": ctx, "tools": tools, "model": model, "effort": effort,
-            "inTok": in_tok, "cacheWrite": cache_write, "cacheRead": cache_read,
+    def total(key):
+        return sum(usage.get(key) or 0 for usage in requests.values())
+    return {"out": total("output_tokens"), "ctx": ctx, "tools": tools, "model": model,
+            "effort": effort, "reqs": len(requests), "inTok": total("input_tokens"),
+            "cacheWrite": total("cache_creation_input_tokens"),
+            "cacheRead": total("cache_read_input_tokens"),
             "first": ms(first), "last": ms(last)}
 
 
@@ -354,6 +364,7 @@ def agent_record(run_dir, agent_id, rec, state):
         "effort": seen["effort"],
         "state": state,
         "out": seen["out"],
+        "reqs": seen["reqs"],
         "ctx": rec.get("tokens") or seen["ctx"],
         "inTok": seen["inTok"],
         "cacheWrite": seen["cacheWrite"],
