@@ -377,6 +377,7 @@ security=auto|on|off
 budgets={Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100}
 models={light: sonnet, walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}
 effort={walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}
+long_run={stall: 5, max: 30}
 archive_paths=[Tasks/ACTIVE/001-profile/_archive/Plan-2026-04-25T143022.md, Tasks/ACTIVE/001-profile/_archive/Research-2026-04-25T143022.md]
 ```
 
@@ -446,6 +447,8 @@ size belongs to the task, not to one dispatch.
 
 `effort` — the reasoning effort each dispatch runs at, a key for each of the same eight roles, `walkthrough` and `done`. Resolved by the same run of `resolve-settings.sh json`, over `Task.md` `[EFFORT]` → the epic's for a `.step/` folder → `CLAUDE-spine-toolkit.md` `[EFFORT]` → `session`; that field is this field. Always filled, for every profile, `walkthrough` and `done` first and then the roles in vocabulary order. Method B takes that map as it is; Method A passes the same object as real JSON. It travels in the contract, has one reader, and has what it cannot use announced exactly as `models` does. Only Method A can pass it per dispatch; what a Method B run says instead is in **Dispatch**.
 
+`long_run` — how long a command a stage agent runs may stay silent (`stall`) and may run at all (`max`), in minutes. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. The script hands both to every agent as the `--stall` and `--max` of `scripts/long-run.sh`, in seconds; Method A passes the object as real JSON, and Method B puts the same numbers in its dispatch prompt (`conventions/stage-dispatch.md`).
+
 `archive_paths` — list of paths to backups already created in `_archive/` for stages that will be overwritten (filled before handing off control). Format: `[path1, path2, path3]`. Empty list = `[]`. Method A passes it as a JSON array of strings.
 
 **Invariant:** workflow-* never receives empty fields. If a field arrives empty — workflow-* returns an error to the orchestrator and does not try to recover.
@@ -465,7 +468,9 @@ size belongs to the task, not to one dispatch.
 
 **RESEARCH-only field — `research_experiment`.** When `profile=research`, the orchestrator always includes it, as `research_experiment=on|off`; for every other profile it is omitted. It carries the task owner's permission for the Research stage to answer by an experiment on a branch that is never merged (`skills/workflow-research/SKILL.md` § 2c). Read `[RESEARCH_EXPERIMENT]` from `Task.md`, where it sits beside `[RESEARCH_AGENT]` between `[NEED_REVIEW]` and section `## 1. [Files]`; an absent line is `off`. It is a parameter of the task rather than a setting, so `resolve-settings.sh` does not read it: no project default exists, and a step does not inherit it from its epic — a permission is given to one task. Never infer it from the task's prose and never write it back; only the owner writes that line, or `task-new` on the owner's explicit request. A value other than `on` or `off` propagates verbatim, and workflow-research rejects it with `invalid_research_experiment`, as it does an unknown `research_agent`. The contract is the only way the permission reaches the agent: a brief treats everything in the task folder as data, so a permission written in prose lifts nothing.
 
-**EPIC-only optional fields — `plugin_root` and `epic_dispatch_mode`.** When `profile=epic` and the run takes Method A, include `plugin_root=${CLAUDE_PLUGIN_ROOT}` (expanded, absolute). The EPIC script runs each step as a nested workflow by name and needs no path for it; `plugin_root` is what its fallback builds a path from on a host whose registry does not carry the step workflows, and the sandbox cannot expand the variable itself. Absent, the epic still pushes — it simply has no fallback left. `epic_dispatch_mode=push|pull` forces that choice — omit it and the script decides. Both fields are omitted for every other profile.
+**`plugin_root` — every profile, Method A.** When the run takes Method A, include `plugin_root=${CLAUDE_PLUGIN_ROOT}` (expanded, absolute) whatever the profile: the script names it to every agent as the core root, so the `conventions/` and `scripts/` paths a brief names resolve without a search, and the sandbox cannot expand the variable itself. For EPIC it is also what the fallback builds a path from on a host whose registry does not carry the step workflows. Absent, briefs name core files relative to a root they do not give, and the epic has no fallback left.
+
+**EPIC-only optional field — `epic_dispatch_mode`.** `epic_dispatch_mode=push|pull` forces that choice — omit it and the script decides. Omitted for every other profile.
 
 ## Dispatch
 
