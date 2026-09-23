@@ -478,7 +478,7 @@ Core dispatches by role; which agent that means is yours. This is where each one
 |---|---|
 | `architect` | FEATURE Research (after the `security` lens), Plan, Done · BUG Diagnose (panel with `diagnostics` and the `security` lens), Plan · REFACTOR Analyze (after the `security` lens), Plan · TEST Analyze (panel with `tester`) · EPIC Research, Plan · RESEARCH Research (default) |
 | `developer` | FEATURE Execute · BUG Fix |
-| `tester` | FEATURE Execute and BUG Fix when `need_test` · REFACTOR Refactor, for a test-only phase · TEST Analyze (panel), Plan, Write |
+| `tester` | FEATURE Execute and BUG Fix when `need_test` · REFACTOR Refactor, for a test-only phase, when `need_test` · TEST Analyze (panel), Plan, Write |
 | `reviewer` | Review, on every profile that has one, plus the whole REVIEW profile |
 | `refactorer` | REFACTOR Refactor |
 | `validator` | Validation, on FEATURE / BUG / REFACTOR / TEST |

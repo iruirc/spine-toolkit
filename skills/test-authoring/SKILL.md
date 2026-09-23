@@ -114,7 +114,8 @@ With `need_test=false` the task adds no test: no test file and no test case. The
 existing suite runs as usual, at every phase's verification and at Validation. An existing test may
 be edited only when the change alters the very behaviour it asserts; the phase
 names that test and the reason in its summary. REFACTOR keeps its stricter rule: there any edited
-test is a finding.
+test is a finding. Such an edit belongs in the phase that changes the behaviour, never in a phase
+of its own — a phase holding only that edit reads as a test phase and stops the run.
 
 ## Review
 
@@ -134,9 +135,9 @@ blocks", because they judge how a plan was written after Validation has already 
 section judges the artifact: a test that cannot fail is a defect in what was delivered, and it belongs
 in `blocking_findings`.
 
-Where `need_test` was false, a test the task added is a blocking finding, and so is an edit to an
-existing test whose phase named no reason for it — see `## When the task owes no test`. Whether a
-test was owed is the task contract's decision, not review's.
+Where `need_test` was false, a test the task added is a blocking finding; an edit to an existing
+test whose phase named no reason for it is a finding — see `## When the task owes no test`.
+Whether a test was owed is the task contract's decision, not review's.
 
 ## Not this skill's business
 

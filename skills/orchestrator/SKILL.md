@@ -349,6 +349,8 @@ After Resolution, the orchestrator hands these fields to the dispatch path chose
 
 Multi-valued fields (e.g. `archive_paths`) are encoded in **list syntax**: square brackets, commas inside. The four map-valued fields (`agents`, `budgets`, `models`, `effort`) are encoded in **brace syntax**: `{key: value, key: value}`.
 
+Method A passes `need_test` and `need_review` as JSON booleans (`true`/`false`), never as the strings `"true"`/`"false"` — a workflow script compares them with `=== false`.
+
 ```
 task_id=001
 task_dir=Tasks/ACTIVE/001-feature-search
