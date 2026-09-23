@@ -8,8 +8,8 @@ setup() {
 
 @test "the prelude names the core root and the long-run budget" {
   for f in "$ROOT"/workflows/profile-*.js; do
-    for s in "const CORE = A.plugin_root || ''" \
-             'const core = (p) => (CORE ? `${CORE}/${p}` : p)' \
+    for s in "const CORE = A.plugin_root" \
+             'const core = (p) => `${CORE}/${p}`' \
              'const LONG_RUN = { stall: 5, max: 30, ...(A.long_run || {}) }' \
              'Core root: ${CORE} — every conventions/… or scripts/… path named in this brief or in your agent definition is relative to it.' \
              "Long-running commands: follow \${core('conventions/agent-tooling.md')} → Long-running commands, with --stall \${60 * LONG_RUN.stall} --max \${60 * LONG_RUN.max}."; do
@@ -23,15 +23,31 @@ setup() {
     bare="$(grep -vE '^[[:space:]]*//|description:' "$f" | sed "s/core('conventions\/[a-z0-9-]*\.md')//g" \
             | grep -oE 'conventions/[a-z0-9-]+\.md' || true)"
     [ -z "$bare" ] || { echo "$(basename "$f"): bare reference: $bare"; return 1; }
-    if grep -qF '"<core root>/scripts/' "$f"; then echo "$(basename "$f"): <core root> without CORE"; return 1; fi
+    if grep -qF '<core root>' "$f"; then echo "$(basename "$f"): names <core root> instead of CORE"; return 1; fi
   done
 }
 
-@test "without plugin_root the brief is today's" {
-  f="$ROOT/workflows/profile-bug.js"
-  grep -qF "\${CORE ? \`Core root: " "$f" || { echo "the Core root line is not gated on CORE"; return 1; }
-  grep -qF "\${CORE ? '' : 'The core root is the directory holding workflows/. '}" "$f" \
-    || { echo "DOCS_NOTE lost its fallback definition of the core root"; return 1; }
+# Runs the script body up to its first stage with a contract that lacks a usable plugin_root.
+refusal() {
+  node -e '
+    const fs = require("fs")
+    const body = fs.readFileSync(process.argv[1], "utf8").replace(/^export const meta/m, "const meta")
+    const run = new (Object.getPrototypeOf(async function () {}).constructor)("args", "log", body)
+    run(JSON.parse(process.argv[2]), () => {}).then((r) => console.log(r && r.reason))
+  ' "$1" "$2"
+}
+
+@test "without an absolute, expanded plugin_root the script refuses" {
+  base='"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "agents": {"developer": "d"}'
+  for f in "$ROOT"/workflows/profile-*.js; do
+    for root in '' ', "plugin_root": ""' ', "plugin_root": "spine-toolkit"' ', "plugin_root": "${CLAUDE_PLUGIN_ROOT}"'; do
+      [ "$(refusal "$f" "{$base$root}")" = no-plugin-root ] || { echo "$(basename "$f"): accepted {$root}"; return 1; }
+    done
+  done
+  for f in "$ROOT"/workflows/profile-*.js; do
+    ! grep -qF -e "A.plugin_root || ''" -e "\${CORE ? " "$f" || { echo "$(basename "$f"): still falls back without CORE"; return 1; }
+  done
+  return 0
 }
 
 section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
