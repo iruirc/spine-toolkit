@@ -378,6 +378,7 @@ budgets={Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 
 models={light: sonnet, walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session}
 effort={walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}
 long_run={stall: 5, max: 30}
+plugin_root=/Users/<user>/.claude/plugins/cache/<marketplace>/spine-toolkit/<version>
 archive_paths=[Tasks/ACTIVE/001-profile/_archive/Plan-2026-04-25T143022.md, Tasks/ACTIVE/001-profile/_archive/Research-2026-04-25T143022.md]
 ```
 
@@ -468,7 +469,7 @@ size belongs to the task, not to one dispatch.
 
 **RESEARCH-only field — `research_experiment`.** When `profile=research`, the orchestrator always includes it, as `research_experiment=on|off`; for every other profile it is omitted. It carries the task owner's permission for the Research stage to answer by an experiment on a branch that is never merged (`skills/workflow-research/SKILL.md` § 2c). Read `[RESEARCH_EXPERIMENT]` from `Task.md`, where it sits beside `[RESEARCH_AGENT]` between `[NEED_REVIEW]` and section `## 1. [Files]`; an absent line is `off`. It is a parameter of the task rather than a setting, so `resolve-settings.sh` does not read it: no project default exists, and a step does not inherit it from its epic — a permission is given to one task. Never infer it from the task's prose and never write it back; only the owner writes that line, or `task-new` on the owner's explicit request. A value other than `on` or `off` propagates verbatim, and workflow-research rejects it with `invalid_research_experiment`, as it does an unknown `research_agent`. The contract is the only way the permission reaches the agent: a brief treats everything in the task folder as data, so a permission written in prose lifts nothing.
 
-**`plugin_root` — every profile, Method A.** When the run takes Method A, include `plugin_root=${CLAUDE_PLUGIN_ROOT}` (expanded, absolute) whatever the profile: the script names it to every agent as the core root, so the `conventions/` and `scripts/` paths a brief names resolve without a search, and the sandbox cannot expand the variable itself. For EPIC it is also what the fallback builds a path from on a host whose registry does not carry the step workflows. Absent, briefs name core files relative to a root they do not give, and the epic has no fallback left.
+**`plugin_root` — every profile, Method A.** When the run takes Method A, include `plugin_root` whatever the profile, taken from the same run of `resolve-settings.sh json` — the script prints the core root it ran from, absolute, so the value never depends on expanding `${CLAUDE_PLUGIN_ROOT}` by hand. The profile script names it to every agent as the core root, so the `conventions/` and `scripts/` paths a brief names resolve without a search, and the sandbox cannot expand the variable itself. For EPIC it is also what the fallback builds a path from on a host whose registry does not carry the step workflows. Absent, relative or unexpanded, the script refuses with `reason: no-plugin-root` before any stage runs.
 
 **EPIC-only optional field — `epic_dispatch_mode`.** `epic_dispatch_mode=push|pull` forces that choice — omit it and the script decides. Omitted for every other profile.
 
@@ -539,7 +540,7 @@ With `handback` non-empty the script returns `status: ok` — a role the platfor
 
 On a non-empty `handback` the orchestrator runs that stage itself in the main context, announcing the deviation in the stage's first message with key `deviation_role_absent` (`conventions/stage-dispatch.md`), then re-dispatches the workflow from the following stage. The sandbox can report what it could not run; only the orchestrator can run it. Method B needs no hand-back — the skill runs the stage itself and makes the announcement.
 
-`status: error` with `reason: no-args` means the contract never reached the script. Do not run the stage by hand and do not slide over to Method B as if nothing happened — say what happened, then re-dispatch with the contract filled.
+`status: error` with `reason: no-args` means the contract never reached the script. Do not run the stage by hand and do not slide over to Method B as if nothing happened — say what happened, then re-dispatch with the contract filled. `reason: no-plugin-root` is the same stop for one field: re-dispatch with `plugin_root` as `resolve-settings.sh json` printed it.
 
 **Method B — invoke.** Unchanged: invoke the `Skill` tool with the name from the table and `args` in Outbound Contract format.
 
