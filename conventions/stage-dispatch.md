@@ -24,6 +24,10 @@ user asked. A user who starts or continues spine-toolkit work HAS asked, for the
 The authorization covers every stage of that task, in either execution form — the workflow script
 and the skill — and is not re-confirmed per stage.
 
+A subagent's prompt names core files by absolute path and names the core root itself, as the
+`Core root:` line of a Method A brief does; it carries the `Long-running commands:` line with the
+task's `long_run` numbers the same way.
+
 ## Declared deviation
 
 Delegation may be skipped — the host exposes no subagent mechanism, the user opted out, the

@@ -33,3 +33,30 @@ setup() {
   grep -qF "\${CORE ? '' : 'The core root is the directory holding workflows/. '}" "$f" \
     || { echo "DOCS_NOTE lost its fallback definition of the core root"; return 1; }
 }
+
+section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
+
+@test "the orchestrator passes plugin_root to every profile under Method A" {
+  S="$ROOT/skills/orchestrator/SKILL.md"
+  grep -qF '**`plugin_root` — every profile, Method A.**' "$S" || { echo "plugin_root is still EPIC-only"; return 1; }
+  grep -qF '**EPIC-only optional field — `epic_dispatch_mode`.**' "$S" || { echo "epic_dispatch_mode lost its paragraph"; return 1; }
+  if grep -qF 'EPIC-specific, Method A only' "$ROOT/skills/workflow-epic/SKILL.md"; then
+    echo "workflow-epic still calls plugin_root EPIC-specific"; return 1
+  fi
+}
+
+@test "the contract carries long_run for every profile" {
+  S="$ROOT/skills/orchestrator/SKILL.md"
+  grep -qxF 'long_run={stall: 5, max: 30}' "$S" || { echo "no long_run in the example contract"; return 1; }
+  p="$(grep -F '`long_run` — ' "$S")"
+  for t in 'resolve-settings.sh json' 'Always filled' 'scripts/long-run.sh' 'in seconds'; do
+    grep -qF -- "$t" <<<"$p" || { echo "the long_run paragraph lost: $t"; return 1; }
+  done
+}
+
+@test "Method B names the core root in a subagent's prompt" {
+  s="$(section "$ROOT/conventions/stage-dispatch.md" 'Standing authorization')"
+  for t in 'absolute path' '`Core root:`' '`Long-running commands:`'; do
+    grep -qF -- "$t" <<<"$s" || { echo "stage-dispatch lost: $t"; return 1; }
+  done
+}
