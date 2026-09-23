@@ -41,7 +41,7 @@ The fields that directly drive this workflow's behavior:
 - `mode` — `manual` / `auto` (see sections 3 and 4).
 - `stack` — passed to subagents as context.
 - `lang` — project language for artifact prose + the final report; artifact structure (headings, field labels, status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed through to every subagent. Every subagent prompt names it in words (`English`, `Russian`) at its start and again as its last line.
-- `need_test`, `need_review` — gate the inclusion of `[tester]` and `[reviewer]`.
+- `need_test`, `need_review` — `need_review` gates the inclusion of `[reviewer]`. `need_test=false` means the task adds no tests (`spine-toolkit:test-authoring`, `## When the task owes no test`), so `[tester]` takes no part.
 - `archive_paths` — paths to backups already created (the orchestrator made them BEFORE the call; workflow-refactor does not create them).
 
 **Execution range.** Stages run in the order Analyze → Plan → Refactor → Validation → Review → Done, starting at `start_stage` and continuing through `end_stage` inclusive. If `end_stage=null` — through the end of the profile. If `end_stage` is set but precedes `start_stage` in order, that is a contract error: return `{status: error, reason: "end_stage before start_stage"}`.
