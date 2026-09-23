@@ -14,7 +14,7 @@ GRACE="${LONG_RUN_GRACE:-10}"
 usage() { echo "usage: $0 start [--log <path>] -- <cmd…> | wait <log> [--for s] [--stall s] [--max s] | stop <log>" >&2; exit 2; }
 mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"; }
 lines_of() { wc -l <"$1" | tr -d ' '; }
-report() { echo "status=$1"; echo "--- tail $2"; tail -n 40 "$2"; }
+report() { echo "status=$1"; echo "--- tail $2"; tail -n 40 "$2" | cut -c1-500; }
 
 cmd_start() {
   local log=''
@@ -28,11 +28,11 @@ cmd_start() {
   [ $# -gt 0 ] || usage
   [ -n "$log" ] || log="$(mktemp "${TMPDIR:-/tmp}/long-run.XXXXXX")"
   : >"$log" || exit 2
-  rm -f "$log.exit"
+  rm -f "$log.exit" "$log.exit.tmp"
   date +%s >"$log.start"
   # set -m gives the job a process group of its own: stop signals the group, children included.
   ( set -m
-    LONG_RUN_LOG="$log" bash -c 'trap "" HUP; "$@"; echo $? >"$LONG_RUN_LOG.exit"' long-run "$@" \
+    LONG_RUN_LOG="$log" bash -c 'trap "" HUP; "$@"; echo $? >"$LONG_RUN_LOG.exit.tmp" && mv "$LONG_RUN_LOG.exit.tmp" "$LONG_RUN_LOG.exit"' long-run "$@" \
       </dev/null >>"$log" 2>&1 &
     echo $! >"$log.pid" )
   echo "pid=$(cat "$log.pid") log=$log"
@@ -81,6 +81,12 @@ cmd_stop() {
   [ $# -eq 1 ] && [ -f "$1.pid" ] || usage
   local log="$1" pid i=0
   pid="$(cat "$log.pid")"
+  # A finished command's pgid may already be reused by an unrelated process; signal it only
+  # while the command is still the one that holds it.
+  if [ -f "$log.exit" ]; then
+    echo "stopped pid=$pid"
+    return
+  fi
   kill -TERM -- "-$pid" 2>/dev/null
   while kill -0 -- "-$pid" 2>/dev/null && [ "$i" -lt "$GRACE" ]; do sleep 1; i=$((i + 1)); done
   kill -KILL -- "-$pid" 2>/dev/null

@@ -38,6 +38,7 @@ ROLES, MODEL_VALUES, EFFORT_VALUES, UNSET_MODELS = (s.split() for s in sys.argv[
 MINUTES = 'minutes'
 
 
+# The value one map entry contributes, or None when the entry is not one of the map's values.
 def map_value(values, raw):
     if values == MINUTES:
         return int(raw) if re.fullmatch(r'[1-9][0-9]*', raw) else None

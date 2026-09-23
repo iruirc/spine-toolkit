@@ -37,8 +37,8 @@ teardown() {
 }
 
 @test "a quiet command stalls only after --stall" {
-  "$LR" start --log "$LOG" -- sleep 30 >/dev/null
   start=$(date +%s)
+  "$LR" start --log "$LOG" -- sleep 30 >/dev/null
   run "$LR" wait "$LOG" --for 20 --stall 3
   [ "$status" -eq 4 ] && [ "${lines[0]}" = "status=stalled" ] || { echo "$output"; return 1; }
   [ $(( $(date +%s) - start )) -ge 3 ] || { echo "stalled before --stall elapsed"; return 1; }

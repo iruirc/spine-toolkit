@@ -20,8 +20,8 @@ setup() {
 
 @test "no prompt names a core file relative to a root it does not give" {
   for f in "$ROOT"/workflows/profile-*.js; do
-    bare="$(grep -vE '^[[:space:]]*//|description:' "$f" | sed "s/core('conventions\/[a-z-]*\.md')//g" \
-            | grep -oE 'conventions/[a-z-]+\.md' || true)"
+    bare="$(grep -vE '^[[:space:]]*//|description:' "$f" | sed "s/core('conventions\/[a-z0-9-]*\.md')//g" \
+            | grep -oE 'conventions/[a-z0-9-]+\.md' || true)"
     [ -z "$bare" ] || { echo "$(basename "$f"): bare reference: $bare"; return 1; }
     if grep -qF '"<core root>/scripts/' "$f"; then echo "$(basename "$f"): <core root> without CORE"; return 1; fi
   done
