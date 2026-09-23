@@ -58,3 +58,13 @@ A template belongs to exactly one plugin. Resolve it against that plugin's root,
 3. Claude Code compatibility paths such as `~/.claude/plugins/...`.
 
 Host-specific paths are fallbacks, not the canonical source.
+
+## Long-running commands
+
+A command that can run longer than a minute — a build, a full test run, a UI test run — starts
+through `scripts/long-run.sh start`, never in the foreground. Do not silence its output
+(`-quiet`, `-q`): a quiet build is indistinguishable from a hung one. Then call `wait` until
+it returns something other than `running`. On `done`, read the exit code and the tail. On
+`stalled` or `timeout`, capture what shows why — the tail, the process tree, the platform's own
+state — then `stop`, and report the command as hung or over budget, not as failed. Pass
+`--stall` and `--max` exactly as your brief gives them.
