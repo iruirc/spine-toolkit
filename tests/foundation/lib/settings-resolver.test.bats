@@ -209,7 +209,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
     ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
   done
   [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
-  grep -qxF '# 17 more at their default' <<<"$out" || { echo "$out"; return 1; }
+  grep -qxF '# 18 more at their default' <<<"$out" || { echo "$out"; return 1; }
 }
 
 @test "a project budget equal to the default is not a diff, and --all still names it" {
@@ -669,4 +669,49 @@ FIELDS
   printf '[TASK_TYPE] = [BUG]\n[SECURITY] = [auto]\n' >"$TASK/Task.md"
   run "$RESOLVE" show "$TASK"
   ! grep -q '^\[SECURITY\]' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "long_run defaults to stall 5 and max 30 minutes" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(map_value long_run stall <<<"$output")" = 5 ] || { echo "$output"; return 1; }
+  [ "$(map_value long_run max <<<"$output")" = 30 ] || { echo "$output"; return 1; }
+  [ "$(source_of long_run <<<"$output")" = default ] || { echo "$output"; return 1; }
+}
+
+@test "a task's long_run key beats the project's, and the other key still comes from the project" {
+  printf '## Task defaults\n\n[LONG_RUN] = [max: 60]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[LONG_RUN] = [stall: 10]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(map_value long_run stall <<<"$output")" = 10 ] || { echo "$output"; return 1; }
+  [ "$(map_value long_run max <<<"$output")" = 60 ] || { echo "$output"; return 1; }
+  [ "$(source_of long_run.stall <<<"$output")" = task ] || { echo "$output"; return 1; }
+  [ "$(source_of long_run.max <<<"$output")" = project ] || { echo "$output"; return 1; }
+}
+
+@test "a step inherits the epic's long_run key" {
+  EPIC="$PROJ/Tasks/ACTIVE/060-an-epic"
+  STEP="$EPIC/1-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[LONG_RUN] = [max: 90]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  run "$RESOLVE" json "$STEP"
+  [ "$(map_value long_run max <<<"$output")" = 90 ] || { echo "$output"; return 1; }
+  [ "$(source_of long_run <<<"$output")" = epic ] || { echo "$output"; return 1; }
+}
+
+@test "a long_run entry that is not whole minutes is skipped with a warning" {
+  printf '[TASK_TYPE] = [BUG]\n[LONG_RUN] = [max: 0, stall: 1h, foo: 3]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(map_value long_run max <<<"$out")" = 30 ] || { echo "$out"; return 1; }
+  [ "$(map_value long_run stall <<<"$out")" = 5 ] || { echo "$out"; return 1; }
+  for e in 'max: 0' 'stall: 1h' 'foo: 3'; do
+    grep -qF "'$e' not recognized, skipped" "$ERR" || { echo "no warning for $e: $(cat "$ERR")"; return 1; }
+  done
+}
+
+@test "a stall not below max is warned and applied as written" {
+  printf '[TASK_TYPE] = [BUG]\n[LONG_RUN] = [stall: 40, max: 30]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(map_value long_run stall <<<"$out")" = 40 ] || { echo "$out"; return 1; }
+  grep -qF 'long_run: stall 40 is not below max 30' "$ERR" || { cat "$ERR"; return 1; }
 }

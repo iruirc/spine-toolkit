@@ -18,6 +18,7 @@
 # [SCALE] = [full]            # lite | full
 # [MODELS] = [architect: opus]  # <light|walkthrough|done|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <opus|sonnet|haiku|fable|session>, comma-separated
 # [EFFORT] = [reviewer: high]   # <walkthrough|done|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <low|medium|high|xhigh|max|session>, comma-separated
+# [LONG_RUN] = [max: 60]      # <stall|max>: <minutes>, comma-separated
 # [DOCS] = [off]              # on | off
 
 ## 1. [Files]

@@ -30,6 +30,7 @@
 [DOCS] = [on]                          # on | off
 [MODELS] = [light: sonnet, walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session]
 [EFFORT] = [walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session]
+[LONG_RUN] = [stall: 5, max: 30]       # minutes: stall | max
 
 ## Persona
 

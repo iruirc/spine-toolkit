@@ -309,3 +309,14 @@ applies. The mechanical calls always run at `low`; writing and revising `Walkthr
 `session`. A level the model does not support drops to the nearest one it does. When the Workflow
 tool is unavailable and a profile runs through its skill, no effort can travel with a dispatch:
 every stage runs at the session's level, and the run says so once.
+
+### [LONG_RUN]
+
+**Values:** `<key>: <minutes>` entries, comma-separated; keys `stall` and `max`, whole minutes > 0 ·
+**Default:** `stall: 5, max: 30` · **Task override:** `[LONG_RUN] = [<key>: <minutes>, …]` ·
+**Defined by:** [`../conventions/agent-tooling.md`](../conventions/agent-tooling.md) → Long-running commands
+
+How long a command a stage agent runs through `scripts/long-run.sh` may print nothing before it
+counts as hung (`stall`), and how long it may run at all (`max`). Raise them for a project whose
+clean build or full UI test run is slower, or whose link step is silent for minutes. An epic's keys
+reach its steps.

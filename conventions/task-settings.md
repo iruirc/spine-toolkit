@@ -73,6 +73,7 @@ answers.
 | `budgets` | — | `[BUDGETS]`, entries `<artifact>: <lines>` | a positive integer | the `CAPS` table |
 | `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | `opus` `sonnet` `haiku` `fable` `session` | `sonnet` for `light` and `validator`, `session` for `walkthrough`, `done` and the other seven roles |
 | `effort` | `[EFFORT]` | `[EFFORT]`, entries `<key>: <value>` | `low` `medium` `high` `xhigh` `max` `session` | `session` |
+| `long_run` | `[LONG_RUN]` | `[LONG_RUN]`, entries `<key>: <minutes>` | keys `stall` `max`, a whole number of minutes > 0 | `stall: 5, max: 30` |
 
 `driver` walks this same chain but never rides the Outbound Contract: a workflow script must not
 gate on it, so it stays a pre-flight concern of the orchestrator alone
