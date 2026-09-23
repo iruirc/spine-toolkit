@@ -4,7 +4,8 @@ set -euo pipefail
 # Resolves every setting a task runs with: one chain, one reader of CLAUDE-spine-toolkit.md.
 # The fields, their values and their defaults: conventions/task-settings.md.
 #
-# Usage: scripts/resolve-settings.sh json <task-dir>           # every field as one JSON object
+# Usage: scripts/resolve-settings.sh json <task-dir>           # every field as one JSON object,
+#                                                                # plus plugin_root, the core root it runs from
 #        scripts/resolve-settings.sh show <task-dir> [--all]   # Task.md lines, with sources
 #                                                                # --all: every field, defaults included
 #        scripts/resolve-settings.sh raw  <dir> <block>        # the value lines of one config block
@@ -28,6 +29,9 @@ CAPS="Reproduce.md:120 Plan.md:200 Validation.md:100 Review.md:120 Done.md:80 Ta
 [ -d "$2" ] || { echo "not a directory: $2" >&2; exit 2; }
 [ "$1" != raw ] || [ "$#" -ge 3 ] || { echo "usage: $0 raw <dir> <block>" >&2; exit 2; }
 [ "$1" != show ] || [ "$#" -eq 2 ] || [ "$3" = --all ] || { echo "usage: $0 show <task-dir> [--all]" >&2; exit 2; }
+
+# Not a setting: where this installation lives, which a Method A script cannot find for itself.
+export SPINE_CORE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
 python3 - "$ROLES" "$MODELS" "$EFFORTS" "$UNSET_MODELS" "$CAPS" "$@" <<'PY'
 import json, os, re, sys
@@ -331,7 +335,8 @@ resolved['budgets'], defaults['budgets'] = caps, dict(CAPS)
 sources['budgets'] = budget_source
 
 if CMD == 'json':
-    print(json.dumps(dict(resolved, sources=sources), ensure_ascii=False, sort_keys=True))
+    print(json.dumps(dict(resolved, sources=sources, plugin_root=os.environ['SPINE_CORE_ROOT']),
+                     ensure_ascii=False, sort_keys=True))
     sys.exit(0)
 
 # show: the column a human reads. Task.md spells a map as one bracketed list, so that is how
