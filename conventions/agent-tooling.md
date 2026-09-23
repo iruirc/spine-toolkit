@@ -59,6 +59,14 @@ A template belongs to exactly one plugin. Resolve it against that plugin's root,
 
 Host-specific paths are fallbacks, not the canonical source.
 
+## Finding files
+
+A file a stage needs is looked for only under the roots its brief's `Search roots:` line names —
+the project root, every checkout `## Paths` lists under `External packages`, every folder it lists
+under `Roots` — the core root, and the base directory of a skill you loaded. Never search from `/`,
+from `~`, or from a folder above those roots. A file under none of them is missing: stop, and
+report the file and the roots you searched instead of widening the search.
+
 ## Long-running commands
 
 A command that can run longer than a minute — a build, a full test run, a UI test run — starts

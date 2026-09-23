@@ -5,7 +5,8 @@ set -euo pipefail
 # The fields, their values and their defaults: conventions/task-settings.md.
 #
 # Usage: scripts/resolve-settings.sh json <task-dir>           # every field as one JSON object,
-#                                                                # plus plugin_root, the core root it runs from
+#                                                                # plus plugin_root, the core root it runs from,
+#                                                                # and roots, the folders a stage may search
 #        scripts/resolve-settings.sh show <task-dir> [--all]   # Task.md lines, with sources
 #                                                                # --all: every field, defaults included
 #        scripts/resolve-settings.sh raw  <dir> <block>        # the value lines of one config block
@@ -34,7 +35,7 @@ CAPS="Reproduce.md:120 Plan.md:200 Validation.md:100 Review.md:120 Done.md:80 Ta
 export SPINE_CORE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
 python3 - "$ROLES" "$MODELS" "$EFFORTS" "$UNSET_MODELS" "$CAPS" "$@" <<'PY'
-import json, os, re, sys
+import glob, json, os, re, sys
 
 ROLES, MODEL_VALUES, EFFORT_VALUES, UNSET_MODELS = (s.split() for s in sys.argv[1:5])
 
@@ -334,8 +335,36 @@ for entry in config_entries('BUDGETS'):
 resolved['budgets'], defaults['budgets'] = caps, dict(CAPS)
 sources['budgets'] = budget_source
 
+
+
+def search_roots():
+    """Not a setting either: where a stage may look for a file, the core root aside
+    (conventions/agent-tooling.md → Finding files). The project root, then every folder
+    ## Paths names under External packages or Roots; one inside a listed root adds nothing."""
+    if not CFG:
+        return []
+    home = os.path.dirname(CFG)
+    roots = [home]
+    for line in block(CFG, 'Paths'):
+        m = re.match(r'^-\s*(External packages|Roots):\s*(.+?)\s*$', line)
+        if not m:
+            continue
+        key, pat = m.groups()
+        # External packages is written from the project root, as docs-route.sh reads it; Roots
+        # names folders outside it, so an absolute path there means what it says.
+        rel = pat.lstrip('/') if key == 'External packages' else os.path.expanduser(pat)
+        hits = [os.path.normpath(p) for p in sorted(glob.glob(os.path.join(home, rel))) if os.path.isdir(p)]
+        if not hits and key == 'Roots':
+            print("%s ## Paths: Roots '%s' names no folder, skipped" % (CFG, pat), file=sys.stderr)
+        for p in hits:
+            if not any(p == r or p.startswith(r + os.sep) for r in roots):
+                roots.append(p)
+    return roots
+
+
 if CMD == 'json':
-    print(json.dumps(dict(resolved, sources=sources, plugin_root=os.environ['SPINE_CORE_ROOT']),
+    print(json.dumps(dict(resolved, sources=sources, plugin_root=os.environ['SPINE_CORE_ROOT'],
+                          roots=search_roots()),
                      ensure_ascii=False, sort_keys=True))
     sys.exit(0)
 
