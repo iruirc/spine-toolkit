@@ -623,9 +623,10 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/agent-metrics.sh" --format json --run <runId
 and render `progress_stage_metrics` from the entry in `phases[]` whose `title` equals the stage
 just reported — it folds every agent the stage ran, its read-plan, walkthrough,
 walkthrough-check and walkthrough-revise calls included.
-Fill `{tuning}`, `{out}`, `{ctx}`, `{tools}` and `{elapsed}` from that entry's `tuningText`,
-`outText`, `ctxText`, `tools` and `elapsedText` — the ready-to-print strings where the script gives
-one, never from the raw `out`, `ctx` and `elapsedMs` numbers beside them; `{elapsed}` is the time
+Fill `{tuning}`, `{out}`, `{ctx}`, `{cacheWrite}`, `{cacheRead}`, `{tools}` and `{elapsed}` from
+that entry's `tuningText`, `outText`, `ctxText`, `cacheWriteText`, `cacheReadText`, `tools` and
+`elapsedText` — the ready-to-print strings where the script gives one, never from the raw `out`,
+`ctx`, `cacheWrite`, `cacheRead` and `elapsedMs` numbers beside them; `{elapsed}` is the time
 its agents worked, summed. At `quiet` and `normal` the script is not run at all — those two values
 behave exactly as they did before the metrics line existed.
 
