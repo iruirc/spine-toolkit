@@ -34,3 +34,34 @@ section() { # $1 = file, $2 = heading text without "## "
   nb="$(section "$SKILL" "Not this skill's business")"
   grep -qF '`## When the task owes no test`' <<<"$nb" || { echo "the bullet does not point at the section"; return 1; }
 }
+
+@test "the prelude hands the value to exactly the three phased profiles" {
+  for f in "$ROOT"/workflows/profile-*.js; do
+    grep -qF "const TESTS_NOTE = A.need_test === false && ['FEATURE', 'BUG', 'REFACTOR'].includes(PROFILE)" "$f" \
+      || { echo "$(basename "$f"): no gated TESTS_NOTE — TEST and RESEARCH default to false"; return 1; }
+    grep -qF '${TESTS_NOTE}Output language:' "$f" || { echo "$(basename "$f"): brief() never carries the line"; return 1; }
+    grep -qF '`## When the task owes no test`' "$f" || { echo "$(basename "$f"): the line does not point at the section"; return 1; }
+  done
+}
+
+@test "no phased stage demands a tester the task does not need" {
+  for p in $PHASED; do
+    f="$ROOT/workflows/profile-$p.js"
+    if grep -qE "^  if \(!need\('(Execute|Fix|Refactor)', '[a-z]+', 'tester'\)\)" "$f"; then
+      echo "profile-$p.js: tester is demanded whatever need_test says"; return 1
+    fi
+    grep -qE "A\.need_test === false \? need\('(Execute|Fix|Refactor)', '[a-z]+'\) : need\(" "$f" \
+      || { echo "profile-$p.js: no need() branch on need_test"; return 1; }
+  done
+}
+
+@test "a test phase under need_test=false stops the stage before any phase runs" {
+  for p in $PHASED; do
+    f="$ROOT/workflows/profile-$p.js"
+    g="$(grep -n "fromStartPhase(plan.phases || \[\]).filter((ph) => ph.kind === 'test')" "$f" | cut -d: -f1)"
+    r="$(grep -n 'const phasesDone = await runPhases(' "$f" | cut -d: -f1)"
+    [ -n "$g" ] || { echo "profile-$p.js: no guard over the remaining phases"; return 1; }
+    [ "$g" -lt "$r" ] || { echo "profile-$p.js: the guard runs after the phases"; return 1; }
+    grep -qF 'need_test=false, yet Plan.md has test phase(s)' "$f" || { echo "profile-$p.js: the stop names nothing"; return 1; }
+  done
+}
