@@ -149,6 +149,46 @@ setup_file() {
   [ "$(tm_field "$output" totals.totalText)" = "64.3k" ]
 }
 
+@test "a request written over several rows counts its usage once" {
+  # req_A: three rows repeat input 3, cache-write 1000, cache-read 20000; out grows to 120.
+  # msg_B: two rows with no requestId, joined by message.id: 1, 500, 21000; out grows to 80.
+  run tm_metrics home-a --session 12121212-1212-1212-1212-121212121212
+  [ "$(tm_field "$output" runs.0.agents.0.reqs)" = "2" ]
+  [ "$(tm_field "$output" runs.0.agents.0.inTok)" = "4" ]
+  [ "$(tm_field "$output" runs.0.agents.0.cacheWrite)" = "1500" ]
+  [ "$(tm_field "$output" runs.0.agents.0.cacheRead)" = "41000" ]
+  [ "$(tm_field "$output" runs.0.agents.0.out)" = "200" ]
+  [ "$(tm_field "$output" runs.0.agents.0.tools)" = "3" ]
+  [ "$(tm_field "$output" runs.0.agents.0.ctx)" = "21501" ]
+}
+
+@test "distinct requests each count, and a row without usage keeps its request's" {
+  # req_C 2/2000/30000 out 400, req_D 2/0/32000 out 100; req_D's last row has no usage.
+  run tm_metrics home-a --session 12121212-1212-1212-1212-121212121212
+  [ "$(tm_field "$output" runs.0.agents.1.reqs)" = "2" ]
+  [ "$(tm_field "$output" runs.0.agents.1.cacheWrite)" = "2000" ]
+  [ "$(tm_field "$output" runs.0.agents.1.cacheRead)" = "62000" ]
+  [ "$(tm_field "$output" runs.0.agents.1.out)" = "500" ]
+  [ "$(tm_field "$output" runs.0.agents.1.cacheReadText)" = "62.0k" ]
+  [ "$(tm_field "$output" totals.cacheRead)" = "103000" ]
+}
+
+@test "a stage's entry in phases[] sums its agents' requests and cache" {
+  run tm_metrics home-a --session 12121212-1212-1212-1212-121212121212
+  [ "$(tm_field "$output" runs.0.phases.0.title)" = "Reproduce" ]
+  [ "$(tm_field "$output" runs.0.phases.0.reqs)" = "2" ]
+  [ "$(tm_field "$output" runs.0.phases.0.cacheWrite)" = "1500" ]
+  [ "$(tm_field "$output" runs.0.phases.0.cacheRead)" = "41000" ]
+  [ "$(tm_field "$output" runs.0.phases.0.cacheWriteText)" = "1.5k" ]
+  [ "$(tm_field "$output" runs.0.phases.0.cacheReadText)" = "41.0k" ]
+}
+
+@test "md prints an agent's requests and cache on its row" {
+  run tm_metrics home-a --session 12121212-1212-1212-1212-121212121212 --format md
+  [ "$status" -eq 0 ]
+  tm_contains "$output" "| Reproduce | fixture-diagnostics | claude-opus-5 | 2 | 200 | 21.5k | 1.5k | 41.0k | 3 | 1m 00s |"
+}
+
 @test "json carries print-ready strings beside the raw numbers" {
   run tm_metrics home-a --session 11111111-1111-1111-1111-111111111111 --run wf_aaa1111-111
   [ "$status" -eq 0 ]
@@ -354,7 +394,7 @@ JSON
 @test "md format prints a table row per agent" {
   run tm_metrics home-a --session 11111111-1111-1111-1111-111111111111 --format md
   [ "$status" -eq 0 ]
-  tm_contains "$output" "| Stage | Agent | Tuning | out | ctx | tools | time |"
+  tm_contains "$output" "| Stage | Agent | Tuning | reqs | out | ctx | cache-w | cache-r | tools | time |"
   tm_contains "$output" "| Analyze | fixture-architect | claude-opus-5 |"
   tm_contains "$output" "312.0k"
 }
@@ -408,10 +448,7 @@ JSON
   tm_lacks "$output" "total ·"
 }
 
-@test "no renderer prints cache-read on a per-agent row" {
-  run tm_metrics home-a --session 11111111-1111-1111-1111-111111111111 --format md
-  [ "$status" -eq 0 ]
-  tm_lacks "$(echo "$output" | sed '$d' | sed '$d')" "cache"
+@test "the panel prints no cache on a per-agent row" {
   run tm_metrics home-a --session 11111111-1111-1111-1111-111111111111 --format panel
   [ "$status" -eq 0 ]
   tm_lacks "$(echo "$output" | sed '$d' | sed '$d')" "cache"
