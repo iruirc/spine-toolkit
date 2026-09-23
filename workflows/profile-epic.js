@@ -551,8 +551,8 @@ const STEP = {
     title: { type: 'string' },
     stack: { type: 'string', description: 'only when the step declares its own ## 4. [Stack]' },
     mode: { type: 'string', enum: ['manual', 'auto'], description: 'only when the step declares its own [WORKFLOW_MODE]' },
-    need_test: { type: 'boolean' },
-    need_review: { type: 'boolean' },
+    need_test: { type: 'boolean', description: "the step's own [NEED_TEST] from its Task.md" },
+    need_review: { type: 'boolean', description: "the step's own [NEED_REVIEW] from its Task.md" },
     scale: { type: 'string', enum: ['lite', 'full'], description: 'only when the step declares its own [SCALE]' },
     drive_app: { type: 'string', enum: ['auto', 'off'], description: "the step folder's own resolve-settings.sh drive_app value" },
     manual_checks: { type: 'string', enum: ['auto', 'always'], description: "the step folder's own resolve-settings.sh manual_checks value" },
@@ -650,7 +650,7 @@ Write Plan.md by applying the task-documents skill, its Plan.md section — it h
 Then create the step folders physically by invoking spine-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE], [STATUS] = PENDING, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
 Write each step's Task.md by applying the task-documents skill, its section on a step's Task.md — it holds what goes above the three anchors and under each. After this stage each one is measured: at most ${BUDGETS['Task.md']} lines, and ### Expected behaviour, ### Questions for Research and ### Acceptance each carrying text or "— <reason>".
 Apply feature-estimation at epic level and write ## Estimation into Plan.md: the aggregate is the SUM of the per-step ranges, reported as a named best/worst epic range, and it carries both the human and the AI-assisted range when the project is AI-assisted. Per-step ranges are written later by each step's own Plan stage; this roll-up is informational, it does NOT gate Execute, but it has to be present before the first step runs.
-Return every step you created in the steps array, in execution order.
+Return every step you created in the steps array, in execution order, each with its own [NEED_TEST] and [NEED_REVIEW] from its Task.md as booleans.
 
 If the verdict is PURE_RESEARCH:
 Finalize ${DIR}/Research.md. Plan.md is optional here and, if you write one, it is a research roadmap — what else needs investigating — with no executable steps. Return branch pure_research and an empty steps array. Create no step folders.`,
@@ -720,7 +720,7 @@ if (runs('Execute')) {
     const read = await agent(
       brief(
         'Execute',
-        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE] and [STATUS] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "<core root>/scripts/resolve-settings.sh json <step folder>" and return its drive_app, manual_checks, phase_verification, security, walkthrough and walkthrough_check values. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
+        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "<core root>/scripts/resolve-settings.sh json <step folder>" and return its drive_app, manual_checks, phase_verification, security, walkthrough and walkthrough_check values. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
       { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'mechanical') },
     )

@@ -133,8 +133,8 @@ At `lite`:
   artifact, and expect the orchestrator to measure against the same values when the stage returns.
 
 Unchanged at `lite`: `Reproduce` itself, one commit per green phase with the phase's tests run
-before it, the regression test, `Validation` with its own agent and its mandatory replay, and
-`Review` with an independent one.
+before it, the regression test (when `need_test=true`), `Validation` with its own agent and its
+mandatory replay, and `Review` with an independent one.
 
 **The ratchet** fires at the end of `Reproduce` — the first point at which anyone has measured the
 perimeter — and again at the planner's first act. The `[diagnostics]` agent that cannot localize the

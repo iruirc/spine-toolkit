@@ -100,3 +100,20 @@ EOF
     echo "workflow-bug/SKILL.md calls the test mandatory without the condition"; return 1
   fi
 }
+
+@test "an epic step reports its own need_test and need_review" {
+  f="$ROOT/workflows/profile-epic.js"
+  plan="$(stage_block "$f" "Plan")"
+  execute="$(stage_block "$f" "Execute")"
+  for tag in '[NEED_TEST]' '[NEED_REVIEW]'; do
+    grep -qF "$tag" <<<"$plan" || { echo "Plan's return instruction never names $tag"; return 1; }
+    grep -qF "$tag" <<<"$execute" || { echo "Execute's read-steps prompt never names $tag"; return 1; }
+  done
+  grep -qF "need_test: { type: 'boolean', description:" "$f" \
+    || { echo "the STEP schema's need_test field has no description"; return 1; }
+}
+
+@test "the contract pins need_test and need_review as JSON booleans" {
+  grep -qF 'Method A passes `need_test` and `need_review` as JSON booleans' "$ROOT/skills/orchestrator/SKILL.md" \
+    || { echo "the Outbound Contract never says the type"; return 1; }
+}
