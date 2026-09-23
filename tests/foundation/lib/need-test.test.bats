@@ -65,3 +65,38 @@ section() { # $1 = file, $2 = heading text without "## "
     grep -qF 'need_test=false, yet Plan.md has test phase(s)' "$f" || { echo "profile-$p.js: the stop names nothing"; return 1; }
   done
 }
+
+# A stage's block in a profile script, from its banner to the next one.
+stage_block() { # $1 = file, $2 = stage
+  awk -v s="// ── $2 " 'index($0,s)==1{p=1;next} p&&/^\/\/ ── /{exit} p' "$1"
+}
+
+@test "every BUG stage that spoke of the regression test branches on need_test" {
+  f="$ROOT/workflows/profile-bug.js"
+  # One phrase per stage that only its need_test=false branch carries; a bare
+  # "A.need_test === false" would already match Fix through its need() line.
+  while IFS='|' read -r s phrase; do
+    grep -qF "$phrase" <<<"$(stage_block "$f" "$s")" \
+      || { echo "BUG $s asks for a test whatever need_test says"; return 1; }
+  done <<'EOF'
+Reproduce|Reproduce.md proposes none and carries no ## Regression Test section
+Plan|the plan has no phase of kind test and no regression-test item
+Fix|the phase writes none
+Review|${A.need_test === false ? '' : 'does the regression test lock in the real scenario, '}
+Done|that no regression test was written because the task owes none
+EOF
+  if grep -qF 'unless the contract disabled it' "$f"; then
+    echo "Fix still leaves the agent to guess the contract"; return 1
+  fi
+}
+
+@test "Method B says the same" {
+  for p in $PHASED; do
+    grep -qF '`## When the task owes no test`' "$ROOT/skills/workflow-$p/SKILL.md" \
+      || { echo "workflow-$p/SKILL.md: need_test only gates a role"; return 1; }
+  done
+  b="$ROOT/skills/workflow-bug/SKILL.md"
+  if grep -F 'regression test is mandatory' "$b" | grep -vqF 'need_test=true'; then
+    echo "workflow-bug/SKILL.md calls the test mandatory without the condition"; return 1
+  fi
+}
