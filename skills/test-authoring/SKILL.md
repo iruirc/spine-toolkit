@@ -108,6 +108,14 @@ A double there leaves a test that passes over a behaviour nobody ran.
 - Every test would fail if the behaviour under it broke. If you cannot say how a test fails, it is not
   a test yet.
 
+## When the task owes no test
+
+With `need_test=false` the task adds no test: no test file and no test case. The
+existing suite runs as usual, at every phase's verification and at Validation. An existing test may
+be edited only when the change alters the very behaviour it asserts; the phase
+names that test and the reason in its summary. REFACTOR keeps its stricter rule: there any edited
+test is a finding.
+
 ## Review
 
 Findings read out of the tests a task added or changed — not out of the suite around them:
@@ -126,10 +134,12 @@ blocks", because they judge how a plan was written after Validation has already 
 section judges the artifact: a test that cannot fail is a defect in what was delivered, and it belongs
 in `blocking_findings`.
 
-Where `[NEED_TEST]` was false, the task added no tests and this section yields nothing. Whether a test
-was owed is the task contract's decision, not review's.
+Where `need_test` was false, a test the task added is a blocking finding, and so is an edit to an
+existing test whose phase named no reason for it — see `## When the task owes no test`. Whether a
+test was owed is the task contract's decision, not review's.
 
 ## Not this skill's business
 
-- **Whether a test is needed at all.** That is `[NEED_TEST]` in the task contract.
+- **Whether a test is needed at all.** That is `need_test` in the task contract; what `false` then
+  forbids is `## When the task owes no test`.
 - **How much a phase verifies before it commits.** That is `spine-toolkit:phase-verification`.

@@ -130,7 +130,7 @@ section() { # $1 = file, $2 = heading text without "## "
   # Both neighbouring skills end their ## Review with "none of them blocks". Without
   # the opposite said out loud, a reviewer reads the nearest rule and waves the lot through.
   grep -qF 'may block' <<<"$r" || { echo "## Review does not say a finding may block"; return 1; }
-  grep -qF '[NEED_TEST]' <<<"$r" || { echo "## Review invents findings on a task that owed no test"; return 1; }
+  grep -qF '`## When the task owes no test`' <<<"$r" || { echo "## Review does not hold a task that owed no test to it"; return 1; }
 }
 
 @test "test quality is no longer sent to the platforms" {
