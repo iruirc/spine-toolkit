@@ -331,9 +331,10 @@ section() {
   [ -n "$para" ] || { echo "no progress_stage_metrics paragraph"; return 1; }
   grep -qF '`phases[]`' <<<"$para" || { echo "the line is not read from phases[]"; return 1; }
   grep -qF '`tuningText`' <<<"$para" || { echo "the line does not fill {tuning}"; return 1; }
+  grep -qF '`cacheWriteText`, `cacheReadText`' <<<"$para" || { echo "the line does not fill the cache columns"; return 1; }
   ! grep -qF 'the record in `agents[]`' <<<"$para" || { echo "the line still quotes one agent"; return 1; }
   for l in en ru; do
-    grep -qxF '{tuning} · {out} out · {ctx} ctx · {tools} tools · {elapsed}' "$ROOT/skills/orchestrator/locales/$l.md" \
+    grep -qxF '{tuning} · {out} out · {ctx} ctx · {cacheWrite} cache-w · {cacheRead} cache-r · {tools} tools · {elapsed}' "$ROOT/skills/orchestrator/locales/$l.md" \
       || { echo "$l: progress_stage_metrics does not carry {tuning}"; return 1; }
   done
 }
