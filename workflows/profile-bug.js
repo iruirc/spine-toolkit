@@ -570,9 +570,11 @@ if (runs('Reproduce')) {
       'Reproduce',
       `Reproduce the bug described in ${DIR}/Task.md and write ${DIR}/Reproduce.md: the reproduction steps, a minimal reproducer, and how often it manifests (always / sometimes / only under a named condition). Validation replays this scenario later, so it has to be deterministic enough to replay.
 
+When Task.md already names the root cause at file:line, that is a claim to check, not a question to reopen: make the red run — the reproducer failing — and check that the failure passes through that place. Record both under ## Root Cause in Reproduce.md, citing Task.md. Investigate further only if the check does not match, and say where it diverged.
+
 Apply the feature-requirements skill, Secondary checklist only, to enumerate which Secondary states the bug touches — error, loading, empty, offline, a11y, deeplink, push, i18n, analytics, lifecycle, cancellation. A bug usually hides in one of those rather than in the happy path, and naming them now is what stops "fixed the happy path, broke offline".
 
-Set reproducible to no only when you could not make it happen at all, and record what you tried in Reproduce.md before you do.${A.need_test === false ? '\n\nThis task owes no test (need_test=false): Reproduce.md proposes none and carries no ## Regression Test section.' : ''}${lite() ? `\n\nThis run is at scale lite, so Diagnose gets no stage of its own. Add a "## Diagnosis" section to Reproduce.md carrying what it would have produced: the root cause, the components a fix touches, how wide it has to be, and the risks it carries. If you cannot localize the root cause, say so there and raise the scale rather than guessing. If you do raise it, leave that section out — Diagnose then runs as its own stage. That section is Research.md folded into Reproduce.md, so the task-documents skill's Research.md section applies to it as well.` : ''}${cap('Reproduce.md')}${ratchet()}`,
+Set reproducible to no only when you could not make it happen at all, and record what you tried in Reproduce.md before you do.${A.need_test === false ? '\n\nThis task owes no test (need_test=false): Reproduce.md proposes none and carries no ## Regression Test section.' : ''}${lite() ? `\n\nThis run is at scale lite, so Diagnose gets no stage of its own. Add a "## Diagnosis" section to Reproduce.md carrying what it would have produced: the root cause — the one confirmed from Task.md, where it named one — the components a fix touches, how wide it has to be, and the risks it carries. If you cannot localize the root cause, say so there and raise the scale rather than guessing. If you do raise it, leave that section out — Diagnose then runs as its own stage. That section is Research.md folded into Reproduce.md, so the task-documents skill's Research.md section applies to it as well.` : ''}${cap('Reproduce.md')}${ratchet()}`,
     ),
     {
       label: 'reproduce',
@@ -614,7 +616,7 @@ if (runs('Diagnose') && !lite()) {
     {
       role: 'diagnostics',
       agentType: lens('diagnostics'),
-      ask: 'Trace the failure to its root cause: what actually goes wrong, in which call path, under which state. Instrument if you need to.',
+      ask: 'Trace the failure to its root cause: what actually goes wrong, in which call path, under which state. Instrument if you need to. When Reproduce.md records a root cause confirmed from Task.md, do not trace it again: take it as established and look for what it leaves open — the same defect at other call sites, and states under which the failure differs.',
     },
     {
       role: 'architect',
