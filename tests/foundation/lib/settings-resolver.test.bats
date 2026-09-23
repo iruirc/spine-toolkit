@@ -717,3 +717,10 @@ FIELDS
   [ "$(map_value long_run stall <<<"$out")" = 40 ] || { echo "$out"; return 1; }
   grep -qF 'long_run: stall 40 is not below max 30' "$ERR" || { cat "$ERR"; return 1; }
 }
+
+@test "json names the core root the script runs from, and show does not list it" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(field plugin_root <<<"$output")" = "$ROOT" ] || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK" --all
+  ! grep -qi 'plugin_root' <<<"$output" || { echo "$output"; return 1; }
+}
