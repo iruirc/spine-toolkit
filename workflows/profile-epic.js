@@ -567,7 +567,7 @@ const STEP = {
     walkthrough: { type: 'string', enum: ['brief', 'deep', 'off'], description: "the step folder's own resolve-settings.sh walkthrough value" },
     walkthrough_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh walkthrough_check value" },
     security: { type: 'string', enum: ['auto', 'on', 'off'], description: "the step folder's own resolve-settings.sh security value" },
-    long_run: { type: 'object', properties: { stall: { type: 'integer' }, max: { type: 'integer' } }, description: "the step folder's own resolve-settings.sh long_run value" },
+    long_run: { type: 'object', required: ['stall', 'max'], properties: { stall: { type: 'integer' }, max: { type: 'integer' } }, description: "the step folder's own resolve-settings.sh long_run value" },
     models: { type: 'string', description: 'only when the step declares its own [MODELS]: the text between its brackets' },
     effort: { type: 'string', description: 'only when the step declares its own [EFFORT]: the text between its brackets' },
     research_agent: { type: 'string', description: 'only for a RESEARCH step whose Task.md carries [RESEARCH_AGENT]' },

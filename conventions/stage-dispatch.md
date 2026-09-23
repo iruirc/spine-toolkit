@@ -26,7 +26,7 @@ and the skill — and is not re-confirmed per stage.
 
 A subagent's prompt names core files by absolute path and names the core root itself, as the
 `Core root:` line of a Method A brief does; it carries the `Long-running commands:` line with the
-task's `long_run` numbers the same way.
+task's `long_run` values converted to seconds (minutes × 60), exactly as the Method A brief does.
 
 ## Declared deviation
 
