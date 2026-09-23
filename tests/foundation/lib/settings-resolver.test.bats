@@ -527,6 +527,7 @@ FIELDS
   grep -qF "security: { type: 'string', enum: ['auto', 'on', 'off']" "$E" \
     || { echo "the step record has no security"; return 1; }
   grep -qF 'plugin_root: A.plugin_root,' "$E" || { echo "profile-epic.js does not forward plugin_root"; return 1; }
+  grep -qF 'roots: ROOTS,' "$E" || { echo "profile-epic.js does not forward roots"; return 1; }
   grep -qF "long_run: { type: 'object'" "$E" || { echo "the step record has no long_run"; return 1; }
 }
 
@@ -723,4 +724,26 @@ FIELDS
   [ "$(field plugin_root <<<"$output")" = "$ROOT" ] || { echo "$output"; return 1; }
   run "$RESOLVE" show "$TASK" --all
   ! grep -qi 'plugin_root' <<<"$output" || { echo "$output"; return 1; }
+}
+
+roots() { python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin)["roots"]))'; }
+
+@test "roots is the project root alone when ## Paths names nothing" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(roots <<<"$output")" = "$PROJ" ] || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK" --all
+  ! grep -qi 'roots' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "roots adds every checkout and Roots folder, skips the nested and names the missing" {
+  mkdir -p "$PROJ/Packages/Net" "$BATS_TEST_TMPDIR/shared/a" "$BATS_TEST_TMPDIR/assets"
+  printf '## Paths\n\n(optional: guidance)\n- Sources: /Sources\n- External packages: /Packages/*\n- External packages: ../shared/*\n- Roots: ../assets\n- Roots: %s\n- Roots: ../nowhere\n' \
+    "$BATS_TEST_TMPDIR/assets" >>"$PROJ/CLAUDE-spine-toolkit.md"
+  "$RESOLVE" json "$TASK" >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  expected="$PROJ
+$BATS_TEST_TMPDIR/shared/a
+$BATS_TEST_TMPDIR/assets"
+  [ "$(roots <"$BATS_TEST_TMPDIR/out")" = "$expected" ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  grep -qF "Roots '../nowhere' names no folder" "$ERR" || { cat "$ERR"; return 1; }
+  [ "$(wc -l <"$ERR")" -eq 1 ] || { cat "$ERR"; return 1; }
 }

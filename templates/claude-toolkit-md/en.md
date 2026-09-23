@@ -100,13 +100,18 @@ manual
 
 ## Paths
 
-(optional: "- Sources: /Sources", "- Tests: /Tests", "- External packages: /Packages/*"
+(optional: "- Sources: /Sources", "- Tests: /Tests", "- External packages: /Packages/*", "- Roots: ../design-assets"
 
 `External packages` may repeat and its value is a glob resolved from the project root. Every
 directory it resolves to is a checkout the project builds against; a checkout carrying its own
 `DocsMap.md` contributes its components to this project's registry, declared once at the
 package and read by every project that holds it. Paths inside a package's registry are written
-relative to that package's root.)
+relative to that package's root.
+
+`Roots` may repeat too and names a folder outside the build that the project may read — an assets
+repository, shared fixtures. It is absolute, or relative to the project root. Together with the
+project root and every external package it is where a stage agent may search for a file, and
+nowhere else.)
 
 ## Orchestration
 

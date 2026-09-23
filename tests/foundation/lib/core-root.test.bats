@@ -6,13 +6,15 @@ setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
 }
 
-@test "the prelude names the core root and the long-run budget" {
+@test "the prelude names the core root, the long-run budget and the search roots" {
   for f in "$ROOT"/workflows/profile-*.js; do
     for s in "const CORE = A.plugin_root" \
              'const core = (p) => `${CORE}/${p}`' \
              'const LONG_RUN = { stall: 5, max: 30, ...(A.long_run || {}) }' \
              'Core root: ${CORE} — every conventions/… or scripts/… path named in this brief or in your agent definition is relative to it.' \
-             "Long-running commands: follow \${core('conventions/agent-tooling.md')} → Long-running commands, with --stall \${60 * LONG_RUN.stall} --max \${60 * LONG_RUN.max}."; do
+             "Long-running commands: follow \${core('conventions/agent-tooling.md')} → Long-running commands, with --stall \${60 * LONG_RUN.stall} --max \${60 * LONG_RUN.max}." \
+             "const ROOTS = Array.isArray(A.roots) ? A.roots.filter((r) => typeof r === 'string' && r.startsWith('/')) : []" \
+             "Search roots: \${ROOTS.length ? ROOTS.join(', ') : 'the project root'} and the core root — follow \${core('conventions/agent-tooling.md')} → Finding files: never search from / or ~, and a file in none of them is reported missing, not searched for further."; do
       grep -qF -- "$s" "$f" || { echo "$(basename "$f"): missing: $s"; return 1; }
     done
   done
@@ -72,7 +74,20 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
 @test "Method B names the core root in a subagent's prompt" {
   s="$(section "$ROOT/conventions/stage-dispatch.md" 'Standing authorization')"
-  for t in 'absolute path' '`Core root:`' '`Long-running commands:`'; do
+  for t in 'absolute path' '`Core root:`' '`Long-running commands:`' '`Search roots:`'; do
     grep -qF -- "$t" <<<"$s" || { echo "stage-dispatch lost: $t"; return 1; }
+  done
+}
+
+@test "the contract carries roots, and agent-tooling bounds every search by them" {
+  S="$ROOT/skills/orchestrator/SKILL.md"
+  grep -qF 'roots=[/Users/<user>/App' "$S" || { echo "no roots in the example contract"; return 1; }
+  p="$(grep -F '`roots` — ' "$S")"
+  for t in 'resolve-settings.sh json' '## Paths' 'Absent'; do
+    grep -qF -- "$t" <<<"$p" || { echo "the roots paragraph lost: $t"; return 1; }
+  done
+  s="$(section "$ROOT/conventions/agent-tooling.md" 'Finding files')"
+  for t in 'External packages' 'Roots' 'core root' 'base directory' '`/`' '`~`' 'stop'; do
+    grep -qF -- "$t" <<<"$s" || { echo "Finding files lost: $t"; return 1; }
   done
 }

@@ -379,6 +379,7 @@ models={light: sonnet, walkthrough: session, done: session, architect: session, 
 effort={walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session}
 long_run={stall: 5, max: 30}
 plugin_root=/Users/<user>/.claude/plugins/cache/<marketplace>/spine-toolkit/<version>
+roots=[/Users/<user>/App, /Users/<user>/Packages/Net]
 archive_paths=[Tasks/ACTIVE/001-profile/_archive/Plan-2026-04-25T143022.md, Tasks/ACTIVE/001-profile/_archive/Research-2026-04-25T143022.md]
 ```
 
@@ -449,6 +450,8 @@ size belongs to the task, not to one dispatch.
 `effort` — the reasoning effort each dispatch runs at, a key for each of the same eight roles, `walkthrough` and `done`. Resolved by the same run of `resolve-settings.sh json`, over `Task.md` `[EFFORT]` → the epic's for a `.step/` folder → `CLAUDE-spine-toolkit.md` `[EFFORT]` → `session`; that field is this field. Always filled, for every profile, `walkthrough` and `done` first and then the roles in vocabulary order. Method B takes that map as it is; Method A passes the same object as real JSON. It travels in the contract, has one reader, and has what it cannot use announced exactly as `models` does. Only Method A can pass it per dispatch; what a Method B run says instead is in **Dispatch**.
 
 `long_run` — how long a command a stage agent runs may stay silent (`stall`) and may run at all (`max`), in minutes. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. The script hands both to every agent as the `--stall` and `--max` of `scripts/long-run.sh`, in seconds; Method A passes the object as real JSON, and Method B puts the same values, in seconds, in its dispatch prompt (`conventions/stage-dispatch.md`). When `stall` is not below `max`, the resolver's stderr line — `long_run: stall <n> is not below max <m>, the budget fires first` — is announced to the user as is; the values still apply as written.
+
+`roots` — the folders a stage agent may search for a file, the core root aside: the project root, then every folder `## Paths` in `CLAUDE-spine-toolkit.md` names under `External packages` or `Roots`, absolute. Printed by the same run of `resolve-settings.sh json`; always filled, for every profile. Method A passes the list as real JSON, Method B names it in its dispatch prompt (`conventions/stage-dispatch.md`); either way it becomes the brief's `Search roots:` line, which `conventions/agent-tooling.md` → Finding files turns into a rule. Absent, the brief names only the project root and the core root and the run goes on: unlike a missing `plugin_root`, a shorter list narrows the search without breaking it.
 
 `archive_paths` — list of paths to backups already created in `_archive/` for stages that will be overwritten (filled before handing off control). Format: `[path1, path2, path3]`. Empty list = `[]`. Method A passes it as a JSON array of strings.
 

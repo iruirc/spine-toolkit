@@ -38,7 +38,9 @@ The config's line is the project's default for these twelve fields, and the task
 
 Every other block of the file — `## Persona`, `## Rules`, `## Platform`, `## Agents`, `## Stack`,
 `## Modules`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`,
-`## Orchestration` — is read by a skill for its own purposes and holds no resolved field.
+`## Orchestration` — is read by a skill for its own purposes and holds no resolved field. One
+exception feeds every task: the folders `## Paths` names under `External packages` and `Roots`,
+with the project root, are the only places a stage agent may search for a file.
 
 ## Project settings
 
