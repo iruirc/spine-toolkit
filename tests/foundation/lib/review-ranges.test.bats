@@ -44,6 +44,16 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
   done
 }
 
+@test "a repository with no known base is scoped by hand, never read as idle" {
+  blind='{"since": "reviewed", "repos": {".": {"range": "a1..HEAD", "commits": 0, "state": "ok"}, "Packages/Core": {"range": null, "commits": null, "state": "unknown"}}}'
+  for p in $RANGED; do
+    out="$(run_profile "$p" "$(contract Review ", \"review_ranges\": $blind, \"archive_paths\": [\"/p/Tasks/ACTIVE/001-x/_archive/Review-2026-09-24T100000.md\"]")" '{}')"
+    r="$(prompt_of review <<<"$out")"
+    grep -qF "Packages/Core: no known base — review this task's own commits there" <<<"$r" || { echo "profile-$p: no clause for the unknown repository"; return 1; }
+    if grep -qF 'do not rescan the tree' <<<"$r"; then echo "profile-$p: an unknown repository reads as idle"; return 1; fi
+  done
+}
+
 @test "without review_ranges the Review prompt reads as before" {
   for p in bug feature refactor; do
     r="$(run_profile "$p" "$(contract Review '')" '{}' | prompt_of review)"
