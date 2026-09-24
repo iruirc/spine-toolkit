@@ -65,6 +65,7 @@ answers.
 | `manual_checks` | `[MANUAL_CHECKS]` | `[MANUAL_CHECKS]` | `auto` `always` | `auto` |
 | `driver` | `[DRIVER]` | `[DRIVER]` | a plugin name, `auto`, `—` | `auto` |
 | `phase_verification` | `[PHASE_VERIFICATION]` | `[PHASE_VERIFICATION]` | `proportional` `full` | `proportional` |
+| `fix_rounds` | `[FIX_ROUNDS]` | `[FIX_ROUNDS]` | a whole number ≥ 0 | `2` |
 | `security` | `[SECURITY]` | `[SECURITY]` | `auto` `on` `off` | `auto` |
 | `docs_lever` | `[DOCS]` | `[DOCS]` | `on` `off` | `on` |
 | `docs_map` | — | `[DOCS_MAP]` | a path | `DocsMap.md` |
@@ -79,6 +80,10 @@ answers.
 gate on it, so it stays a pre-flight concern of the orchestrator alone
 (`conventions/driver-contract.md`; `tests/foundation/lib/orchestrator-contract.test.bats` — "the
 driver does not travel").
+
+`fix_rounds` is the orchestrator's alone too: how many `fix-review` rounds `auto` runs by itself
+after Review returns `CHANGES_REQUESTED`, `0` for none. It never rides the Outbound Contract; the
+loop is in the orchestrator's Gating.
 
 ## Two decisions
 
