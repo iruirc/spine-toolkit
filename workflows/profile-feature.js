@@ -145,6 +145,17 @@ Prose language: ${LANG_NAME}.`
 // profiles that change code, review it and close it act on them.
 const RANGED = ['FEATURE', 'BUG', 'REFACTOR', 'TEST'].includes(PROFILE)
 const CATCH_UP = RANGED && A.action === 'catch-up'
+// fix-review: one phase built from Review's findings instead of Plan.md's own (orchestrator, Gating).
+const FIX_REVIEW = RANGED && A.action === 'fix-review' && Array.isArray(A.fix_findings) && A.fix_findings.length > 0
+const FIX_ROUND = Number.isInteger(A.fix_round) && A.fix_round > 0 ? A.fix_round : 1
+const FIX_PLAN = { artifact_path: `${DIR}/Plan.md`, phases: [{ id: `R${FIX_ROUND}`, title: `Review fixes ${FIX_ROUND}`, kind: 'code' }] }
+// The fix phase is not in Plan.md yet, so its guidance says how to add it; any other phase keeps its own.
+const fixGuidance = (guidance) =>
+  FIX_REVIEW
+    ? `${guidance}\n\nThis phase is not in Plan.md yet: first append it — a row in the top-level table and a detail section with the findings below as its checkboxes and a **Verification:** line chosen by the spine-toolkit:phase-verification skill. Then fix exactly these findings, nothing else, commit, and mark the phase ✅. Findings:\n- ${A.fix_findings.join('\n- ')}`
+    : guidance
+// Fixes that follow a catch-up close that catch-up too.
+const AFTER_DONE = FIX_REVIEW && A.after_done === true
 const RANGES = A.review_ranges && A.review_ranges.repos && typeof A.review_ranges.repos === 'object' && Object.keys(A.review_ranges.repos).length ? A.review_ranges : null
 const PRIOR_REVIEW = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Review-[^/]*\.md$/.test(p))
 // One clause per repository, as review_ranges names them.
@@ -166,7 +177,7 @@ const REVIEW_RECORD = RANGED
 const CATCH_UP_VALIDATION = CATCH_UP && RANGES ? `\n\nThis run catches up commits that landed after the task's Done: ${rangeList()}. Validate them at the depth the spine-toolkit:phase-verification skill gives their diff, and name that depth in Validation.md.` : ''
 // Done's share: close what Review left it, stamp where the repositories stand.
 const doneRecord = (handed) =>
-  `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings. The first lines of Done.md are the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" that names those ranges, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}`
+  `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings. The first lines of Done.md are the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" that names those ranges, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}${AFTER_DONE ? ` These fixes follow a catch-up: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" that names the ranges "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since done prints, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}`
 // Review's done_findings that Done did not report closed; none when Review did not run in this invocation.
 const unclosed = (review, done) =>
   review && Array.isArray(review.done_findings) ? review.done_findings.slice(done && Array.isArray(done.closed_findings) ? done.closed_findings.length : 0) : []
@@ -683,7 +694,7 @@ Then add a ## Manual acceptance section: one line per check this task's automati
 // ── Execute ─────────────────────────────────────────────────────────────────
 if (runs('Execute')) {
   if (!(A.need_test === false ? need('Execute', 'developer') : need('Execute', 'developer', 'tester'))) return finish('ask_user')
-  if (!plan) plan = await readPlan('Execute', 'developer')
+  if (!plan) plan = FIX_REVIEW ? FIX_PLAN : await readPlan('Execute', 'developer')
   if (!plan) return finish('stop', { status: 'error', reason: 'could not read the phase list from Plan.md' })
 
   // A test phase under need_test=false is a plan defect: stop before any phase commits.
@@ -697,7 +708,7 @@ if (runs('Execute')) {
     'Execute',
     { code: 'developer', test: 'tester' },
     fromStartPhase(plan.phases || []),
-    'Commit type: feat for a phase that adds behaviour, fix for one that repairs it, test for a test-only phase, chore for build or config only.',
+    fixGuidance('Commit type: feat for a phase that adds behaviour, fix for one that repairs it, test for a test-only phase, chore for build or config only.'),
   )
   if (!phasesDone) return finish('ask_user', { status: 'interrupted' })
   record('Execute', { artifact_path: plan.artifact_path, summary: phasesDone })
