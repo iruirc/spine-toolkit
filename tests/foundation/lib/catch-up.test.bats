@@ -39,7 +39,9 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     grep -qF "$f" <<<"$d" || { echo "State Detection lost: $f"; return 1; }
   done
   m="$(section "$S" 'Stage Management')"
-  grep -qF '| "catch up 026" / "догони 026" | `catch-up` |' <<<"$m" || { echo "no trigger row"; return 1; }
+  grep -qF '| "catch up 026" | `catch-up` |' <<<"$m" || { echo "no trigger row"; return 1; }
+  ru_trigger="$(python3 -c 'print("\"%s N\"" % "".join(map(chr, (0x434, 0x43e, 0x433, 0x43e, 0x43d, 0x438))))')"   # the Russian "catch up N"
+  sed -n '/^description:/,/^---$/p' "$S" | grep -qF "$ru_trigger" || { echo "no Russian trigger in the description"; return 1; }
   grep -qF '| `catch-up` |' <<<"$m" || { echo "no archival row"; return 1; }
 }
 
