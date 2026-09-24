@@ -141,13 +141,42 @@ ${DOCS_NOTE}${body}
 
 Prose language: ${LANG_NAME}.`
 
+// Where a task's repositories stood and what changed since: conventions/task-ranges.md. Only the
+// profiles that change code, review it and close it act on them.
+const RANGED = ['FEATURE', 'BUG', 'REFACTOR', 'TEST'].includes(PROFILE)
+const CATCH_UP = RANGED && A.action === 'catch-up'
+const RANGES = A.review_ranges && A.review_ranges.repos && typeof A.review_ranges.repos === 'object' && Object.keys(A.review_ranges.repos).length ? A.review_ranges : null
+const PRIOR_REVIEW = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Review-[^/]*\.md$/.test(p))
+// One clause per repository, as review_ranges names them.
+const rangeList = () =>
+  Object.entries(RANGES.repos)
+    .map(([repo, r]) => (r.range ? `${repo}: ${r.range} (${r.commits} commit${r.commits === 1 ? '' : 's'})` : `${repo}: no known base — review this task's own commits there and say so under ### Scope`))
+    .join('; ')
+// What Review reads; an older orchestrator sends no ranges, and the stage's own wording stands.
+const reviewScope = (fallback) => {
+  if (!RANGED || !RANGES) return fallback
+  const again = RANGES.since !== 'base' || !!PRIOR_REVIEW
+  const idle = again && Object.values(RANGES.repos).every((r) => r.commits === 0)
+  return `Review exactly these ranges, one per repository, and nothing outside them: ${rangeList()}.${again ? ` Your previous review is ${PRIOR_REVIEW || `${DIR}/Review.md — read it before you overwrite it`}: mark each of its Critical and Major findings Resolved, Still open or Regressed.` : ''}${idle ? ' No range holds a commit: do not rescan the tree; restate the open items of the previous verdict.' : ''}`
+}
+// Review's share of the record, and the one finding class that does not block Done.
+const REVIEW_RECORD = RANGED
+  ? `\n\nDirectly under the first line, write the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind reviewed prints, run right before you finish, exactly as printed. Under ### Scope name the ranges you actually reviewed, per repository. A finding goes into done_findings only when editing files inside the task folder — Done.md, Plan.md, Walkthrough.md — closes it without a single code commit; anything that needs a code commit is a blocking finding. done_findings alone never make the verdict CHANGES_REQUESTED. List them under ## For Done in Review.md.`
+  : ''
+const CATCH_UP_VALIDATION = CATCH_UP && RANGES ? `\n\nThis run catches up commits that landed after the task's Done: ${rangeList()}. Validate them at the depth the spine-toolkit:phase-verification skill gives their diff, and name that depth in Validation.md.` : ''
+// Done's share: close what Review left it, stamp where the repositories stand.
+const doneRecord = (handed) =>
+  `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings. The first lines of Done.md are the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" that names those ranges, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}`
+// Review's done_findings that Done did not report closed; none when Review did not run in this invocation.
+const unclosed = (review, done) =>
+  review && Array.isArray(review.done_findings) ? review.done_findings.slice(done && Array.isArray(done.closed_findings) ? done.closed_findings.length : 0) : []
 // A report an earlier Done left is claims to check, never a draft to confirm.
 const PRIOR_DONE = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Done-[^/]*\.md$/.test(p))
-const doneBrief = (body) => brief(
+const doneBrief = (body, handed) => brief(
   'Done',
   `${body}
 
-${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.`,
+${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}`,
 )
 
 const ARTIFACT = {
@@ -160,6 +189,8 @@ const ARTIFACT = {
     summary: { type: 'string', description: 'two or three sentences for the next stage' },
   },
 }
+// Done also says which of Review's done_findings it closed.
+const DONE_ARTIFACT = { ...ARTIFACT, properties: { ...ARTIFACT.properties, closed_findings: { type: 'array', items: { type: 'string' } } } }
 
 const PLAN = {
   type: 'object',
@@ -221,6 +252,7 @@ const REVIEW = {
     review_status: { type: 'string', enum: ['APPROVED', 'CHANGES_REQUESTED', 'DISCUSSION'] },
     artifact_path: { type: 'string' },
     blocking_findings: { type: 'array', items: { type: 'string' } },
+    done_findings: { type: 'array', items: { type: 'string' }, description: 'closed by editing files in the task folder, never by a code commit' },
     summary: { type: 'string' },
   },
 }
@@ -666,7 +698,7 @@ if (runs('Validation')) {
 
 For TEST a full test run is mandatory, through this platform's own test tooling: every newly added test has to pass on its first run. When one fails on the first run, re-run that test up to three times; if the results flap, return FLAKY and record the test name, the failure rate, and your hypothesis for the cause in Validation.md. Driving a running instance of the app is optional and only for UI tests that need visual verification; four things can remove that option, and each removes it the same way: drive_app resolving to off — this run's value is ${DRIVE_APP} — no driver resolving at all, a driver that cannot be reached for this run's surface — its server not connected, the module for that surface not installed, or that surface absent from this machine — or a driver that drives none of the surfaces this platform produces. The second of those reaches only a platform that takes part in the driver contract: a platform whose manifest declares no ## Driver block drives with its own tooling exactly as it did before this contract existed, and that cause fires for it only when it has no tooling to drive a running instance at all, which you announce as a declared deviation. Which driver condition applied comes back in driver_status — no driver, one that cannot be reached, or a mismatched one — while drive_app: off is the project's own setting rather than a driver condition and needs no such report; ${core('conventions/driver-contract.md')} has the full vocabulary. manual_checks decides whether you still write a ${DIR}/ManualChecks.md covering what the automated suite cannot reach: auto only when something was deferred above, always regardless. This run's manual_checks is ${MANUAL_CHECKS}. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the two rules that decide whether a case can be executed at all. Its input is Plan.md ## Manual acceptance; when the plan carries no such section, say so in ## Scope and derive the cases yourself.
 
-Change no production code and no tests — a flaky test that you quietly stabilise is a finding you have hidden. Return the same status you wrote on the first line.${cap('Validation.md')}`,
+Change no production code and no tests — a flaky test that you quietly stabilise is a finding you have hidden. Return the same status you wrote on the first line.${CATCH_UP_VALIDATION}${cap('Validation.md')}`,
     ),
     { label: 'validation', phase: 'Validation', agentType: A.agents.validator, schema: VALIDATION, ...tuning('validator', 'stage') },
   )
@@ -696,11 +728,11 @@ if (runs('Review') && A.need_review !== false) {
   review = await agent(
     brief(
       'Review',
-      `Review the TESTS this task added — not the production code — and write ${DIR}/Review.md. Its FIRST LINE is required to be exactly:
+      `${reviewScope('Review the TESTS this task added — not the production code.')}${RANGES ? ' Judge only the tests in them, not the production code.' : ''} Write ${DIR}/Review.md. Its FIRST LINE is required to be exactly:
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does: an assertion that cannot fail, a double standing in for the behaviour under test, state crossing between tests, behaviour in the diff that no test names, and a test asserting more than one behaviour. Unlike the plan findings above, these are defects in what was delivered and may block. Modify nothing. Return the same status you wrote on the first line.${cap('Review.md')}`,
+When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does: an assertion that cannot fail, a double standing in for the behaviour under test, state crossing between tests, behaviour in the diff that no test names, and a test asserting more than one behaviour. Unlike the plan findings above, these are defects in what was delivered and may block. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${cap('Review.md')}`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )
@@ -724,11 +756,17 @@ if (runs('Done')) {
   const done = await agent(
     doneBrief(
       `Write the final report ${DIR}/Done.md: what is covered now (the components and scenarios), what coverage was reached if it was measured, which frameworks were used, the validation status including any test that came back flaky, and — under a heading "Objections" — any contested decision the user insisted on, such as declining to cover a critical path, with the risk it carries.${cap('Done.md')}`,
+      review && review.done_findings,
     ),
-    { label: 'done', phase: 'Done', agentType: A.agents.tester, schema: ARTIFACT, ...tuning('tester', 'done') },
+    { label: 'done', phase: 'Done', agentType: A.agents.tester, schema: DONE_ARTIFACT, ...tuning('tester', 'done') },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
+  const open = unclosed(review, done)
+  if (open.length) {
+    result.notes.push(`Done left ${open.length} of Review's done_findings unclosed: ${open.join('; ')}. Close them in the task's files, then run Done again.`)
+    return finish('ask_user')
+  }
 }
 
 return finish(result.last_completed_stage === 'Done' ? 'stop' : 'continue', {

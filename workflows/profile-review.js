@@ -134,13 +134,42 @@ ${DOCS_NOTE}${body}
 
 Prose language: ${LANG_NAME}.`
 
+// Where a task's repositories stood and what changed since: conventions/task-ranges.md. Only the
+// profiles that change code, review it and close it act on them.
+const RANGED = ['FEATURE', 'BUG', 'REFACTOR', 'TEST'].includes(PROFILE)
+const CATCH_UP = RANGED && A.action === 'catch-up'
+const RANGES = A.review_ranges && A.review_ranges.repos && typeof A.review_ranges.repos === 'object' && Object.keys(A.review_ranges.repos).length ? A.review_ranges : null
+const PRIOR_REVIEW = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Review-[^/]*\.md$/.test(p))
+// One clause per repository, as review_ranges names them.
+const rangeList = () =>
+  Object.entries(RANGES.repos)
+    .map(([repo, r]) => (r.range ? `${repo}: ${r.range} (${r.commits} commit${r.commits === 1 ? '' : 's'})` : `${repo}: no known base — review this task's own commits there and say so under ### Scope`))
+    .join('; ')
+// What Review reads; an older orchestrator sends no ranges, and the stage's own wording stands.
+const reviewScope = (fallback) => {
+  if (!RANGED || !RANGES) return fallback
+  const again = RANGES.since !== 'base' || !!PRIOR_REVIEW
+  const idle = again && Object.values(RANGES.repos).every((r) => r.commits === 0)
+  return `Review exactly these ranges, one per repository, and nothing outside them: ${rangeList()}.${again ? ` Your previous review is ${PRIOR_REVIEW || `${DIR}/Review.md — read it before you overwrite it`}: mark each of its Critical and Major findings Resolved, Still open or Regressed.` : ''}${idle ? ' No range holds a commit: do not rescan the tree; restate the open items of the previous verdict.' : ''}`
+}
+// Review's share of the record, and the one finding class that does not block Done.
+const REVIEW_RECORD = RANGED
+  ? `\n\nDirectly under the first line, write the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind reviewed prints, run right before you finish, exactly as printed. Under ### Scope name the ranges you actually reviewed, per repository. A finding goes into done_findings only when editing files inside the task folder — Done.md, Plan.md, Walkthrough.md — closes it without a single code commit; anything that needs a code commit is a blocking finding. done_findings alone never make the verdict CHANGES_REQUESTED. List them under ## For Done in Review.md.`
+  : ''
+const CATCH_UP_VALIDATION = CATCH_UP && RANGES ? `\n\nThis run catches up commits that landed after the task's Done: ${rangeList()}. Validate them at the depth the spine-toolkit:phase-verification skill gives their diff, and name that depth in Validation.md.` : ''
+// Done's share: close what Review left it, stamp where the repositories stand.
+const doneRecord = (handed) =>
+  `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings. The first lines of Done.md are the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" that names those ranges, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}`
+// Review's done_findings that Done did not report closed; none when Review did not run in this invocation.
+const unclosed = (review, done) =>
+  review && Array.isArray(review.done_findings) ? review.done_findings.slice(done && Array.isArray(done.closed_findings) ? done.closed_findings.length : 0) : []
 // A report an earlier Done left is claims to check, never a draft to confirm.
 const PRIOR_DONE = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Done-[^/]*\.md$/.test(p))
-const doneBrief = (body) => brief(
+const doneBrief = (body, handed) => brief(
   'Done',
   `${body}
 
-${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.`,
+${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}`,
 )
 
 const ARTIFACT = {
@@ -153,6 +182,8 @@ const ARTIFACT = {
     summary: { type: 'string', description: 'two or three sentences for the next stage' },
   },
 }
+// Done also says which of Review's done_findings it closed.
+const DONE_ARTIFACT = { ...ARTIFACT, properties: { ...ARTIFACT.properties, closed_findings: { type: 'array', items: { type: 'string' } } } }
 
 const PLAN = {
   type: 'object',
@@ -214,6 +245,7 @@ const REVIEW = {
     review_status: { type: 'string', enum: ['APPROVED', 'CHANGES_REQUESTED', 'DISCUSSION'] },
     artifact_path: { type: 'string' },
     blocking_findings: { type: 'array', items: { type: 'string' } },
+    done_findings: { type: 'array', items: { type: 'string' }, description: 'closed by editing files in the task folder, never by a code commit' },
     summary: { type: 'string' },
   },
 }
