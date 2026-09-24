@@ -747,3 +747,36 @@ $BATS_TEST_TMPDIR/assets"
   grep -qF "Roots '../nowhere' names no folder" "$ERR" || { cat "$ERR"; return 1; }
   [ "$(wc -l <"$ERR")" -eq 1 ] || { cat "$ERR"; return 1; }
 }
+
+@test "fix_rounds resolves along the chain and defaults to 2" {
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(field fix_rounds <<<"$out")" = 2 ] || { echo "$out"; return 1; }
+  [ "$(source_of fix_rounds <<<"$out")" = default ] || { echo "$out"; return 1; }
+  printf '## Task defaults\n\n[FIX_ROUNDS] = [3]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(field fix_rounds <<<"$out")" = 3 ] || { echo "$out"; return 1; }
+  [ "$(source_of fix_rounds <<<"$out")" = project ] || { echo "$out"; return 1; }
+  printf '[FIX_ROUNDS] = [1]\n' >>"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(field fix_rounds <<<"$out")" = 1 ] || { echo "$out"; return 1; }
+  [ "$(source_of fix_rounds <<<"$out")" = task ] || { echo "$out"; return 1; }
+}
+
+@test "fix_rounds of 0 is a value, not a missing one" {
+  printf '## Task defaults\n\n[FIX_ROUNDS] = [0]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(field fix_rounds <<<"$out")" = 0 ] || { echo "$out"; return 1; }
+  [ "$(source_of fix_rounds <<<"$out")" = project ] || { echo "$out"; return 1; }
+}
+
+@test "a fix_rounds that is not a whole number is reported and skipped" {
+  printf '## Task defaults\n\n[FIX_ROUNDS] = [3]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[FIX_ROUNDS] = [two]\n' >>"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(field fix_rounds <<<"$out")" = 3 ] || { echo "$out"; return 1; }
+  grep -qF "'two' not recognized" "$ERR" || { cat "$ERR"; return 1; }
+  printf '## Task defaults\n\n[FIX_ROUNDS] = [-1]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(field fix_rounds <<<"$out")" = 2 ] || { echo "$out"; return 1; }
+  grep -qF "'-1' not recognized" "$ERR" || { cat "$ERR"; return 1; }
+}

@@ -34,7 +34,7 @@ core_grep() {
   done
   for f in LANG PROGRESS SETTINGS_REPORT BUDGETS DOCS_MAP DOCS_STRICTNESS DOCS_FRESHNESS \
            WORKFLOW_MODE SCALE DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION WALKTHROUGH \
-           WALKTHROUGH_CHECK SECURITY DOCS MODELS EFFORT LONG_RUN; do
+           WALKTHROUGH_CHECK SECURITY DOCS MODELS EFFORT LONG_RUN FIX_ROUNDS; do
     grep -q "^\[$f\] = \[" "$TPL" || { echo "missing field: [$f]"; return 1; }
   done
 }
@@ -208,5 +208,14 @@ catalog_words() {
   for t in task-root task-step; do
     grep -qF '# [LONG_RUN] = [max: 60]' "$ROOT/templates/task-md/$t.md" \
       || { echo "no [LONG_RUN] in $t.md"; return 1; }
+  done
+}
+
+@test "the fix_rounds field ships at 2 in the config and as an override in both task templates" {
+  grep -qE '^\[FIX_ROUNDS\] = \[2\] +# a whole number, 0 turns the auto loop off$' "$TPL" \
+    || { echo "[FIX_ROUNDS] must ship 2 with its comment"; return 1; }
+  for t in task-root task-step; do
+    grep -qF '# [FIX_ROUNDS] = [0]         # a whole number, 0 turns the auto loop off' "$ROOT/templates/task-md/$t.md" \
+      || { echo "no [FIX_ROUNDS] in $t.md"; return 1; }
   done
 }

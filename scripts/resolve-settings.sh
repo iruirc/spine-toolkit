@@ -57,6 +57,8 @@ BLOCK = EXTRA if CMD == 'raw' else None
 SHOW_ALL = CMD == 'show' and EXTRA == '--all'
 
 # field, config/Task.md field name, values (None = open), default
+# A SCALARS values slot for a whole number >= 0, taken as an int.
+INT = 'int'
 SCALARS = (
     ('lang', 'LANG', ['en', 'ru'], 'en'),
     ('mode', 'WORKFLOW_MODE', ['manual', 'auto'], 'manual'),
@@ -69,6 +71,7 @@ SCALARS = (
     ('manual_checks', 'MANUAL_CHECKS', ['auto', 'always'], 'auto'),
     ('driver', 'DRIVER', None, 'auto'),
     ('phase_verification', 'PHASE_VERIFICATION', ['proportional', 'full'], 'proportional'),
+    ('fix_rounds', 'FIX_ROUNDS', INT, 2),
     ('security', 'SECURITY', ['auto', 'on', 'off'], 'auto'),
     ('docs_lever', 'DOCS', ['on', 'off'], 'on'),
     ('docs_map', 'DOCS_MAP', None, 'DocsMap.md'),
@@ -100,6 +103,11 @@ def accept(name, values, raw, label):
     """What this entry contributes, or None when it contributes nothing and the chain goes on."""
     if values is None:
         return raw
+    if values == INT:
+        if re.fullmatch(r'[0-9]+', raw.strip()):
+            return int(raw.strip())
+        warn(label, raw)
+        return None
     low = raw.lower()
     if low in values:
         return low

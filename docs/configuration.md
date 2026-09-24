@@ -203,6 +203,16 @@ rung its `**Verification:**` line in `Plan.md` names, with the full regression l
 repeating it costs nothing. There is no `off`. The rungs and how a planner picks one are fixed by
 the `phase-verification` skill, not by this field.
 
+### [FIX_ROUNDS]
+
+**Values:** a whole number ≥ 0 · **Default:** `2` · **Task override:** `[FIX_ROUNDS] = [<n>]` ·
+**Defined by:** the orchestrator's Gating
+
+How many rounds of `fix-review` a run in `auto` starts by itself after Review returns
+`CHANGES_REQUESTED`: each round fixes the findings as one plan phase, validates, reviews the new
+commits and closes. When the rounds are spent, the orchestrator stops and asks. `0` turns the
+automatic loop off. `manual` always asks, whatever the value.
+
 ### [WALKTHROUGH]
 
 **Values:** `brief` `deep` `off` · **Default:** `deep`, and `off` when `scale` resolves to `lite` ·
