@@ -65,5 +65,28 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     for s in 'Under `fix-review`' '"Review fixes <n>"' '`fix_findings`' '`after_done`'; do
       grep -qF "$s" "$f" || { echo "workflow-$p lost: $s"; return 1; }
     done
+    grep -E '^- \*\*(Fix|Execute|Refactor|Write)\*\* — ' "$f" | grep -qF 'Under `fix-review` it runs the single "Review fixes <n>" phase built from `fix_findings` instead of `Plan.md`'"'"'s phases (see Done).' \
+      || { echo "workflow-$p: the code-stage bullet does not point to the fix phase"; return 1; }
   done
+}
+
+@test "auto never runs more rounds than fix_rounds, whatever Plan.md shows" {
+  g="$(section "$S" 'Gating')"
+  for f in 'the `fix-review` rounds this session has dispatched for the task' 'whatever `Plan.md` shows' \
+           'the fix phase went unrecorded' 'announce `warn_fix_round_unrecorded`' 'stop the loop with `auq_fix_rounds_spent`' \
+           '`{n}` — the rounds spent plus one, not `fix_round`' '`{max}` — `fix_rounds`'; do
+    grep -qF -- "$f" <<<"$g" || { echo "Gating lost: $f"; return 1; }
+  done
+  for l in en ru; do
+    grep -qx '## warn_fix_round_unrecorded' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l: no warn_fix_round_unrecorded"; return 1; }
+  done
+}
+
+@test "the fix-review precondition holds on its first dispatch, and every dispatch counts its ranges afresh" {
+  r="$(section "$S" 'Resolution Algorithm')"
+  for f in "checked on a fix-review's first dispatch (its code stage) only" 'does not re-check it' \
+           'It runs at every dispatch, so a' 'Review dispatched on its own (manual) is counted after the commits the earlier stages made'; do
+    grep -qF -- "$f" <<<"$r" || { echo "resolution lost: $f"; return 1; }
+  done
+  grep -qF '`fix-review` always asks for `--since reviewed`' "$ROOT/conventions/task-ranges.md" || { echo "task-ranges.md: no fix-review since"; return 1; }
 }

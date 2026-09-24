@@ -43,12 +43,13 @@ to the merge base with the repository's main branch; a merge base that is `HEAD`
 committed on the main branch — is `unknown` too. When a record has several lines for one
 repository, the first wins. The orchestrator turns the result into the
 `review_ranges` contract field; which `--since` it asks for, and what it does on `rewritten` or
-`unknown`, is its Resolution Algorithm, step 5.6.
+`unknown`, is its Resolution Algorithm, step 5.6; `fix-review` always asks for `--since reviewed`.
 
 ## Review and Done
 
 Review reads exactly the ranges it is given. On a re-review it marks each Critical and Major of its
-previous `Review.md` Resolved, Still open or Regressed, and when no range holds a commit it restates
-the open items instead of rescanning. A finding that editing files inside the task folder closes,
+previous `Review.md` Resolved, Still open or Regressed — one still open or regressed is a finding of
+this review too — and when no range holds a commit, and its own run committed no code before it, it
+restates the open items instead of rescanning. A finding that editing files inside the task folder closes,
 with no code commit, goes under `## For Done` in `Review.md` and never alone makes the verdict
 `CHANGES_REQUESTED`. Done closes those items first and lists each under `## Review findings closed`.

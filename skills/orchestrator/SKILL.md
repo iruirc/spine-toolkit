@@ -203,7 +203,9 @@ Algorithm:
    action=catch-up                → start at Validation, forward (Validation → Review → Done)
                                     ↓ no Done.md → error using key `error_catch_up_not_done` with `{task_id}`, dispatch nothing
    action=fix-review              → start at the code-changing stage (Fix / Execute / Refactor / Write), forward
-                                    ↓ no Review.md, or its first line is not [REVIEW_STATUS] = CHANGES_REQUESTED
+                                    ↓ checked on a fix-review's first dispatch (its code stage) only — a later
+                                      per-stage dispatch of the same round (manual) does not re-check it:
+                                      no Review.md, or its first line is not [REVIEW_STATUS] = CHANGES_REQUESTED
                                       → error using key `error_fix_review_nothing` with `{task_id}`, dispatch nothing
 
 5.5. Validate start_stage against profile.stages:
@@ -225,7 +227,8 @@ Algorithm:
                    notes: locale `error_stage_not_in_profile` with placeholders filled}
 
 5.6. Record the base and compute the review ranges (FEATURE, BUG, REFACTOR, TEST only;
-     every other profile gets review_ranges={} and no Base.md):
+     every other profile gets review_ranges={} and no Base.md). It runs at every dispatch, so a
+     Review dispatched on its own (manual) is counted after the commits the earlier stages made:
    • the range includes the profile's code-changing stage (Execute / Fix / Refactor / Write),
      and there is no Plan.md yet or no phase of its progress table is marked ✅
        → bash "<core root>/scripts/task-ranges.sh" record <task dir>      # writes Base.md once
@@ -564,7 +567,7 @@ Pass `args` as a real JSON object. A JSON-encoded string arrives at the script a
 
 **Method A — manual mode.** A running workflow cannot ask the user anything. So `manual` mode dispatches **one workflow per stage**: `stage_scope=single` with `start_stage=<stage>`, wait for the result, run the usual post-stage gating (open-questions inspection, then `stage_done_prompt`), then dispatch the next stage. `auto` mode passes the whole range in a single call.
 
-**Method A — reading the result.** The script returns the same Output Contract every `workflow-*` skill returns — `status`, `last_completed_stage`, `artifact_path`, `next_recommended_action`, `notes` — plus the stage status fields where they apply: `validation_status`, `review_status`, `reproducible`, `blocked_phase`. Gate on those fields rather than re-reading the artifact's first line. The first line is still written and still what a human reads; it is simply no longer the parsing surface.
+**Method A — reading the result.** The script returns the same Output Contract every `workflow-*` skill returns — `status`, `last_completed_stage`, `artifact_path`, `next_recommended_action`, `notes` — plus the stage status fields where they apply: `validation_status`, `review_status` (with `blocking_findings` and `done_findings` when it is not `APPROVED`), `reproducible`, `blocked_phase`. Gate on those fields rather than re-reading the artifact's first line. The first line is still written and still what a human reads; it is simply no longer the parsing surface.
 
 The return also carries `stages[]` — one record per stage that finished, in order, each with
 `stage`, `agent`, `ok`, `artifact_path`, `summary` and `status`. It is what makes a per-stage
@@ -709,7 +712,7 @@ durations inside an `auto` run do not exist; do not invent them.
 
 **After Review: `CHANGES_REQUESTED`.** FEATURE, BUG, REFACTOR and TEST. The findings are the run's returned `blocking_findings` or, when this session holds no such return (Method B, a new session), every item of `Review.md` under `### Findings` → **Critical** and **Major**, one line each. With none — and for `DISCUSSION` — it is the ordinary `stage_done_prompt`.
 
-- `auto`: count the rows of the `Plan.md` progress table titled `Review fixes <n>` that sit below the last `Catch-up: commits after Done` row (all of them when there is none). With fewer than `fix_rounds`, announce `info_fix_round` with `{n}`, `{max}` and `{count}`, then dispatch `action=fix-review` with every finding. Otherwise AUQ using key `auq_fix_rounds_spent` with `{findings}`: `auq_fix_rounds_option_more` (one more `fix-review`), `auq_fix_rounds_option_self` (stop; the user fixes the code and runs `redo Review`), or exit.
+- `auto`: count the rows of the `Plan.md` progress table titled `Review fixes <n>` that sit below the last `Catch-up: commits after Done` row (all of them when there is none), and count the `fix-review` rounds this session has dispatched for the task; the larger is the rounds spent, so the loop never goes past `fix_rounds` of them whatever `Plan.md` shows. After a round, a `Plan.md` without the new `Review fixes <n>` row, `<n>` being the `fix_round` it was dispatched with, means the fix phase went unrecorded: announce `warn_fix_round_unrecorded` with that `{n}` and stop the loop with `auq_fix_rounds_spent`. With fewer than `fix_rounds` spent, announce `info_fix_round` with `{n}` — the rounds spent plus one, not `fix_round` — `{max}` — `fix_rounds` — and `{count}`, then dispatch `action=fix-review` with every finding. Otherwise AUQ using key `auq_fix_rounds_spent` with `{findings}`: `auq_fix_rounds_option_more` (one more `fix-review`), `auq_fix_rounds_option_self` (stop; the user fixes the code and runs `redo Review`), or exit.
 - `manual`: AUQ using key `auq_fix_review_question` with `{findings}`: `auq_fix_review_option_all` (first; `fix-review` with every finding), `auq_fix_review_option_pick` (a multi-select of the findings, then `fix-review` with those picked), `auq_fix_review_option_leave` (stop). `fix_rounds` does not apply: the user confirms each round.
 
 A `fix-review` carries `fix_findings` — the findings chosen, verbatim; `fix_round` — every `Review fixes <n>` row of `Plan.md` plus one, so no phase id repeats; and `after_done` — whether `Done.md` exists. With `after_done` the task moves out of and back into `Tasks/DONE/` as for a `catch-up`.
