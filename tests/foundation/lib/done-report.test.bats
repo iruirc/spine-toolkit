@@ -17,7 +17,7 @@ setup() {
   [ "$n" -eq 6 ] || { echo "checked $n profile(s), expected 6"; return 1; }
   for f in "$ROOT"/workflows/profile-*.js; do
     for token in "const PRIOR_DONE = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Done-[^/]*\.md\$/.test(p))" \
-                 'const doneBrief = (body) => brief(' \
+                 'const doneBrief = (body, handed) => brief(' \
                  'may already hold the report of an earlier Done of this task' \
                  'every claim in it is unverified' \
                  'say how many claims you corrected and name the weightiest' \
