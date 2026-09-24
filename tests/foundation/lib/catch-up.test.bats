@@ -22,7 +22,7 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   grep -qF '5.6. Record the base and compute the review ranges' <<<"$r" || { echo "no step 5.6"; return 1; }
   for f in 'task-ranges.sh" record <task dir>' 'task-ranges.sh" ranges <task dir> --since <since>' \
            'done     if action=catch-up' 'base     if Review.md is absent, or action is restart or restart-full' 'reviewed otherwise' \
-           'action=catch-up                → start at Validation'; do
+           'action=catch-up                → start at Validation' 'no phase of its progress table is marked'; do
     grep -qF "$f" <<<"$r" || { echo "step 5/5.6 lost: $f"; return 1; }
   done
 }
@@ -45,9 +45,9 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   grep -qF '| `catch-up` |' <<<"$m" || { echo "no archival row"; return 1; }
 }
 
-@test "the four catch-up keys exist in both locales" {
+@test "the catch-up keys exist in both locales" {
   for l in en ru; do
-    for k in auq_catch_up_question auq_catch_up_option warn_catch_up_whole_task warn_review_ranges_full; do
+    for k in auq_catch_up_question auq_catch_up_option warn_catch_up_whole_task warn_review_ranges_full error_catch_up_not_done info_catch_up_nothing; do
       grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l: no $k"; return 1; }
     done
   done
