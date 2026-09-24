@@ -238,3 +238,17 @@ declares ({namespaces}) — its MCP server is not connected, or it is registered
 different name. The stage that drives the app — Validation, or a RESEARCH experiment — will
 hand its UI checks to you instead. Start the server, register it under one of those names, or
 write `[DRIVER] = [—]` in `CLAUDE-spine-toolkit.md` to say so deliberately.
+
+## auq_catch_up_question
+The task was finished, and commits have landed since its Done:
+{counts}
+What should happen?
+
+## auq_catch_up_option
+Catch up: validate, review and close only these commits
+
+## warn_catch_up_whole_task
+Done.md does not record where the repositories stood, so Review will read the whole task.
+
+## warn_review_ranges_full
+No usable record for {repos} (history rewritten, or never recorded): Review reads the whole task there.

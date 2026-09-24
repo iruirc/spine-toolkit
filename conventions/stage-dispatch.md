@@ -28,6 +28,7 @@ A subagent's prompt names core files by absolute path and names the core root it
 `Core root:` line of a Method A brief does; it carries the `Long-running commands:` line with the
 task's `long_run` values converted to seconds (minutes × 60), exactly as the Method A brief does;
 and it carries the `Search roots:` line with the task's `roots`, worded as the Method A brief words it.
+A Review stage's prompt also names every range of the task's `review_ranges`, worded as the Method A Review prompt words it.
 
 ## Declared deviation
 
