@@ -265,6 +265,9 @@ Task `{task_id}` has no review asking for changes — there is nothing for fix-r
 ## info_fix_round
 Fix round {n} of {max}: {count} finding(s) from Review go into one plan phase.
 
+## warn_fix_round_unrecorded
+Fix round {n} left no `Review fixes {n}` row in Plan.md: the fix phase went unrecorded, so the automatic loop stops here.
+
 ## auq_fix_review_question
 Review asked for changes:
 {findings}
