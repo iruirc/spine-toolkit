@@ -258,3 +258,34 @@ UI-проверки вам. Поставьте плагин или напиши�
 
 ## info_catch_up_nothing
 Догонять нечего: ни в одном репозитории `{task_id}` нет коммитов после её Done.
+
+## error_fix_review_nothing
+У задачи `{task_id}` нет ревью, требующего изменений, — fix-review нечего исправлять.
+
+## info_fix_round
+Круг исправлений {n} из {max}: {count} находок из Review уходят в одну фазу плана.
+
+## auq_fix_review_question
+Review требует изменений:
+{findings}
+Что делаем?
+
+## auq_fix_review_option_all
+Исправить все: одна фаза плана, затем Validation, Review исправлений, Done
+
+## auq_fix_review_option_pick
+Выбрать, какие исправлять
+
+## auq_fix_review_option_leave
+Пока оставить
+
+## auq_fix_rounds_spent
+Автоматические круги исправлений исчерпаны, а Review всё ещё требует изменений:
+{findings}
+Что делаем?
+
+## auq_fix_rounds_option_more
+Ещё один круг исправлений
+
+## auq_fix_rounds_option_self
+Исправлю сам, потом redo Review
