@@ -11,6 +11,3 @@ spike; experiment; find out by running; check by running; measure it; prototype 
 
 ## task_type_quick_keywords
 quick-задача; быстрая задача; тип QUICK; QUICK-задача
-
-## quick_not_for_steps
-Шаг не может быть QUICK: этот тип — только для корневой задачи, которую вы выбираете сами. Назовите для шага другой тип.

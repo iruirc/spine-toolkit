@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # Every surface outside the profile that has to know QUICK exists: the orchestrator's tables and
-# gate, the settings chain's documents, task-new, the epic that must refuse it, and the docs.
+# gate, the settings chain's documents, task-new, the epic that runs it but never plans it, and the docs.
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
@@ -52,26 +52,24 @@ setup() {
   grep -qF 'If a QUICK step returned `quick_escalation`' "$ROOT/skills/workflow-epic/SKILL.md" || { echo "Method B does not stop on an escalated step"; return 1; }
 }
 
-@test "both new orchestrator keys exist in both locales" {
+@test "the orchestrator stops an escalated QUICK task and never refuses a QUICK step" {
   for lang in en ru; do
-    for k in quick_escalation_stop error_quick_step; do
-      grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$lang.md" || { echo "$lang lacks $k"; return 1; }
-    done
+    grep -qx "## quick_escalation_stop" "$ROOT/skills/orchestrator/locales/$lang.md" || { echo "$lang lacks quick_escalation_stop"; return 1; }
   done
+  if grep -rqF 'error_quick_step' "$ROOT/skills/orchestrator"; then echo "the orchestrator still refuses a QUICK step"; return 1; fi
 }
 
-@test "task-new sets QUICK only on the user's word, with its own flags, never for a step" {
+@test "task-new sets QUICK only on the user's word, with its own flags, for a root task or a step" {
   t="$ROOT/skills/task-new/SKILL.md"
   grep -qF 'The user named the type QUICK — the words in locale key `task_type_quick_keywords` → `QUICK`. Checked first, and only ever on the user'"'"'s own word' "$t" || { echo "no QUICK rule"; return 1; }
   grep -qF '`TASK_TYPE` is `QUICK` → `NEED_TEST = false`, `NEED_REVIEW = true`' "$t" || { echo "no QUICK flags"; return 1; }
-  grep -qF 'a step is never QUICK: a request naming it for a step is answered with key `quick_not_for_steps`' "$t" || { echo "a step may be QUICK"; return 1; }
+  grep -qF "QUICK included: only the user's own word types a step QUICK, never an epic's architect." "$t" || { echo "a step cannot be QUICK"; return 1; }
   for lang in en ru; do
-    for k in task_type_quick_keywords quick_not_for_steps; do
-      grep -qx "## $k" "$ROOT/skills/task-new/locales/$lang.md" || { echo "$lang lacks $k"; return 1; }
-    done
+    grep -qx "## task_type_quick_keywords" "$ROOT/skills/task-new/locales/$lang.md" || { echo "$lang lacks task_type_quick_keywords"; return 1; }
   done
+  if grep -rqF 'quick_not_for_steps' "$ROOT/skills/task-new"; then echo "task-new still refuses a QUICK step"; return 1; fi
   grep -qF '# FEATURE | BUG | REFACTOR | QUICK | REVIEW | TEST | EPIC | RESEARCH' "$ROOT/templates/task-md/task-root.md" || { echo "root template"; return 1; }
-  if grep -qF 'QUICK' "$ROOT/templates/task-md/task-step.md"; then echo "the step template offers QUICK"; return 1; fi
+  grep -qF '# FEATURE | BUG | REFACTOR | QUICK | REVIEW | TEST | EPIC | RESEARCH' "$ROOT/templates/task-md/task-step.md" || { echo "step template"; return 1; }
 }
 
 @test "the scale axis, the settings table and the docs say QUICK is always lite and not a third value" {

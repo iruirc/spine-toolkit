@@ -178,7 +178,7 @@ For reference, the templates contain these placeholders:
 3. **Choose the step name**:
    - Numeric: find the max existing `N.step` in the parent (including sibling steps in nested epics), increment by 1 → `<N+1>.step`.
    - Named: the user said "step address-form" → `address-form.step`.
-4. **Decide `{{TASK_TYPE}}`, `{{NEED_TEST}}`, `{{NEED_REVIEW}}`** — same rules as the root-task process steps 4–5, except that a step is never QUICK: a request naming it for a step is answered with key `quick_not_for_steps` and nothing is created.
+4. **Decide `{{TASK_TYPE}}`, `{{NEED_TEST}}`, `{{NEED_REVIEW}}`** — same rules as the root-task process steps 4–5, QUICK included: only the user's own word types a step QUICK, never an epic's architect.
 5. **Decide `{{STATUS}}`** — default `PENDING`. Any other starting status requires an explicit user statement.
 6. **Locate the template** (read the first existing path):
    a. `<core-root>/templates/task-md/task-step.md`
