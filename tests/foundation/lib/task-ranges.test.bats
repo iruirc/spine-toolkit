@@ -107,7 +107,23 @@ state() { # $1 repo key; stdin: ranges JSON → "<state> <commits>"
   run "$TR" ranges "$TASK" --since base
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ "$(state . <<<"$output")" = "ok 1" ] || { echo "$output"; return 1; }
-  [ "$(state Packages/Core <<<"$output")" = "ok 0" ] || { echo "$output"; return 1; }
+  [ "$(state Packages/Core <<<"$output")" = "unknown None" ] || { echo "$output"; return 1; }
+}
+
+@test "work committed on main itself has no known base" {
+  commit "$PROJ" a.txt
+  run "$TR" ranges "$TASK" --since base
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(state . <<<"$output")" = "unknown None" ] || { echo "$output"; return 1; }
+}
+
+@test "the first record line of a repository wins" {
+  stale="$(git -C "$PROJ" rev-parse HEAD)"
+  commit "$PROJ" a.txt
+  { "$TR" tips "$TASK" --kind done; printf '\n[DONE_COMMIT] = .: %s\n' "$stale"; } >"$TASK/Done.md"
+  run "$TR" ranges "$TASK" --since done
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(state . <<<"$output")" = "ok 0" ] || { echo "$output"; return 1; }
 }
 
 @test "an old single-sha line is the project's" {
