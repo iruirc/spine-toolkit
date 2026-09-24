@@ -368,3 +368,13 @@ broken_resolver() {
   n="$(printf '%s\n' "$output" | grep -c "Plan.md: many' not recognized")"
   [ "$n" -eq 1 ] || { echo "printed $n time(s): $output"; return 1; }
 }
+@test "the budget lint measures a QUICK task at lite, whatever the project's scale" {
+  proj="$BATS_TEST_TMPDIR/proj"; task="$proj/Tasks/ACTIVE/001-q"
+  mkdir -p "$task"
+  printf '## Task defaults\n\n[SCALE] = [full]\n' >"$proj/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [QUICK]\n' >"$task/Task.md"
+  seq 1 250 >"$task/Plan.md"
+  run "$ROOT/scripts/lint-artifact-budget.sh" "$task"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+  grep -qF 'Plan.md' <<<"$output" || { echo "$output"; return 1; }
+}

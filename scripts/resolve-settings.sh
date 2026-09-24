@@ -280,6 +280,14 @@ for name, field, values, default in SCALARS:
 # walkthrough: off on a lite task, above the project and below the task's own field.
 # show_source holds what the column says where that is more than the source's bare name.
 show_source = {}
+
+# A QUICK task has one shape, and it is lite's (conventions/task-scale.md → QUICK).
+if (task_value(os.path.join(TARGET, 'Task.md'), 'TASK_TYPE') or '').upper() == 'QUICK':
+    if sources['scale'] == 'task' and resolved['scale'] != 'lite':
+        print("Task.md [SCALE]: '%s' ignored, a QUICK task is always lite" % resolved['scale'], file=sys.stderr)
+    resolved['scale'], sources['scale'] = 'lite', 'type'
+    show_source['scale'] = 'type: QUICK'
+
 if resolved['scale'] == 'lite' and sources['walkthrough'] in ('default', 'project'):
     displaced = resolved['walkthrough'] if sources['walkthrough'] == 'project' else None
     resolved['walkthrough'], sources['walkthrough'] = 'off', 'scale'
