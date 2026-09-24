@@ -46,7 +46,7 @@ The minimum viable input is just `task_id`. All other fields are optional and re
 | Field | Type | Source | Default / Error |
 |---|---|---|---|
 | `task_id` | string | NL/$ARGUMENTS (e.g. `026`, `052`, `001-foo`) | **required** — error using key `error_no_task_id` |
-| `action` | enum: `run` / `continue` / `redo` / `restart` / `restart-full` | parsed from the command (see triggers table) | `run` for a bare "run/do/execute N", `continue` for "continue N" |
+| `action` | enum: `run` / `continue` / `redo` / `restart` / `restart-full` / `catch-up` | parsed from the command (see triggers table) | `run` for a bare "run/do/execute N", `continue` for "continue N", `catch-up` for "catch up N" |
 | `stage_target` | string (profile stage name) | required for `redo` / `restart`, or for `--from` / `--to` modifiers under `run` | not needed for `run` / `continue` / `restart-full` without modifiers |
 | `mode_override` | enum: `manual` / `auto` | explicit "automatically" / "step-by-step" in the request | resolved via `resolve-settings.sh` (Resolution Algorithm step 3); default `manual` |
 | `stack_override` | string | stack explicitly named in the request | resolved per-axis via stack-detect (see Resolution Algorithm step 4); AUQ only for unresolved needed axes |
@@ -108,7 +108,11 @@ State Detection is **profile-aware** and **purely file-existence driven** — th
 
 Algorithm:
 
-1. Task folder is in `Tasks/DONE/` OR `Done.md` exists → the task is considered finished. AUQ: confirm a full restart (=`action=restart-full`), reopen (move back into `ACTIVE/`), or exit.
+1. Task folder is in `Tasks/DONE/` OR `Done.md` exists → the task has been finished once. For FEATURE, BUG, REFACTOR and TEST, first run `bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since done`:
+   - every repository at 0 commits → finished: AUQ to confirm a full restart (=`action=restart-full`), reopen (move back into `ACTIVE/`), or exit;
+   - any repository with commits after its `[DONE_COMMIT]`, or `unknown` because `Done.md` predates the record → AUQ using key `auq_catch_up_question` with `{counts}` (repository: commits, one per line), `catch-up` first (key `auq_catch_up_option`, =`action=catch-up`), then the three options above. When the counts are `unknown`, the option carries `warn_catch_up_whole_task`.
+   - exit 2 is a stop: report the script's stderr.
+   Other profiles: finished, the three options above.
 2. Walk the columns of the row matching the current profile **left to right**; the first match determines `start_stage`. For BUG specifically: `Plan.md` wins over `Research.md`, which wins over `Reproduce.md`.
 3. `Plan.md` exists but its progress table is missing or unparseable → consider stage `Plan` complete; start at the next stage in the profile's sequence (FEATURE/EPIC: `Execute`; BUG: `Fix`; REFACTOR: `Refactor`; TEST: `Write`); for REVIEW (no next stage), ask explicitly via AUQ. RESEARCH has no Plan stage at all — this branch is unreachable for RESEARCH. Add a warning to the user.
 4. **Inline-content note.** If `Task.md` carries embedded reproduce/research/analyze material but no artifact files exist in the task folder, State Detection still picks the first stage of the profile (per the rightmost column of the table); for BUG that stage checks a root cause `Task.md` names at file:line rather than rediscovering it. The user can override via the `confirm_dispatch` picker (Resolution Algorithm step 6) or by passing `--from <stage>`.
@@ -195,6 +199,7 @@ Algorithm:
    action=redo, stage_target=X    → start at X, re-execute ONLY this stage
    action=restart, stage_target=X → start at X, re-execute X and all subsequent stages
    action=restart-full            → start at the profile's first stage, re-execute all
+   action=catch-up                → start at Validation, forward (Validation → Review → Done)
 
 5.5. Validate start_stage against profile.stages:
    • profile_stages := ordered stage list of the target profile (canonical source: workflow-<profile> SKILL.md heading)
@@ -213,6 +218,20 @@ Algorithm:
        if mode == auto:
            return {status: error, reason: error_stage_not_in_profile,
                    notes: locale `error_stage_not_in_profile` with placeholders filled}
+
+5.6. Record the base and compute the review ranges (FEATURE, BUG, REFACTOR, TEST only;
+     every other profile gets review_ranges={} and no Base.md):
+   • the range includes the profile's code-changing stage (Execute / Fix / Refactor / Write)
+       → bash "<core root>/scripts/task-ranges.sh" record <task dir>      # writes Base.md once
+   • the range includes Review, or action=catch-up:
+       since := done     if action=catch-up
+                base     if Review.md is absent, or action is restart or restart-full
+                reviewed otherwise
+       review_ranges := bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since <since>
+       ↓ since ≠ base and a repository came back rewritten or unknown
+         → rerun with --since base; announce `warn_review_ranges_full` with {repos}
+   • otherwise review_ranges := {}
+   ↓ exit 2 from either call is a stop, as for resolve-settings.sh: report its stderr, dispatch nothing
 
 5.7. Resolve agents (per-role) — the map every stage dispatches through:
    • platform := first non-empty line of ## Platform in CLAUDE-spine-toolkit.md
@@ -355,7 +374,7 @@ Method A passes `need_test` and `need_review` as JSON booleans (`true`/`false`),
 task_id=001
 task_dir=Tasks/ACTIVE/001-feature-search
 profile=feature
-action=run|continue|redo|restart|restart-full
+action=run|continue|redo|restart|restart-full|catch-up
 start_stage=Plan
 start_phase=2.3
 end_stage=null
@@ -380,6 +399,7 @@ effort={walkthrough: session, done: session, architect: session, developer: sess
 long_run={stall: 5, max: 30}
 plugin_root=/Users/<user>/.claude/plugins/cache/<marketplace>/spine-toolkit/<version>
 roots=[/Users/<user>/App, /Users/<user>/Packages/Net]
+review_ranges={"since": "reviewed", "repos": {".": {"range": "1a2b3c4..HEAD", "commits": 2, "state": "ok"}}}
 archive_paths=[Tasks/ACTIVE/001-profile/_archive/Plan-2026-04-25T143022.md, Tasks/ACTIVE/001-profile/_archive/Research-2026-04-25T143022.md]
 ```
 
@@ -452,6 +472,8 @@ size belongs to the task, not to one dispatch.
 `long_run` — how long a command a stage agent runs may stay silent (`stall`) and may run at all (`max`), in minutes. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. The script hands both to every agent as the `--stall` and `--max` of `scripts/long-run.sh`, in seconds; Method A passes the object as real JSON, and Method B puts the same values, in seconds, in its dispatch prompt (`conventions/stage-dispatch.md`). When `stall` is not below `max`, the resolver's stderr line — `long_run: stall <n> is not below max <m>, the budget fires first` — is announced to the user as is; the values still apply as written.
 
 `roots` — the folders a stage agent may search for a file, the core root aside: the project root, then every folder `## Paths` in `CLAUDE-spine-toolkit.md` names under `External packages` or `Roots`, absolute. Printed by the same run of `resolve-settings.sh json`; always filled, for every profile. Method A passes the list as real JSON, Method B names it in its dispatch prompt (`conventions/stage-dispatch.md`); either way it becomes the brief's `Search roots:` line, which `conventions/agent-tooling.md` → Finding files turns into a rule. Absent, the brief names only the project root and the core root and the run goes on: unlike a missing `plugin_root`, a shorter list narrows the search without breaking it.
+
+`review_ranges` — what Review reads, per repository of the task, and what a `catch-up` validates: the JSON `task-ranges.sh ranges` printed in Resolution step 5.6, as described in `conventions/task-ranges.md`. `{}` when the range holds neither Review nor a catch-up, and for RESEARCH, REVIEW and EPIC. Method A passes the object as real JSON; Method B names each range in the Review stage's prompt (`conventions/stage-dispatch.md`).
 
 `archive_paths` — list of paths to backups already created in `_archive/` for stages that will be overwritten (filled before handing off control). Format: `[path1, path2, path3]`. Empty list = `[]`. Method A passes it as a JSON array of strings.
 
@@ -818,6 +840,7 @@ Triggers (free-form, parsed into `action` + `stage_target`):
 | "redo phase 2.3 for 026" | `redo` | `<stage>:phase=2.3` | `single` (at the phase level) |
 | "rerun validation for 026" | `redo` | `Validation` | `single` |
 | "start over for 026" | `restart-full` | null | `all` |
+| "catch up 026" / "догони 026" | `catch-up` | null | `forward` |
 
 > Note on the semantics of "rerun": `rerun <stage>` = `redo` of a single stage (an atomic redo). Do not confuse it with `restart`, which resets `<stage>` AND every subsequent stage. The user verb "rerun" here is closer in meaning to "redo atomically" than to "reset and walk through to the end again".
 
@@ -829,6 +852,9 @@ Action and archival semantics:
 | `redo <stage>` | Redo one stage | `<stage>` artifact | from `<stage>`, after = untouched |
 | `restart <stage>` | Reset and rerun from stage to end | `<stage>` and all subsequent | from `<stage>` to end of profile |
 | `restart-full` | Full reset | all artifacts (a RESEARCH task's `experiment/` stays in place) | from the profile's first stage |
+| `catch-up` | Validate, review and close the commits after Done | `Review.md`, `Done.md` | from `Validation` to the end |
+
+A `catch-up` of a task in `Tasks/DONE/` first moves it back to `ACTIVE/` the way `/task-move` does, and moves it back into `DONE/` once the run returns with `Done` completed.
 
 **All redo / restart operations in manual mode require a structured confirmation BEFORE archiving.**
 
