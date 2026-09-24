@@ -8,6 +8,13 @@ globalThis.agent = async (prompt, opts) => {
   calls.push({ label: opts.label, prompt, schema: opts.schema })
   return R[opts.label] || { ok: true, artifact_path: 'x', summary: 's', changed: false }
 }
+// A nested workflow answers from replies keyed workflow:<name>; unkeyed, it throws as the bare runtime would.
+globalThis.workflow = async (name, args) => {
+  const label = `workflow:${typeof name === 'string' ? name : name.scriptPath}`
+  calls.push({ label, args })
+  if (!R[label]) throw new Error('workflow is not defined')
+  return R[label]
+}
 globalThis.parallel = async (fns) => Promise.all(fns.map((f) => f()))
 const body = fs.readFileSync(script, 'utf8').replace(/^export const meta/m, 'const meta')
 const run = new (Object.getPrototypeOf(async function () {}).constructor)('args', 'log', body)
