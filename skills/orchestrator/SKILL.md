@@ -2,8 +2,8 @@
 name: orchestrator
 description: |
   Routes a user request to the appropriate profile workflow (FEATURE/BUG/REFACTOR/TEST/REVIEW/EPIC/RESEARCH), resolves missing parameters (profile, mode, stack, start point), and manages stages and artifact archival.
-  Use when (en): "run N", "do N", "execute N", "continue N", "only <stage> for N", "up to <stage> for N", "start from <stage> for N", "redo <stage> for N", "start from phase N.N for X", "redo phase N.N for X", "start over for N", "rerun validation for N"
-  Use when (ru): "запусти N", "сделай N", "выполни N", "продолжи N", "только <stage> для N", "до <stage> для N", "начни с <stage> для N", "переделай <stage> для N", "начни с фазы N.N для X", "переделай фазу N.N для X", "начни заново для N", "перезапусти валидацию для N"
+  Use when (en): "run N", "do N", "execute N", "continue N", "only <stage> for N", "up to <stage> for N", "start from <stage> for N", "redo <stage> for N", "start from phase N.N for X", "redo phase N.N for X", "start over for N", "rerun validation for N", "catch up N"
+  Use when (ru): "запусти N", "сделай N", "выполни N", "продолжи N", "только <stage> для N", "до <stage> для N", "начни с <stage> для N", "переделай <stage> для N", "начни с фазы N.N для X", "переделай фазу N.N для X", "начни заново для N", "перезапусти валидацию для N", "догони N"
 ---
 
 # Orchestrator
@@ -840,7 +840,7 @@ Triggers (free-form, parsed into `action` + `stage_target`):
 | "redo phase 2.3 for 026" | `redo` | `<stage>:phase=2.3` | `single` (at the phase level) |
 | "rerun validation for 026" | `redo` | `Validation` | `single` |
 | "start over for 026" | `restart-full` | null | `all` |
-| "catch up 026" / "догони 026" | `catch-up` | null | `forward` |
+| "catch up 026" | `catch-up` | null | `forward` |
 
 > Note on the semantics of "rerun": `rerun <stage>` = `redo` of a single stage (an atomic redo). Do not confuse it with `restart`, which resets `<stage>` AND every subsequent stage. The user verb "rerun" here is closer in meaning to "redo atomically" than to "reset and walk through to the end again".
 
