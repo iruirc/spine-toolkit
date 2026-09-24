@@ -780,3 +780,34 @@ $BATS_TEST_TMPDIR/assets"
   [ "$(field fix_rounds <<<"$out")" = 2 ] || { echo "$out"; return 1; }
   grep -qF "'-1' not recognized" "$ERR" || { cat "$ERR"; return 1; }
 }
+@test "a QUICK task is lite whatever the project says, and says why" {
+  printf '## Task defaults\n\n[SCALE] = [full]\n[WALKTHROUGH] = [deep]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [QUICK]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field scale <<<"$output")" = lite ] || { echo "$output"; return 1; }
+  [ "$(source_of scale <<<"$output")" = type ] || { echo "$output"; return 1; }
+  [ "$(field walkthrough <<<"$output")" = off ] || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK"
+  grep -qF '[SCALE]       = [lite]  # type: QUICK' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "a QUICK task's own [SCALE] is reported and ignored, its own [WALKTHROUGH] is kept" {
+  printf '[TASK_TYPE] = [QUICK]\n[SCALE] = [full]\n[WALKTHROUGH] = [brief]\n' >"$TASK/Task.md"
+  "$RESOLVE" json "$TASK" >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field scale <"$BATS_TEST_TMPDIR/out")" = lite ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ "$(field walkthrough <"$BATS_TEST_TMPDIR/out")" = brief ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  grep -qxF "Task.md [SCALE]: 'full' ignored, a QUICK task is always lite" "$ERR" || { cat "$ERR"; return 1; }
+}
+
+@test "only a QUICK task is forced to lite" {
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [full]\n' >"$TASK/Task.md"
+  "$RESOLVE" json "$TASK" >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field scale <"$BATS_TEST_TMPDIR/out")" = full ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+}
+
+@test "a lower-case quick is QUICK too" {
+  printf '[TASK_TYPE] = [quick]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field scale <<<"$output")" = lite ] || { echo "$output"; return 1; }
+}

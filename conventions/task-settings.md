@@ -58,7 +58,7 @@ answers.
 | `mode` | `[WORKFLOW_MODE]` | `[WORKFLOW_MODE]` | `manual` `auto` | `manual` |
 | `progress` | — | `[PROGRESS]` | `quiet` `normal` `live` | `normal` |
 | `settings_report` | — | `[SETTINGS_REPORT]` | `diff` `full` `off` | `diff` |
-| `scale` | `[SCALE]` | `[SCALE]` | `lite` `full` | `full` |
+| `scale` | `[SCALE]` | `[SCALE]` | `lite` `full` | `full`; always `lite` for a `QUICK` task |
 | `walkthrough` | `[WALKTHROUGH]` | `[WALKTHROUGH]` | `brief` `deep` `off` | `off` when `scale` is `lite`, else `deep` |
 | `walkthrough_check` | `[WALKTHROUGH_CHECK]` | `[WALKTHROUGH_CHECK]` | `auto` `on` `off` | `auto`: `on` at `deep`, `off` at `brief`; `off` wherever `walkthrough` is `off` |
 | `drive_app` | `[DRIVE_APP]` | `[DRIVE_APP]` | `auto` `off` | `auto` |
