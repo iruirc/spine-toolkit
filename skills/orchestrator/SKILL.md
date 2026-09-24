@@ -110,7 +110,8 @@ Algorithm:
 
 1. Task folder is in `Tasks/DONE/` OR `Done.md` exists → the task has been finished once. For FEATURE, BUG, REFACTOR and TEST, first run `bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since done`:
    - every repository at 0 commits → finished: AUQ to confirm a full restart (=`action=restart-full`), reopen (move back into `ACTIVE/`), or exit;
-   - any repository with commits after its `[DONE_COMMIT]`, or `unknown` because `Done.md` predates the record → AUQ using key `auq_catch_up_question` with `{counts}` (repository: commits, one per line), `catch-up` first (key `auq_catch_up_option`, =`action=catch-up`), then the three options above. When the counts are `unknown`, the option carries `warn_catch_up_whole_task`.
+   - any repository with commits after its `[DONE_COMMIT]` → AUQ using key `auq_catch_up_question` with `{counts}` (repository: commits, one per line), `catch-up` first (key `auq_catch_up_option`, =`action=catch-up`), then the three options above;
+   - otherwise, a repository `unknown` because `Done.md` predates the record → the same AUQ with the three options above first and `catch-up` last, the option carrying `warn_catch_up_whole_task`.
    - exit 2 is a stop: report the script's stderr.
    Other profiles: finished, the three options above.
 2. Walk the columns of the row matching the current profile **left to right**; the first match determines `start_stage`. For BUG specifically: `Plan.md` wins over `Research.md`, which wins over `Reproduce.md`.
@@ -200,6 +201,7 @@ Algorithm:
    action=restart, stage_target=X → start at X, re-execute X and all subsequent stages
    action=restart-full            → start at the profile's first stage, re-execute all
    action=catch-up                → start at Validation, forward (Validation → Review → Done)
+                                    ↓ no Done.md → error using key `error_catch_up_not_done` with `{task_id}`, dispatch nothing
 
 5.5. Validate start_stage against profile.stages:
    • profile_stages := ordered stage list of the target profile (canonical source: workflow-<profile> SKILL.md heading)
@@ -221,15 +223,21 @@ Algorithm:
 
 5.6. Record the base and compute the review ranges (FEATURE, BUG, REFACTOR, TEST only;
      every other profile gets review_ranges={} and no Base.md):
-   • the range includes the profile's code-changing stage (Execute / Fix / Refactor / Write)
+   • the range includes the profile's code-changing stage (Execute / Fix / Refactor / Write),
+     and there is no Plan.md yet or no phase of its progress table is marked ✅
        → bash "<core root>/scripts/task-ranges.sh" record <task dir>      # writes Base.md once
+     # a phase already landed: today's tip is not the task's start, so the base fallback decides
    • the range includes Review, or action=catch-up:
        since := done     if action=catch-up
                 base     if Review.md is absent, or action is restart or restart-full
                 reviewed otherwise
        review_ranges := bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since <since>
+       ↓ action=catch-up and every repository is ok at 0 commits
+         → announce `info_catch_up_nothing` with `{task_id}` and stop, dispatch nothing
        ↓ since ≠ base and a repository came back rewritten or unknown
-         → rerun with --since base; announce `warn_review_ranges_full` with {repos}
+         → rerun with --since base
+       ↓ a repository came back rewritten or unknown from either call — at --since base too,
+         where there is nothing to rerun → announce `warn_review_ranges_full` with {repos}
    • otherwise review_ranges := {}
    ↓ exit 2 from either call is a stop, as for resolve-settings.sh: report its stderr, dispatch nothing
 
@@ -854,7 +862,7 @@ Action and archival semantics:
 | `restart-full` | Full reset | all artifacts (a RESEARCH task's `experiment/` stays in place) | from the profile's first stage |
 | `catch-up` | Validate, review and close the commits after Done | `Review.md`, `Done.md` | from `Validation` to the end |
 
-A `catch-up` of a task in `Tasks/DONE/` first moves it back to `ACTIVE/` the way `/task-move` does, and moves it back into `DONE/` once the run returns with `Done` completed.
+A `catch-up` of a task in `Tasks/DONE/` first moves it back to `ACTIVE/` the way `/task-move` does — before any backup is taken, so `archive_paths` name files under `ACTIVE/` — and moves it back into `DONE/` once the run returns with `Done` completed. A catch-up stopped at `CHANGES_REQUESTED` is resumed after the fixes with `catch-up` again, not with a bare `redo Review` or Done, so the "Catch-up: commits after Done" phase is written and the task moves back into `DONE/`.
 
 **All redo / restart operations in manual mode require a structured confirmation BEFORE archiving.**
 
