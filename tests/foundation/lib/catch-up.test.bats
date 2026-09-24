@@ -52,3 +52,15 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     done
   done
 }
+
+@test "every Method B Review reads review_ranges and every Done closes ## For Done" {
+  for p in bug feature refactor test; do
+    f="$ROOT/skills/workflow-$p/SKILL.md"
+    if grep -qF 'narrows scope to the commits landed since its `[REVIEWED_COMMIT]` line' "$f"; then
+      echo "workflow-$p: the reviewer still derives its own scope"; return 1
+    fi
+    for s in 'reads exactly the ranges in `review_ranges`' '`## For Done`' '`## Review findings closed`' '`[DONE_COMMIT]`' 'Catch-up: commits after Done'; do
+      grep -qF "$s" "$f" || { echo "workflow-$p lost: $s"; return 1; }
+    done
+  done
+}
