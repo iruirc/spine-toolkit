@@ -64,7 +64,7 @@ The orchestrator does not activate on every user request — light commands bypa
    - Is there a `CLAUDE-spine-toolkit.md`? No → answer with key `error_no_project_config` and stop. This precedes `task-new` and every question of the Resolution Algorithm on purpose: with no config there is no `## Platform`, so no manifest and no `agents` map, and nothing this branch resolves could be dispatched — scaffolding a task and asking about stack axes first would spend the user's answers on a dispatch that cannot happen. `error_no_platform_manifest` at step 5.7 is the neighbouring case, a config that exists but names no usable platform.
    - Is there a `Task.md` for `task_id`? Yes → read `[TASK_TYPE]`, `[WORKFLOW_MODE]` (if present), `## 4. [Stack]` (if present), `[STATUS]` (for steps).
    - No → run `task-new`, then continue.
-   - Determine the profile from `[TASK_TYPE]` (see Dispatch). A `.step/` folder whose `[TASK_TYPE]` is `QUICK` → answer with key `error_quick_step` (`{task_id}`) and stop: QUICK is a root task the user chose, and an epic's step is not.
+   - Determine the profile from `[TASK_TYPE]` (see Dispatch).
    - Confirmation/skip is governed in Resolution Algorithm, step 6 (single source of truth).
    - **Driver pre-flight.** Run this only when `drive_app` does not resolve to `off` **and** the
      resolved stage range includes Validation — or, for RESEARCH with `research_experiment=on`

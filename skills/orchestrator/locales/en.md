@@ -295,6 +295,3 @@ I will fix them myself, then run redo Review
 
 ## quick_escalation_stop
 Task `{task_id}` is not a QUICK change: {reason}. Nothing was changed. Set `[TASK_TYPE]` in its `Task.md` to BUG, FEATURE or REFACTOR and run it again.
-
-## error_quick_step
-Step `{task_id}` is marked QUICK, but QUICK is for a root task the user chose. Give the step another `[TASK_TYPE]` in its `Task.md`.

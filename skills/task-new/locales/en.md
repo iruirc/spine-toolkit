@@ -11,6 +11,3 @@ spike; experiment; find out by running; check by running; measure it; prototype 
 
 ## task_type_quick_keywords
 quick task; quick-task; type QUICK; QUICK task
-
-## quick_not_for_steps
-A step cannot be QUICK: that type is for a root task you choose yourself. Name another type for the step.

@@ -11,7 +11,7 @@ stack_axes_envelope: { may: all, never: [] }
 
 This skill is **Method B** for the QUICK profile: it runs the stages when the host has no Workflow tool. `workflows/profile-quick.js` is Method A and runs the same stages as code. The orchestrator picks between them (see `spine-toolkit:orchestrator` → **Dispatch**), and `scripts/lint-workflows.sh` fails if the two stage lists drift apart. Edit a stage here and the script needs the same edit.
 
-The profile workflow for tasks with `[TASK_TYPE] = QUICK`: one small change that `Task.md` already locates, with no Reproduce, no investigation and no Plan stage. The user chooses it explicitly, and only for a root task. The skill receives an already-resolved contract from the orchestrator and does not try to re-resolve any parameter on its own.
+The profile workflow for tasks with `[TASK_TYPE] = QUICK`: one small change that `Task.md` already locates, with no Reproduce, no investigation and no Plan stage. The user chooses it explicitly, for a root task or an epic's step; an epic's architect never does. The skill receives an already-resolved contract from the orchestrator and does not try to re-resolve any parameter on its own.
 
 ## Language Resolution
 
