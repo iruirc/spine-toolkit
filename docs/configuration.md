@@ -145,6 +145,9 @@ A `lite` run can be raised to `full` once — by the stage that first measures t
 the planner — and is never lowered; the raise is written back into the task's `Task.md`.
 `[SCALE] = [full]` in a `Task.md` also switches the raise off, the author having already decided.
 
+A `QUICK` task is always `lite`: the value comes from its type, and a `[SCALE]` in its `Task.md` is
+reported and ignored.
+
 A project without this field runs `full`, which is what every project did before the setting
 existed. The template ships `[SCALE] = [lite]`, so a project newly set up from it runs `lite` — the
 one field whose shipped line and absent-field default differ, and they differ on purpose: `lite` is

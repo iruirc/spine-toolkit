@@ -8,3 +8,9 @@ audit; investigate without changes; inventory; feasibility; spike; comparative a
 
 ## research_experiment_keywords
 spike; experiment; find out by running; check by running; measure it; prototype to find out; опытом; экспериментом; проверь запуском; выясни запуском; замерь
+
+## task_type_quick_keywords
+quick; быстрая задача; quick-задача; быстрая правка
+
+## quick_not_for_steps
+Шаг не может быть QUICK: этот тип — только для корневой задачи, которую вы выбираете сами. Назовите для шага другой тип.

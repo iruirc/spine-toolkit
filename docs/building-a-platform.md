@@ -477,11 +477,11 @@ Core dispatches by role; which agent that means is yours. This is where each one
 | Role | Dispatched at |
 |---|---|
 | `architect` | FEATURE Research (after the `security` lens), Plan, Done · BUG Diagnose (panel with `diagnostics` and the `security` lens), Plan · REFACTOR Analyze (after the `security` lens), Plan · TEST Analyze (panel with `tester`) · EPIC Research, Plan · RESEARCH Research (default) |
-| `developer` | FEATURE Execute · BUG Fix |
+| `developer` | FEATURE Execute · BUG Fix · QUICK Edit, writing the test too when `need_test` |
 | `tester` | FEATURE Execute and BUG Fix when `need_test` · REFACTOR Refactor, for a test-only phase, when `need_test` · TEST Analyze (panel), Plan, Write |
 | `reviewer` | Review, on every profile that has one, plus the whole REVIEW profile |
 | `refactorer` | REFACTOR Refactor |
-| `validator` | Validation, on FEATURE / BUG / REFACTOR / TEST |
+| `validator` | Validation, on FEATURE / BUG / REFACTOR / TEST / QUICK |
 | `security` | the lens at FEATURE Research, BUG Diagnose and REFACTOR Analyze, or before Plan at `lite`, and its triage as a `light` call — whether either runs is `[SECURITY]` and `spine-toolkit:security-lens` · RESEARCH Research, when `research_agent=security` |
 | `diagnostics` | BUG Reproduce, Diagnose (panel) · RESEARCH Research, when `research_agent=diagnostics` |
 | `init` | Never dispatched by a workflow. Core's routing points the user at it for "create a project", and the platform usually also exposes it as its own command (`/swift-init`). |

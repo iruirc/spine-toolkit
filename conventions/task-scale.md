@@ -13,6 +13,11 @@ downstream reads, and caps how long each artifact may run. It is cheaper, not lo
 
 There is no third value. A third needs two thresholds and a corpus calibrated for neither.
 
+A `QUICK` task is always `lite`, whatever `[SCALE]` says: `scripts/resolve-settings.sh` resolves it
+from the type. That is not a third value either. QUICK drops the floor's Reproduce and its Plan
+stage, which no value of this axis may do, so it is a task type the user chooses, with an entry
+check of its own in place of the ratchet (`skills/workflow-quick/SKILL.md`).
+
 ## Resolution
 
 ```

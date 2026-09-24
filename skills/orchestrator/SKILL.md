@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: |
-  Routes a user request to the appropriate profile workflow (FEATURE/BUG/REFACTOR/TEST/REVIEW/EPIC/RESEARCH), resolves missing parameters (profile, mode, stack, start point), and manages stages and artifact archival.
+  Routes a user request to the appropriate profile workflow (FEATURE/BUG/REFACTOR/TEST/QUICK/REVIEW/EPIC/RESEARCH), resolves missing parameters (profile, mode, stack, start point), and manages stages and artifact archival.
   Use when (en): "run N", "do N", "execute N", "continue N", "only <stage> for N", "up to <stage> for N", "start from <stage> for N", "redo <stage> for N", "start from phase N.N for X", "redo phase N.N for X", "start over for N", "rerun validation for N", "catch up N", "fix review N"
   Use when (ru): "запусти N", "сделай N", "выполни N", "продолжи N", "только <stage> для N", "до <stage> для N", "начни с <stage> для N", "переделай <stage> для N", "начни с фазы N.N для X", "переделай фазу N.N для X", "начни заново для N", "перезапусти валидацию для N", "догони N", "исправь находки N"
 ---
@@ -64,7 +64,7 @@ The orchestrator does not activate on every user request — light commands bypa
    - Is there a `CLAUDE-spine-toolkit.md`? No → answer with key `error_no_project_config` and stop. This precedes `task-new` and every question of the Resolution Algorithm on purpose: with no config there is no `## Platform`, so no manifest and no `agents` map, and nothing this branch resolves could be dispatched — scaffolding a task and asking about stack axes first would spend the user's answers on a dispatch that cannot happen. `error_no_platform_manifest` at step 5.7 is the neighbouring case, a config that exists but names no usable platform.
    - Is there a `Task.md` for `task_id`? Yes → read `[TASK_TYPE]`, `[WORKFLOW_MODE]` (if present), `## 4. [Stack]` (if present), `[STATUS]` (for steps).
    - No → run `task-new`, then continue.
-   - Determine the profile from `[TASK_TYPE]` (see Dispatch).
+   - Determine the profile from `[TASK_TYPE]` (see Dispatch). A `.step/` folder whose `[TASK_TYPE]` is `QUICK` → answer with key `error_quick_step` (`{task_id}`) and stop: QUICK is a root task the user chose, and an epic's step is not.
    - Confirmation/skip is governed in Resolution Algorithm, step 6 (single source of truth).
    - **Driver pre-flight.** Run this only when `drive_app` does not resolve to `off` **and** the
      resolved stage range includes Validation — or, for RESEARCH with `research_experiment=on`
@@ -103,19 +103,20 @@ State Detection is **profile-aware** and **purely file-existence driven** — th
 | BUG | first `⬜` phase | n/a | `Plan` | `Diagnose` | `Reproduce` |
 | REFACTOR | first `⬜` phase | n/a | `Plan` | n/a | `Analyze` |
 | TEST | first `⬜` phase | n/a | `Plan` | n/a | `Analyze` |
+| QUICK | first `⬜` phase | n/a | n/a | n/a | `Edit` |
 | REVIEW | n/a | n/a | n/a | n/a | `Review` (single-stage profile) |
 | RESEARCH | n/a | `Done` | `Review` (if `need_review=true`) else `Done` | n/a | `Research` |
 
 Algorithm:
 
-1. Task folder is in `Tasks/DONE/` OR `Done.md` exists → the task has been finished once. For FEATURE, BUG, REFACTOR and TEST, first run `bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since done`:
+1. Task folder is in `Tasks/DONE/` OR `Done.md` exists → the task has been finished once. For FEATURE, BUG, REFACTOR, TEST and QUICK, first run `bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since done`:
    - every repository at 0 commits → finished: AUQ to confirm a full restart (=`action=restart-full`), reopen (move back into `ACTIVE/`), or exit;
    - any repository with commits after its `[DONE_COMMIT]` → AUQ using key `auq_catch_up_question` with `{counts}` (repository: commits, one per line), `catch-up` first (key `auq_catch_up_option`, =`action=catch-up`), then the three options above;
    - otherwise, a repository `unknown` because `Done.md` predates the record → the same AUQ with the three options above first and `catch-up` last, the option carrying `warn_catch_up_whole_task`.
    - exit 2 is a stop: report the script's stderr.
    Other profiles: finished, the three options above.
 2. Walk the columns of the row matching the current profile **left to right**; the first match determines `start_stage`. For BUG specifically: `Plan.md` wins over `Research.md`, which wins over `Reproduce.md`.
-3. `Plan.md` exists but its progress table is missing or unparseable → consider stage `Plan` complete; start at the next stage in the profile's sequence (FEATURE/EPIC: `Execute`; BUG: `Fix`; REFACTOR: `Refactor`; TEST: `Write`); for REVIEW (no next stage), ask explicitly via AUQ. RESEARCH has no Plan stage at all — this branch is unreachable for RESEARCH. Add a warning to the user.
+3. `Plan.md` exists but its progress table is missing or unparseable → consider stage `Plan` complete; start at the next stage in the profile's sequence (FEATURE/EPIC: `Execute`; BUG: `Fix`; REFACTOR: `Refactor`; TEST: `Write`; QUICK: `Edit`, which finishes an existing `Plan.md` rather than writing one); for REVIEW (no next stage), ask explicitly via AUQ. RESEARCH has no Plan stage at all — this branch is unreachable for RESEARCH. Add a warning to the user.
 4. **Inline-content note.** If `Task.md` carries embedded reproduce/research/analyze material but no artifact files exist in the task folder, State Detection still picks the first stage of the profile (per the rightmost column of the table); for BUG that stage checks a root cause `Task.md` names at file:line rather than rediscovering it. The user can override via the `confirm_dispatch` picker (Resolution Algorithm step 6) or by passing `--from <stage>`.
 
 **Invariant:** `start_stage` produced by State Detection is always a member of the target profile's stage list. Defense-in-depth validation runs in Resolution Algorithm step 5.5 regardless.
@@ -202,7 +203,7 @@ Algorithm:
    action=restart-full            → start at the profile's first stage, re-execute all
    action=catch-up                → start at Validation, forward (Validation → Review → Done)
                                     ↓ no Done.md → error using key `error_catch_up_not_done` with `{task_id}`, dispatch nothing
-   action=fix-review              → start at the code-changing stage (Fix / Execute / Refactor / Write), forward
+   action=fix-review              → start at the code-changing stage (Fix / Execute / Refactor / Write / Edit), forward
                                     ↓ checked on a fix-review's first dispatch (its code stage) only — a later
                                       per-stage dispatch of the same round (manual) does not re-check it:
                                       no Review.md, or its first line is not [REVIEW_STATUS] = CHANGES_REQUESTED
@@ -226,10 +227,10 @@ Algorithm:
            return {status: error, reason: error_stage_not_in_profile,
                    notes: locale `error_stage_not_in_profile` with placeholders filled}
 
-5.6. Record the base and compute the review ranges (FEATURE, BUG, REFACTOR, TEST only;
+5.6. Record the base and compute the review ranges (FEATURE, BUG, REFACTOR, TEST, QUICK only;
      every other profile gets review_ranges={} and no Base.md). It runs at every dispatch, so a
      Review dispatched on its own (manual) is counted after the commits the earlier stages made:
-   • the range includes the profile's code-changing stage (Execute / Fix / Refactor / Write),
+   • the range includes the profile's code-changing stage (Execute / Fix / Refactor / Write / Edit),
      and there is no Plan.md yet or no phase of its progress table is marked ✅
        → bash "<core root>/scripts/task-ranges.sh" record <task dir>      # writes Base.md once
      # a phase already landed: today's tip is not the task's start, so the base fallback decides
@@ -528,6 +529,7 @@ A profile has up to two executable forms. **Method A** is a workflow script the 
 | BUG | `workflows/profile-bug.js` | `spine-toolkit:workflow-bug` |
 | REFACTOR | `workflows/profile-refactor.js` | `spine-toolkit:workflow-refactor` |
 | TEST | `workflows/profile-test.js` | `spine-toolkit:workflow-test` |
+| QUICK | `workflows/profile-quick.js` | `spine-toolkit:workflow-quick` |
 | REVIEW | `workflows/profile-review.js` | `spine-toolkit:workflow-review` |
 | EPIC | `workflows/profile-epic.js` | `spine-toolkit:workflow-epic` |
 | RESEARCH | `workflows/profile-research.js` | `spine-toolkit:workflow-research` |
@@ -710,7 +712,9 @@ durations inside an `auto` run do not exist; do not invent them.
 
 **Auto** — no pauses between stages.
 
-**After Review: `CHANGES_REQUESTED`.** FEATURE, BUG, REFACTOR and TEST. The findings are the run's returned `blocking_findings` or, when this session holds no such return (Method B, a new session), every item of `Review.md` under `### Findings` → **Critical** and **Major**, one line each. With none — and for `DISCUSSION` — it is the ordinary `stage_done_prompt`.
+**After Edit: `quick_escalation`.** QUICK only. A return carrying `quick_escalation` means Edit's entry check found the task is not a QUICK change and nothing was changed. In both modes, announce `quick_escalation_stop` (`{task_id}`, `{reason}`) and stop — no `stage_done_prompt`, and `[TASK_TYPE]` is not rewritten: the user chose QUICK and decides what the task becomes.
+
+**After Review: `CHANGES_REQUESTED`.** FEATURE, BUG, REFACTOR, TEST and QUICK. The findings are the run's returned `blocking_findings` or, when this session holds no such return (Method B, a new session), every item of `Review.md` under `### Findings` → **Critical** and **Major**, one line each. With none — and for `DISCUSSION` — it is the ordinary `stage_done_prompt`.
 
 - `auto`: count the rows of the `Plan.md` progress table titled `Review fixes <n>` whose `<n>` is above the `[REVIEW_FIXES]` line of `Done.md` — every Done writes it, so a catch-up never inherits the rounds of the run before; with no `Done.md` count them all, and with a `Done.md` that predates the line count those below the last `Catch-up: commits after Done` row (all of them when there is none) — and count the `fix-review` rounds this session has dispatched for the task since its last Done; the larger is the rounds spent, so the loop never goes past `fix_rounds` of them whatever `Plan.md` shows. After a round, a `Plan.md` without the new `Review fixes <n>` row, `<n>` being the `fix_round` it was dispatched with, means the fix phase went unrecorded: announce `warn_fix_round_unrecorded` with that `{n}` and stop the loop with `auq_fix_rounds_spent`. With fewer than `fix_rounds` spent, announce `info_fix_round` with `{n}` — the rounds spent plus one, not `fix_round` — `{max}` — `fix_rounds` — and `{count}`, then dispatch `action=fix-review` with every finding. Otherwise AUQ using key `auq_fix_rounds_spent` with `{findings}`: `auq_fix_rounds_option_more` (one more `fix-review`), `auq_fix_rounds_option_self` (stop; the user fixes the code and runs `redo Review`), or exit.
 - `manual`: AUQ using key `auq_fix_review_question` with `{findings}`: `auq_fix_review_option_all` (first; `fix-review` with every finding), `auq_fix_review_option_pick` (a multi-select of the findings, then `fix-review` with those picked), `auq_fix_review_option_leave` (stop). `fix_rounds` does not apply: the user confirms each round.
@@ -815,16 +819,16 @@ separate readers of `[LANG]`; when they disagree, report it once with key `lang_
 (`{artifact}`, `{section}`, `{lang}`), then send each file it names back **once** to the role whose
 call writes it — for a file in a step folder, the column its own `Task.md` `[TASK_TYPE]` names:
 
-| Artifact | FEATURE | BUG | REFACTOR | TEST | EPIC | RESEARCH | REVIEW |
-|---|---|---|---|---|---|---|---|
-| `Research.md` | architect | architect | architect | tester | architect | `research_agent` | — |
-| `Reproduce.md` | — | diagnostics | — | — | — | — | — |
-| `Plan.md` | architect | architect | architect | tester | architect | — | — |
-| `Validation.md`, `OpsChecklist.md`, `ManualChecks.md` | validator | validator | validator | validator | — | — | — |
-| `Review.md`, `ChangesRequested.md` | reviewer | reviewer | reviewer | reviewer | — | reviewer | reviewer |
-| `Walkthrough.md` | architect | developer | refactorer | tester | architect | — | — |
-| `Done.md` | architect | developer | refactorer | tester | architect | architect | reviewer |
-| `Docs.md` | developer | developer | refactorer | tester | architect | — | — |
+| Artifact | FEATURE | BUG | REFACTOR | TEST | QUICK | EPIC | RESEARCH | REVIEW |
+|---|---|---|---|---|---|---|---|---|
+| `Research.md` | architect | architect | architect | tester | — | architect | `research_agent` | — |
+| `Reproduce.md` | — | diagnostics | — | — | — | — | — | — |
+| `Plan.md` | architect | architect | architect | tester | developer | architect | — | — |
+| `Validation.md`, `OpsChecklist.md`, `ManualChecks.md` | validator | validator | validator | validator | validator | — | — | — |
+| `Review.md`, `ChangesRequested.md` | reviewer | reviewer | reviewer | reviewer | reviewer | — | reviewer | reviewer |
+| `Walkthrough.md` | architect | developer | refactorer | tester | developer | architect | — | — |
+| `Done.md` | architect | developer | refactorer | tester | developer | architect | architect | reviewer |
+| `Docs.md` | developer | developer | refactorer | tester | developer | architect | — | — |
 
 A `—` owner, whether a `—` cell above or a role the `agents` map resolved to `—`, sends nothing: the
 finding is reported with key `lang_mismatch_unowned` (`{artifact}`, `{section}`, `{lang}`) instead.

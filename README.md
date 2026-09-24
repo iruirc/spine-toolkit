@@ -47,7 +47,7 @@ and bare they resolve to nothing — verified in both an interactive and a headl
 ## How a task runs
 
 A task lives in `Tasks/<STATUS>/<id>-<slug>/`. Its `Task.md` names a `[TASK_TYPE]`, which selects one
-of seven profiles:
+of eight profiles:
 
 | Profile | Stages |
 |---|---|
@@ -55,6 +55,7 @@ of seven profiles:
 | BUG | Reproduce → Diagnose → Plan → Fix → Validation → Review → Done |
 | REFACTOR | Analyze → Plan → Refactor → Validation → Review → Done |
 | TEST | Analyze → Plan → Write → Validation → Review → Done |
+| QUICK | Edit → Validation → Review → Done — for a small change `Task.md` already locates, chosen only by the user; Edit checks that it is one before changing anything |
 | EPIC | Research → Plan → Execute → Done — Execute is one nested profile run per `.step/`, and each step carries its own Validation and Review |
 | RESEARCH | Research → Review → Done |
 | REVIEW | Review — single stage, then an auto-move driven by `[REVIEW_STATUS]` |
