@@ -104,11 +104,17 @@ def recorded(kind, name):
     return out
 
 
-def main_branch(top):
+def fallback_base(top):
+    # The nearest merge-base over the local and the remote main branch: either may run ahead of
+    # the other with commits that are not the task's. None when HEAD sits on one of them.
+    head, best = git(top, 'rev-parse', 'HEAD'), None
     for ref in (git(top, 'symbolic-ref', '-q', '--short', 'refs/remotes/origin/HEAD'), 'main', 'master'):
-        if ref and git(top, 'rev-parse', '-q', '--verify', ref + '^{commit}'):
-            return ref
-    return None
+        sha = ref and git(top, 'rev-parse', '-q', '--verify', ref + '^{commit}') and git(top, 'merge-base', 'HEAD', ref)
+        if sha == head:
+            return None
+        if sha and (best is None or count(top, sha) < count(top, best)):
+            best = sha
+    return best
 
 
 def count(top, sha):
@@ -137,11 +143,7 @@ elif CMD == 'ranges':
     for rel, top in sorted(REPOS.items()):
         sha = rec.get(rel)
         if not sha and since == 'base':
-            ref = main_branch(top)
-            sha = git(top, 'merge-base', 'HEAD', ref) if ref else None
-            # Work committed on the main branch itself leaves no base to count from.
-            if sha == git(top, 'rev-parse', 'HEAD'):
-                sha = None
+            sha = fallback_base(top)
         if not sha:
             repos[rel] = {'range': None, 'commits': None, 'state': 'unknown'}
         elif git(top, 'merge-base', '--is-ancestor', sha, 'HEAD') is None:
