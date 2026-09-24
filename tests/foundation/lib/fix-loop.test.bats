@@ -57,3 +57,13 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     done
   done
 }
+
+@test "every Method B skill knows fix-review" {
+  for p in bug feature refactor test; do
+    f="$ROOT/skills/workflow-$p/SKILL.md"
+    grep -qF 'Used for `action=run`/`continue`/`restart`/`catch-up`/`fix-review`.' "$f" || { echo "workflow-$p: forward bullet"; return 1; }
+    for s in 'Under `fix-review`' '"Review fixes <n>"' '`fix_findings`' '`after_done`'; do
+      grep -qF "$s" "$f" || { echo "workflow-$p lost: $s"; return 1; }
+    done
+  done
+}
