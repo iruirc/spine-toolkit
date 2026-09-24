@@ -56,7 +56,7 @@ For reference, the templates contain these placeholders:
 |---|---|
 | `{{DATE}}` | Today's ISO date (`YYYY-MM-DD`). |
 | `{{NNN_SLUG}}` | The folder name, e.g. `001-profile-screen`. |
-| `{{TASK_TYPE}}` | `FEATURE` \| `BUG` \| `REFACTOR` \| `REVIEW` \| `TEST` \| `EPIC` \| `RESEARCH` (decided in step 4 below). |
+| `{{TASK_TYPE}}` | `FEATURE` \| `BUG` \| `REFACTOR` \| `QUICK` \| `REVIEW` \| `TEST` \| `EPIC` \| `RESEARCH` (decided in step 4 below). |
 | `{{NEED_TEST}}` | `true` \| `false` (decided in step 7 below). |
 | `{{NEED_REVIEW}}` | `true` \| `false` (decided in step 7 below). |
 | `{{STATUS}}` | (`task-step.md` only) `PENDING` \| `IN_PROGRESS` \| `DONE` \| `DEFERRED` \| `BLOCKED` \| `SKIPPED`. |
