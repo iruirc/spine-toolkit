@@ -155,7 +155,7 @@ const reviewScope = (fallback) => {
 }
 // Review's share of the record, and the one finding class that does not block Done.
 const REVIEW_RECORD = RANGED
-  ? `\n\nDirectly under the first line, write the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind reviewed prints, run right before you finish, exactly as printed. Under ### Scope name the ranges you actually reviewed, per repository. A finding goes into done_findings only when editing files inside the task folder — Done.md, Plan.md, Walkthrough.md — closes it without a single code commit; anything that needs a code commit is a blocking finding. done_findings alone never make the verdict CHANGES_REQUESTED. List them under ## For Done in Review.md.`
+  ? `\n\nBefore you read the ranges, run "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind reviewed and keep what it prints; at the end, write those lines directly under the first line, exactly as printed. Under ### Scope name the ranges you actually reviewed, per repository. A finding goes into done_findings only when editing files inside the task folder — Done.md, Plan.md, Walkthrough.md — closes it without a single code commit; anything that needs a code commit is a blocking finding. done_findings alone never make the verdict CHANGES_REQUESTED. List them under ## For Done in Review.md.`
   : ''
 const CATCH_UP_VALIDATION = CATCH_UP && RANGES ? `\n\nThis run catches up commits that landed after the task's Done: ${rangeList()}. Validate them at the depth the spine-toolkit:phase-verification skill gives their diff, and name that depth in Validation.md.` : ''
 // Done's share: close what Review left it, stamp where the repositories stand.
