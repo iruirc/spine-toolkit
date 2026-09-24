@@ -30,6 +30,11 @@ One line per repository, in this form:
 | `[BASE_COMMIT]` | `Base.md` | the orchestrator, `record` | once, when a run first includes a stage that changes code and no phase has landed yet |
 | `[REVIEWED_COMMIT]` | `Review.md`, directly under `[REVIEW_STATUS]` | the reviewer, from `tips --kind reviewed` | every Review |
 | `[DONE_COMMIT]` | `Done.md`, its first lines | Done, from `tips --kind done` | every Done |
+| `[REVIEW_FIXES]` | `Done.md`, after the `[DONE_COMMIT]` lines | Done, from `tips --kind done` | every Done |
+
+`[REVIEW_FIXES] = <n>` is one line for the task, not per repository: the highest `Review fixes <n>`
+phase in `Plan.md` when Done ran, `0` with none. The orchestrator counts a later loop's fix rounds
+from it (its Gating).
 
 A line with no repository — `[REVIEWED_COMMIT] = <sha>`, as reviewers wrote it before — is the
 project's.
