@@ -258,3 +258,34 @@ Cannot catch up `{task_id}` — it has no `Done.md`, so it was never finished. U
 
 ## info_catch_up_nothing
 Nothing to catch up: no repository of `{task_id}` has commits after its Done.
+
+## error_fix_review_nothing
+Task `{task_id}` has no review asking for changes — there is nothing for fix-review to fix.
+
+## info_fix_round
+Fix round {n} of {max}: {count} finding(s) from Review go into one plan phase.
+
+## auq_fix_review_question
+Review asked for changes:
+{findings}
+What should happen?
+
+## auq_fix_review_option_all
+Fix them all: one plan phase, then Validation, Review of the fixes, Done
+
+## auq_fix_review_option_pick
+Choose which to fix
+
+## auq_fix_review_option_leave
+Leave them for now
+
+## auq_fix_rounds_spent
+The automatic fix rounds are spent and Review still asks for changes:
+{findings}
+What should happen?
+
+## auq_fix_rounds_option_more
+One more fix round
+
+## auq_fix_rounds_option_self
+I will fix them myself, then run redo Review

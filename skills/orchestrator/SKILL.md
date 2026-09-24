@@ -2,8 +2,8 @@
 name: orchestrator
 description: |
   Routes a user request to the appropriate profile workflow (FEATURE/BUG/REFACTOR/TEST/REVIEW/EPIC/RESEARCH), resolves missing parameters (profile, mode, stack, start point), and manages stages and artifact archival.
-  Use when (en): "run N", "do N", "execute N", "continue N", "only <stage> for N", "up to <stage> for N", "start from <stage> for N", "redo <stage> for N", "start from phase N.N for X", "redo phase N.N for X", "start over for N", "rerun validation for N", "catch up N"
-  Use when (ru): "запусти N", "сделай N", "выполни N", "продолжи N", "только <stage> для N", "до <stage> для N", "начни с <stage> для N", "переделай <stage> для N", "начни с фазы N.N для X", "переделай фазу N.N для X", "начни заново для N", "перезапусти валидацию для N", "догони N"
+  Use when (en): "run N", "do N", "execute N", "continue N", "only <stage> for N", "up to <stage> for N", "start from <stage> for N", "redo <stage> for N", "start from phase N.N for X", "redo phase N.N for X", "start over for N", "rerun validation for N", "catch up N", "fix review N"
+  Use when (ru): "запусти N", "сделай N", "выполни N", "продолжи N", "только <stage> для N", "до <stage> для N", "начни с <stage> для N", "переделай <stage> для N", "начни с фазы N.N для X", "переделай фазу N.N для X", "начни заново для N", "перезапусти валидацию для N", "догони N", "исправь находки N"
 ---
 
 # Orchestrator
@@ -46,7 +46,7 @@ The minimum viable input is just `task_id`. All other fields are optional and re
 | Field | Type | Source | Default / Error |
 |---|---|---|---|
 | `task_id` | string | NL/$ARGUMENTS (e.g. `026`, `052`, `001-foo`) | **required** — error using key `error_no_task_id` |
-| `action` | enum: `run` / `continue` / `redo` / `restart` / `restart-full` / `catch-up` | parsed from the command (see triggers table) | `run` for a bare "run/do/execute N", `continue` for "continue N", `catch-up` for "catch up N" |
+| `action` | enum: `run` / `continue` / `redo` / `restart` / `restart-full` / `catch-up` / `fix-review` | parsed from the command (see triggers table) | `run` for a bare "run/do/execute N", `continue` for "continue N", `catch-up` for "catch up N", `fix-review` for "fix review N" |
 | `stage_target` | string (profile stage name) | required for `redo` / `restart`, or for `--from` / `--to` modifiers under `run` | not needed for `run` / `continue` / `restart-full` without modifiers |
 | `mode_override` | enum: `manual` / `auto` | explicit "automatically" / "step-by-step" in the request | resolved via `resolve-settings.sh` (Resolution Algorithm step 3); default `manual` |
 | `stack_override` | string | stack explicitly named in the request | resolved per-axis via stack-detect (see Resolution Algorithm step 4); AUQ only for unresolved needed axes |
@@ -202,6 +202,9 @@ Algorithm:
    action=restart-full            → start at the profile's first stage, re-execute all
    action=catch-up                → start at Validation, forward (Validation → Review → Done)
                                     ↓ no Done.md → error using key `error_catch_up_not_done` with `{task_id}`, dispatch nothing
+   action=fix-review              → start at the code-changing stage (Fix / Execute / Refactor / Write), forward
+                                    ↓ no Review.md, or its first line is not [REVIEW_STATUS] = CHANGES_REQUESTED
+                                      → error using key `error_fix_review_nothing` with `{task_id}`, dispatch nothing
 
 5.5. Validate start_stage against profile.stages:
    • profile_stages := ordered stage list of the target profile (canonical source: workflow-<profile> SKILL.md heading)
@@ -229,6 +232,7 @@ Algorithm:
      # a phase already landed: today's tip is not the task's start, so the base fallback decides
    • the range includes Review, or action=catch-up:
        since := done     if action=catch-up
+                reviewed if action=fix-review
                 base     if Review.md is absent, or action is restart or restart-full
                 reviewed otherwise
        review_ranges := bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since <since>
@@ -382,7 +386,7 @@ Method A passes `need_test` and `need_review` as JSON booleans (`true`/`false`),
 task_id=001
 task_dir=Tasks/ACTIVE/001-feature-search
 profile=feature
-action=run|continue|redo|restart|restart-full|catch-up
+action=run|continue|redo|restart|restart-full|catch-up|fix-review
 start_stage=Plan
 start_phase=2.3
 end_stage=null
@@ -408,6 +412,9 @@ long_run={stall: 5, max: 30}
 plugin_root=/Users/<user>/.claude/plugins/cache/<marketplace>/spine-toolkit/<version>
 roots=[/Users/<user>/App, /Users/<user>/Packages/Net]
 review_ranges={"since": "reviewed", "repos": {".": {"range": "1a2b3c4..HEAD", "commits": 2, "state": "ok"}}}
+fix_findings=[]
+fix_round=0
+after_done=false
 archive_paths=[Tasks/ACTIVE/001-profile/_archive/Plan-2026-04-25T143022.md, Tasks/ACTIVE/001-profile/_archive/Research-2026-04-25T143022.md]
 ```
 
@@ -482,6 +489,8 @@ size belongs to the task, not to one dispatch.
 `roots` — the folders a stage agent may search for a file, the core root aside: the project root, then every folder `## Paths` in `CLAUDE-spine-toolkit.md` names under `External packages` or `Roots`, absolute. Printed by the same run of `resolve-settings.sh json`; always filled, for every profile. Method A passes the list as real JSON, Method B names it in its dispatch prompt (`conventions/stage-dispatch.md`); either way it becomes the brief's `Search roots:` line, which `conventions/agent-tooling.md` → Finding files turns into a rule. Absent, the brief names only the project root and the core root and the run goes on: unlike a missing `plugin_root`, a shorter list narrows the search without breaking it.
 
 `review_ranges` — what Review reads, per repository of the task, and what a `catch-up` validates: the JSON `task-ranges.sh ranges` printed in Resolution step 5.6, as described in `conventions/task-ranges.md`. `{}` when the range holds neither Review nor a catch-up, and for RESEARCH, REVIEW and EPIC. Method A passes the object as real JSON; Method B names each range in the Review stage's prompt (`conventions/stage-dispatch.md`).
+
+`fix_findings`, `fix_round`, `after_done` — filled only when `action=fix-review`, as Gating sets them: the findings chosen, verbatim; the number of this fix phase across the task; whether `Done.md` exists, so that Done closes a catch-up the fixes interrupted. Any other action sends `[]`, `0` and `false`. Method A passes them as real JSON; Method B names the findings in the fix stage's prompt.
 
 `archive_paths` — list of paths to backups already created in `_archive/` for stages that will be overwritten (filled before handing off control). Format: `[path1, path2, path3]`. Empty list = `[]`. Method A passes it as a JSON array of strings.
 
@@ -698,6 +707,13 @@ durations inside an `auto` run do not exist; do not invent them.
 
 **Auto** — no pauses between stages.
 
+**After Review: `CHANGES_REQUESTED`.** FEATURE, BUG, REFACTOR and TEST. The findings are the run's returned `blocking_findings` or, when this session holds no such return (Method B, a new session), every item of `Review.md` under `### Findings` → **Critical** and **Major**, one line each. With none — and for `DISCUSSION` — it is the ordinary `stage_done_prompt`.
+
+- `auto`: count the rows of the `Plan.md` progress table titled `Review fixes <n>` that sit below the last `Catch-up: commits after Done` row (all of them when there is none). With fewer than `fix_rounds`, announce `info_fix_round` with `{n}`, `{max}` and `{count}`, then dispatch `action=fix-review` with every finding. Otherwise AUQ using key `auq_fix_rounds_spent` with `{findings}`: `auq_fix_rounds_option_more` (one more `fix-review`), `auq_fix_rounds_option_self` (stop; the user fixes the code and runs `redo Review`), or exit.
+- `manual`: AUQ using key `auq_fix_review_question` with `{findings}`: `auq_fix_review_option_all` (first; `fix-review` with every finding), `auq_fix_review_option_pick` (a multi-select of the findings, then `fix-review` with those picked), `auq_fix_review_option_leave` (stop). `fix_rounds` does not apply: the user confirms each round.
+
+A `fix-review` carries `fix_findings` — the findings chosen, verbatim; `fix_round` — every `Review fixes <n>` row of `Plan.md` plus one, so no phase id repeats; and `after_done` — whether `Done.md` exists. With `after_done` the task moves out of and back into `Tasks/DONE/` as for a `catch-up`.
+
 **Error mid-range.** A stage that returns `status: error` ends the range where it stands, in `auto`
 as much as in `manual`. `auto` means no pause between stages that *succeeded*; carrying on past a
 failure would build the next stage on a foundation that is not there.
@@ -849,6 +865,7 @@ Triggers (free-form, parsed into `action` + `stage_target`):
 | "rerun validation for 026" | `redo` | `Validation` | `single` |
 | "start over for 026" | `restart-full` | null | `all` |
 | "catch up 026" | `catch-up` | null | `forward` |
+| "fix review 026" | `fix-review` | null | `forward` |
 
 > Note on the semantics of "rerun": `rerun <stage>` = `redo` of a single stage (an atomic redo). Do not confuse it with `restart`, which resets `<stage>` AND every subsequent stage. The user verb "rerun" here is closer in meaning to "redo atomically" than to "reset and walk through to the end again".
 
@@ -861,8 +878,9 @@ Action and archival semantics:
 | `restart <stage>` | Reset and rerun from stage to end | `<stage>` and all subsequent | from `<stage>` to end of profile |
 | `restart-full` | Full reset | all artifacts (a RESEARCH task's `experiment/` stays in place) | from the profile's first stage |
 | `catch-up` | Validate, review and close the commits after Done | `Review.md`, `Done.md` | from `Validation` to the end |
+| `fix-review` | Fix Review's findings as one plan phase, then validate, review and close | `Review.md`, `Done.md` | from the code-changing stage to the end |
 
-A `catch-up` of a task in `Tasks/DONE/` first moves it back to `ACTIVE/` the way `/task-move` does — before any backup is taken, so `archive_paths` name files under `ACTIVE/` — and moves it back into `DONE/` once the run returns with `Done` completed. A catch-up stopped at `CHANGES_REQUESTED` is resumed after the fixes with `catch-up` again, not with a bare `redo Review` or Done, so the "Catch-up: commits after Done" phase is written and the task moves back into `DONE/`.
+A `catch-up` of a task in `Tasks/DONE/` first moves it back to `ACTIVE/` the way `/task-move` does — before any backup is taken, so `archive_paths` name files under `ACTIVE/` — and moves it back into `DONE/` once the run returns with `Done` completed. A catch-up stopped at `CHANGES_REQUESTED` goes on with `fix-review`: `after_done` gives its Done the catch-up phase, and the task moves back into `DONE/` the same way.
 
 **All redo / restart operations in manual mode require a structured confirmation BEFORE archiving.**
 
