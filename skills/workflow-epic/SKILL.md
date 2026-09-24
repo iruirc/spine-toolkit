@@ -90,6 +90,8 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   **Per-step commits.** Workflow-epic itself does NOT create commits at the epic level. Each step's inner workflow-* (refactor/feature/bug/test) is responsible for its own per-phase commits, autonomously, without a user prompt. Workflow-epic only ensures the inner workflow runs to completion; the commit history is built up step by step by the inner workflows.
 
+  Before the walk, any step whose `[STATUS]` is not DONE, DEFERRED, BLOCKED or SKIPPED and whose `[TASK_TYPE]` is `QUICK` stops Execute with `error_quick_step`, before any step runs — as `workflows/profile-epic.js` does.
+
   For each step:
   - Read `<step>/Task.md`, extract `[STATUS]` and `[TASK_TYPE]`.
   - If `[STATUS]` ∈ {DEFERRED, BLOCKED, SKIPPED, DONE} — skip; record the skip in the output contract's `skipped_steps` with the reason and move on.

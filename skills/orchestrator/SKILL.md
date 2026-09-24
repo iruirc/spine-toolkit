@@ -103,7 +103,7 @@ State Detection is **profile-aware** and **purely file-existence driven** — th
 | BUG | first `⬜` phase | n/a | `Plan` | `Diagnose` | `Reproduce` |
 | REFACTOR | first `⬜` phase | n/a | `Plan` | n/a | `Analyze` |
 | TEST | first `⬜` phase | n/a | `Plan` | n/a | `Analyze` |
-| QUICK | first `⬜` phase | n/a | n/a | n/a | `Edit` |
+| QUICK | first phase not `✅` | n/a | n/a | n/a | `Edit` |
 | REVIEW | n/a | n/a | n/a | n/a | `Review` (single-stage profile) |
 | RESEARCH | n/a | `Done` | `Review` (if `need_review=true`) else `Done` | n/a | `Research` |
 

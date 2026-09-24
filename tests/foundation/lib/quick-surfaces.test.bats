@@ -10,7 +10,7 @@ setup() {
 
 @test "the orchestrator dispatches QUICK and detects its state" {
   grep -qxF '| QUICK | `workflows/profile-quick.js` | `spine-toolkit:workflow-quick` |' "$SKILL" || { echo "no Dispatch row"; return 1; }
-  grep -qxF '| QUICK | first `⬜` phase | n/a | n/a | n/a | `Edit` |' "$SKILL" || { echo "no State Detection row"; return 1; }
+  grep -qF '| QUICK | first phase not `✅` |' "$SKILL" || { echo "no State Detection row"; return 1; }
   grep -qF 'QUICK: `Edit`, which finishes an existing `Plan.md` rather than writing one' "$SKILL" || { echo "no unparseable-plan entry"; return 1; }
   for s in 'For FEATURE, BUG, REFACTOR, TEST and QUICK, first run' '(Fix / Execute / Refactor / Write / Edit), forward' \
            '(FEATURE, BUG, REFACTOR, TEST, QUICK only;' '(Execute / Fix / Refactor / Write / Edit),' 'FEATURE, BUG, REFACTOR, TEST and QUICK. The findings'; do
@@ -67,4 +67,26 @@ setup() {
   grep -qF '| QUICK | Edit → Validation → Review → Done' "$ROOT/README.md" || { echo "README"; return 1; }
   grep -qF 'of eight profiles:' "$ROOT/README.md" || { echo "README count"; return 1; }
   grep -qF 'QUICK Edit' "$ROOT/docs/building-a-platform.md" || { echo "platform guide"; return 1; }
+}
+
+@test "no task-new keyword for QUICK is a word a task's own description uses" {
+  for lang in en ru; do
+    kw="$(awk '/^## task_type_quick_keywords$/{f=1;next} f&&/^## /{exit} f&&NF' "$ROOT/skills/task-new/locales/$lang.md")"
+    [ -n "$kw" ] || { echo "$lang: no keywords"; return 1; }
+    tr ';' '\n' <<<"$kw" | sed 's/^ *//;s/ *$//' | while read -r k; do
+      case "$k" in *QUICK*|*quick-*|*"quick task"*|*"$(python3 -c 'print("".join(map(chr,(1073,1099,1089,1090,1088,1072,1103,32,1079,1072,1076,1072,1095,1072))))')"*) ;;
+        *) echo "$lang: '$k' can come from a description of the work"; exit 1 ;; esac
+    done || return 1
+  done
+  grep -qF '`FEATURE` \| `BUG` \| `REFACTOR` \| `QUICK` \| `REVIEW` \| `TEST` \| `EPIC` \| `RESEARCH`' "$ROOT/skills/task-new/SKILL.md" || { echo "the placeholder table does not allow QUICK"; return 1; }
+}
+
+@test "Method B's epic checks every open step for QUICK before the walk" {
+  s="$(awk '/^- \*\*Execute\*\*/{f=1} f&&/^  For each step:/{exit} f' "$ROOT/skills/workflow-epic/SKILL.md")"
+  grep -qF 'Before the walk, any step whose `[STATUS]` is not DONE, DEFERRED, BLOCKED or SKIPPED and whose `[TASK_TYPE]` is `QUICK` stops Execute with `error_quick_step`' <<<"$s" \
+    || { echo "Method B has no pre-walk QUICK check"; return 1; }
+}
+
+@test "a QUICK rerun resumes at Edit when its phase is still open, not only when it is unstarted" {
+  grep -qxF '| QUICK | first phase not `✅` | n/a | n/a | n/a | `Edit` |' "$ROOT/skills/orchestrator/SKILL.md" || { echo "State Detection skips a 🔄 Edit phase"; return 1; }
 }
