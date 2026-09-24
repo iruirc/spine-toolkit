@@ -503,7 +503,7 @@ FIELDS
       ! grep -qF "$token" "$p" || { echo "$(basename "$p") still spells the chain for $token"; return 1; }
     done
   done
-  [ "$n" -eq 7 ] || { echo "scanned $n script(s), expected 7"; return 1; }
+  [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
 }
 
 @test "the epic forwards every field a step can override" {

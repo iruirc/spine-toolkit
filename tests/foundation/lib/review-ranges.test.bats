@@ -119,7 +119,7 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
 
 @test "the profiles without Review-then-Done code carry none of it" {
   for f in "$ROOT"/workflows/profile-*.js; do
-    grep -qF "const RANGED = ['FEATURE', 'BUG', 'REFACTOR', 'TEST'].includes(PROFILE)" "$f" \
+    grep -qF "const RANGED = ['FEATURE', 'BUG', 'REFACTOR', 'TEST', 'QUICK'].includes(PROFILE)" "$f" \
       || { echo "$(basename "$f"): no RANGED gate"; return 1; }
   done
   for p in research review epic; do

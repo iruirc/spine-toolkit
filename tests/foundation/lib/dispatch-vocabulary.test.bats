@@ -51,7 +51,7 @@ offenders_in() {
 
 @test "no profile script names one ecosystem's tooling" {
   files=("$ROOT"/workflows/profile-*.js)
-  [ "${#files[@]}" -eq 7 ] || { echo "scanned ${#files[@]} script(s), expected 7"; return 1; }
+  [ "${#files[@]}" -eq 8 ] || { echo "scanned ${#files[@]} script(s), expected 8"; return 1; }
   offenders="$(offenders_in "${files[@]}")"
   [ -z "$offenders" ] || { echo "single-ecosystem vocabulary in a profile script:"; echo "$offenders"; return 1; }
 }

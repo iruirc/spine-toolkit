@@ -113,7 +113,7 @@ const DOCS_NOTE = A.docs === 'off' || A.docs === false ? '' : `Documentation: wh
 `
 
 // Only the phased profiles act on it: TEST and RESEARCH default to need_test=false and must not read it.
-const TESTS_NOTE = A.need_test === false && ['FEATURE', 'BUG', 'REFACTOR'].includes(PROFILE) ? "Tests: this task's contract sets need_test=false — it adds no tests; see the spine-toolkit:test-authoring skill, `## When the task owes no test`.\n" : ''
+const TESTS_NOTE = A.need_test === false && ['FEATURE', 'BUG', 'REFACTOR', 'QUICK'].includes(PROFILE) ? "Tests: this task's contract sets need_test=false — it adds no tests; see the spine-toolkit:test-authoring skill, `## When the task owes no test`.\n" : ''
 
 log(`${PROFILE} ${A.task_id}: ${ORDER[startAt]} → ${ORDER[endAt]} (scope=${scope}, mode=${A.mode || 'manual'})`)
 
@@ -139,7 +139,7 @@ Prose language: ${LANG_NAME}.`
 
 // Where a task's repositories stood and what changed since: conventions/task-ranges.md. Only the
 // profiles that change code, review it and close it act on them.
-const RANGED = ['FEATURE', 'BUG', 'REFACTOR', 'TEST'].includes(PROFILE)
+const RANGED = ['FEATURE', 'BUG', 'REFACTOR', 'TEST', 'QUICK'].includes(PROFILE)
 const CATCH_UP = RANGED && A.action === 'catch-up'
 // fix-review: one phase built from Review's findings instead of Plan.md's own (orchestrator, Gating).
 const FIX_REVIEW = RANGED && A.action === 'fix-review' && Array.isArray(A.fix_findings) && A.fix_findings.length > 0
@@ -155,7 +155,7 @@ const AFTER_DONE = FIX_REVIEW && A.after_done === true
 const RANGES = A.review_ranges && A.review_ranges.repos && typeof A.review_ranges.repos === 'object' && Object.keys(A.review_ranges.repos).length ? A.review_ranges : null
 const PRIOR_REVIEW = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Review-[^/]*\.md$/.test(p))
 // This run commits code before Review, so the counts in review_ranges predate it.
-const CODE_RUNS = ['Fix', 'Execute', 'Refactor', 'Write'].some((s) => ORDER.includes(s) && runs(s))
+const CODE_RUNS = ['Fix', 'Execute', 'Refactor', 'Write', 'Edit'].some((s) => ORDER.includes(s) && runs(s))
 // One clause per repository, as review_ranges names them.
 const rangeList = () =>
   Object.entries(RANGES.repos)

@@ -95,10 +95,10 @@ bullet() { # $1 = SKILL.md, $2 = stage name
     || { echo "workflow-bug/SKILL.md: the replay exemption did not reach the Plan bullet"; return 1; }
 }
 
-@test "exactly the four profiles with a Validation stage carry the clause" {
+@test "exactly the five profiles with a Validation stage carry the clause" {
   # Vacuity guard: without it the loops above iterate over a list someone shortened.
   n="$(grep -l '## Manual acceptance' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
-  [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the clause, expected 4"; return 1; }
+  [ "$n" -eq 5 ] || { echo "$n profile script(s) carry the clause, expected 5"; return 1; }
 }
 
 # The Validation stage's brief TEXT only — from its banner to the agent() options
@@ -182,9 +182,9 @@ review_brief() {
   # PROFILES and stripping one profile's Validation pointer and Review clause
   # leaves the whole suite green.
   v="$(grep -l 'manual-checks skill' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
-  [ "$v" -eq 4 ] || { echo "$v profile script(s) point Validation at the skill, expected 4"; return 1; }
+  [ "$v" -eq 5 ] || { echo "$v profile script(s) point Validation at the skill, expected 5"; return 1; }
   r="$(grep -l 'ManualChecks.md exists, read it too' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
-  [ "$r" -eq 4 ] || { echo "$r profile script(s) carry the Review clause, expected 4"; return 1; }
+  [ "$r" -eq 5 ] || { echo "$r profile script(s) carry the Review clause, expected 5"; return 1; }
 }
 
 @test "Review checks the plan's half of the contract, not only the artifact" {

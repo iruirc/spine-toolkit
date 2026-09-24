@@ -246,7 +246,7 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
     grep -qF 'A.budgets' "$f" || { echo "$(basename "$f"): the prelude ignores budgets"; return 1; }
     grep -qF '${BUDGETS[file]}' "$f" || { echo "$(basename "$f"): cap() still names the default"; return 1; }
   done
-  [ "$n" -eq 7 ] || { echo "scanned $n script(s), expected 7"; return 1; }
+  [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
 }
 
 @test "--task-docs skips a step with [STATUS] = [DONE] even with no anchors" {

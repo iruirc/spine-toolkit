@@ -324,7 +324,7 @@ NAMES
       grep -qF "$line" "$p" || { echo "$(basename "$p"): missing '$line'"; return 1; }
     done
   done
-  [ "$n" -eq 7 ] || { echo "scanned $n script(s), expected 7"; return 1; }
+  [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
 }
 
 @test "the reader of the check is kept away from everything but the file" {
