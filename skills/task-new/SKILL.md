@@ -76,6 +76,7 @@ For reference, the templates contain these placeholders:
    - **Collision check**: verify no `Tasks/*/<NNN>-*` (or bare `Tasks/*/<NNN>`) exists for the chosen NNN; if it does — increment and re-check. Re-run this check right before creating the folder: a parallel session may have taken the number in the meantime.
 3. **Make the folder**: `Tasks/<STATUS>/NNN-slug/`.
 4. **Decide `{{TASK_TYPE}}`** by intent (matched across languages):
+   - The user named the type QUICK — the words in locale key `task_type_quick_keywords` → `QUICK`. Checked first, and only ever on the user's own word: QUICK removes Reproduce, the investigation and Plan, so no description of the work selects it (`conventions/task-scale.md` → QUICK).
    - "bug" / "crash" / "doesn't work" / "regression" → `BUG`
    - "epic" / "roadmap" / "investigate a large area" → `EPIC`
    - "refactor" / "extract" / "split into modules" → `REFACTOR`
@@ -86,6 +87,7 @@ For reference, the templates contain these placeholders:
 5. **Decide `{{NEED_TEST}}` / `{{NEED_REVIEW}}`** — default `true` / `true`. Flip to `false` when:
    - Visual/cosmetic ("change color", "move button", "update icon", "update localization string") → `NEED_TEST = false`.
    - `TASK_TYPE` is `REVIEW` or `EPIC` → both flags become `false` (not applicable).
+   - `TASK_TYPE` is `QUICK` → `NEED_TEST = false`, `NEED_REVIEW = true`; the user's explicit word turns either the other way.
    - `TASK_TYPE` is `TEST` → `NEED_TEST = false` (the tests ARE the artifact); `NEED_REVIEW = true` by default — `workflow-test` Review judges the quality of the written tests.
    - `TASK_TYPE` is `RESEARCH` → `NEED_TEST = false` (no code → no tests); `NEED_REVIEW = true` by default (research output benefits from review).
    - The user explicitly asked for the work without tests or without review.
@@ -176,7 +178,7 @@ For reference, the templates contain these placeholders:
 3. **Choose the step name**:
    - Numeric: find the max existing `N.step` in the parent (including sibling steps in nested epics), increment by 1 → `<N+1>.step`.
    - Named: the user said "step address-form" → `address-form.step`.
-4. **Decide `{{TASK_TYPE}}`, `{{NEED_TEST}}`, `{{NEED_REVIEW}}`** — same rules as the root-task process steps 4–5.
+4. **Decide `{{TASK_TYPE}}`, `{{NEED_TEST}}`, `{{NEED_REVIEW}}`** — same rules as the root-task process steps 4–5, except that a step is never QUICK: a request naming it for a step is answered with key `quick_not_for_steps` and nothing is created.
 5. **Decide `{{STATUS}}`** — default `PENDING`. Any other starting status requires an explicit user statement.
 6. **Locate the template** (read the first existing path):
    a. `<core-root>/templates/task-md/task-step.md`

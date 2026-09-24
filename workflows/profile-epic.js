@@ -610,7 +610,7 @@ const STEP = {
   properties: {
     step_id: { type: 'string', description: 'the subfolder name, including the .step suffix' },
     task_id: { type: 'string' },
-    task_type: { type: 'string', enum: ['FEATURE', 'BUG', 'REFACTOR', 'TEST', 'RESEARCH', 'REVIEW', 'EPIC'] },
+    task_type: { type: 'string', enum: ['FEATURE', 'BUG', 'REFACTOR', 'TEST', 'QUICK', 'RESEARCH', 'REVIEW', 'EPIC'] },
     status: { type: 'string', enum: ['PENDING', 'IN_PROGRESS', 'DONE', 'DEFERRED', 'BLOCKED', 'SKIPPED'] },
     title: { type: 'string' },
     stack: { type: 'string', description: 'only when the step declares its own ## 4. [Stack]' },
@@ -712,7 +712,7 @@ If the verdict is DECOMPOSITION:
 Write ${DIR}/Plan.md with a progress table of the steps, in execution order, with the columns: Done? | step_id | TASK_TYPE | [STATUS] | short description | artifact. The Done? column renders as a markdown checkbox, "- [ ]" for every step that is not yet DONE.
 Seed the steps from Research.md ### Work items, grouped along layer or feature boundaries — typically one step per major layer (Domain / Repository / Networking / UI) or per self-contained sub-feature.
 Write Plan.md by applying the task-documents skill, its Plan.md section — it holds how a step or phase is described, how a risk is written, and what the plan leaves out.
-Then create the step folders physically by invoking spine-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE], [STATUS] = PENDING, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
+Then create the step folders physically by invoking spine-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE] — never QUICK, which is for a root task the user chose — [STATUS] = PENDING, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
 Write each step's Task.md by applying the task-documents skill, its section on a step's Task.md — it holds what goes above the three anchors and under each. After this stage each one is measured: at most ${BUDGETS['Task.md']} lines, and ### Expected behaviour, ### Questions for Research and ### Acceptance each carrying text or "— <reason>".
 Apply feature-estimation at epic level and write ## Estimation into Plan.md: the aggregate is the SUM of the per-step ranges, reported as a named best/worst epic range, and it carries both the human and the AI-assisted range when the project is AI-assisted. Per-step ranges are written later by each step's own Plan stage; this roll-up is informational, it does NOT gate Execute, but it has to be present before the first step runs.
 Return every step you created in the steps array, in execution order, each with its own [NEED_TEST] and [NEED_REVIEW] from its Task.md as booleans.
@@ -804,6 +804,10 @@ if (runs('Execute')) {
       walk = steps.filter((s) => s.step_id === A.start_phase)
       if (!walk.length) return finish('stop', { status: 'error', reason: `start_phase "${A.start_phase}" is not a step of this epic` })
     }
+
+    // QUICK is a root task the user chose: a step carrying it stops the walk before any step runs.
+    const quick = walk.filter((s) => s.task_type === 'QUICK' && !SKIP_STATUS.includes(s.status))
+    if (quick.length) return finish('stop', { status: 'error', reason: `step(s) ${quick.map((s) => s.step_id).join(', ')} carry [TASK_TYPE] = QUICK, which is for a root task the user chose; give them another type in their Task.md` })
 
     // Manual mode cannot push: the orchestrator has to ask the user between steps, and a workflow
     // run has no way to ask. That is the only gap that degrades to the pull model.

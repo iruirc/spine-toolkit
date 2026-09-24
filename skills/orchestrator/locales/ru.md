@@ -292,3 +292,9 @@ Review требует изменений:
 
 ## auq_fix_rounds_option_self
 Исправлю сам, потом redo Review
+
+## quick_escalation_stop
+Задача `{task_id}` — не QUICK-правка: {reason}. Ничего не изменено. Поменяйте `[TASK_TYPE]` в её `Task.md` на BUG, FEATURE или REFACTOR и запустите заново.
+
+## error_quick_step
+Шаг `{task_id}` помечен QUICK, но QUICK — только для корневой задачи, выбранной пользователем. Задайте шагу другой `[TASK_TYPE]` в его `Task.md`.
