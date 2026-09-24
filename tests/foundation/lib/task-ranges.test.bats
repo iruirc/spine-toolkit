@@ -117,6 +117,39 @@ state() { # $1 repo key; stdin: ranges JSON → "<state> <commits>"
   [ "$(state . <<<"$output")" = "unknown None" ] || { echo "$output"; return 1; }
 }
 
+origin_at() { # $1 commit: origin/main stands there and is the remote's HEAD, as after a clone
+  git -C "$PROJ" update-ref refs/remotes/origin/main "$1"
+  git -C "$PROJ" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
+}
+
+@test "unpushed commits of the local main branch stay out of the fallback base" {
+  origin_at "$(git -C "$PROJ" rev-parse HEAD)"
+  commit "$PROJ" unpushed.txt
+  git -C "$PROJ" checkout -qb feat
+  commit "$PROJ" a.txt
+  run "$TR" ranges "$TASK" --since base
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(state . <<<"$output")" = "ok 1" ] || { echo "$output"; return 1; }
+}
+
+@test "a stale local main branch does not widen the fallback base" {
+  git -C "$PROJ" checkout -qb feat
+  commit "$PROJ" pulled.txt
+  origin_at "$(git -C "$PROJ" rev-parse HEAD)"
+  commit "$PROJ" a.txt
+  run "$TR" ranges "$TASK" --since base
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(state . <<<"$output")" = "ok 1" ] || { echo "$output"; return 1; }
+}
+
+@test "work on a main branch ahead of origin has no known base" {
+  origin_at "$(git -C "$PROJ" rev-parse HEAD)"
+  commit "$PROJ" a.txt
+  run "$TR" ranges "$TASK" --since base
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(state . <<<"$output")" = "unknown None" ] || { echo "$output"; return 1; }
+}
+
 @test "the first record line of a repository wins" {
   stale="$(git -C "$PROJ" rev-parse HEAD)"
   commit "$PROJ" a.txt

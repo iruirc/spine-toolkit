@@ -39,7 +39,8 @@ project's.
 `ranges --since base|reviewed|done` gives, per repository, `<sha>..HEAD` from the matching record
 and the number of commits in it. `rewritten` means the recorded sha is no longer an ancestor of
 `HEAD`; `unknown` means there is no record for that repository. With no `Base.md`, `base` falls back
-to the merge base with the repository's main branch; a merge base that is `HEAD` itself — work
+to the nearest merge base with the repository's main branch, local or `origin`'s, so commits one
+of them holds and the other does not stay out; a merge base that is `HEAD` itself — work
 committed on the main branch — is `unknown` too. When a record has several lines for one
 repository, the first wins. The orchestrator turns the result into the
 `review_ranges` contract field; which `--since` it asks for, and what it does on `rewritten` or
