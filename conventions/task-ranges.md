@@ -13,6 +13,8 @@ inside it. A repository is named by its toplevel relative to the project root �
 project itself. A repository at or inside the tasks folder is never one of them: the task's own
 artifacts are not work to review. For the same reason a commit that touches only files inside the
 tasks folder is never counted, when the project repository tracks that folder.
+Every checkout those globs reach counts, touched by the task or not, so pulling a dependency after
+Done offers a catch-up.
 
 ## Records
 
@@ -25,7 +27,7 @@ One line per repository, in this form:
 
 | Record | File | Written by | When |
 |---|---|---|---|
-| `[BASE_COMMIT]` | `Base.md` | the orchestrator, `record` | once, when a run first includes a stage that changes code |
+| `[BASE_COMMIT]` | `Base.md` | the orchestrator, `record` | once, when a run first includes a stage that changes code and no phase has landed yet |
 | `[REVIEWED_COMMIT]` | `Review.md`, directly under `[REVIEW_STATUS]` | the reviewer, from `tips --kind reviewed` | every Review |
 | `[DONE_COMMIT]` | `Done.md`, its first lines | Done, from `tips --kind done` | every Done |
 
@@ -37,7 +39,9 @@ project's.
 `ranges --since base|reviewed|done` gives, per repository, `<sha>..HEAD` from the matching record
 and the number of commits in it. `rewritten` means the recorded sha is no longer an ancestor of
 `HEAD`; `unknown` means there is no record for that repository. With no `Base.md`, `base` falls back
-to the merge base with the repository's main branch. The orchestrator turns the result into the
+to the merge base with the repository's main branch; a merge base that is `HEAD` itself — work
+committed on the main branch — is `unknown` too. When a record has several lines for one
+repository, the first wins. The orchestrator turns the result into the
 `review_ranges` contract field; which `--since` it asks for, and what it does on `rewritten` or
 `unknown`, is its Resolution Algorithm, step 5.6.
 

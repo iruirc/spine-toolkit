@@ -99,8 +99,8 @@ def recorded(kind, name):
             v = re.fullmatch(r'(?:(.+?):\s+)?([0-9a-f]{7,40})', m.group(2).strip())
             if not v:
                 die('%s: cannot read "%s"' % (path, line.strip()))
-            # A line written before repositories were named is the project's.
-            out[v.group(1) or '.'] = v.group(2)
+            # A line written before repositories were named is the project's; the first line wins.
+            out.setdefault(v.group(1) or '.', v.group(2))
     return out
 
 
@@ -139,6 +139,9 @@ elif CMD == 'ranges':
         if not sha and since == 'base':
             ref = main_branch(top)
             sha = git(top, 'merge-base', 'HEAD', ref) if ref else None
+            # Work committed on the main branch itself leaves no base to count from.
+            if sha == git(top, 'rev-parse', 'HEAD'):
+                sha = None
         if not sha:
             repos[rel] = {'range': None, 'commits': None, 'state': 'unknown'}
         elif git(top, 'merge-base', '--is-ancestor', sha, 'HEAD') is None:
