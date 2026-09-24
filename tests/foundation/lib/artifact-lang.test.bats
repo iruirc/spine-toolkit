@@ -213,7 +213,7 @@ PY
     done
     ! grep -qF 'Output language: ${LANG} ' "$f" || { echo "$(basename "$f") still names the language by its code"; return 1; }
   done
-  [ "$n" -eq 7 ] || { echo "scanned $n profile script(s), expected 7"; return 1; }
+  [ "$n" -eq 8 ] || { echo "scanned $n profile script(s), expected 8"; return 1; }
 }
 
 @test "the walkthrough revision does not take its language from the reader's notes" {
@@ -230,7 +230,7 @@ PY
     grep -F -- '- `lang` — ' "$s" | grep -qF 'names it in words (`English`, `Russian`) at its start and again as its last line' \
       || { echo "$s hands the language over as a bare code"; return 1; }
   done
-  [ "$n" -eq 7 ] || { echo "scanned $n workflow skill(s), expected 7"; return 1; }
+  [ "$n" -eq 8 ] || { echo "scanned $n workflow skill(s), expected 8"; return 1; }
 }
 
 @test "the skills whose examples are English say which part of a line is translated" {

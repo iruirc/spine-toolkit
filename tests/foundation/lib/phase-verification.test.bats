@@ -136,7 +136,7 @@ bullet() { # $1 = SKILL.md, $2 = stage name
 
 @test "every profile script runs what the phase's line names" {
   n="$(ls "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
-  [ "$n" -eq 7 ] || { echo "scanned $n script(s), expected 7"; return 1; }
+  [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
   for f in "$ROOT"/workflows/profile-*.js; do
     grep -qF 'run the checks its **Verification:** line names' "$f" \
       || { echo "$(basename "$f"): the prelude still picks its own checks"; return 1; }
@@ -202,9 +202,9 @@ review_brief() {
   done
 }
 
-@test "exactly the four phased profiles carry the Review clause" {
+@test "exactly the four phased profiles and QUICK carry the Review clause" {
   n="$(grep -l "the way the phase-verification skill's ## Review section does" "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
-  [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the Review clause, expected 4"; return 1; }
+  [ "$n" -eq 5 ] || { echo "$n profile script(s) carry the Review clause, expected 5"; return 1; }
 }
 
 @test "a phase runs its verification checks once, not again after ticking them" {

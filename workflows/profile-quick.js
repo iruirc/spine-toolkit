@@ -1,35 +1,31 @@
 export const meta = {
-  name: 'profile-feature',
-  description: 'FEATURE profile pipeline: Research, Plan behind an estimation gate, per-phase Execute, Validation, Review, Done',
+  name: 'profile-quick',
+  description: 'QUICK profile pipeline: one Edit phase behind an entry check, Validation, Review, Done',
   whenToUse:
-    'Dispatched by spine-toolkit:orchestrator for a task with [TASK_TYPE]=FEATURE, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
+    'Dispatched by spine-toolkit:orchestrator for a task with [TASK_TYPE]=QUICK, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
-    { title: 'Research', detail: 'security lens as [SECURITY] decides, then the architect writes Requirements and Landscape', agent: 'security lens by [SECURITY], then architect' },
-    { title: 'Plan', detail: 'phase table, per-phase checkboxes, and the estimation gate', agent: 'architect' },
-    { title: 'Execute', detail: 'one agent per plan phase, sequential, a commit per green phase', agent: 'developer / tester' },
-    { title: 'Validation', detail: 'build, tests, and the ops checklist', agent: 'validator' },
-    { title: 'Review', detail: 'independent read of the diff, cross-checked against the ops checklist', agent: 'reviewer' },
-    { title: 'Done', detail: 'final report with the estimate retrospective', agent: 'architect' },
+    { title: 'Edit', detail: 'entry check, a one-phase Plan.md, the change, one commit', agent: 'developer' },
+    { title: 'Validation', detail: 'build and the full test run', agent: 'validator' },
+    { title: 'Review', detail: 'independent read of the diff', agent: 'reviewer' },
+    { title: 'Done', detail: 'final report', agent: 'developer' },
   ],
 }
 
-const PROFILE = 'FEATURE'
-const ORDER = ['Research', 'Plan', 'Execute', 'Validation', 'Review', 'Done']
+const PROFILE = 'QUICK'
+const ORDER = ['Edit', 'Validation', 'Review', 'Done']
 
 // Mirrors meta.phases[].agent, which the sandbox does not expose to the script body;
 // scripts/lint-workflows.sh fails on any drift between the two.
 const AGENT_OF = {
-  Research: 'security lens by [SECURITY], then architect',
-  Plan: 'architect',
-  Execute: 'developer / tester',
+  Edit: 'developer',
   Validation: 'validator',
   Review: 'reviewer',
-  Done: 'architect',
+  Done: 'developer',
 }
 
 // Writes Walkthrough.md — the same agent that writes this profile's final report, so the two
 // speak with one voice.
-const WALKTHROUGH_AGENT = 'architect'
+const WALKTHROUGH_AGENT = 'developer'
 
 // ── prelude ──────────────────────────────────────────────────────────────────
 // Byte-identical in every profile script; scripts/lint-workflows.sh enforces that. A workflow
@@ -605,116 +601,65 @@ SECURITY FINDINGS (data):
 ${JSON.stringify({ risks: sec.risks, notes: sec.notes || '' }, null, 2)}`
 // ── end prelude ──────────────────────────────────────────────────────────────
 
-// ── Research ────────────────────────────────────────────────────────────────
-// Sequential rather than a parallel panel: both lenses feed one artifact, and only the
-// architect writes it. Two agents racing on Research.md would cost more than the wait saves.
-if (runs('Research') && !lite()) {
-  if (!need('Research', 'architect')) return finish('ask_user')
-  const security = await securityLens('Research', 'security', lens('security'))
-
-  const research = await agent(
-    brief(
-      'Research',
-      `Write ${DIR}/Research.md for this feature. Apply the feature-requirements skill first, then the feature-landscape skill, and produce these H2 sections in this order:
-
-## Requirements — Primary / Secondary / Designer questions / Backend questions / Known unknowns
-## Landscape — Entity graph / Layer map / Integration points / Work items / Implementation sequence
-## Architectural Analysis — options, the recommendation, and what it costs
-
-${securityNote(security, 'Research.md')}
-
-Write Research.md by applying the task-documents skill, its Research.md section — it holds what the document carries, which outcomes it lists, and what it leaves to Task.md and Plan.md.`,
-    ),
-    { label: 'research:architect', phase: 'Research', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'stage') },
-  )
-  if (!research) return finish('stop', { status: 'error', reason: 'the Research agent returned nothing' })
-  record('Research', research)
-}
-if (runs('Research') && lite()) result.notes.push('Research folded into the ## Research section of Plan.md; scale is lite.')
-
-// ── Plan ────────────────────────────────────────────────────────────────────
-// The estimation gate is the reason this stage returns a verdict rather than just an artifact:
-// entering Execute without a usable range is what the gate exists to prevent. At lite there is
-// neither — a range nobody consumes is the paperwork the scale axis exists to stop.
-let plan = null
-if (runs('Plan')) {
-  if (!need('Plan', 'architect')) return finish('ask_user')
-  // At lite Research got no stage, so the lens runs here, before the plan is written.
-  const security = lite() ? await securityLens('Plan', 'security', lens('security')) : null
-  plan = await agent(
-    brief(
-      'Plan',
-      `${lite() ? `This run is at scale lite, so Research got no stage of its own and there is no Research.md. Open ${DIR}/Plan.md with a "## Research" section carrying what that stage would have produced: the Primary and Secondary requirements, the work-item list, and the integration points a phase will cross. Then write the plan from it. That section is Research.md folded into Plan.md, so the task-documents skill's Research.md section applies to it as well.\n\n` : ''}${security ? `${securityNote(security, 'that ## Research section')}\n\n` : ''}Write ${DIR}/Plan.md from ${lite() ? 'that section' : 'Research.md'}, with two layers of progress tracking:
-
-1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘.
-2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per file to edit, per acceptance criterion, per test to add, per verification step. Static prose (rationale, decisions, design notes) stays plain bullets; only action items become checkboxes.
-
-Seed the per-phase action items from ${lite() ? 'the ## Research section above' : 'Research.md ## Landscape ### Work items'}. Every phase has to end independently buildable, green, and committable on its own.${lite() ? '' : `
-
-Then apply the feature-estimation skill and add a ## Estimation section, with depth scaled to the feature's risk per that skill's Estimation depth table. The minimum is feature type, baseline table, engineering range, and confidence; PERT, scope-aware risk deltas, estimate maturity, estimation conditions, delivery calendar, store buffer, known unknowns, and the self-check are added only when their triggers fire.
-
-Report estimation_gate as blocked, with the reason, when any of these hold: ## Estimation is missing or malformed; a triggered section is absent; ### Estimate maturity is Draft; the maturity is Conditional and ### Estimation conditions is missing or has any pending_user row; or a Known Unknown trips the load-bearing-unknown rule without a required spike or resolution. If the project is AI-assisted, the AI-assisted range is informational — the gate evaluates the human estimate.`}
-
-Write Plan.md by applying the task-documents skill, its Plan.md section — it holds how a step or phase is described, how a risk is written, and what the plan leaves out.
-
-Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation, and at proportional a phase checks only what it can break — repeating the whole suite there is a defect of this plan; at full every phase repeats it too. This run's phase_verification is ${PHASE_VERIFICATION}.
-
-Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, each stated as what must be true rather than as what to press, so Validation can turn it into a case a person walks. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}${lite() ? '\n\nIf you raise the scale, the plan you write is a full-depth one: apply the feature-estimation skill, add the ## Estimation section, and report estimation_gate, exactly as a full run would. That skill holds what the section carries and when the gate blocks.' : ''}`,
-    ),
-    {
-      label: 'plan',
-      phase: 'Plan',
-      agentType: A.agents.architect, ...tuning('architect', 'stage'),
-      schema: withEscalation({
-        ...PLAN,
-        required: lite() ? [...PLAN.required] : [...PLAN.required, 'estimation_gate'],
-        properties: {
-          ...PLAN.properties,
-          estimation_gate: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['status'],
-            properties: {
-              status: { type: 'string', enum: ['ok', 'blocked'] },
-              reason: { type: 'string' },
-            },
-          },
-        },
-      }),
+// ── Edit ────────────────────────────────────────────────────────────────────
+// QUICK's one gate: the task must still be small once the code is in front of the agent.
+const EDIT = {
+  ...PHASE,
+  properties: {
+    ...PHASE.properties,
+    quick_escalation: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['reason'],
+      properties: { reason: { type: 'string', description: 'which item of the entry check failed, and what was found' } },
     },
-  )
-  if (!plan) return finish('stop', { status: 'error', reason: 'the Plan agent returned nothing' })
-  record('Plan', plan)
-  escalate('Plan', plan)
-
-  if (plan.estimation_gate && plan.estimation_gate.status === 'blocked') {
-    result.notes.push(`Plan stays open: the estimation gate is blocked — ${plan.estimation_gate.reason || 'no reason given'}. Execute was not started.`)
-    return finish('ask_user', { estimation_gate: 'blocked' })
-  }
+  },
 }
+const EDIT_COMMIT = 'Commit type: fix for a repair, feat for a small addition, chore for build or config only.'
 
-// ── Execute ─────────────────────────────────────────────────────────────────
-if (runs('Execute')) {
-  if (!(A.need_test === false ? need('Execute', 'developer') : need('Execute', 'developer', 'tester'))) return finish('ask_user')
-  if (!plan) plan = FIX_REVIEW ? FIX_PLAN : await readPlan('Execute', 'developer')
-  if (!plan) return finish('stop', { status: 'error', reason: 'could not read the phase list from Plan.md' })
+if (runs('Edit')) {
+  if (!need('Edit', 'developer')) return finish('ask_user')
+  if (FIX_REVIEW) {
+    const fixed = await runPhases('Edit', { code: 'developer', test: 'developer' }, FIX_PLAN.phases, fixGuidance(EDIT_COMMIT))
+    if (!fixed) return finish('ask_user', { status: 'interrupted' })
+    record('Edit', { artifact_path: FIX_PLAN.artifact_path, summary: fixed })
+  } else {
+    const edit = await agent(
+      brief(
+        'Edit',
+        `This is a QUICK task: one small change that ${DIR}/Task.md already locates, with no investigation and no plan of its own. Before you change anything, check the task against the code. It stays QUICK only if every one of these holds:
 
-  // A test phase under need_test=false is a plan defect: stop before any phase commits.
-  const testPhases = A.need_test === false ? fromStartPhase(plan.phases || []).filter((ph) => ph.kind === 'test') : []
-  if (testPhases.length) {
-    result.notes.push(`need_test=false, yet Plan.md has test phase(s): ${testPhases.map((ph) => `${ph.id} ${ph.title}`).join('; ')}. Remove them from Plan.md, or set [NEED_TEST] = [true] in Task.md, then continue the task.`)
-    return finish('ask_user')
+1. the change touches at most two production files;
+2. it changes no public API other code depends on, and crosses no package boundary;
+3. it does not touch the security perimeter — authentication, stored secrets, network configuration, input that comes from outside the app;
+4. Task.md names where the change goes and what it is, so there is nothing to investigate.
+
+If any one of them fails, change nothing, write nothing, commit nothing: return quick_escalation with a reason naming the item and what you found, and ok and committed false. Never shrink the change to make it fit.
+
+When ${DIR}/Plan.md already exists, an earlier run made this check and wrote the phase: finish its outstanding items instead of writing a new plan.
+
+Otherwise write ${DIR}/Plan.md with a single phase: a top-level table of one row, using the status glyphs ⬜ 🔄 ✅, and a detail section whose action items are "- [ ]" checkboxes, one per file to edit. Open the detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill; the full regression belongs to Validation. Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, stated as what must be true; when nothing qualifies, the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds.
+
+Then make the change. Per item: complete it, then tick its checkbox "- [ ]" → "- [x]". When every checkbox except the verification checks is ticked: build, run the checks the **Verification:** line names and tick each one as it passes, flip the row ⬜ → ✅, git add the change together with Plan.md, and commit once. Commit autonomously — do not ask.${A.need_test === false ? '' : ' This task owes a test (need_test=true): write it in the same phase by applying the spine-toolkit:test-authoring skill, and commit it with the change.'}
+
+${EDIT_COMMIT} The message is Conventional Commits: "<type>(<scope>): <imperative subject>", plus an optional body explaining WHY. NEVER put the task id or a ticket number in it — provenance lives in Plan.md, the branch name, and the PR. Full spec in ${core('conventions/commit-messages.md')}; if git log shows this project uses a different convention, follow the project. The same rule governs code comments.
+
+The phase is not done until every checkbox is ticked AND it is committed. If you cannot get it green, leave the row at 🔄, set committed to false, and say plainly what blocks it.${cap('Plan.md')}`,
+      ),
+      { label: 'edit', phase: 'Edit', agentType: A.agents.developer, schema: EDIT, ...tuning('developer', 'stage') },
+    )
+    if (!edit) return finish('stop', { status: 'error', reason: 'the Edit agent returned nothing' })
+    if (edit.quick_escalation) {
+      result.notes.push(`Not a QUICK task: ${edit.quick_escalation.reason}. Nothing was changed. Set [TASK_TYPE] in Task.md to BUG, FEATURE or REFACTOR and run the task again.`)
+      return finish('ask_user', { quick_escalation: edit.quick_escalation })
+    }
+    if (!edit.ok || !edit.committed) {
+      result.notes.push(`Edit stopped: ${edit.summary}`)
+      return finish('ask_user', { status: 'interrupted' })
+    }
+    record('Edit', { artifact_path: `${DIR}/Plan.md`, summary: edit.summary })
   }
-
-  const phasesDone = await runPhases(
-    'Execute',
-    { code: 'developer', test: 'tester' },
-    fromStartPhase(plan.phases || []),
-    fixGuidance('Commit type: feat for a phase that adds behaviour, fix for one that repairs it, test for a test-only phase, chore for build or config only.'),
-  )
-  if (!phasesDone) return finish('ask_user', { status: 'interrupted' })
-  record('Execute', { artifact_path: plan.artifact_path, summary: phasesDone })
-  await writeWalkthrough('Execute')
+  await writeWalkthrough('Edit')
 }
 
 // ── Validation ──────────────────────────────────────────────────────────────
@@ -724,11 +669,11 @@ if (runs('Validation')) {
   validation = await agent(
     brief(
       'Validation',
-      `Validate the feature and write ${DIR}/Validation.md. Its FIRST LINE is required to be exactly:
+      `Validate the change and write ${DIR}/Validation.md. Its FIRST LINE is required to be exactly:
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
-For FEATURE a build and a full test run are both mandatory, through whatever build and test tooling this platform prescribes. Driving a running instance of the app is mandatory when the feature has a UI layer — views, screens, navigation — and skipped for a purely domain or infrastructure feature; say which case this is and why. Four things can suspend it, and all four hand it over the same way: drive_app resolving to off — this run's value is ${DRIVE_APP} — no driver resolving at all, a driver that cannot be reached for this run's surface — its server not connected, the module for that surface not installed, or that surface absent from this machine — or a driver that drives none of the surfaces this platform produces. The second of those reaches only a platform that takes part in the driver contract: a platform whose manifest declares no ## Driver block drives with its own tooling exactly as it did before this contract existed, and that cause fires for it only when it has no tooling to drive a running instance at all, which you announce as a declared deviation. Which driver condition applied comes back in driver_status — no driver, one that cannot be reached, or a mismatched one — while drive_app: off is the project's own setting rather than a driver condition and needs no such report; ${core('conventions/driver-contract.md')} has the full vocabulary and what each one means for the user. Whichever it is, you drive nothing: write the UI cases a human has to run into ${DIR}/ManualChecks.md and return their titles in manual_checks${lite() ? '' : ', and mark the matching OpsChecklist items Pending rather than Applicable'}. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the two rules that decide whether a case can be executed at all. Its input is Plan.md ## Manual acceptance; when the plan carries no such section, say so in ## Scope and derive the cases yourself. Independently of that, manual_checks decides whether this file also covers a run you drove yourself: auto stops at the deferred checks above, always writes it on every UI-bearing run regardless, covering what the happy path did not reach and what driving the app cannot do at all. This run's manual_checks is ${MANUAL_CHECKS}.${lite() ? '' : `\n\nAlso apply the ops-checklist skill and write ${DIR}/OpsChecklist.md, marking every item Applicable with its verification evidence (file path, test name, commit ref), N/A with a reason, or Pending. A Pending item is not by itself a FAILED verdict — Pending items go to Review, which decides.`}
+For QUICK a build and a full test run are both mandatory, through this platform's own build and test tooling. There is no reproduction scenario to replay: the task had no Reproduce stage. The checks a person makes come from Plan.md ## Manual acceptance: drive a running instance of the app for them where this run can — drive_app is ${DRIVE_APP} — and otherwise put them into ${DIR}/ManualChecks.md and their titles into manual_checks. Which driver condition applied comes back in driver_status, as ${core('conventions/driver-contract.md')} defines it. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the two rules that decide whether a case can be executed at all.
 
 Change no production code and no tests. Return the same status you wrote on the first line.${CATCH_UP_VALIDATION}${cap('Validation.md')}`,
     ),
@@ -740,13 +685,9 @@ Change no production code and no tests. Return the same status you wrote on the 
   if (validation.manual_checks && validation.manual_checks.length) {
     result.notes.push(`hand-run checks in ${validation.manual_checks_path || 'ManualChecks.md'}: ${validation.manual_checks.join('; ')}`)
   }
-
-  // The four-way distinction is the whole point of the state, and prose in the digest's
-  // summary is not the stage report. Nothing else carries it on a scripted run.
   if (validation.driver_status) {
     result.notes.push(`driver_status: ${validation.driver_status}`)
   }
-
   if (validation.validation_status !== 'PASSED') {
     result.notes.push(`Validation returned ${validation.validation_status}; Review and Done were not run.`)
     return finish('ask_user', { validation_status: validation.validation_status })
@@ -762,11 +703,9 @@ if (runs('Review') && A.need_review !== false) {
       'Review',
       `${reviewScope('Review the diff this task produced.')} Write ${DIR}/Review.md. Its FIRST LINE is required to be exactly:
 
-[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION${lite() ? '' : `\n\nCross-check ${DIR}/OpsChecklist.md: every item marked Applicable must have implementation evidence visible in the diff or in the test results. An Applicable item without evidence is a finding and normally yields CHANGES_REQUESTED. Collect the Pending items under a ## Outstanding ops items section in Review.md for the user to accept or defer explicitly.`}
+[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does: an assertion that cannot fail, a double standing in for the behaviour under test, state crossing between tests, behaviour in the diff that no test names, and a test asserting more than one behaviour. Unlike the plan findings above, these are defects in what was delivered and may block.
-
-Apply the spine-toolkit:security-lens skill, its ## Review rule, to the security verdict line of Research.md, or of Plan.md where there is no Research.md: a lens skipped by triage or returned empty on a diff that touches the perimeter is a finding, and none goes into blocking_findings. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${cap('Review.md')}`,
+Judge the change against Task.md and Plan.md: does it do what Task.md asks and nothing more, and is it still a QUICK change — at most two production files, no public API or package boundary crossed, nothing on the security perimeter? No security lens ran on this task, because its entry check kept the perimeter out: a diff that touches the perimeter anyway is a blocking finding. When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge the phase's **Verification:** line the way the phase-verification skill's ## Review section does: a missing line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does: an assertion that cannot fail, a double standing in for the behaviour under test, state crossing between tests, behaviour in the diff that no test names, and a test asserting more than one behaviour. Unlike the plan findings above, these are defects in what was delivered and may block. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${cap('Review.md')}`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )
@@ -780,21 +719,18 @@ Apply the spine-toolkit:security-lens skill, its ## Review rule, to the security
 }
 
 // ── Done ────────────────────────────────────────────────────────────────────
-// Done refreshes the walkthrough only when the implementing stage did not run in this invocation:
-// a run that reached Done after Validation and Review passed has added no commits since, and one
-// that entered at Review or Done has.
-if (runs('Done') && !runs('Execute')) await writeWalkthrough('Done')
+// Done refreshes the walkthrough only when Edit did not run in this invocation: one that entered
+// at Review or Done has commits the file has not seen.
+if (runs('Done') && !runs('Edit')) await writeWalkthrough('Done')
 
 if (runs('Done')) {
-  if (!need('Done', 'architect')) return finish('ask_user')
+  if (!need('Done', 'developer')) return finish('ask_user')
   const done = await agent(
     doneBrief(
-      `Write the final report ${DIR}/Done.md: what was built, which artifacts it produced, the validation status, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries.
-
-When ${DIR}/Plan.md has a ## Estimation section, a ## Estimate retrospective section is mandatory, following the hybrid model in the feature-estimation skill. Always record the automatic git proxy — the commit span of this task's phase commits plus the phase and rework counts, labelled proxy and never presented as human-days — and add the user-provided human effort when it was offered. The in-range verdict uses human effort when it exists and the proxy otherwise; only when neither exists write unknown and name the missing signal. In AI-assisted mode break the actual down per leverage class. Record this feature's data point in the calibration log: correct this task's row — the one whose task_id names this task, as feature-estimation's Column semantics defines it — if the log already has one, otherwise append it.${cap('Done.md')}`,
+      `Write the final report ${DIR}/Done.md: what changed, and whether it repaired a defect or added a small behaviour; ${A.need_test === false ? 'that no test was written because the task owes none (need_test=false)' : 'which test was added'}; the validation status; and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries. Keep it short enough to be read.${cap('Done.md')}`,
       review && review.done_findings,
     ),
-    { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: DONE_ARTIFACT, ...tuning('architect', 'done') },
+    { label: 'done', phase: 'Done', agentType: A.agents.developer, schema: DONE_ARTIFACT, ...tuning('developer', 'done') },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)

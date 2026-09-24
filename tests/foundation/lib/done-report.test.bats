@@ -8,13 +8,13 @@ setup() {
 
 @test "every profile's Done brief says a prior report is claims to check, naming its archived copy" {
   n=0
-  for p in bug epic feature refactor research test; do
+  for p in bug epic feature quick refactor research test; do
     f="$ROOT/workflows/profile-$p.js"
     awk '/const done = await agent\(/ { getline next_line; if (next_line ~ /^    doneBrief\($/) ok = 1 } END { exit !ok }' "$f" \
       || { echo "profile-$p.js: the done call does not go through doneBrief"; return 1; }
     n=$((n + 1))
   done
-  [ "$n" -eq 6 ] || { echo "checked $n profile(s), expected 6"; return 1; }
+  [ "$n" -eq 7 ] || { echo "checked $n profile(s), expected 7"; return 1; }
   for f in "$ROOT"/workflows/profile-*.js; do
     for token in "const PRIOR_DONE = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Done-[^/]*\.md\$/.test(p))" \
                  'const doneBrief = (body, handed) => brief(' \
@@ -43,14 +43,14 @@ setup() {
 
 @test "every Method B Done bullet says the same about a prior report" {
   n=0
-  for s in bug epic feature refactor research test; do
+  for s in bug epic feature quick refactor research test; do
     f="$ROOT/skills/workflow-$s/SKILL.md"
     awk '/^- \*\*Done\*\*/{f=1} f{print} f&&/^$/{exit}' "$f" \
       | grep -qF 'When `Done.md` already exists — a redo, a restart, a continue after a hand-back — every claim in it is checked against the current artifacts and the `git log` of every repository the task touched before it is kept, and the report says how many claims were corrected, or that every claim held.' \
       || { echo "workflow-$s: the Done bullet does not say a prior report is claims to check"; return 1; }
     n=$((n + 1))
   done
-  [ "$n" -eq 6 ] || { echo "checked $n skill(s), expected 6"; return 1; }
+  [ "$n" -eq 7 ] || { echo "checked $n skill(s), expected 7"; return 1; }
 }
 
 @test "the orchestrator sends Done.md back on the done kind" {

@@ -35,9 +35,9 @@ section() { # $1 = file, $2 = heading text without "## "
   grep -qF '`## When the task owes no test`' <<<"$nb" || { echo "the bullet does not point at the section"; return 1; }
 }
 
-@test "the prelude hands the value to exactly the three phased profiles" {
+@test "the prelude hands the value to the three phased profiles and QUICK" {
   for f in "$ROOT"/workflows/profile-*.js; do
-    grep -qF "const TESTS_NOTE = A.need_test === false && ['FEATURE', 'BUG', 'REFACTOR'].includes(PROFILE)" "$f" \
+    grep -qF "const TESTS_NOTE = A.need_test === false && ['FEATURE', 'BUG', 'REFACTOR', 'QUICK'].includes(PROFILE)" "$f" \
       || { echo "$(basename "$f"): no gated TESTS_NOTE — TEST and RESEARCH default to false"; return 1; }
     grep -qF '${TESTS_NOTE}Output language:' "$f" || { echo "$(basename "$f"): brief() never carries the line"; return 1; }
     grep -qF '`## When the task owes no test`' "$f" || { echo "$(basename "$f"): the line does not point at the section"; return 1; }

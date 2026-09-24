@@ -160,9 +160,9 @@ review_brief() {
   done
 }
 
-@test "exactly the four phased profiles carry the test-quality clause" {
+@test "exactly the four phased profiles and QUICK carry the test-quality clause" {
   n="$(grep -l "the way the test-authoring skill's ## Review section does" "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
-  [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the clause, expected 4"; return 1; }
+  [ "$n" -eq 5 ] || { echo "$n profile script(s) carry the clause, expected 5"; return 1; }
 }
 
 @test "the TEST profile keeps no second copy of the criteria" {

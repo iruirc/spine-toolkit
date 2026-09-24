@@ -42,7 +42,7 @@ ROLES = 'architect developer tester reviewer refactorer validator security diagn
 INLINE_UNDER_METHOD_B = {
     ('bug', 'Done'), ('epic', 'Done'), ('feature', 'Done'),
     ('refactor', 'Done'), ('research', 'Done'), ('test', 'Done'),
-    ('epic', 'Execute'), ('review', 'Auto-move'),
+    ('quick', 'Done'), ('epic', 'Execute'), ('review', 'Auto-move'),
 }
 
 # conventions/stage-dispatch.md → Model and effort: the calls whose work the script's own prompt
@@ -117,8 +117,8 @@ def skill_stages(profile):
 
 preludes = {}
 files = sorted(f for f in os.listdir('workflows') if f.endswith('.js'))
-if len(files) < 7:
-    print(f'workflows/ holds {len(files)} script(s), expected the seven profiles')
+if len(files) < 8:
+    print(f'workflows/ holds {len(files)} script(s), expected the eight profiles')
     sys.exit(1)
 
 for fname in files:

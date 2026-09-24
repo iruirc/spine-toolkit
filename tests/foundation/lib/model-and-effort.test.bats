@@ -42,12 +42,12 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   grep -qF -- '- `done` — writing the final report' <<<"$s" || { echo "the rule does not define the done kind"; return 1; }
   grep -qxF "    (r'done', 'done')," "$ROOT/scripts/lint-workflows.sh" || { echo "the lint does not hold done at its own kind"; return 1; }
   n=0
-  for p in bug epic feature refactor research test; do
+  for p in bug epic feature quick refactor research test; do
     line="$(grep -F "label: 'done'," "$ROOT/workflows/profile-$p.js")"
     grep -qE "\.\.\.tuning\('[a-z]+', 'done'\)" <<<"$line" || { echo "profile-$p.js: the done call is not tuned done"; return 1; }
     n=$((n + 1))
   done
-  [ "$n" -eq 6 ] || { echo "checked $n profile(s), expected 6"; return 1; }
+  [ "$n" -eq 7 ] || { echo "checked $n profile(s), expected 7"; return 1; }
 }
 
 @test "the rule states the host's order with its version, and what Method B cannot pass" {
@@ -122,7 +122,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
       grep -qxF "$line" "$p" || { echo "$(basename "$p"): missing '$line'"; return 1; }
     done
   done
-  [ "$n" -eq 7 ] || { echo "scanned $n script(s), expected 7"; return 1; }
+  [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
 }
 
 @test "the epic's copy of the vocabulary is the resolver's" {
@@ -173,7 +173,7 @@ PY
       || { echo "$f: the paragraph does not give a walkthrough its own key first"; return 1; }
     grep -qF 'where the rule yields `session`' <<<"$para" || { echo "$f: the paragraph does not name session"; return 1; }
   done
-  [ "$n" -eq 7 ] || { echo "scanned $n skill(s), expected 7"; return 1; }
+  [ "$n" -eq 8 ] || { echo "scanned $n skill(s), expected 8"; return 1; }
 }
 
 @test "the platform contract and the platform guide keep model and effort out of agent frontmatter" {
