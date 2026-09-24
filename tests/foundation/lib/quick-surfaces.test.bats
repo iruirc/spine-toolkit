@@ -25,16 +25,31 @@ setup() {
   done
 }
 
-@test "a QUICK step is refused by the orchestrator and by the epic" {
-  grep -qF 'whose `[TASK_TYPE]` is `QUICK` → answer with key `error_quick_step`' "$SKILL" || { echo "the orchestrator dispatches a QUICK step"; return 1; }
-  grep -qF "never QUICK, which is for a root task the user chose" "$ROOT/workflows/profile-epic.js" || { echo "the epic Plan may create a QUICK step"; return 1; }
-  grep -qF 'never QUICK, which is for a root task the user chose' "$ROOT/skills/workflow-epic/SKILL.md" || { echo "Method B epic may create a QUICK step"; return 1; }
-  contract='{"task_id": "050", "task_dir": "/p/Tasks/ACTIVE/050-e", "plugin_root": "/core", "lang": "en", "mode": "auto", "agents": '"$AGENTS"', "start_stage": "Execute", "stage_scope": "forward"}'
-  replies='{"execute:read-steps": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "BUG", "status": "PENDING"}, {"step_id": "2.step", "task_id": "050.2", "task_type": "QUICK", "status": "PENDING"}]}}'
+@test "an epic Plan that types a step QUICK stops before Execute" {
+  grep -qF "never QUICK, which only the user chooses" "$ROOT/workflows/profile-epic.js" || { echo "the epic Plan brief allows QUICK"; return 1; }
+  grep -qF 'never QUICK, which only the user chooses: a Plan that returns a QUICK step stops the epic before Execute' "$ROOT/skills/workflow-epic/SKILL.md" || { echo "Method B has no Plan check"; return 1; }
+  contract='{"task_id": "050", "task_dir": "/p/Tasks/ACTIVE/050-e", "plugin_root": "/core", "lang": "en", "mode": "auto", "agents": '"$AGENTS"', "start_stage": "Plan", "stage_scope": "forward"}'
+  replies='{"plan": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "BUG", "status": "PENDING"}, {"step_id": "2.step", "task_id": "050.2", "task_type": "QUICK", "status": "PENDING"}]}}'
   out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-epic.js" "$contract" "$replies")"
-  node -e 'const o = JSON.parse(process.argv[1]); if (o.result.status !== "error" || !/2\.step/.test(o.result.reason)) { console.log(JSON.stringify(o.result)); process.exit(1) }' "$out"
-  out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-epic.js" "$contract" "${replies/\"QUICK\", \"status\": \"PENDING\"/\"QUICK\", \"status\": \"DONE\"}")"
-  node -e 'const o = JSON.parse(process.argv[1]); if (/QUICK/.test(o.result.reason || "")) { console.log(JSON.stringify(o.result)); process.exit(1) }' "$out"
+  node -e 'const o = JSON.parse(process.argv[1]); if (o.result.status !== "error" || !/2\.step/.test(o.result.reason) || o.calls.some((c) => /^(execute|workflow):/.test(c.label))) { console.log(JSON.stringify(o.result)); process.exit(1) }' "$out"
+}
+
+@test "an open QUICK step runs in the epic walk, always lite" {
+  if grep -qF 'error_quick_step' "$ROOT/workflows/profile-epic.js" "$ROOT/skills/workflow-epic/SKILL.md"; then echo "the epic still refuses a QUICK step"; return 1; fi
+  contract='{"task_id": "050", "task_dir": "/p/Tasks/ACTIVE/050-e", "plugin_root": "/core", "lang": "en", "mode": "auto", "scale": "full", "agents": '"$AGENTS"', "start_stage": "Execute", "stage_scope": "single"}'
+  replies='{"execute:read-steps": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "QUICK", "status": "PENDING", "scale": "full"}]}, "workflow:spine-toolkit:profile-quick": {"status": "ok"}}'
+  out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-epic.js" "$contract" "$replies")"
+  node -e 'const o = JSON.parse(process.argv[1]); const w = o.calls.find((c) => c.label === "workflow:spine-toolkit:profile-quick")
+    if (!w || w.args.scale !== "lite" || o.result.completed_steps.length !== 1 || !o.calls.some((c) => c.label === "execute:tick:1.step")) { console.log(JSON.stringify(o)); process.exit(1) }' "$out"
+}
+
+@test "a QUICK step that escalates fails the walk and is not ticked" {
+  contract='{"task_id": "050", "task_dir": "/p/Tasks/ACTIVE/050-e", "plugin_root": "/core", "lang": "en", "mode": "auto", "agents": '"$AGENTS"', "start_stage": "Execute", "stage_scope": "single"}'
+  replies='{"execute:read-steps": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "QUICK", "status": "PENDING"}, {"step_id": "2.step", "task_id": "050.2", "task_type": "BUG", "status": "PENDING"}]}, "workflow:spine-toolkit:profile-quick": {"status": "ok", "quick_escalation": {"reason": "three files"}}}'
+  out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-epic.js" "$contract" "$replies")"
+  node -e 'const o = JSON.parse(process.argv[1]); const r = o.result
+    if (r.completed_steps.length || r.failed_steps.length !== 1 || !/not a QUICK change: three files/.test(r.failed_steps[0].error_reason) || r.pending_steps.map((s) => s.step_id).join() !== "2.step" || o.calls.some((c) => /^execute:tick/.test(c.label))) { console.log(JSON.stringify(o)); process.exit(1) }' "$out"
+  grep -qF 'If a QUICK step returned `quick_escalation`' "$ROOT/skills/workflow-epic/SKILL.md" || { echo "Method B does not stop on an escalated step"; return 1; }
 }
 
 @test "both new orchestrator keys exist in both locales" {
@@ -79,12 +94,6 @@ setup() {
     done || return 1
   done
   grep -qF '`FEATURE` \| `BUG` \| `REFACTOR` \| `QUICK` \| `REVIEW` \| `TEST` \| `EPIC` \| `RESEARCH`' "$ROOT/skills/task-new/SKILL.md" || { echo "the placeholder table does not allow QUICK"; return 1; }
-}
-
-@test "Method B's epic checks every open step for QUICK before the walk" {
-  s="$(awk '/^- \*\*Execute\*\*/{f=1} f&&/^  For each step:/{exit} f' "$ROOT/skills/workflow-epic/SKILL.md")"
-  grep -qF 'Before the walk, any step whose `[STATUS]` is not DONE, DEFERRED, BLOCKED or SKIPPED and whose `[TASK_TYPE]` is `QUICK` stops Execute with `error_quick_step`' <<<"$s" \
-    || { echo "Method B has no pre-walk QUICK check"; return 1; }
 }
 
 @test "a QUICK rerun resumes at Edit when its phase is still open, not only when it is unstarted" {

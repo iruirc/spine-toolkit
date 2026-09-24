@@ -712,7 +712,7 @@ If the verdict is DECOMPOSITION:
 Write ${DIR}/Plan.md with a progress table of the steps, in execution order, with the columns: Done? | step_id | TASK_TYPE | [STATUS] | short description | artifact. The Done? column renders as a markdown checkbox, "- [ ]" for every step that is not yet DONE.
 Seed the steps from Research.md ### Work items, grouped along layer or feature boundaries — typically one step per major layer (Domain / Repository / Networking / UI) or per self-contained sub-feature.
 Write Plan.md by applying the task-documents skill, its Plan.md section — it holds how a step or phase is described, how a risk is written, and what the plan leaves out.
-Then create the step folders physically by invoking spine-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE] — never QUICK, which is for a root task the user chose — [STATUS] = PENDING, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
+Then create the step folders physically by invoking spine-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE] — never QUICK, which only the user chooses — [STATUS] = PENDING, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
 Write each step's Task.md by applying the task-documents skill, its section on a step's Task.md — it holds what goes above the three anchors and under each. After this stage each one is measured: at most ${BUDGETS['Task.md']} lines, and ### Expected behaviour, ### Questions for Research and ### Acceptance each carrying text or "— <reason>".
 Apply feature-estimation at epic level and write ## Estimation into Plan.md: the aggregate is the SUM of the per-step ranges, reported as a named best/worst epic range, and it carries both the human and the AI-assisted range when the project is AI-assisted. Per-step ranges are written later by each step's own Plan stage; this roll-up is informational, it does NOT gate Execute, but it has to be present before the first step runs.
 Return every step you created in the steps array, in execution order, each with its own [NEED_TEST] and [NEED_REVIEW] from its Task.md as booleans.
@@ -726,6 +726,9 @@ Finalize ${DIR}/Research.md. Plan.md is optional here and, if you write one, it 
   record('Plan', plan)
   branch = plan.branch
   steps = plan.steps || []
+  // QUICK is the user's word only: a step the architect typed QUICK stops the epic before it runs.
+  const quickPlanned = steps.filter((s) => s.task_type === 'QUICK')
+  if (quickPlanned.length) return finish('stop', { status: 'error', reason: `the Plan agent typed step(s) ${quickPlanned.map((s) => s.step_id).join(', ')} QUICK, which only the user chooses; give them another [TASK_TYPE] in their Task.md` })
   log(`Plan chose ${branch}${branch === 'decomposition' ? ` with ${steps.length} step(s)` : ''}`)
 }
 
@@ -742,6 +745,7 @@ const STEP_WORKFLOWS = {
   TEST: 'profile-test',
   RESEARCH: 'profile-research',
   REVIEW: 'profile-review',
+  QUICK: 'profile-quick',
 }
 
 const SKIP_STATUS = ['DONE', 'DEFERRED', 'BLOCKED', 'SKIPPED']
@@ -805,10 +809,6 @@ if (runs('Execute')) {
       if (!walk.length) return finish('stop', { status: 'error', reason: `start_phase "${A.start_phase}" is not a step of this epic` })
     }
 
-    // QUICK is a root task the user chose: a step carrying it stops the walk before any step runs.
-    const quick = walk.filter((s) => s.task_type === 'QUICK' && !SKIP_STATUS.includes(s.status))
-    if (quick.length) return finish('stop', { status: 'error', reason: `step(s) ${quick.map((s) => s.step_id).join(', ')} carry [TASK_TYPE] = QUICK, which is for a root task the user chose; give them another type in their Task.md` })
-
     // Manual mode cannot push: the orchestrator has to ask the user between steps, and a workflow
     // run has no way to ask. That is the only gap that degrades to the pull model.
     const wantsPush = (A.epic_dispatch_mode || 'push') === 'push'
@@ -835,7 +835,8 @@ if (runs('Execute')) {
       effort: overlay('effort', st),
       need_test: st.need_test === undefined ? A.need_test : st.need_test,
       need_review: st.need_review === undefined ? A.need_review : st.need_review,
-      scale: st.scale === undefined ? scale : st.scale,
+      // A QUICK task is always lite, whatever the step or the epic says.
+      scale: st.task_type === 'QUICK' ? 'lite' : st.scale === undefined ? scale : st.scale,
       drive_app: st.drive_app === undefined ? DRIVE_APP : st.drive_app,
       manual_checks: st.manual_checks === undefined ? MANUAL_CHECKS : st.manual_checks,
       phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
@@ -904,6 +905,12 @@ if (runs('Execute')) {
       if (r && r.handback) {
         result.notes.push(`Step ${st.step_id} hands back stage ${r.handback.stage}: no agent implements role "${r.handback.role}" on this platform.`)
         for (const rest of walk.slice(i)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
+        break
+      }
+      // A QUICK step whose entry check failed changed nothing, yet its run still says ok.
+      if (r && r.quick_escalation) {
+        failed_steps.push({ step_id: st.step_id, task_id: st.task_id, error_reason: `not a QUICK change: ${r.quick_escalation.reason || 'no reason given'}; nothing was changed — give the step another [TASK_TYPE] in its Task.md` })
+        for (const rest of walk.slice(i + 1)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
         break
       }
       if (!r || r.status !== 'ok') {
