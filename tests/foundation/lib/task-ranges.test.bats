@@ -150,6 +150,19 @@ origin_at() { # $1 commit: origin/main stands there and is the remote's HEAD, as
   [ "$(state . <<<"$output")" = "unknown None" ] || { echo "$output"; return 1; }
 }
 
+@test "tips --kind done also records the last fix round Plan.md holds" {
+  run "$TR" tips "$TASK" --kind done
+  grep -qx '\[REVIEW_FIXES\] = 0' <<<"$output" || { echo "$output"; return 1; }
+  printf '| R1 | Review fixes 1 | ✅ |\n| R3 | Review fixes 3 | ✅ |\n| R2 | Review fixes 2 | ✅ |\n' >"$TASK/Plan.md"
+  run "$TR" tips "$TASK" --kind done
+  grep -qx '\[REVIEW_FIXES\] = 3' <<<"$output" || { echo "$output"; return 1; }
+  run "$TR" tips "$TASK" --kind reviewed
+  ! grep -q REVIEW_FIXES <<<"$output" || { echo "$output"; return 1; }
+  "$TR" tips "$TASK" --kind done >"$TASK/Done.md"
+  run "$TR" ranges "$TASK" --since done
+  [ "$(state . <<<"$output")" = "ok 0" ] || { echo "$output"; return 1; }
+}
+
 @test "the first record line of a repository wins" {
   stale="$(git -C "$PROJ" rev-parse HEAD)"
   commit "$PROJ" a.txt

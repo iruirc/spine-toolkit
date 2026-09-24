@@ -131,7 +131,14 @@ if CMD == 'record':
         with open(base, 'w', encoding='utf-8') as fh:
             fh.write('# Base\n\n' + '\n'.join(heads('BASE')) + '\n')
 elif CMD == 'tips':
-    print('\n'.join(heads(KINDS[opt('--kind', ['reviewed', 'done'])][0])))
+    kind = opt('--kind', ['reviewed', 'done'])
+    lines = heads(KINDS[kind][0])
+    if kind == 'done':
+        # Where Done left the fix rounds: a later catch-up counts its own from here.
+        plan = os.path.join(TASK, 'Plan.md')
+        text = open(plan, encoding='utf-8').read() if os.path.isfile(plan) else ''
+        lines.append('[REVIEW_FIXES] = %d' % max([int(n) for n in re.findall(r'Review fixes (\d+)', text)] or [0]))
+    print('\n'.join(lines))
 elif CMD == 'ranges':
     since = opt('--since', ['base', 'reviewed', 'done'])
     kind, name = KINDS[since]

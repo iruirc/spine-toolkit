@@ -210,8 +210,8 @@ the `phase-verification` skill, not by this field.
 
 How many rounds of `fix-review` a run in `auto` starts by itself after Review returns
 `CHANGES_REQUESTED`: each round fixes the findings as one plan phase, validates, reviews the new
-commits and closes. When the rounds are spent, the orchestrator stops and asks. `0` turns the
-automatic loop off. `manual` always asks, whatever the value.
+commits and closes. When the rounds are spent, the orchestrator stops and asks. The count starts
+over after every Done, so a later `catch-up` gets rounds of its own. `0` turns the automatic loop off. `manual` always asks, whatever the value.
 
 ### [WALKTHROUGH]
 

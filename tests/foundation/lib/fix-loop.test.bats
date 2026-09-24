@@ -35,8 +35,9 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   done
 }
 
-@test "Gating counts rounds from the last catch-up and numbers phases across the task" {
+@test "Gating counts rounds from the last Done and numbers phases across the task" {
   g="$(section "$S" 'Gating')"
+  grep -qF 'whose `<n>` is above the `[REVIEW_FIXES]` line of `Done.md`' <<<"$g" || { echo "round limit not reset by a Done"; return 1; }
   grep -qF 'below the last `Catch-up: commits after Done` row' <<<"$g" || { echo "round limit not reset by a catch-up"; return 1; }
   grep -qF 'every `Review fixes <n>` row of `Plan.md` plus one' <<<"$g" || { echo "fix_round is not task-wide"; return 1; }
 }
