@@ -5,7 +5,7 @@
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   AGENTS='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"—","diagnostics":"g","init":"—"}'
-  RANGES='{"since": "reviewed", "repos": {".": {"range": "c3..HEAD", "commits": 1, "state": "ok"}}}'
+  RANGES='{"since": "reviewed", "repos": {".": {"range": "c3..HEAD", "commits": 0, "state": "ok"}}}'
   FINDINGS='["a race in the cache", "the retry never stops"]'
 }
 
@@ -78,5 +78,55 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
     ph="$(run_profile "$p" "$(contract "$s" '')" "$(replies "$l" true)" | prompt_of "$l:1")"
     [ -n "$ph" ] || { echo "profile-$p: the planned phase did not run"; return 1; }
     if grep -qF 'not in Plan.md yet' <<<"$ph"; then echo "profile-$p: a plain run got the fix guidance"; return 1; fi
+  done
+}
+
+@test "a Review after this run's own fix reads the range, not the counts taken before it" {
+  for pair in $PAIRS; do
+    p="${pair%%:*}"; s="${pair#*:}"; l="$(tr '[:upper:]' '[:lower:]' <<<"$s")"
+    r="$(run_profile "$p" "$(contract "$s" ", \"action\": \"fix-review\", \"fix_findings\": $FINDINGS, \"fix_round\": 2, \"after_done\": false")" "$(replies "$l" true)" | prompt_of review)"
+    grep -qF '.: c3..HEAD' <<<"$r" || { echo "profile-$p: Review lost the range"; return 1; }
+    grep -qF "The commits this run's own phases added are inside these ranges." <<<"$r" || { echo "profile-$p: Review is not told of the fix commits"; return 1; }
+    for f in 'do not rescan' '(0 commits)'; do
+      if grep -qF "$f" <<<"$r"; then echo "profile-$p: Review got the stale: $f"; return 1; fi
+    done
+  done
+}
+
+@test "a re-review carries a still-open prior finding into its own findings" {
+  for pair in $PAIRS; do
+    p="${pair%%:*}"; s="${pair#*:}"; l="$(tr '[:upper:]' '[:lower:]' <<<"$s")"
+    r="$(run_profile "$p" "$(contract "$s" ", \"action\": \"fix-review\", \"fix_findings\": $FINDINGS, \"fix_round\": 2, \"after_done\": false")" "$(replies "$l" true)" | prompt_of review)"
+    grep -qF 'A prior Critical or Major that is Still open or Regressed is a finding of this review too: list it under ### Findings at its severity and in blocking_findings.' <<<"$r" || { echo "profile-$p: still-open findings are not carried"; return 1; }
+  done
+}
+
+@test "CHANGES_REQUESTED returns the reviewer's findings" {
+  for pair in $PAIRS; do
+    p="${pair%%:*}"; s="${pair#*:}"; l="$(tr '[:upper:]' '[:lower:]' <<<"$s")"
+    rep="$(replies "$l" true | node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8")); o.review = {review_status: "CHANGES_REQUESTED", artifact_path: "r", summary: "s", blocking_findings: ["a race"], done_findings: ["a typo in Plan.md"]}; console.log(JSON.stringify(o))')"
+    out="$(run_profile "$p" "$(contract "$s" ", \"action\": \"fix-review\", \"fix_findings\": $FINDINGS, \"fix_round\": 2, \"after_done\": false")" "$rep")"
+    [ "$(pick 'o.result.blocking_findings' <<<"$out")" = '["a race"]' ] || { echo "profile-$p: $(pick 'o.result' <<<"$out")"; return 1; }
+    [ "$(pick 'o.result.done_findings' <<<"$out")" = '["a typo in Plan.md"]' ] || { echo "profile-$p: done_findings lost"; return 1; }
+  done
+}
+
+@test "the fix phase takes on no work its findings do not ask for" {
+  for pair in $PAIRS; do
+    p="${pair%%:*}"; s="${pair#*:}"; l="$(tr '[:upper:]' '[:lower:]' <<<"$s")"
+    ph="$(run_profile "$p" "$(contract "$s" ", \"action\": \"fix-review\", \"fix_findings\": $FINDINGS, \"fix_round\": 2, \"after_done\": false")" "$(replies "$l" true)" | prompt_of "$l:R2")"
+    grep -qF 'Nothing in the stage guidance above adds work to this phase — a regression test included — unless a finding asks for it.' <<<"$ph" || { echo "profile-$p: stage guidance still adds work"; return 1; }
+  done
+}
+
+@test "the catch-up phase is a progress-table row, and after_done counts its ranges before Done.md changes" {
+  for pair in $PAIRS; do
+    p="${pair%%:*}"; s="${pair#*:}"; l="$(tr '[:upper:]' '[:lower:]' <<<"$s")"
+    d="$(run_profile "$p" "$(contract "$s" ", \"action\": \"fix-review\", \"fix_findings\": $FINDINGS, \"fix_round\": 2, \"after_done\": true")" "$(replies "$l" true)" | prompt_of done)"
+    for f in '"Catch-up: commits after Done" — a row in the top-level progress table and a detail section' 'before you rewrite Done.md, run'; do
+      grep -qF "$f" <<<"$d" || { echo "profile-$p: after_done Done lost: $f"; return 1; }
+    done
+    d="$(run_profile "$p" "$(contract Validation ", \"action\": \"catch-up\"")" "$(replies "$l" true)" | prompt_of done)"
+    grep -qF '"Catch-up: commits after Done" — a row in the top-level progress table and a detail section' <<<"$d" || { echo "profile-$p: catch-up Done appends no table row"; return 1; }
   done
 }

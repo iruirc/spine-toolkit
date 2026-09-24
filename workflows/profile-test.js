@@ -152,23 +152,25 @@ const FIX_PLAN = { artifact_path: `${DIR}/Plan.md`, phases: [{ id: `R${FIX_ROUND
 // The fix phase is not in Plan.md yet, so its guidance says how to add it; any other phase keeps its own.
 const fixGuidance = (guidance) =>
   FIX_REVIEW
-    ? `${guidance}\n\nThis phase is not in Plan.md yet: first append it — a row in the top-level table and a detail section with the findings below as its checkboxes and a **Verification:** line chosen by the spine-toolkit:phase-verification skill. Then fix exactly these findings, nothing else, commit, and mark the phase ✅. Findings:\n- ${A.fix_findings.join('\n- ')}`
+    ? `${guidance}\n\nThis phase is not in Plan.md yet: first append it — a row in the top-level table and a detail section with the findings below as its checkboxes and a **Verification:** line chosen by the spine-toolkit:phase-verification skill. Then fix exactly these findings, nothing else, commit, and mark the phase ✅. Nothing in the stage guidance above adds work to this phase — a regression test included — unless a finding asks for it. Findings:\n- ${A.fix_findings.join('\n- ')}`
     : guidance
 // Fixes that follow a catch-up close that catch-up too.
 const AFTER_DONE = FIX_REVIEW && A.after_done === true
 const RANGES = A.review_ranges && A.review_ranges.repos && typeof A.review_ranges.repos === 'object' && Object.keys(A.review_ranges.repos).length ? A.review_ranges : null
 const PRIOR_REVIEW = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Review-[^/]*\.md$/.test(p))
+// This run commits code before Review, so the counts in review_ranges predate it.
+const CODE_RUNS = ['Fix', 'Execute', 'Refactor', 'Write'].some((s) => ORDER.includes(s) && runs(s))
 // One clause per repository, as review_ranges names them.
 const rangeList = () =>
   Object.entries(RANGES.repos)
-    .map(([repo, r]) => (r.range ? `${repo}: ${r.range} (${r.commits} commit${r.commits === 1 ? '' : 's'})` : `${repo}: no known base — review this task's own commits there and say so under ### Scope`))
+    .map(([repo, r]) => (r.range ? `${repo}: ${r.range}${CODE_RUNS ? '' : ` (${r.commits} commit${r.commits === 1 ? '' : 's'})`}` : `${repo}: no known base — review this task's own commits there and say so under ### Scope`))
     .join('; ')
 // What Review reads; an older orchestrator sends no ranges, and the stage's own wording stands.
 const reviewScope = (fallback) => {
   if (!RANGED || !RANGES) return fallback
   const again = RANGES.since !== 'base' || !!PRIOR_REVIEW
-  const idle = again && Object.values(RANGES.repos).every((r) => r.commits === 0)
-  return `Review exactly these ranges, one per repository, and nothing outside them: ${rangeList()}.${again ? ` Your previous review is ${PRIOR_REVIEW || `${DIR}/Review.md — read it before you overwrite it`}: mark each of its Critical and Major findings Resolved, Still open or Regressed.` : ''}${idle ? ' No range holds a commit: do not rescan the tree; restate the open items of the previous verdict.' : ''}`
+  const idle = !CODE_RUNS && again && Object.values(RANGES.repos).every((r) => r.commits === 0)
+  return `Review exactly these ranges, one per repository, and nothing outside them: ${rangeList()}.${CODE_RUNS ? " The commits this run's own phases added are inside these ranges." : ''}${again ? ` Your previous review is ${PRIOR_REVIEW || `${DIR}/Review.md — read it before you overwrite it`}: mark each of its Critical and Major findings Resolved, Still open or Regressed. A prior Critical or Major that is Still open or Regressed is a finding of this review too: list it under ### Findings at its severity and in blocking_findings.` : ''}${idle ? ' No range holds a commit: do not rescan the tree; restate the open items of the previous verdict.' : ''}`
 }
 // Review's share of the record, and the one finding class that does not block Done.
 const REVIEW_RECORD = RANGED
@@ -177,7 +179,7 @@ const REVIEW_RECORD = RANGED
 const CATCH_UP_VALIDATION = CATCH_UP && RANGES ? `\n\nThis run catches up commits that landed after the task's Done: ${rangeList()}. Validate them at the depth the spine-toolkit:phase-verification skill gives their diff, and name that depth in Validation.md.` : ''
 // Done's share: close what Review left it, stamp where the repositories stand.
 const doneRecord = (handed) =>
-  `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings. The first lines of Done.md are the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" that names those ranges, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}${AFTER_DONE ? ` These fixes follow a catch-up: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" that names the ranges "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since done prints, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}`
+  `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings. The first lines of Done.md are the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names those ranges, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}${AFTER_DONE ? ` These fixes follow a catch-up: before you rewrite Done.md, run "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since done, then append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names the ranges it printed, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}`
 // Review's done_findings that Done did not report closed; none when Review did not run in this invocation.
 const unclosed = (review, done) =>
   review && Array.isArray(review.done_findings) ? review.done_findings.slice(done && Array.isArray(done.closed_findings) ? done.closed_findings.length : 0) : []
@@ -752,7 +754,7 @@ When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute 
 
   if (review.review_status !== 'APPROVED') {
     result.notes.push(`Review returned ${review.review_status}; Done was not run.`)
-    return finish('ask_user', { review_status: review.review_status })
+    return finish('ask_user', { review_status: review.review_status, blocking_findings: review.blocking_findings || [], done_findings: review.done_findings || [] })
   }
 }
 
