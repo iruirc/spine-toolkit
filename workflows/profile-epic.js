@@ -726,9 +726,17 @@ Finalize ${DIR}/Research.md. Plan.md is optional here and, if you write one, it 
   record('Plan', plan)
   branch = plan.branch
   steps = plan.steps || []
-  // QUICK is the user's word only: a step the architect typed QUICK stops the epic before it runs.
-  const quickPlanned = steps.filter((s) => s.task_type === 'QUICK')
-  if (quickPlanned.length) return finish('stop', { status: 'error', reason: `the Plan agent typed step(s) ${quickPlanned.map((s) => s.step_id).join(', ')} QUICK, which only the user chooses; give them another [TASK_TYPE] in their Task.md` })
+  // QUICK is the user's word only, and a step on disk outlives this run: the architect retypes it there once.
+  const quickPlanned = steps.filter((s) => s.task_type === 'QUICK').map((s) => s.step_id)
+  if (quickPlanned.length) {
+    const retyped = await agent(
+      brief('Plan', `You typed step(s) ${quickPlanned.join(', ')} [TASK_TYPE] = QUICK, which only the user chooses. Give each another type — BUG, FEATURE, REFACTOR or TEST, by what the step does — in its Task.md and in the type column of ${DIR}/Plan.md. Touch nothing else. Return every step of the epic as it now stands on disk.`),
+      { label: 'plan:retype', phase: 'Plan', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'stage') },
+    )
+    const still = !retyped || !retyped.steps ? quickPlanned : retyped.steps.filter((s) => s.task_type === 'QUICK').map((s) => s.step_id)
+    if (still.length) return finish('stop', { status: 'error', reason: `step(s) ${still.join(', ')} are still typed QUICK on disk, which only the user chooses; a rerun would run them as QUICK — give them another [TASK_TYPE] in their Task.md first` })
+    steps = retyped.steps
+  }
   log(`Plan chose ${branch}${branch === 'decomposition' ? ` with ${steps.length} step(s)` : ''}`)
 }
 

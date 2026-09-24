@@ -27,11 +27,19 @@ setup() {
 
 @test "an epic Plan that types a step QUICK stops before Execute" {
   grep -qF "never QUICK, which only the user chooses" "$ROOT/workflows/profile-epic.js" || { echo "the epic Plan brief allows QUICK"; return 1; }
-  grep -qF 'never QUICK, which only the user chooses: a Plan that returns a QUICK step stops the epic before Execute' "$ROOT/skills/workflow-epic/SKILL.md" || { echo "Method B has no Plan check"; return 1; }
+  grep -qF 'a Plan that returns a QUICK step retypes it once in its `Task.md` and `Plan.md`, and stops the epic before Execute if QUICK is still there' "$ROOT/skills/workflow-epic/SKILL.md" || { echo "Method B has no Plan check"; return 1; }
   contract='{"task_id": "050", "task_dir": "/p/Tasks/ACTIVE/050-e", "plugin_root": "/core", "lang": "en", "mode": "auto", "agents": '"$AGENTS"', "start_stage": "Plan", "stage_scope": "forward"}'
   replies='{"plan": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "BUG", "status": "PENDING"}, {"step_id": "2.step", "task_id": "050.2", "task_type": "QUICK", "status": "PENDING"}]}}'
   out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-epic.js" "$contract" "$replies")"
-  node -e 'const o = JSON.parse(process.argv[1]); if (o.result.status !== "error" || !/2\.step/.test(o.result.reason) || o.calls.some((c) => /^(execute|workflow):/.test(c.label))) { console.log(JSON.stringify(o.result)); process.exit(1) }' "$out"
+  node -e 'const o = JSON.parse(process.argv[1]); const r = o.calls.find((c) => c.label === "plan:retype")
+    if (!r || !/2\.step/.test(r.prompt) || o.result.status !== "error" || !/2\.step/.test(o.result.reason) || o.calls.some((c) => /^(execute|workflow):/.test(c.label))) { console.log(JSON.stringify(o.result)); process.exit(1) }' "$out"
+}
+
+@test "an epic Plan's QUICK step retyped on disk lets the walk go on" {
+  contract='{"task_id": "050", "task_dir": "/p/Tasks/ACTIVE/050-e", "plugin_root": "/core", "lang": "en", "mode": "auto", "agents": '"$AGENTS"', "start_stage": "Plan", "stage_scope": "forward"}'
+  replies='{"plan": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "QUICK", "status": "PENDING"}]}, "plan:retype": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "BUG", "status": "PENDING"}]}, "workflow:spine-toolkit:profile-bug": {"status": "ok"}}'
+  out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-epic.js" "$contract" "$replies")"
+  node -e 'const o = JSON.parse(process.argv[1]); if (o.result.completed_steps?.length !== 1 || o.calls.some((c) => c.label === "workflow:spine-toolkit:profile-quick")) { console.log(JSON.stringify(o.result)); process.exit(1) }' "$out"
 }
 
 @test "an open QUICK step runs in the epic walk, always lite" {
