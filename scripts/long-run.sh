@@ -35,6 +35,8 @@ cmd_start() {
     LONG_RUN_LOG="$log" bash -c 'trap "" HUP; "$@"; echo $? >"$LONG_RUN_LOG.exit.tmp" && mv "$LONG_RUN_LOG.exit.tmp" "$LONG_RUN_LOG.exit"' long-run "$@" \
       </dev/null >>"$log" 2>&1 &
     echo $! >"$log.pid" )
+  # The job leaves the caller's process tree; stage-leftovers.sh finds it through this registry.
+  echo "$(cat "$log.pid") $(date +%s) $log" >>"${LONG_RUN_REGISTRY:-${TMPDIR:-/tmp}/spine-long-run.registry}"
   echo "pid=$(cat "$log.pid") log=$log"
 }
 

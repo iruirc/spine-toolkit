@@ -6,7 +6,7 @@ setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   LR="$ROOT/scripts/long-run.sh"
   LOG="$BATS_TEST_TMPDIR/run.log"
-  export LONG_RUN_POLL=1 LONG_RUN_GRACE=2
+  export LONG_RUN_POLL=1 LONG_RUN_GRACE=2 LONG_RUN_REGISTRY="$BATS_TEST_TMPDIR/registry"
 }
 
 teardown() {
@@ -70,4 +70,12 @@ teardown() {
            'other than `running`' 'then `stop`' 'not as failed' '`--stall` and `--max` exactly as your brief gives them'; do
     grep -qF -- "$f" <<<"$s" || { echo "the section lost: $f"; return 1; }
   done
+}
+
+@test "start records the job in the registry stage-leftovers.sh reads" {
+  run "$LR" start --log "$LOG" -- sh -c 'echo hi'
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  read -r pid when log <"$LONG_RUN_REGISTRY"
+  [ "$pid" = "$(cat "$LOG.pid")" ] && [ "$log" = "$LOG" ] || { echo "registry: $(cat "$LONG_RUN_REGISTRY")"; return 1; }
+  [ $(( $(date +%s) - when )) -lt 60 ] || { echo "registry time is not now: $when"; return 1; }
 }
