@@ -737,6 +737,8 @@ wrote one — no verdict, no move. And the `_archive/` backups taken before disp
 place; they exist for exactly this case, and clearing them would remove the rope at the moment
 someone reaches for it.
 
+What the failed stage left running or changed is **Stage leftovers**'s, before `stage_error_prompt`.
+
 **Open-questions inline (research-style stages).** In `manual` mode, before rendering `stage_done_prompt`, the orchestrator inspects the just-completed stage's primary artifact (`Research.md` in every profile — the research-style stage writes that name whatever the stage is called — plus `Reproduce.md` for BUG) for non-empty open-question sections.
 
 Recognized H3 section titles (case-insensitive, scoped under any H2):
@@ -848,6 +850,36 @@ still there is reported with key `lang_mismatch_persists` (`{artifact}`, `{secti
 carries on — a second round would cost more than the file is worth to the run, and the finding stays
 in front of the user. Run this script and the budget's both before sending either rewrite; when both
 name one file, the language goes first: a trim is easier in the language the file keeps.
+
+**Stage leftovers.** A stage can leave a process running or a file changed that nothing in its
+report explains: a test build under an MCP server outlives the agent stopped over it, a driver keeps
+its session after `unavailable`, a read-only SQLite open rewrites a committed fixture. Measure it
+rather than trust the report. Before every dispatch, Method A or B, run
+`<core root>/scripts/stage-leftovers.sh snap --out "${TMPDIR:-/tmp}/spine-stage-leftovers/<task_id>.snap"`
+with `--root` for every entry of the contract's `roots` and `--exclude <task_dir>`. After the stage
+returns — at the artifact budget's boundaries, and also after `status: error`, after
+`status: interrupted` and after a `TaskStop` of your own, before `stage_error_prompt` — run
+`stage-leftovers.sh diff` on that file. Exit 0 says nothing.
+
+On exit 1, report each `process` line with key `leftover_process` (`{pid}`, `{age}`, `{parent}`,
+`{cmd}`) and each `tree` line with key `leftover_tree` (`{root}`, `{path}`, `{change}`), then AUQ
+with key `leftovers_prompt`: `leftovers_option_kill` runs `stage-leftovers.sh kill` with each
+line's `<pid>:<start>`; `leftovers_option_restore` runs `git -C <root> restore -- <path>` for the
+`modified` and `deleted` lines only — an `added` file is shown, never removed; `leftovers_option_leave`
+does nothing. Act on nothing before the user answers: the process may be another session's build
+that reparented, the file an edit the user made while the stage ran.
+
+Under Method A, once `Workflow` has accepted the call, start
+`stage-leftovers.sh watch --dir <transcript dir> --stall <60 × long_run.stall> --idle <60 × long_run.max>`
+through `Bash` with `run_in_background`, the transcript dir being the one the `Workflow` result
+names. Its exit wakes you; stop it yourself when the workflow's own notification arrives first. Exit
+4 means an agent's `mcp__*` call has had no answer for longer than `stall`: report its first line
+with key `stage_call_hung` (`{agent}`, `{tool}`, `{age}`), the `proc` lines under it as printed,
+and AUQ: `stage_call_hung_option_kill` (`stage-leftovers.sh kill` on the process the user picks —
+the tool returns an error to the agent and the stage goes on; start the watch again),
+`stage_call_hung_option_wait` (start the watch again) or `stage_call_hung_option_stop` (`TaskStop`
+the workflow, then the `diff` above). Exit 5 means no transcript moved for `max`: say so and do not
+restart it. Method B has no watch: the stage runs in this session, and nothing is left to wake it.
 
 **Per-phase commits vs flow-level commits.** The "commit always confirmed with user" rule applies ONLY to flow-level wrap commits the orchestrator itself initiates (squash, merge, push) — these are user-confirmed regardless of mode. **Per-phase commits inside a workflow-* multi-phase stage (Refactor / Execute / Fix / Write) are autonomous** — the workflow-* skill creates one commit per green phase without a user prompt, in both manual and auto modes. The orchestrator MUST NOT misread "does not confirm commit with user" inside workflow-* skills as "does not commit at all"; per-phase commits are mandatory for the phase invariant ("each phase independently buildable+test-passing+committed") to hold against interrupts.
 

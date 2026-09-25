@@ -189,7 +189,8 @@ not an error to work around: the list grows when a platform arrives that needs i
 
 Free prose, and the only place a driver speaks in its own words: how a target is selected, in what
 order to reach for tools by cost, what state to leave the device in, and — if the server can report
-its own capabilities at runtime — the call that asks it.
+its own capabilities at runtime — the call that asks it. A server that keeps a session between calls
+says here how that session is closed, on every outcome, `unavailable` and `error` included.
 
 Call signatures do not go here. That is the whole of "declare capabilities, never calls", and this
 block is where the temptation lands. Keep it to a screen.

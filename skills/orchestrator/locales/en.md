@@ -214,6 +214,36 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 ## lang_readers_disagree
 The language check measured the prose against `{measured}`, while this run writes in `{lang}`: the two readings of `[LANG]` disagree, so no file is sent back to be rewritten.
 
+## leftover_process
+The stage left a process running: `{cmd}` (pid {pid}, {age}, parent {parent}).
+
+## leftover_tree
+The stage left `{path}` in `{root}` ({change}), and nothing in its report says why.
+
+## leftovers_prompt
+What to do with what the stage left behind?
+
+## leftovers_option_kill
+Stop the processes listed
+
+## leftovers_option_restore
+Restore the modified and deleted files to their committed state
+
+## leftovers_option_leave
+Leave everything as it is
+
+## stage_call_hung
+Agent `{agent}` has waited {age} for `{tool}`, and the tool has not answered. The processes under it:
+
+## stage_call_hung_option_kill
+Stop one of these processes — the tool returns an error and the stage goes on
+
+## stage_call_hung_option_wait
+Keep waiting
+
+## stage_call_hung_option_stop
+Stop the stage
+
 ## warn_walkthrough_pre_depth
 `on` is the pre-depth value, so it is read as `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. A project's `on` still ends at `off` when this task's `scale` is `lite`, the gate sitting below the task's own field and above the project's. To keep the older shape, write `brief` in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`.
 
