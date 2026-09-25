@@ -5,19 +5,22 @@
 # Usage: scripts/stage-leftovers.sh snap --out <file> [--root <dir>]… [--exclude <dir>]…
 #        scripts/stage-leftovers.sh diff <file>
 #        scripts/stage-leftovers.sh kill <pid>:<start>…
-#        scripts/stage-leftovers.sh watch --dir <transcript dir> --stall <s> --idle <s>
+#        scripts/stage-leftovers.sh watch --dir <transcript dir> --stall <s> --idle <s> [--since <epoch>]
 # Exit: diff 0 nothing, 1 findings; kill 0; watch 4 stalled call, 5 idle. 2: usage, any subcommand.
 set -uo pipefail
 
 [ $# -ge 1 ] || { sed -n '5,9p' "$0" >&2; exit 2; }
 exec python3 - "$@" <<'PY'
-import hashlib, json, os, signal, subprocess, sys, time
+import fnmatch, hashlib, json, os, re, signal, subprocess, sys, time
 from datetime import datetime
 
-# Test seams: a ps listing, the session's claude pid, the clock and the registry path.
+# Test seams: a ps listing, the session's claude pid, this process's pid, the clock, the registry path.
 PS_FILE = os.environ.get("STAGE_LEFTOVERS_PS")
 NOW = float(os.environ.get("STAGE_LEFTOVERS_NOW") or time.time())
 POLL = float(os.environ.get("STAGE_LEFTOVERS_POLL") or 15)
+SELF = int(os.environ.get("STAGE_LEFTOVERS_SELF") or os.getpid())
+SHELL = re.compile(r"^\S*/?(zsh|bash|sh) -c ")
+WATCH = re.compile(r"(stage-leftovers\.sh|python\S*\s+-)\s+watch\s")
 REGISTRY = os.environ.get("LONG_RUN_REGISTRY") or os.path.join(
     os.environ.get("TMPDIR") or "/tmp", "spine-long-run.registry")
 
@@ -32,8 +35,10 @@ def procs():
     if PS_FILE:
         text = open(PS_FILE, encoding="utf-8").read()
     else:
-        text = subprocess.run(["ps", "-axo", "pid=,ppid=,pcpu=,lstart=,command="],
-                              capture_output=True, text=True).stdout
+        # lstart follows LC_TIME: under ru_RU it is no longer five English words.
+        text = subprocess.run(["ps", "-axww", "-o", "pid=,ppid=,pcpu=,lstart=,command="],
+                              capture_output=True, text=True, errors="replace",
+                              env=dict(os.environ, LC_ALL="C")).stdout
     table = {}
     for line in text.splitlines():
         f = line.split(None, 8)
@@ -50,7 +55,7 @@ def procs():
 def session_pid(table):
     if os.environ.get("STAGE_LEFTOVERS_SESSION_PID"):
         return int(os.environ["STAGE_LEFTOVERS_SESSION_PID"])
-    pid = os.getppid()
+    pid = table[SELF][0] if SELF in table else os.getppid()
     while pid in table and pid > 1:
         if os.path.basename(table[pid][3].split()[0]) == "claude":
             return pid
@@ -70,18 +75,20 @@ def descendants(table, root):
     return set(out), kids
 
 
-def own_chain(table):
-    # This script, the shell that ran it and whatever it forked: new, but not the stage's.
-    mine, pid = set(), os.getpid()
-    while pid in table and pid > 1:
-        mine.add(pid)
+def own_chain(table, sess):
+    # The Bash-tool shell that ran this script and everything under it — a pipe partner too.
+    pid = SELF
+    while pid in table and table[pid][0] not in (sess, 0, 1):
         pid = table[pid][0]
-    return mine | descendants(table, os.getpid())[0]
+    return ({pid} | descendants(table, pid)[0]) if pid in table else set()
 
 
 def dirty(root, excludes):
-    out = subprocess.run(["git", "-C", root, "status", "--porcelain", "-z", "--untracked-files=all"],
-                         capture_output=True, text=True).stdout
+    # Porcelain paths are relative to the repository's top; report them relative to the root.
+    top = subprocess.run(["git", "-C", root, "rev-parse", "--show-toplevel"],
+                         capture_output=True, text=True).stdout.strip() or root
+    out = subprocess.run(["git", "-C", root, "status", "--porcelain", "-z", "--untracked-files=all",
+                          "--", "."], capture_output=True, text=True, errors="surrogateescape").stdout
     state, parts, i = {}, out.split("\0"), 0
     while i < len(parts):
         entry = parts[i]
@@ -91,8 +98,10 @@ def dirty(root, excludes):
         xy, path = entry[:2], entry[3:]
         if "R" in xy or "C" in xy:
             i += 1  # a rename carries its source path as the next field
-        full = os.path.join(root, path)
-        if any(os.path.abspath(full).startswith(os.path.abspath(e) + os.sep) for e in excludes):
+        full = os.path.join(top, path)
+        path = os.path.relpath(full, os.path.realpath(root))
+        if any(fnmatch.fnmatch(full, os.path.realpath(e)) or
+               fnmatch.fnmatch(full, os.path.realpath(e).rstrip(os.sep) + os.sep + "*") for e in excludes):
             continue
         try:
             digest = hashlib.sha1(open(full, "rb").read()).hexdigest()
@@ -134,18 +143,26 @@ def snap(args):
 
 def new_roots(doc, table):
     # The topmost process of each subtree the stage started and left: one line per build, not per child.
+    # Claude Code's own children are not the stage's: MCP servers, and the Bash-tool shells — but what
+    # a shell started is, so the search goes one level into a shell and no further into a server.
     sess = doc["session"]
-    below, kids = descendants(table, sess)
-    mine = own_chain(table)
+    below, _ = descendants(table, sess)
+    skip = own_chain(table, sess)
+    for pid in below:
+        if WATCH.search(table[pid][3]):
+            skip |= {pid} | descendants(table, pid)[0]
     old = {int(p): s for p, s in doc["procs"].items()}
 
     def is_new(pid):
-        return pid in below and pid not in mine and abs(old.get(pid, -1) - table[pid][1]) > 1
+        return pid in below and abs(old.get(pid, -1) - table[pid][1]) > 1
+
+    def shell(pid):
+        return table[pid][0] == sess and SHELL.match(table[pid][3])
 
     found = []
-    for pid in sorted(below):
-        ppid, start, _cpu, cmd = table[pid]
-        if ppid == sess or not is_new(pid) or is_new(ppid) or "stage-leftovers.sh watch" in cmd:
+    for pid in sorted(below - skip):
+        ppid = table[pid][0]
+        if ppid == sess or not is_new(pid) or (is_new(ppid) and not shell(ppid)):
             continue
         found.append(pid)
     return found
@@ -159,11 +176,14 @@ def registry_orphans(doc, table, seen):
     except OSError:
         return found
     for line in lines:
-        f = line.split(" ", 2)
-        if len(f) < 3 or not f[0].isdigit():
+        # <pid> <epoch> <claude pid> <log>: a line from another session, or older than the session
+        # field, is not this stage's; a pid whose process started elsewhen was recycled.
+        f = line.split(" ", 3)
+        if len(f) < 4 or not (f[0].isdigit() and f[2].isdigit()):
             continue
-        pid, when, log = int(f[0]), float(f[1]), f[2]
-        if when < doc["taken"] or pid in seen or pid not in table or os.path.exists(log + ".exit"):
+        pid, when, owner, log = int(f[0]), float(f[1]), int(f[2]), f[3]
+        if (owner != doc["session"] or when < doc["taken"] or pid in seen or pid not in table
+                or abs(table[pid][1] - when) > 5 or os.path.exists(log + ".exit")):
             continue
         found.append(pid)
     return found
@@ -251,16 +271,17 @@ def pending_call(path):
 
 
 def watch(args):
-    opts = {}
+    opts = {"--since": "0"}
     while args:
         flag = args.pop(0)
-        if flag in ("--dir", "--stall", "--idle") and args:
+        if flag in ("--dir", "--stall", "--idle", "--since") and args:
             opts[flag] = args.pop(0)
         else:
-            usage("watch --dir <transcript dir> --stall <s> --idle <s>")
-    if set(opts) != {"--dir", "--stall", "--idle"}:
-        usage("watch --dir <transcript dir> --stall <s> --idle <s>")
+            usage("watch --dir <transcript dir> --stall <s> --idle <s> [--since <epoch>]")
+    if not {"--dir", "--stall", "--idle"} <= set(opts):
+        usage("watch --dir <transcript dir> --stall <s> --idle <s> [--since <epoch>]")
     root, stall, idle = opts["--dir"], float(opts["--stall"]), float(opts["--idle"])
+    since = float(opts["--since"])  # "wait more": silence counts from here, not from the call
     if not os.path.isdir(root):
         usage("no transcript dir %s" % root)
     while True:
@@ -270,12 +291,12 @@ def watch(args):
         for name in sorted(names):
             call = pending_call(os.path.join(root, name))
             # Bash has its own tool timeout and long-run.sh its own --stall; only an MCP call has neither.
-            if call and call[0].startswith("mcp__") and now - call[1] > stall:
+            if call and call[0].startswith("mcp__") and now - max(call[1], since) > stall:
                 print("hung agent=%s tool=%s age=%s" % (name[6:-6], call[0], age(now - call[1])))
                 table = procs()
                 sess = session_pid(table)
                 below, _ = descendants(table, sess)
-                mine = own_chain(table)
+                mine = own_chain(table, sess)
                 for pid in sorted(below - mine):
                     ppid, start, cpu, cmd = table[pid]
                     if ppid != sess:

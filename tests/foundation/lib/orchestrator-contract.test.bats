@@ -431,9 +431,10 @@ section() {
   para="$(awk '/^\*\*Stage leftovers\.\*\*/{f=1} f&&/^\*\*Per-phase commits/{exit} f' "$SKILL")"
   [ -n "$para" ] || { echo "no Stage leftovers paragraph in the orchestrator"; return 1; }
   for token in 'stage-leftovers.sh snap' 'stage-leftovers.sh diff' 'stage-leftovers.sh kill' 'stage-leftovers.sh watch' \
-               '`roots`' '--exclude <task_dir>' '`status: interrupted`' '`TaskStop`' 'stage_error_prompt' \
+               '`roots`' '`status: interrupted`' '`TaskStop`' 'stage_error_prompt' \
                '`run_in_background`' '`mcp__*`' 'long_run.stall' '`added` file is shown, never removed' \
-               'Act on nothing before the user answers' 'Method B has no watch'; do
+               'Act on nothing before the user answers' 'Method B has no watch' \
+               "status directory is replaced by \`*\`" "'…/Tasks/*/<task folder>'" '--since <now>'; do
     grep -qF -- "$token" <<<"$para" || { echo "the Stage leftovers paragraph does not name $token"; return 1; }
   done
   grep -qF "is **Stage leftovers**'s, before \`stage_error_prompt\`" "$SKILL" \

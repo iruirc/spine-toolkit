@@ -856,7 +856,9 @@ report explains: a test build under an MCP server outlives the agent stopped ove
 its session after `unavailable`, a read-only SQLite open rewrites a committed fixture. Measure it
 rather than trust the report. Before every dispatch, Method A or B, run
 `<core root>/scripts/stage-leftovers.sh snap --out "${TMPDIR:-/tmp}/spine-stage-leftovers/<task_id>.snap"`
-with `--root` for every entry of the contract's `roots` and `--exclude <task_dir>`. After the stage
+with `--root` for every entry of the contract's `roots` and `--exclude` with `<task_dir>` whose
+status directory is replaced by `*`, quoted (`'…/Tasks/*/<task folder>'`), so the task's own files
+stay out under whichever status directory the stage moves the folder to. After the stage
 returns — at the artifact budget's boundaries, and also after `status: error`, after
 `status: interrupted` and after a `TaskStop` of your own, before `stage_error_prompt` — run
 `stage-leftovers.sh diff` on that file. Exit 0 says nothing.
@@ -877,7 +879,8 @@ names. Its exit wakes you; stop it yourself when the workflow's own notification
 with key `stage_call_hung` (`{agent}`, `{tool}`, `{age}`), the `proc` lines under it as printed,
 and AUQ: `stage_call_hung_option_kill` (`stage-leftovers.sh kill` on the process the user picks —
 the tool returns an error to the agent and the stage goes on; start the watch again),
-`stage_call_hung_option_wait` (start the watch again) or `stage_call_hung_option_stop` (`TaskStop`
+`stage_call_hung_option_wait` (start it again with `--since <now>` in epoch seconds, so the same call
+wakes you only after another `stall`) or `stage_call_hung_option_stop` (`TaskStop`
 the workflow, then the `diff` above). Exit 5 means no transcript moved for `max`: say so and do not
 restart it. Method B has no watch: the stage runs in this session, and nothing is left to wake it.
 
