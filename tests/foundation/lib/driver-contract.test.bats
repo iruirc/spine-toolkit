@@ -11,12 +11,12 @@ setup() {
   LINT="$ROOT/scripts/lint-driver-manifest.sh"
 }
 
-# The 32 capabilities, in the six groups the convention declares. Written out here
+# The 33 capabilities, in the six groups the convention declares. Written out here
 # rather than parsed from the doc: a test that reads its subject cannot catch the
 # subject losing a line.
 ALL_CAPS="launch stop install reset_state
 ui_tree find assert screenshot video logs
-tap type swipe gesture key
+tap type swipe gesture drag key
 deeplink background permissions alerts push biometrics camera location network_conditions viewport locale webview
 a11y_audit visual_baseline performance
 record_replay multi_device"
@@ -34,12 +34,12 @@ record_replay multi_device"
   [ -z "$missing" ] || { echo "capabilities the vocabulary block does not name:$missing"; return 1; }
 }
 
-@test "the convention declares exactly 32 capabilities and no more" {
+@test "the convention declares exactly 33 capabilities and no more" {
   # Counted from the vocabulary block alone, not the whole document: the prose
   # below it legitimately mentions capability names while explaining them.
   n="$(sed -n '/^<!-- vocabulary:start -->$/,/^<!-- vocabulary:end -->$/p' "$DOC" \
        | grep -oE '`[a-z][a-z0-9_]*`' | sort -u | wc -l | tr -d ' ')"
-  [ "$n" -eq 32 ] || { echo "vocabulary block holds $n capabilities, expected 32"; return 1; }
+  [ "$n" -eq 33 ] || { echo "vocabulary block holds $n capabilities, expected 33"; return 1; }
 }
 
 @test "the convention's vocabulary and the lint's VOCAB are the same set" {
