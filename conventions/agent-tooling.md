@@ -76,4 +76,6 @@ it returns something other than `running`. On `done`, read the exit code and the
 `stalled` or `timeout`, capture what shows why — the tail, the process tree, the platform's own
 state — then `stop`, and report the command as hung or over budget, not as failed. Pass
 `--stall` and `--max` exactly as your brief gives them. Give each `wait` call a tool timeout
-above its `--for`, or pass a `--for` your tool's limit allows.
+above its `--for`, or pass a `--for` your tool's limit allows. `start` also records the job
+for the orchestrator, which shows the user every job still running after the stage: `stop` what
+you started.
