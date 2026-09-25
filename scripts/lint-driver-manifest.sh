@@ -23,7 +23,7 @@ manifest = os.path.join(plugin, "skills", "manifest", "SKILL.md")
 VOCAB = set("""
 launch stop install reset_state
 ui_tree find assert screenshot video logs
-tap type swipe gesture key
+tap type swipe gesture drag key
 deeplink background permissions alerts push biometrics camera location
 network_conditions viewport locale webview
 a11y_audit visual_baseline performance

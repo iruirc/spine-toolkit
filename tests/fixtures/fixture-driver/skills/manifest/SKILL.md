@@ -41,7 +41,7 @@ android-device
 
 launch stop install reset_state
 ui_tree find assert screenshot video logs
-tap type swipe gesture key
+tap type swipe gesture drag key
 deeplink background permissions alerts viewport locale webview
 a11y_audit visual_baseline performance
 record_replay multi_device
@@ -50,7 +50,7 @@ record_replay multi_device
 
 launch stop install reset_state
 ui_tree find assert screenshot video logs
-tap type swipe gesture key
+tap type swipe gesture drag key
 deeplink background permissions alerts viewport locale webview
 push biometrics camera location network_conditions
 a11y_audit visual_baseline performance
