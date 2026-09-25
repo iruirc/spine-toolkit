@@ -851,16 +851,20 @@ carries on — a second round would cost more than the file is worth to the run,
 in front of the user. Run this script and the budget's both before sending either rewrite; when both
 name one file, the language goes first: a trim is easier in the language the file keeps.
 
-**Walkthrough history.** At the same boundaries, run `<core root>/scripts/lint-walkthrough.sh <task_dir>`.
-It checks every commit `## Commits` of `Walkthrough.md` names against the task's history: a reset or
-a squash leaves sections of commits `git log` no longer shows, and a refresh that only appended kept
+**Walkthrough history.** At the same boundaries, run `<core root>/scripts/lint-walkthrough.sh` on
+every folder the language check measures there — the moved `Tasks/DONE/<folder>`, each step folder of
+an EPIC range. It checks every commit `## Commits` of `Walkthrough.md` names against the task's
+history: a reset or a squash leaves sections of commits `git log` no longer shows, and a refresh that only appended kept
 them. The writer runs it too; this run is the measurement its word does not replace. On exit 1,
 report each line with key `walkthrough_unreachable_commit` (`{sha}`, `{where}`) and send the file
 back **once** to the role the table above names for `Walkthrough.md`,
 on the model of kind `walkthrough`, asking for one thing: apply `task-walkthrough` → `## Refreshing`
 to the commits named, nothing else. Then run the script again; a line still there is reported with key
-`walkthrough_unreachable_persists` (`{sha}`, `{where}`) and the run carries on. Exit 2 is reported as
-the script printed it, and the run carries on.
+`walkthrough_unreachable_persists` (`{sha}`, `{where}`) and the run carries on. A file already sent
+back in this run is not sent again: a later boundary reports its lines with that key instead.
+Exit 2 is reported as the script printed it, and the run carries on. Run it with the language and
+budget checks before sending any rewrite; when they name one file, history goes first: it removes sections
+the other two would otherwise rewrite or trim.
 
 **Stage leftovers.** A stage can leave a process running or a file changed that nothing in its
 report explains: a test build under an MCP server outlives the agent stopped over it, a driver keeps

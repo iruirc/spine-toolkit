@@ -215,6 +215,24 @@ origin_at() { # $1 commit: origin/main stands there and is the remote's HEAD, as
   [ "$output" = "$old" ] || { echo "$output"; return 1; }
 }
 
+@test "unreachable accepts a live commit of the task repository itself" {
+  "$TR" record "$TASK"
+  commit "$PROJ/Tasks" plan.txt; t1="$(git -C "$PROJ/Tasks" rev-parse --short HEAD)"
+  run "$TR" unreachable "$TASK" "$t1"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ] || { echo "a live task-repository commit read as gone: $output"; return 1; }
+}
+
+@test "unreachable accepts a commit a local branch holds while HEAD is elsewhere" {
+  "$TR" record "$TASK"
+  git -C "$PROJ" checkout -qb feat
+  commit "$PROJ" a.txt; a1="$(git -C "$PROJ" rev-parse --short HEAD)"
+  git -C "$PROJ" checkout -q main
+  run "$TR" unreachable "$TASK" "$a1"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ] || { echo "a commit on another branch read as gone: $output"; return 1; }
+}
+
 @test "unreachable needs at least one sha" {
   run "$TR" unreachable "$TASK"
   [ "$status" -eq 2 ] || { echo "no sha: $status $output"; return 1; }

@@ -532,7 +532,7 @@ Derive the account from git — the task's own commits, git log over the range a
 
 If the file already exists, that range already ends at the task's last commit and "${core('scripts/lint-walkthrough.sh')}" ${DIR} exits 0, change nothing and say so. Return changed true when you wrote the file, false when you left it as it was.
 
-Last, run "${core('scripts/lint-walkthrough.sh')}" ${DIR}. Each line it prints is a commit the task's history no longer holds: apply the skill's ## Refreshing rule for such commits, run it again until it exits 0, and return what its last run printed in lint.${extra ? `
+Last, run "${core('scripts/lint-walkthrough.sh')}" ${DIR}. Each line it prints is a commit the task's history no longer holds: apply the skill's ## Refreshing rule for such commits and run it once more. On exit 2 stop and return its output; a line that rule does not resolve is returned, not forced. Return what its last run printed in lint.${extra ? `
 
 ${extra}` : ''}
 

@@ -345,7 +345,7 @@ NAMES
 
 @test "a refresh drops the commits history no longer holds, and says so as history" {
   refresh="$(awk '/^## Refreshing$/{f=1;next} /^## /{f=0} f' "$SKILL")"
-  for token in 'scripts/lint-walkthrough.sh' 'no longer reachable from `HEAD`' 'is removed' '`history`'; do
+  for token in 'scripts/lint-walkthrough.sh' 'is removed' '`history`' 'starts or ends on it' 'exits 2' 'returned, not forced'; do
     grep -qF -- "$token" <<<"$refresh" || { echo "## Refreshing does not name $token"; return 1; }
   done
   grep -qF '`history` (commits the task made are no longer in its history)' "$SKILL" \
@@ -360,6 +360,7 @@ NAMES
     n=$((n + 1))
     for line in "that range already ends at the task's last commit and \"\${core('scripts/lint-walkthrough.sh')}\" \${DIR} exits 0, change nothing" \
                 "Last, run \"\${core('scripts/lint-walkthrough.sh')}\" \${DIR}." \
+                'On exit 2 stop and return its output' 'a line that rule does not resolve is returned, not forced' \
                 "lint: { type: 'string'" \
                 'if (w.lint) result.notes.push(`Walkthrough.md lint: ${w.lint}`)'; do
       grep -qF -- "$line" "$p" || { echo "$(basename "$p"): missing '$line'"; return 1; }

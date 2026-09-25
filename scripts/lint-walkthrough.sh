@@ -16,8 +16,10 @@ import os, re, subprocess, sys
 
 RANGES, TASK = sys.argv[1], sys.argv[2]
 SHA = r'[0-9a-f]{7,40}'
-NUMBERED = re.compile(r'^###\s+(\d+)\.\s+`(%s)`' % SHA)
-LOG_LINE = re.compile(r'^-\s+`(%s)(?:\.\.(%s))?`' % (SHA, SHA))
+# Every backticked sha or sha range on a line, wherever it sits: a heading may group several, or
+# put a word or bold markup before one.
+TOKEN = re.compile(r'`(%s)(?:\.\.(%s))?`' % (SHA, SHA))
+NUMBER = re.compile(r'^###\s+([\d\u2013-]+)')
 FENCE = re.compile(r'^\s*(`{3,}|~{3,})')
 
 
@@ -30,33 +32,42 @@ def task_type():
         return None
 
 
+def shas(line):
+    return [s for m in TOKEN.finditer(line) for s in m.groups() if s]
+
+
 path = os.path.join(TASK, 'Walkthrough.md')
 # An epic's ## Commits holds a section per step, not per commit.
 if not os.path.isfile(path) or not os.path.isfile(os.path.join(TASK, 'Base.md')) or task_type() == 'EPIC':
     sys.exit(0)
 
-named, section, fenced, inside = [], None, False, False
+named, section, fence, inside = [], None, None, False
 for line in open(path, encoding='utf-8'):
-    if FENCE.match(line):
-        fenced = not fenced
-    if fenced:
+    m = FENCE.match(line)
+    if m:
+        # Only a run of the same character, at least as long, closes a fence.
+        if fence is None:
+            fence = m.group(1)
+        elif m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence) and not line.strip()[len(m.group(1)):]:
+            fence = None
+        continue
+    if fence:
         continue
     if line.startswith('## '):
         inside, section = line.strip() == '## Commits', None
         continue
     if not inside:
         continue
-    m = NUMBERED.match(line)
-    if m:
-        section = '### ' + m.group(1)
-        named.append((m.group(2), section))
-    elif line.startswith('### '):
-        section = 'Bookkeeping' if line.strip() == '### Bookkeeping' else '###'
-    elif section in (None, 'Bookkeeping'):
+    if line.startswith('### '):
+        if line.strip() == '### Bookkeeping':
+            section = 'Bookkeeping'
+            continue
+        m = NUMBER.match(line)
+        section = '### ' + m.group(1) if m else '###'
+        named += [(s, section) for s in shas(line)]
+    elif section in (None, 'Bookkeeping') and line.startswith('- '):
         # Bullets inside a commit's own section are its prose, not the log.
-        m = LOG_LINE.match(line)
-        if m:
-            named += [(s, section or 'brief') for s in m.groups() if s]
+        named += [(s, section or 'brief') for s in shas(line)]
 
 if not named:
     sys.exit(0)
