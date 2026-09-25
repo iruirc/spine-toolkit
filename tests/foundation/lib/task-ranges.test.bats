@@ -181,6 +181,46 @@ origin_at() { # $1 commit: origin/main stands there and is the remote's HEAD, as
   [ "$(state Packages/Core <<<"$output")" = "unknown None" ] || { echo "$output"; return 1; }
 }
 
+@test "unreachable names the commits a reset and a squash dropped, and only those" {
+  "$TR" record "$TASK"
+  base="$(git -C "$PROJ/Packages/Core" rev-parse HEAD)"
+  commit "$PROJ/Packages/Core" c.txt; c1="$(git -C "$PROJ/Packages/Core" rev-parse --short HEAD)"
+  commit "$PROJ" a.txt; a1="$(git -C "$PROJ" rev-parse --short HEAD)"
+  commit "$PROJ" b.txt; a2="$(git -C "$PROJ" rev-parse --short HEAD)"
+  commit "$PROJ" d.txt; a3="$(git -C "$PROJ" rev-parse --short HEAD)"
+  git -C "$PROJ/Packages/Core" reset -q --hard "$base"
+  git -C "$PROJ" reset -q --soft HEAD~2
+  git -C "$PROJ" -c user.name=t -c user.email=t@t commit -qm squashed
+  sq="$(git -C "$PROJ" rev-parse --short HEAD)"
+  run "$TR" unreachable "$TASK" "$c1" "$a1" "$a2" "$a3" "$sq"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "$(printf '%s\n%s\n%s' "$c1" "$a2" "$a3")" ] || { echo "$output"; return 1; }
+}
+
+@test "unreachable counts the base itself as outside the task" {
+  "$TR" record "$TASK"
+  base="$(git -C "$PROJ" rev-parse --short HEAD)"
+  run "$TR" unreachable "$TASK" "$base"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "$base" ] || { echo "$output"; return 1; }
+}
+
+@test "unreachable falls back to HEAD when the base was rewritten" {
+  "$TR" record "$TASK"
+  old="$(git -C "$PROJ" rev-parse --short HEAD)"
+  git -C "$PROJ" -c user.name=t -c user.email=t@t commit -q --amend -m amended
+  commit "$PROJ" a.txt; a1="$(git -C "$PROJ" rev-parse --short HEAD)"
+  run "$TR" unreachable "$TASK" "$old" "$a1"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "$old" ] || { echo "$output"; return 1; }
+}
+
+@test "unreachable needs at least one sha" {
+  run "$TR" unreachable "$TASK"
+  [ "$status" -eq 2 ] || { echo "no sha: $status $output"; return 1; }
+  grep -qF 'usage: task-ranges.sh unreachable' <<<"$output" || { echo "$output"; return 1; }
+}
+
 @test "a record it cannot trust stops with exit 2" {
   printf '[DONE_COMMIT] = .: not-a-sha\n' >"$TASK/Done.md"
   run "$TR" ranges "$TASK" --since done

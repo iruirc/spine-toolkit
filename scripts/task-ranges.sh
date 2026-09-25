@@ -4,6 +4,7 @@
 # Usage: scripts/task-ranges.sh record <task-dir>                                 # Base.md, once
 #        scripts/task-ranges.sh tips   <task-dir> --kind reviewed|done            # record lines
 #        scripts/task-ranges.sh ranges <task-dir> --since base|reviewed|done      # JSON
+#        scripts/task-ranges.sh unreachable <task-dir> <sha>...                   # shas not the task's
 # Exit:  0, or 2 on a usage error, a record it cannot read, or a recorded repository gone.
 set -euo pipefail
 
@@ -158,6 +159,22 @@ elif CMD == 'ranges':
         else:
             repos[rel] = {'range': sha + '..HEAD', 'commits': count(top, sha), 'state': 'ok'}
     print(json.dumps({'since': since, 'repos': repos}, sort_keys=True))
+elif CMD == 'unreachable':
+    if not OPTS:
+        die('usage: task-ranges.sh unreachable <task-dir> <sha>...')
+    rec = recorded('BASE', 'Base.md')
+
+    def ours(rel, top, sha):
+        # A base the history no longer holds bounds nothing: reachable from HEAD is all that is left.
+        full, base = git(top, 'rev-parse', '-q', '--verify', sha + '^{commit}'), rec.get(rel)
+        if not full or git(top, 'merge-base', '--is-ancestor', full, 'HEAD') is None:
+            return False
+        bounded = base and git(top, 'merge-base', '--is-ancestor', base, 'HEAD') is not None
+        return not bounded or git(top, 'merge-base', '--is-ancestor', full, base) is None
+
+    for sha in OPTS:
+        if not any(ours(rel, top, sha) for rel, top in REPOS.items()):
+            print(sha)
 else:
     die('unknown command "%s"' % CMD)
 PY
