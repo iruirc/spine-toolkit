@@ -37,7 +37,7 @@ Everything below is editing them.
   "description": "…",
   "version": "1.0.0",
   "dependencies": [
-    { "name": "spine-toolkit", "version": ">=2.15.0 <3" }
+    { "name": "spine-toolkit", "version": ">=2.16.0 <3" }
   ]
 }
 ```
