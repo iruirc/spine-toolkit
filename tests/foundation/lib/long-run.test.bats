@@ -75,7 +75,8 @@ teardown() {
 @test "start records the job in the registry stage-leftovers.sh reads" {
   run "$LR" start --log "$LOG" -- sh -c 'echo hi'
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-  read -r pid when log <"$LONG_RUN_REGISTRY"
+  read -r pid when session log <"$LONG_RUN_REGISTRY"
   [ "$pid" = "$(cat "$LOG.pid")" ] && [ "$log" = "$LOG" ] || { echo "registry: $(cat "$LONG_RUN_REGISTRY")"; return 1; }
+  [[ "$session" =~ ^[0-9]+$ ]] || { echo "no session pid in the registry line: $session"; return 1; }
   [ $(( $(date +%s) - when )) -lt 60 ] || { echo "registry time is not now: $when"; return 1; }
 }

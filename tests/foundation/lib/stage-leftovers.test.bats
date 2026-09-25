@@ -65,8 +65,8 @@ snap() { "$SL" snap --out "$T/snap" "$@"; }
 
 @test "a long-run job started after the snapshot and still running is shown" {
   before; snap
-  row 300 1 14:10:00 'bash -c xcodebuild test' >>"$T/ps"
-  echo "300 $STAGE_LEFTOVERS_NOW $T/run.log" >>"$LONG_RUN_REGISTRY"
+  row 300 1 15:00:00 'bash -c xcodebuild test' >>"$T/ps"
+  echo "300 $STAGE_LEFTOVERS_NOW 100 $T/run.log" >>"$LONG_RUN_REGISTRY"
   run "$SL" diff "$T/snap"
   [ "$status" -eq 1 ] && [[ "$output" == "process pid=300 "*"parent=1 "* ]] || { echo "$output"; return 1; }
 }
@@ -74,17 +74,17 @@ snap() { "$SL" snap --out "$T/snap" "$@"; }
 @test "a long-run job started in the snapshot's own second is shown" {
   export STAGE_LEFTOVERS_NOW="$STAGE_LEFTOVERS_NOW.7"
   before; snap
-  row 300 1 14:10:00 'bash -c xcodebuild test' >>"$T/ps"
-  echo "300 ${STAGE_LEFTOVERS_NOW%.*} $T/run.log" >>"$LONG_RUN_REGISTRY"
+  row 300 1 15:00:00 'bash -c xcodebuild test' >>"$T/ps"
+  echo "300 ${STAGE_LEFTOVERS_NOW%.*} 100 $T/run.log" >>"$LONG_RUN_REGISTRY"
   run "$SL" diff "$T/snap"
   [ "$status" -eq 1 ] || { echo "a job registered in the same whole second was missed: $output"; return 1; }
 }
 
 @test "a long-run job that finished, or started before the snapshot, is not shown" {
   before; snap
-  { row 300 1 14:10:00 'bash -c done'; row 301 1 08:00:00 'bash -c old'; } >>"$T/ps"
+  { row 300 1 15:00:00 'bash -c done'; row 301 1 08:00:00 'bash -c old'; } >>"$T/ps"
   touch "$T/done.log.exit"
-  { echo "300 $STAGE_LEFTOVERS_NOW $T/done.log"; echo "301 1 $T/old.log"; } >>"$LONG_RUN_REGISTRY"
+  { echo "300 $STAGE_LEFTOVERS_NOW 100 $T/done.log"; echo "301 1 100 $T/old.log"; } >>"$LONG_RUN_REGISTRY"
   run "$SL" diff "$T/snap"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }
@@ -155,4 +155,79 @@ transcript() {
     run "$SL" watch --dir "$T/wf" --stall 300 --idle 1
     [ "$status" -eq 5 ] || { echo "$c: $output"; return 1; }
   done
+}
+
+# Final review of the first cut: each test below reproduces one finding.
+
+@test "a build left under a Bash-tool shell the stage started is shown" {
+  before; snap
+  { row 140 100 14:00:00 '/bin/zsh -c source snapshot && eval xcodebuild'
+    row 141 140 14:00:01 'xcodebuild test'; } >>"$T/ps"
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 1 ] && [[ "$output" == "process pid=141 "*"cmd=xcodebuild test" ]] || { echo "$output"; return 1; }
+}
+
+@test "an MCP server relaunched through npm exec is not offered as a leftover" {
+  before; snap
+  { row 150 100 14:00:00 'npm exec claude-in-mobile@latest'; row 151 150 14:00:01 'node claude-in-mobile'; } >>"$T/ps"
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "the watch and whatever shares the caller's shell are not leftovers" {
+  before; snap
+  { row 160 100 14:00:00 '/bin/zsh -c eval stage-leftovers.sh watch'
+    row 161 160 14:00:00 '/usr/bin/python3 - watch --dir /x --stall 300 --idle 1800'
+    row 170 100 14:59:59 '/bin/zsh -c eval stage-leftovers.sh diff | cat'
+    row 171 170 14:59:59 '/usr/bin/python3 - diff /s'
+    row 172 170 14:59:59 'cat'; } >>"$T/ps"
+  STAGE_LEFTOVERS_SELF=171 run "$SL" diff "$T/snap"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "another session's long-run job, an old-format line and a recycled pid are not shown" {
+  before; snap
+  { row 300 1 15:00:00 'bash -c other'; row 301 1 15:00:00 'bash -c old'; row 302 1 14:00:00 'bash -c reused'; } >>"$T/ps"
+  { echo "300 $STAGE_LEFTOVERS_NOW 200 $T/a.log"; echo "301 $STAGE_LEFTOVERS_NOW $T/b.log"
+    echo "302 $STAGE_LEFTOVERS_NOW 100 $T/c.log"; } >>"$LONG_RUN_REGISTRY"
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "a root below its repository's top reports paths from the root and nothing outside it" {
+  before; git init -q "$T/mono" && cd "$T/mono" && mkdir -p ios/Tasks/ACTIVE/1 web
+  printf 'a\n' >ios/a; printf 'w\n' >web/w
+  git add . && git -c user.email=t@t -c user.name=t commit -qm init
+  snap --root "$T/mono/ios" --exclude "$T/mono/ios/Tasks/*/1"
+  printf 'b\n' >ios/a; printf 'x\n' >web/w; printf 'v\n' >ios/Tasks/ACTIVE/1/Validation.md
+  run "$SL" diff "$T/snap"
+  [ "$output" = "tree root=$T/mono/ios path=a change=modified" ] || { echo "$output"; return 1; }
+}
+
+@test "the task folder is excluded after it moves to another status directory" {
+  before; repo; mkdir -p Tasks/ACTIVE/042; snap --root "$T/repo" --exclude "$T/repo/Tasks/*/042"
+  mkdir -p Tasks/DONE/042; printf 'x\n' >Tasks/DONE/042/Done.md
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "ps is read the same under a non-English LC_TIME" {
+  loc="$(locale -a 2>/dev/null | grep -m1 -i '^ru_RU' || true)"
+  [ -n "$loc" ] || skip "no ru_RU locale on this machine"
+  unset STAGE_LEFTOVERS_PS
+  LC_ALL="$loc" STAGE_LEFTOVERS_SESSION_PID=1 run "$SL" snap --out "$T/live"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  n="$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["procs"]))' "$T/live")"
+  [ "$n" -gt 0 ] || { echo "no process read under $loc"; return 1; }
+}
+
+@test "waiting on a hung call fires again only after another --stall" {
+  before
+  export STAGE_LEFTOVERS_POLL=0
+  transcript a1 mcp__x__y 900 pending
+  touch -t 200001010000 "$T/wf/agent-a1.jsonl" "$T/wf"
+  run "$SL" watch --dir "$T/wf" --stall 300 --idle 1 --since $((STAGE_LEFTOVERS_NOW - 60))
+  [ "$status" -eq 5 ] || { echo "fired again at once: $output"; return 1; }
+  run "$SL" watch --dir "$T/wf" --stall 300 --idle 99999 --since $((STAGE_LEFTOVERS_NOW - 400))
+  [ "$status" -eq 4 ] || { echo "$output"; return 1; }
 }

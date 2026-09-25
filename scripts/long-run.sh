@@ -36,7 +36,11 @@ cmd_start() {
       </dev/null >>"$log" 2>&1 &
     echo $! >"$log.pid" )
   # The job leaves the caller's process tree; stage-leftovers.sh finds it through this registry.
-  echo "$(cat "$log.pid") $(date +%s) $log" >>"${LONG_RUN_REGISTRY:-${TMPDIR:-/tmp}/spine-long-run.registry}"
+  local owner=$PPID
+  while [ "${owner:-0}" -gt 1 ] && [ "$(basename "$(ps -o comm= -p "$owner" 2>/dev/null)")" != claude ]; do
+    owner="$(ps -o ppid= -p "$owner" 2>/dev/null | tr -d ' ')"
+  done
+  echo "$(cat "$log.pid") $(date +%s) ${owner:-0} $log" >>"${LONG_RUN_REGISTRY:-${TMPDIR:-/tmp}/spine-long-run.registry}"
   echo "pid=$(cat "$log.pid") log=$log"
 }
 
