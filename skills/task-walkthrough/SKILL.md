@@ -168,7 +168,7 @@ Why this order and not another — dependency, not importance. One `graph TD` wh
 
 ### `## Plan vs. outcome`
 
-Each row names its **trigger**: `implementation` (reality differed once the code was open), `Validation` (a check forced the change), `Review` (a finding forced it). This is the section the artifact exists for — the plan is intent, the commits are fact, and nothing else in the task folder reconciles the two. Nothing diverged → the single line `Landed as planned.`
+Each row names its **trigger**: `implementation` (reality differed once the code was open), `Validation` (a check forced the change), `Review` (a finding forced it), `history` (commits the task made are no longer in its history). This is the section the artifact exists for — the plan is intent, the commits are fact, and nothing else in the task folder reconciles the two. Nothing diverged → the single line `Landed as planned.`
 
 ```markdown
 | Planned | Landed | Why | Trigger |
@@ -280,12 +280,13 @@ aggregation reads it.
 
 The file is living, not append-once. On a stage that runs it when the file already exists:
 
-1. Read `[COVERS]`. Its end already at the task's last commit → change nothing, report that.
+1. Read `[COVERS]`. Its end already at the task's last commit, and `scripts/lint-walkthrough.sh` exits 0 → change nothing, report that. `[COVERS]` can match `HEAD` over a body that names commits long gone.
 2. Otherwise refresh, and treat the sections differently:
+   - A commit no longer reachable from `HEAD` of its repository — a reset or a squash dropped it — first: its section or bullet in `## Commits` is removed, and a `### Bookkeeping` line whose range ends on it is rewritten to the commits that exist or removed. Append-only protects rework; it does not keep an account of what `git log` no longer shows. `## Plan vs. outcome` gains one row per repository with the trigger `history`: how many commits are gone, never why — the writer was not told.
    - `## Commits` — **append only**, at both depths, except when the resolved depth changed — see below. It is a log; a rework commit arrives with its own reason (`addresses Review finding 2`) and does not overwrite its predecessors. New bookkeeping commits join `### Bookkeeping`.
    - `## Plan vs. outcome` — **accumulates**, each new row carrying its trigger. A round of fixes after Review is precisely the divergence worth keeping.
    - `## What changed`, `## Glossary`, `## Summary`, `## Commit order`, `## How it works`, `## Out of scope`, `## Follow-ups` — **rewritten** to the current state. The reader needs what is true now, not archaeology.
-3. Update `[COVERS]`.
+3. Update `[COVERS]`, then run `scripts/lint-walkthrough.sh` until it exits 0.
 
 A refresh that finds the file at the other depth rewrites it to the resolved one rather than mixing the two. Raising `brief` to `deep` means going back to `git show` for the commits already logged — the existing bullets are not enough to expand from, and expanding them from memory invents content.
 
@@ -350,7 +351,7 @@ Prose in the project's language, structure in English — headings, the `[COVERS
 - **Feeding it to the Review stage.** The `reviewer` agent exists to read the diff independently; the author's narrative anchors it. `OpsChecklist.md` is fine as its input — that is evidence, not story. The reader of this file is a person.
 - **Copying the validation verdict in.** It lives in `Validation.md` and `Done.md`. Link, do not duplicate.
 - **A diagram per commit.** Two diagrams is the ceiling in `## How it works`, plus the one in `## Commit order`, and most tasks want fewer.
-- **Rewriting `## Commits` on refresh.** That erases the rework, which is the part worth having. The one exception is a refresh at a depth the file was not written at — see `## Refreshing`.
+- **Rewriting `## Commits` on refresh.** That erases the rework, which is the part worth having. The exceptions are a refresh at a depth the file was not written at, and when a commit is gone from history — see `## Refreshing`.
 - **Bookkeeping in the header.** Which finding which commit closed, what is not committed yet, why the file was refreshed. The header is the perimeter; the run's history belongs to `Done.md`, and a finding a commit closed is already a row of `## Plan vs. outcome`.
 - **An identifier as the subject.** "`CH4` proves …", "closes Minor 3". The reader was not there when the label was handed out. Say what it is, then cite it.
 - **A change list that is a commit list.** A `## What changed` in commit order, or one restating the subjects, answers "what was committed" — the question the log below it already answers.
