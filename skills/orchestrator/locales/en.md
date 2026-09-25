@@ -214,6 +214,12 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 ## lang_readers_disagree
 The language check measured the prose against `{measured}`, while this run writes in `{lang}`: the two readings of `[LANG]` disagree, so no file is sent back to be rewritten.
 
+## walkthrough_unreachable_commit
+`Walkthrough.md` → {where}: commit `{sha}` is not in the task's history. Sending the file back to its author to drop what describes it.
+
+## walkthrough_unreachable_persists
+`Walkthrough.md` → {where} still names commit `{sha}`, which is not in the task's history, after one pass. Leaving it as it is; the run carries on.
+
 ## leftover_process
 The stage left a process running: `{cmd}` (pid {pid}, {age}, parent {parent}).
 
