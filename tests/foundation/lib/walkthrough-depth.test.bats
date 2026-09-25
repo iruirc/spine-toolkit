@@ -353,3 +353,17 @@ NAMES
   grep -qF 'and when a commit is gone from history' "$SKILL" \
     || { echo "the rewrite anti-pattern does not name its second exception"; return 1; }
 }
+
+@test "every profile script has the writer run the history lint and reports what it left" {
+  n=0
+  for p in "$ROOT"/workflows/profile-*.js; do
+    n=$((n + 1))
+    for line in "that range already ends at the task's last commit and \"\${core('scripts/lint-walkthrough.sh')}\" \${DIR} exits 0, change nothing" \
+                "Last, run \"\${core('scripts/lint-walkthrough.sh')}\" \${DIR}." \
+                "lint: { type: 'string'" \
+                'if (w.lint) result.notes.push(`Walkthrough.md lint: ${w.lint}`)'; do
+      grep -qF -- "$line" "$p" || { echo "$(basename "$p"): missing '$line'"; return 1; }
+    done
+  done
+  [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
+}

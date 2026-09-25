@@ -428,6 +428,7 @@ const WALKTHROUGH_ARTIFACT = {
   properties: {
     ...ARTIFACT.properties,
     changed: { type: 'boolean', description: 'false when the file already covered every commit and was left as it was' },
+    lint: { type: 'string', description: 'what the last run of lint-walkthrough.sh printed; empty when it exited 0' },
   },
 }
 
@@ -520,7 +521,9 @@ Derive the account from git — the task's own commits, git log over the range a
 
 [COVERS] = <first-sha>..<last-sha>
 
-If the file already exists and that range already ends at the task's last commit, change nothing and say so. Return changed true when you wrote the file, false when you left it as it was.${extra ? `
+If the file already exists, that range already ends at the task's last commit and "${core('scripts/lint-walkthrough.sh')}" ${DIR} exits 0, change nothing and say so. Return changed true when you wrote the file, false when you left it as it was.
+
+Last, run "${core('scripts/lint-walkthrough.sh')}" ${DIR}. Each line it prints is a commit the task's history no longer holds: apply the skill's ## Refreshing rule for such commits, run it again until it exits 0, and return what its last run printed in lint.${extra ? `
 
 ${extra}` : ''}
 
@@ -533,6 +536,7 @@ Change no production code and no tests.`,
     return
   }
   log(`Walkthrough.md: ${w.summary || 'written'}`)
+  if (w.lint) result.notes.push(`Walkthrough.md lint: ${w.lint}`)
   if (WALKTHROUGH_CHECK !== 'on' || w.changed === false) return
   await checkWalkthrough(stage, agentType, depth, extra)
 }
