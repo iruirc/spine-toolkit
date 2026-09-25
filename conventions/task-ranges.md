@@ -52,8 +52,9 @@ repository, the first wins. The orchestrator turns the result into the
 `unknown`, is its Resolution Algorithm, step 5.6; `fix-review` always asks for `--since reviewed`.
 
 `unreachable <sha>…` prints each sha that no repository of the task holds in `base..HEAD` —
-reachable from `HEAD` alone where `Base.md` has no line or the base is `rewritten`. It is what
-`scripts/lint-walkthrough.sh` checks `Walkthrough.md` against.
+reachable from `HEAD` alone where `Base.md` has no line or the base is `rewritten`. A sha a local
+branch holds is not reported while `HEAD` is elsewhere, nor one of the tasks repository's own. It is
+what `scripts/lint-walkthrough.sh` checks `Walkthrough.md` against.
 
 ## Review and Done
 

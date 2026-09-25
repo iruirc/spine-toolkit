@@ -167,13 +167,21 @@ elif CMD == 'unreachable':
     def ours(rel, top, sha):
         # A base the history no longer holds bounds nothing: reachable from HEAD is all that is left.
         full, base = git(top, 'rev-parse', '-q', '--verify', sha + '^{commit}'), rec.get(rel)
-        if not full or git(top, 'merge-base', '--is-ancestor', full, 'HEAD') is None:
+        if not full:
             return False
+        if git(top, 'merge-base', '--is-ancestor', full, 'HEAD') is None:
+            # A checkout switched to another branch, here or by another session, still holds it.
+            return bool(git(top, 'for-each-ref', '--contains', full, 'refs/heads'))
         bounded = base and git(top, 'merge-base', '--is-ancestor', base, 'HEAD') is not None
         return not bounded or git(top, 'merge-base', '--is-ancestor', full, base) is None
 
+    # The tasks repository is never a range to review, but its phase-closing commits are the task's.
+    own = git(TASK, 'rev-parse', '--show-toplevel')
+    checked = dict(REPOS)
+    if own and inside(os.path.realpath(own), TASKS):
+        checked[None] = os.path.realpath(own)
     for sha in OPTS:
-        if not any(ours(rel, top, sha) for rel, top in REPOS.items()):
+        if not any(ours(rel, top, sha) for rel, top in checked.items()):
             print(sha)
 else:
     die('unknown command "%s"' % CMD)

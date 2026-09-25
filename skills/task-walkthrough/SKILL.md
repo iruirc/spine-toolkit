@@ -282,11 +282,11 @@ The file is living, not append-once. On a stage that runs it when the file alrea
 
 1. Read `[COVERS]`. Its end already at the task's last commit, and `scripts/lint-walkthrough.sh` exits 0 → change nothing, report that. `[COVERS]` can match `HEAD` over a body that names commits long gone.
 2. Otherwise refresh, and treat the sections differently:
-   - A commit no longer reachable from `HEAD` of its repository — a reset or a squash dropped it — first: its section or bullet in `## Commits` is removed, and a `### Bookkeeping` line whose range ends on it is rewritten to the commits that exist or removed. Append-only protects rework; it does not keep an account of what `git log` no longer shows. `## Plan vs. outcome` gains one row per repository with the trigger `history`: how many commits are gone, never why — the writer was not told.
+   - A commit `scripts/lint-walkthrough.sh` names — one the task's history no longer holds, because a reset or a squash dropped it — first: its section or bullet in `## Commits` is removed, and a `### Bookkeeping` line whose range starts or ends on it is rewritten to the commits that exist or removed. Append-only protects rework; it does not keep an account of what `git log` no longer shows. `## Plan vs. outcome` gains one row per repository with the trigger `history`: how many commits are gone, never why — the writer was not told.
    - `## Commits` — **append only**, at both depths, except when the resolved depth changed — see below. It is a log; a rework commit arrives with its own reason (`addresses Review finding 2`) and does not overwrite its predecessors. New bookkeeping commits join `### Bookkeeping`.
    - `## Plan vs. outcome` — **accumulates**, each new row carrying its trigger. A round of fixes after Review is precisely the divergence worth keeping.
    - `## What changed`, `## Glossary`, `## Summary`, `## Commit order`, `## How it works`, `## Out of scope`, `## Follow-ups` — **rewritten** to the current state. The reader needs what is true now, not archaeology.
-3. Update `[COVERS]`, then run `scripts/lint-walkthrough.sh` until it exits 0.
+3. Update `[COVERS]`, then run `scripts/lint-walkthrough.sh` again. It exits 2 when it cannot read the task's records: stop and say so. A line the rule above does not resolve is returned, not forced.
 
 A refresh that finds the file at the other depth rewrites it to the resolved one rather than mixing the two. Raising `brief` to `deep` means going back to `git show` for the commits already logged — the existing bullets are not enough to expand from, and expanding them from memory invents content.
 

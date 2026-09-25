@@ -282,8 +282,9 @@ section() {
 @test "the walkthrough's history is measured at the same boundaries and the file goes back once" {
   para="$(awk '/^\*\*Walkthrough history\.\*\*/{f=1;print;next} f&&/^\*\*/{exit} f' "$SKILL")"
   [ -n "$para" ] || { echo "no Walkthrough history paragraph in the orchestrator"; return 1; }
-  for token in 'lint-walkthrough.sh <task_dir>' '`walkthrough_unreachable_commit`' '`walkthrough_unreachable_persists`' \
-               '**once**' 'kind `walkthrough`' '`task-walkthrough` → `## Refreshing`' 'Exit 2 is reported'; do
+  for token in '<core root>/scripts/lint-walkthrough.sh' '`walkthrough_unreachable_commit`' '`walkthrough_unreachable_persists`' \
+               '**once**' 'kind `walkthrough`' '`task-walkthrough` → `## Refreshing`' 'Exit 2 is reported' \
+               'every folder the language check measures' 'is not sent again' 'history goes first'; do
     grep -qF -- "$token" <<<"$para" || { echo "the Walkthrough history paragraph does not name $token"; return 1; }
   done
   lang_at="$(grep -n '^\*\*Artifact language\.\*\*' "$SKILL" | cut -d: -f1)"
