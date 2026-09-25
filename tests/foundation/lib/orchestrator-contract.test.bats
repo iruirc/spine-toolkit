@@ -426,3 +426,26 @@ section() {
     grep -qF "$token" <<<"$para" || { echo "the security paragraph does not say $token"; return 1; }
   done
 }
+
+@test "what a stage leaves behind is measured on both sides of it and acted on only by the user" {
+  para="$(awk '/^\*\*Stage leftovers\.\*\*/{f=1} f&&/^\*\*Per-phase commits/{exit} f' "$SKILL")"
+  [ -n "$para" ] || { echo "no Stage leftovers paragraph in the orchestrator"; return 1; }
+  for token in 'stage-leftovers.sh snap' 'stage-leftovers.sh diff' 'stage-leftovers.sh kill' 'stage-leftovers.sh watch' \
+               '`roots`' '--exclude <task_dir>' '`status: interrupted`' '`TaskStop`' 'stage_error_prompt' \
+               '`run_in_background`' '`mcp__*`' 'long_run.stall' '`added` file is shown, never removed' \
+               'Act on nothing before the user answers' 'Method B has no watch'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the Stage leftovers paragraph does not name $token"; return 1; }
+  done
+  grep -qF "is **Stage leftovers**'s, before \`stage_error_prompt\`" "$SKILL" \
+    || { echo "Error mid-range does not hand the failed stage's leftovers to Stage leftovers"; return 1; }
+}
+
+@test "every leftovers key exists in both locales" {
+  for key in leftover_process leftover_tree leftovers_prompt leftovers_option_kill leftovers_option_restore \
+             leftovers_option_leave stage_call_hung stage_call_hung_option_kill stage_call_hung_option_wait \
+             stage_call_hung_option_stop; do
+    for l in en ru; do
+      grep -qx "## $key" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no $key"; return 1; }
+    done
+  done
+}
