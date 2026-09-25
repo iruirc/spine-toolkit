@@ -342,3 +342,14 @@ NAMES
     grep -qF '`task-walkthrough` → `## Check`' "$S" || { echo "workflow-$p: the check does not point at its protocol"; return 1; }
   done
 }
+
+@test "a refresh drops the commits history no longer holds, and says so as history" {
+  refresh="$(awk '/^## Refreshing$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  for token in 'scripts/lint-walkthrough.sh' 'no longer reachable from `HEAD`' 'is removed' '`history`'; do
+    grep -qF -- "$token" <<<"$refresh" || { echo "## Refreshing does not name $token"; return 1; }
+  done
+  grep -qF '`history` (commits the task made are no longer in its history)' "$SKILL" \
+    || { echo "the trigger vocabulary does not carry history"; return 1; }
+  grep -qF 'and when a commit is gone from history' "$SKILL" \
+    || { echo "the rewrite anti-pattern does not name its second exception"; return 1; }
+}
