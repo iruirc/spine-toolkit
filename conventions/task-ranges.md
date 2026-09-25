@@ -51,6 +51,10 @@ repository, the first wins. The orchestrator turns the result into the
 `review_ranges` contract field; which `--since` it asks for, and what it does on `rewritten` or
 `unknown`, is its Resolution Algorithm, step 5.6; `fix-review` always asks for `--since reviewed`.
 
+`unreachable <sha>…` prints each sha that no repository of the task holds in `base..HEAD` —
+reachable from `HEAD` alone where `Base.md` has no line or the base is `rewritten`. It is what
+`scripts/lint-walkthrough.sh` checks `Walkthrough.md` against.
+
 ## Review and Done
 
 Review reads exactly the ranges it is given. On a re-review it marks each Critical and Major of its
