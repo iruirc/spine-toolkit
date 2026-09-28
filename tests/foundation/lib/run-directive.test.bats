@@ -102,3 +102,36 @@ block() { # $1 index, $2 directive, $3 run line
   out="$(run_profile bug "$(contract ', "start_stage": "Validation"')" '{"validation": {"validation_status": "PASSED", "reproduction_status": "fixed", "artifact_path": "v", "summary": "s"}}')"
   [ "$(pick "JSON.stringify(o.result.stages[0].directive_declined)" <<<"$out")" = '""' ] || { pick 'o.result.stages' <<<"$out"; return 1; }
 }
+
+# An epic at Execute, auto, pushing its one step to the feature workflow.
+epic_run() { # $1 extra contract members, $2 the step record's own fields (leading comma)
+  run_profile epic "$(contract ", \"start_stage\": \"Execute\", \"mode\": \"auto\", \"scale\": \"lite\", \"models\": {\"reviewer\": \"session\"}$1")" \
+    "{\"execute:read-steps\": {\"branch\": \"decomposition\", \"steps\": [{\"step_id\": \"1-a.step\", \"task_id\": \"001.1\", \"task_type\": \"FEATURE\", \"status\": \"PENDING\"$2}]}, \"workflow:spine-toolkit:profile-feature\": {\"status\": \"ok\", \"last_completed_stage\": \"Done\", \"stages\": []}}"
+}
+
+@test "the epic resolves each step with this run's settings" {
+  pr="$(epic_run ', "run_settings": {"drive_app": "off", "models.reviewer": "opus"}' '' | pick "o.calls.find((c) => c.label === 'execute:read-steps').prompt")"
+  grep -qF 'resolve-settings.sh json <step folder> --set drive_app=off --set models.reviewer=opus"' <<<"$pr" || { echo "$pr"; return 1; }
+  pr="$(epic_run '' '' | pick "o.calls.find((c) => c.label === 'execute:read-steps').prompt")"
+  grep -qF 'resolve-settings.sh json <step folder>"' <<<"$pr" || { echo "$pr"; return 1; }
+}
+
+@test "a step gets the run's directive and settings, and the run's word over its own" {
+  out="$(epic_run ', "user_directive": "leave Net alone", "run_settings": {"scale": "full", "models.reviewer": "opus"}' ', "scale": "lite", "models": "reviewer: sonnet, architect: haiku"')"
+  args="$(pick "o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-feature').args" <<<"$out")"
+  [ "$(pick 'o.user_directive' <<<"$args")" = 'leave Net alone' ] || { echo "$args"; return 1; }
+  [ "$(pick 'JSON.stringify(o.run_settings)' <<<"$args")" = '{"scale":"full","models.reviewer":"opus"}' ] || { echo "$args"; return 1; }
+  [ "$(pick 'o.models.reviewer' <<<"$args")" = opus ] || { echo "$args"; return 1; }
+  [ "$(pick 'o.models.architect' <<<"$args")" = haiku ] || { echo "$args"; return 1; }
+  [ "$(pick 'o.scale' <<<"$args")" = full ] || { echo "$args"; return 1; }
+}
+
+@test "a run's lite does not lower a step that wrote full down" {
+  args="$(epic_run ', "run_settings": {"scale": "lite"}' ', "scale": "full"' | pick "o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-feature').args")"
+  [ "$(pick 'o.scale' <<<"$args")" = full ] || { echo "$args"; return 1; }
+}
+
+@test "a step of a run without a directive gets empty fields, never missing ones" {
+  args="$(epic_run '' '' | pick "o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-feature').args")"
+  [ "$(pick 'JSON.stringify([o.user_directive, o.run_settings])' <<<"$args")" = '["",{}]' ] || { echo "$args"; return 1; }
+}

@@ -792,6 +792,12 @@ const failed_steps = []
 const pending_steps = []
 let cancelled = false
 
+// This run's own settings, over whatever a step says for itself (conventions/task-settings.md →
+// The chain): the resolver takes them as --set, and a map key lands over the step's own.
+const RUN_ARGS = Object.entries(RUN_SETTINGS).map(([k, v]) => ` --set ${k}=${v}`).join('')
+const runKeys = (field) =>
+  Object.fromEntries(Object.entries(RUN_SETTINGS).filter(([k]) => k.startsWith(`${field}.`)).map(([k, v]) => [k.slice(field.length + 1), v]))
+
 // A step's own [MODELS] and [EFFORT] keys over the epic's resolved maps: the chain
 // scripts/resolve-settings.sh walks for a step, whose vocabulary these three lines copy.
 const TUNING_KEYS = { models: ['light', 'walkthrough', 'done', 'architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'], effort: ['walkthrough', 'done', 'architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'] }
@@ -807,7 +813,7 @@ const overlay = (field, st) => {
     if (m && TUNING_KEYS[field].includes(key) && TUNING_VALUES[field].includes(value)) out[key] = value
     else result.notes.push(`Step ${st.step_id}: "${entry}" in [${field.toUpperCase()}] is not recognized and was skipped.`)
   }
-  return out
+  return { ...out, ...runKeys(field) }
 }
 
 const toPending = (st) => ({
@@ -826,7 +832,7 @@ if (runs('Execute')) {
     const read = await agent(
       brief(
         'Execute',
-        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>" and return its drive_app, manual_checks, phase_verification, security, walkthrough, walkthrough_check and long_run values. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
+        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, manual_checks, phase_verification, security, walkthrough, walkthrough_check and long_run values. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
       { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'mechanical') },
     )
@@ -873,7 +879,8 @@ if (runs('Execute')) {
       need_test: st.need_test === undefined ? A.need_test : st.need_test,
       need_review: st.need_review === undefined ? A.need_review : st.need_review,
       // A QUICK task is always lite, whatever the step or the epic says.
-      scale: st.task_type === 'QUICK' ? 'lite' : st.scale === undefined ? scale : st.scale,
+      // A run may raise a step's own lite; its lite never lowers a step's own full.
+      scale: st.task_type === 'QUICK' ? 'lite' : st.scale === undefined ? scale : RUN_SETTINGS.scale === 'full' ? 'full' : st.scale,
       drive_app: st.drive_app === undefined ? DRIVE_APP : st.drive_app,
       manual_checks: st.manual_checks === undefined ? MANUAL_CHECKS : st.manual_checks,
       phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
@@ -883,6 +890,8 @@ if (runs('Execute')) {
       long_run: st.long_run === undefined ? LONG_RUN : st.long_run,
       research_agent: st.research_agent,
       research_experiment: st.research_experiment,
+      user_directive: DIRECTIVE,
+      run_settings: RUN_SETTINGS,
       archive_paths: [],
       epic_id: A.task_id,
       epic_dir: DIR,
