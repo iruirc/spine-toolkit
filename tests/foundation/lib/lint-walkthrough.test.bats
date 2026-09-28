@@ -195,9 +195,39 @@ PY2
   [ "$status" -eq 0 ] || { echo "no base: $status $output"; return 1; }
 }
 
+@test "--current passes a file naming the newest commit, and a later code commit puts it behind" {
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")"
+  run "$LINT" --current "$TASK"
+  [ "$status" -eq 0 ] || { echo "current: $status $output"; return 1; }
+  # Done's own report lands in the tasks folder: not a commit the file owes a line.
+  echo done >"$TASK/Done.md"
+  git -C "$PROJ" add -f -- "$TASK/Done.md"
+  git -C "$PROJ" -c user.name=t -c user.email=t@t commit -qm done
+  run "$LINT" --current "$TASK"
+  [ "$status" -eq 0 ] || { echo "a tasks-folder commit: $status $output"; return 1; }
+  commit d.txt; d="$(git -C "$PROJ" rev-parse --short=7 HEAD)"
+  run "$LINT" --current "$TASK"
+  [ "$status" -eq 1 ] || { echo "a code commit: $status $output"; return 1; }
+  grep -qF "Walkthrough.md: behind: $d is not named in ## Commits (.)" <<<"$output" || { echo "$output"; return 1; }
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "without --current: $status $output"; return 1; }
+}
+
+@test "--current reads nothing to measure as behind, and any finding as not current" {
+  run "$LINT" --current "$TASK"
+  [ "$status" -eq 1 ] || { echo "no file: $status $output"; return 1; }
+  grep -qF 'Walkthrough.md: behind: no file, no Base.md, or an EPIC' <<<"$output" || { echo "$output"; return 1; }
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second\n\n### 3. `%s` — dropped' "$A1" "$A2" "$GONE")"
+  run "$LINT" --current "$TASK"
+  [ "$status" -eq 1 ] || { echo "a finding: $status $output"; return 1; }
+  grep -qF 'unreachable' <<<"$output" || { echo "$output"; return 1; }
+}
+
 @test "a usage error exits 2" {
   run "$LINT"
   [ "$status" -eq 2 ] || { echo "no args: $status"; return 1; }
   run "$LINT" "$BATS_TEST_TMPDIR/nowhere"
   [ "$status" -eq 2 ] || { echo "no dir: $status"; return 1; }
+  run "$LINT" --current
+  [ "$status" -eq 2 ] || { echo "--current alone: $status"; return 1; }
 }

@@ -61,6 +61,11 @@ parent — a merge's upstream side is not the task's — from whichever reposito
 tasks repository included, holds both ends. It is how `scripts/lint-walkthrough.sh` reads the
 ranges `Walkthrough.md` declares.
 
+`last` prints `<repository> <sha>` for each repository of the task that holds a commit of its own
+in `base..HEAD` outside the tasks folder: the newest such commit along the first parent, or
+`unknown` where the base is missing or `rewritten`. A repository with no such commit is left out.
+It is what `scripts/lint-walkthrough.sh --current` checks `Walkthrough.md` against.
+
 ## Review and Done
 
 Review reads exactly the ranges it is given. On a re-review it marks each Critical and Major of its
