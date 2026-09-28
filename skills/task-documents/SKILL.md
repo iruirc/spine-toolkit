@@ -23,7 +23,7 @@ A layer is a boundary of responsibility, not a style. Without it a document grow
 2. **A rule with branches is a table of cases with the expected result**, on numbers or commands. A formula alone hides the case it does not cover.
 3. **Terms come from the project's glossary**; a code identifier's meaning is given once.
 4. **A correction goes into the item it corrects**, never appended as a notice. When it concerns another document it goes there; the trace of the decision goes to `Questions.md`.
-5. **An open question is written as one:** the options, a recommendation, who decides and by which stage. "Decided at this step" with no options is a defect — it reads as a decision and holds none.
+5. **An open question is written as one:** the options, a recommendation, who decides and by which stage. "Decided at this step" with no options is a defect — it reads as a decision and holds none. Each option is a sub-item of the question, and the recommended one carries `(recommended)` — literally, at any `[LANG]`: the open-questions gate offers that sub-item as a one-click answer.
 6. **A document decides nothing its source did not.** A decision the writer reaches while writing becomes an open question, never a sentence stated as settled.
 7. **Every count agrees with every other place that states it.** State a number once and refer to it rather than restating it.
 
