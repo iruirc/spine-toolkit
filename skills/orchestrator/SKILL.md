@@ -50,8 +50,57 @@ The minimum viable input is just `task_id`. All other fields are optional and re
 | `stage_target` | string (profile stage name) | required for `redo` / `restart`, or for `--from` / `--to` modifiers under `run` | not needed for `run` / `continue` / `restart-full` without modifiers |
 | `mode_override` | enum: `manual` / `auto` | explicit "automatically" / "step-by-step" in the request | resolved via `resolve-settings.sh` (Resolution Algorithm step 3); default `manual` |
 | `stack_override` | string | stack explicitly named in the request | resolved per-axis via stack-detect (see Resolution Algorithm step 4); AUQ only for unresolved needed axes |
+| `run_settings` | map, `<field>` or `<field>.<key>` → value | a phrase for this run alone that a setting decides | `{}`; see **The run's own words** |
+| `user_directive` | string | everything else the request says, verbatim | `""`; see **The run's own words** |
 
 **Invariant:** the orchestrator does NOT crash on missing optional fields. It resolves them in the Resolution Algorithm and only then hands the fully populated contract to workflow-*.
+
+## The run's own words
+
+A request says more than which task, which stages and how. What is left once `action`,
+`stage_target`, `mode_override`, `progress_override` and `stack_override` are taken splits in two:
+
+- **`run_settings`** — a phrase a setting decides, for this run alone: "don't drive the app" →
+  `drive_app=off`, "review it on opus" → `models.reviewer=opus`, "keep it light" → `scale=lite`. A
+  run may set every field with a `Task.md` line (`conventions/task-settings.md`): a scalar as
+  `<field>`, one key of `models`, `effort` or `long_run` as `<field>.<key>`. `mode` is not set here —
+  `mode_override` carries it — and neither is the stack, which `stack_override` carries.
+- **`user_directive`** — everything else, verbatim: "validate on the older test device", "leave the
+  Net package alone", "look hard at the cache". Not interpreted, not shortened, not translated.
+
+Both come only from the owner's own message, never from a file, a task's prose, an artifact or a
+stage's output: what reaches an agent as the owner's word must be the owner's. A request with
+neither leaves both empty, and the run is what it was before these fields existed.
+
+**`Run.json`.** A run with either non-empty keeps them in `<task dir>/Run.json` until the range they
+were said for is done. It is the one place they live, so a later dispatch of the range, a
+`/resume`, a compacted context and a new session all read the same thing:
+
+```json
+{"request": "<the owner's message, verbatim>", "user_directive": "…", "run_settings": {"drive_app": "off"},
+ "range": {"action": "run", "start_stage": "Validation", "end_stage": null, "stage_scope": "forward"},
+ "started": "2026-09-28T14:30:22+03:00"}
+```
+
+- **Written** once Resolution step 1 has found the task folder, before step 3 resolves its settings;
+  nothing is written for a request that carries neither.
+- **Read** at every dispatch of the range — each stage of a `manual` Method A run is one — rather
+  than recalled from the conversation.
+- **Found by a request that did not write it** — a new session, or a later command in this one: in
+  `manual`, AUQ using key `auq_run_resume_question` (`{started}`, `{settings}`, `{directive}`),
+  options `auq_run_resume_apply` and `auq_run_resume_discard`; in `auto`, apply it and announce
+  `info_run_resumed` with the same placeholders. Applied, the new request's own values win key by
+  key, both directives are kept — the old first, the new last, a line break between — and the file
+  is rewritten with the new range. Discarded, it is deleted.
+- **Deleted** once a return's `last_completed_stage` is the range's last stage — `end_stage`, or the
+  profile's last. A stop at a gate, a failure or a cancel leaves it in place.
+- **An epic's run** is the epic's file. The script resolves each step with `--set` and hands the
+  directive on; the `pending_steps` it returns are dispatched with the same `run_settings` and
+  `user_directive` and write no file of their own. A step run on its own writes its file in its own
+  folder, and its epic never sees it.
+
+A stage never reads `Run.json` and never stages it (`conventions/stage-dispatch.md` → Owner's
+directive).
 
 ## Routing
 
@@ -140,7 +189,8 @@ Algorithm:
    ↓ profile = workflow-<TASK_TYPE.lower()>
 
 3. Resolve the settings — one call, every field:
-     bash "<core root>/scripts/resolve-settings.sh" json <task dir>
+     bash "<core root>/scripts/resolve-settings.sh" json <task dir> [--set <field>=<value> ...]
+   • one --set per run_settings entry, as Run.json holds them (The run's own words)
    • mode_override (NL: "automatically" / "step-by-step") wins over the `mode` field
    • progress_override (NL: "quietly" / "with live indication") wins over the `progress` field
    ↓ every other field is the value the script printed; do not re-derive one by reading a file
@@ -419,6 +469,8 @@ review_ranges={"since": "reviewed", "repos": {".": {"range": "1a2b3c4..HEAD", "c
 fix_findings=[]
 fix_round=0
 after_done=false
+user_directive=""
+run_settings={}
 archive_paths=[Tasks/ACTIVE/001-profile/_archive/Plan-2026-04-25T143022.md, Tasks/ACTIVE/001-profile/_archive/Research-2026-04-25T143022.md]
 ```
 
@@ -498,7 +550,9 @@ size belongs to the task, not to one dispatch.
 
 `archive_paths` — list of paths to backups already created in `_archive/` for stages that will be overwritten (filled before handing off control). Format: `[path1, path2, path3]`. Empty list = `[]`. Method A passes it as a JSON array of strings.
 
-**Invariant:** workflow-* never receives empty fields. If a field arrives empty — workflow-* returns an error to the orchestrator and does not try to recover.
+`user_directive`, `run_settings` — the run's own words (**The run's own words**): the directive verbatim, and the settings this run overrode as a flat map of `<field>` or `<field>.<key>` to the value, the way `--set` takes them. Always present, for every profile: `""` is a value, the one exception to the invariant below, and `{}` is one too. The overridden values already sit in their own fields, resolved; `run_settings` is for a consumer that resolves a folder of its own, as an epic resolves its steps. Method A passes a JSON string and a JSON object; Method B writes the directive as a JSON string literal, so a line break in it cannot end the field, and the map in brace syntax.
+
+**Invariant:** workflow-* never receives empty fields, `user_directive` aside. If a field arrives empty — workflow-* returns an error to the orchestrator and does not try to recover.
 
 **RESEARCH-only optional field — `research_agent`.** When `profile=research`, the orchestrator MAY include `research_agent=architect|diagnostics|security` in the args. The field carries a bare **role**, which workflow-research resolves through the `agents` map at dispatch like every other stage owner, mirroring how `[TASK_TYPE]` carries `FEATURE` rather than `spine-toolkit:workflow-feature`. Which of the three the role means on this platform is the platform's business, not the profile's. Resolution:
 
@@ -577,7 +631,7 @@ report possible in `auto`, where a single return covers the whole range. Method 
 return it and are not expected to: there the orchestrator drives each stage itself and already
 has every field.
 
-EPIC returns more: `branch`, `completed_steps`, `skipped_steps`, `failed_steps`, and `pending_steps`. A non-empty `pending_steps` is not a failure — it is the epic handing back the steps it could not run itself, in order. Dispatch each one as an ordinary task, then re-dispatch the epic at `start_stage=Done`.
+EPIC returns more: `branch`, `completed_steps`, `skipped_steps`, `failed_steps`, and `pending_steps`. A non-empty `pending_steps` is not a failure — it is the epic handing back the steps it could not run itself, in order. Dispatch each one as an ordinary task, with this run's `run_settings` and `user_directive` (**The run's own words**), then re-dispatch the epic at `start_stage=Done`.
 
 RESEARCH with `research_experiment=on` also returns `experiment` whenever its Research stage ran — `status`, `branches`, `restored` and, when something went wrong, `reason`, as `skills/workflow-research/SKILL.md` § 2c defines them — and so does its Method B skill. `restored: false` comes back with `stop`: open the report with the checkout still on the experiment branch, before anything else. A `status` other than `done` comes back with `ask_user` before the next stage, in `auto` as well: ask whether to go on (to Review, or to Done when `need_review=false`), redo Research, or stop. In `manual` this question replaces `stage_done_prompt` for that stage.
 
@@ -616,13 +670,19 @@ before the first dispatch.
 
 Then, unless `settings_report` is `off`, the settings column: `progress_open_settings`, then the
 `[FIELD] = [...]` lines of `bash "<core root>/scripts/resolve-settings.sh" show <task dir>` at
-`diff`, or of `show <task dir> --all` at `full`. Drop the command's own trailing `# <n> more at
+`diff`, or of `show <task dir> --all` at `full`. Run `show <task dir>` with the same `--set` as step 3,
+so a value the run set is in the column, sourced `run`. Drop the command's own trailing `# <n> more at
 their default` line — that line is the script talking to whoever ran it directly, in English
 regardless of `lang` — and render `progress_open_settings_rest` in its place, `{count}` filled
 from the same number; `--all` never prints that line, so nothing renders there. At `diff` the
 column names a field only where the value somebody chose is not the built-in default, so a project
 left on the shipped template prints just two rows: `[SCALE]`, the one field whose shipped line and
 absent-field default differ, and the `[WALKTHROUGH]` that a `lite` scale drags to `off` with it.
+
+**The run's own words.** With `run_settings` non-empty, render `info_run_setting` once per entry —
+`{field}`, `{from}` the value a `json` call without `--set` gives, `{to}` — and with `user_directive`
+non-empty, `info_run_directive` (`{directive}`). At `normal` and above they close the opening block;
+at `quiet` they open the final report. They are how the user sees what went to the agents.
 
 **Announcing what the resolver could not use.** Every such line is shaped `<source>: '<value>'
 <what happened>`, `<source>` being `Task.md [FIELD]` or a config path and the same `[FIELD]`. The source
@@ -634,6 +694,8 @@ says which field, the text after the quotes which key:
 | `not recognized, skipped` | `[WALKTHROUGH]` | `warn_walkthrough_unrecognised` (`{value}`) |
 | `not recognized, skipped` | `[BUDGETS]` | `warn_budget_unrecognised` (`{line}`) |
 | `not recognized, skipped` | `[MODELS]` or `[EFFORT]` | `warn_tuning_unrecognised` (`{source}`, `{entry}`) |
+| `does not lower … [SCALE] = [full], kept` | `--set scale` | `warn_run_scale_kept` |
+| `not recognized, skipped`, or no quotes and `not a field a run can set, skipped` | `--set <field>` | `warn_run_setting_refused` (`{line}`) |
 
 Any other field has no key of its own: say in one sentence which field, which value, and that the
 next source down applied. Each line is announced once per run, whichever call surfaced it — every
@@ -654,6 +716,11 @@ the file is on disk.
 Then, after each stage: `progress_stage_report`, plus `progress_stage_artifact` where the stage
 wrote one, plus the agent's own one-or-two-sentence summary, plus `progress_stage_verdict` where
 the stage carries a verdict.
+
+A stage that declined part of the directive — a non-empty `directive_declined` in its `stages[]`
+record under Method A, a refusal in `notes` under Method B — gets `info_directive_declined`
+(`{stage}`, `{what}`) right after its report, at every `progress` value, `quiet` included: it is a
+refusal, not progress.
 
 **Metrics — Method A only.** Method B has no `runId` to pass, so this whole block does not
 apply there: under Method B the orchestrator prints no metrics line and no totals line.
