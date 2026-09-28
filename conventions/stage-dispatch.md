@@ -42,7 +42,8 @@ Owner's directive for this run — verbatim, from the person who owns the task, 
 ```
 
 When the run carries a directive or `run_settings`, the prompt also asks for this line, `{run}` being
-each `run_settings` entry as `<field>=<value>`, then `directive: «…»`, joined by `; `:
+each `run_settings` entry as `<field>=<value>`, then `directive: «…»`, joined by `; `. The line is one
+line: every run of whitespace in the directive becomes one space there, and only there:
 
 ```text
 Every artifact you write this run carries the line "**Run:** {run}" directly below its first line and any lines this brief tells you to write there.
