@@ -49,6 +49,18 @@ def ranges(*args):
     return r.stdout.split()
 
 
+def span(a, b, where):
+    # A range the file itself spells wrong is a finding about the file, not a failure of the lint.
+    r = subprocess.run([RANGES, 'commits', TASK, '%s..%s' % (a, b)], capture_output=True, text=True)
+    if r.returncode != 0 and 'no repository of the task holds' in r.stderr:
+        found.append('range: %s..%s is not a range of one repository (%s)' % (a, b, where))
+        return None
+    if r.returncode != 0:
+        sys.stderr.write(r.stderr)
+        sys.exit(2)
+    return r.stdout.split()
+
+
 def cells(line):
     return [c.strip() for c in line.strip().strip('|').split('|')]
 
@@ -59,7 +71,7 @@ if not os.path.isfile(path) or not os.path.isfile(os.path.join(TASK, 'Base.md'))
     sys.exit(0)
 
 headings, named, headers, perimeter, columns = [], [], [], [], None
-where, fence, part = None, None, 'header'
+where, fence, part, table, bullet = None, None, 'header', False, None
 for line in open(path, encoding='utf-8'):
     m = FENCE.match(line)
     if m:
@@ -75,12 +87,15 @@ for line in open(path, encoding='utf-8'):
         part, where = line[3:].strip(), None
         headings.append(part)
         continue
-    if part == 'header' and line.startswith('|'):
-        row = cells(line)
-        if columns is None and 'Range' in row and 'Commits' in row:
-            columns = (row.index('Range'), row.index('Commits'))
-        elif columns and not set(''.join(row)) <= set('-: '):
+    if part == 'header':
+        # The perimeter ends where its table does; a later table in the header is not its rows.
+        row = cells(line) if line.startswith('|') else None
+        if row and columns is None and 'Range' in row and 'Commits' in row:
+            columns, table = (row.index('Range'), row.index('Commits')), True
+        elif row and table and not set(''.join(row)) <= set('-: '):
             perimeter.append(row)
+        elif not row:
+            table = False
         continue
     if part != 'Commits':
         continue
@@ -93,9 +108,12 @@ for line in open(path, encoding='utf-8'):
         found = [t.groups() for t in TOKEN.finditer(line)]
         headers.append((where, len(found), bool(m)))
         named += [(t, where) for t in found]
-    elif where in (None, 'Bookkeeping') and line.startswith('- '):
-        # Bullets inside a commit's own section are its prose, not the log.
-        named += [(t.groups(), where or 'brief') for t in TOKEN.finditer(line)]
+    elif where in (None, 'Bookkeeping') and (line.startswith('- ') or (bullet and line.startswith('  ') and line.strip())):
+        # Bullets inside a commit's own section are its prose, not the log; a wrapped bullet is one.
+        bullet = where or 'brief'
+        named += [(t.groups(), bullet) for t in TOKEN.finditer(line)]
+        continue
+    bullet = None
 
 deep = 'Glossary' in headings or any(n or numbered for _, n, numbered in headers)
 declared = []
@@ -119,14 +137,16 @@ if deep:
     found += ['heading: %d commits in one section (%s)' % (n, w) for w, n, numbered in headers if n > 1 or (numbered and not n)]
 
 covered = set()
-for (a, b), _ in named:
+for (a, b), w in named:
     if a in gone or b in gone:
         continue
-    covered.update(ranges('commits', TASK, '%s..%s' % (a, b)) if b else [a])
+    covered.update((span(a, b, w) or []) if b else [a])
 for repo, a, b, count in declared:
     if a in gone or b in gone:
         continue
-    listed = ranges('commits', TASK, '%s..%s' % (a, b))
+    listed = span(a, b, 'header ' + repo)
+    if listed is None:
+        continue
     found += ['missing: %s is not named in ## Commits (%s)' % (c[:7], repo)
               for c in listed if not any(c.startswith(s) for s in covered)]
     if count.strip() != str(len(listed)):

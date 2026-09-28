@@ -190,8 +190,9 @@ elif CMD == 'unreachable':
         bounded = base and git(top, 'merge-base', '--is-ancestor', base, 'HEAD') is not None
         return not bounded or git(top, 'merge-base', '--is-ancestor', full, base) is None
 
+    checked = with_own()
     for sha in OPTS:
-        if not any(ours(rel, top, sha) for rel, top in with_own().items()):
+        if not any(ours(rel, top, sha) for rel, top in checked.items()):
             print(sha)
 elif CMD == 'commits':
     m = re.fullmatch(r'([0-9a-f]{7,40})\.\.([0-9a-f]{7,40})', OPTS[0]) if len(OPTS) == 1 else None

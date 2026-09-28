@@ -151,6 +151,37 @@ PY2
   [ -z "$output" ] || { echo "$output"; return 1; }
 }
 
+@test "a range no repository holds is a finding, not an error" {
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### Bookkeeping\n\n- `%s..%s` — written backwards.' "$A1" "$A2" "$A1")"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "$(printf 'Walkthrough.md: range: %s..%s is not a range of one repository (Bookkeeping)\nWalkthrough.md: missing: %s is not named in ## Commits (.)' "$A2" "$A1" "$A2")" ] || { echo "$output"; return 1; }
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")" "$A2..$A1"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "header: $status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: range: $A2..$A1 is not a range of one repository (header .)" ] || { echo "$output"; return 1; }
+}
+
+@test "a bullet wrapped onto a second line is read whole" {
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### Bookkeeping\n\n- Two phase-closing commits in the task repository,\n  `%s` among them.' "$A1" "$A2")"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "a table after the perimeter is not read as its rows" {
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")"
+  python3 - "$TASK/Walkthrough.md" "$A1" "$GONE" <<'PY2'
+import sys
+p, a, gone = sys.argv[1:]
+s = open(p, encoding='utf-8').read()
+i = s.index('\n## What changed')
+extra = '\n| Build | Where | Runs | Result |\n|---|---|---|---|\n| ci | `%s..%s` | 1 | green |\n' % (a, gone)
+open(p, 'w', encoding='utf-8').write(s[:i] + extra + s[i:])
+PY2
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
 @test "no walkthrough, no base and an epic are not measured" {
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "no file: $status $output"; return 1; }
