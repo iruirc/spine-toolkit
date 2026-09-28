@@ -811,3 +811,110 @@ $BATS_TEST_TMPDIR/assets"
   run "$RESOLVE" json "$TASK"
   [ "$(field scale <<<"$output")" = lite ] || { echo "$output"; return 1; }
 }
+
+@test "a run value beats the task's own, and the source says run" {
+  printf '[TASK_TYPE] = [BUG]\n[DRIVE_APP] = [auto]\n' >"$TASK/Task.md"
+  "$RESOLVE" json "$TASK" --set drive_app=off >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field drive_app <"$BATS_TEST_TMPDIR/out")" = off ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ "$(source_of drive_app <"$BATS_TEST_TMPDIR/out")" = run ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+}
+
+@test "a run key beats the task's key in a map, and a key it does not name keeps its chain" {
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [reviewer: sonnet, architect: haiku]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK" --set models.reviewer=opus --set long_run.max=60
+  [ "$(map_value models reviewer <<<"$output")" = opus ] || { echo "$output"; return 1; }
+  [ "$(source_of models.reviewer <<<"$output")" = run ] || { echo "$output"; return 1; }
+  [ "$(map_value models architect <<<"$output")" = haiku ] || { echo "$output"; return 1; }
+  [ "$(map_value long_run max <<<"$output")" = 60 ] || { echo "$output"; return 1; }
+  [ "$(map_value long_run stall <<<"$output")" = 5 ] || { echo "$output"; return 1; }
+}
+
+@test "an unusable run value is reported, and the task's own applies" {
+  printf '[TASK_TYPE] = [BUG]\n[DRIVE_APP] = [off]\n' >"$TASK/Task.md"
+  "$RESOLVE" json "$TASK" --set drive_app=maybe --set models.reviewer=gpt >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field drive_app <"$BATS_TEST_TMPDIR/out")" = off ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ "$(source_of drive_app <"$BATS_TEST_TMPDIR/out")" = task ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  grep -qxF -- "--set drive_app: 'maybe' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+  grep -qxF -- "--set models: 'reviewer: gpt' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+}
+
+@test "a run cannot set what a task cannot" {
+  "$RESOLVE" json "$TASK" --set progress=live --set nope=1 --set models=opus >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field progress <"$BATS_TEST_TMPDIR/out")" = normal ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  for f in progress nope models; do
+    grep -qxF -- "--set $f: not a field a run can set, skipped" "$ERR" || { echo "$f"; cat "$ERR"; return 1; }
+  done
+}
+
+@test "a run lite does not lower a full the task or its epic wrote down, and says so" {
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [full]\n' >"$TASK/Task.md"
+  "$RESOLVE" json "$TASK" --set scale=lite >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field scale <"$BATS_TEST_TMPDIR/out")" = full ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ "$(source_of scale <"$BATS_TEST_TMPDIR/out")" = task ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  grep -qxF -- "--set scale: 'lite' does not lower Task.md [SCALE] = [full], kept" "$ERR" || { cat "$ERR"; return 1; }
+  EPIC="$PROJ/Tasks/ACTIVE/060-an-epic"; STEP="$EPIC/1-first.step"; mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[SCALE] = [full]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  "$RESOLVE" json "$STEP" --set scale=lite >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field scale <"$BATS_TEST_TMPDIR/out")" = full ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ "$(source_of scale <"$BATS_TEST_TMPDIR/out")" = epic ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  grep -qxF -- "--set scale: 'lite' does not lower the epic's Task.md [SCALE] = [full], kept" "$ERR" || { cat "$ERR"; return 1; }
+}
+
+@test "a run lite beats a full the project or the default gave, and drags the walkthrough with it" {
+  printf '## Task defaults\n\n[SCALE] = [full]\n[WALKTHROUGH] = [deep]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  "$RESOLVE" json "$TASK" --set scale=lite >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field scale <"$BATS_TEST_TMPDIR/out")" = lite ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ "$(source_of scale <"$BATS_TEST_TMPDIR/out")" = run ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ "$(field walkthrough <"$BATS_TEST_TMPDIR/out")" = off ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  # A step's own lite is below the epic's full already: nothing is lowered, so nothing is kept.
+  EPIC="$PROJ/Tasks/ACTIVE/061-an-epic"; STEP="$EPIC/1-first.step"; mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[SCALE] = [full]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n[SCALE] = [lite]\n' >"$STEP/Task.md"
+  "$RESOLVE" json "$STEP" --set scale=lite >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field scale <"$BATS_TEST_TMPDIR/out")" = lite ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+}
+
+@test "a run full raises a task's lite" {
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK" --set scale=full
+  [ "$(field scale <<<"$output")" = full ] || { echo "$output"; return 1; }
+  [ "$(field walkthrough <<<"$output")" = deep ] || { echo "$output"; return 1; }
+}
+
+@test "a run walkthrough is an explicit word and beats the lite gate" {
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK" --set walkthrough=deep
+  [ "$(field walkthrough <<<"$output")" = deep ] || { echo "$output"; return 1; }
+  [ "$(source_of walkthrough <<<"$output")" = run ] || { echo "$output"; return 1; }
+  [ "$(field walkthrough_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+}
+
+@test "a QUICK task stays lite whatever the run says, and says why" {
+  printf '[TASK_TYPE] = [QUICK]\n' >"$TASK/Task.md"
+  "$RESOLVE" json "$TASK" --set scale=full >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field scale <"$BATS_TEST_TMPDIR/out")" = lite ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  grep -qxF -- "--set scale: 'full' ignored, a QUICK task is always lite" "$ERR" || { cat "$ERR"; return 1; }
+}
+
+@test "show names a run value with its source, --all included" {
+  run "$RESOLVE" show "$TASK" --set drive_app=off
+  [ "$status" -eq 0 ]
+  grep -qE '^\[DRIVE_APP\] += \[off\] +# run$' <<<"$output" || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK" --set drive_app=off --all
+  grep -qE '^\[DRIVE_APP\] += \[off\] +# run$' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "a malformed --set is a usage error" {
+  run "$RESOLVE" json "$TASK" --set drive_app
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  run "$RESOLVE" json "$TASK" --set
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  run "$RESOLVE" json "$TASK" --all
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK" --bogus
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+}

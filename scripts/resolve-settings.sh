@@ -4,15 +4,17 @@ set -euo pipefail
 # Resolves every setting a task runs with: one chain, one reader of CLAUDE-spine-toolkit.md.
 # The fields, their values and their defaults: conventions/task-settings.md.
 #
-# Usage: scripts/resolve-settings.sh json <task-dir>           # every field as one JSON object,
-#                                                                # plus plugin_root, the core root it runs from,
-#                                                                # and roots, the folders a stage may search
-#        scripts/resolve-settings.sh show <task-dir> [--all]   # Task.md lines, with sources
-#                                                                # --all: every field, defaults included
+# Usage: scripts/resolve-settings.sh json <task-dir> [--set <field>[.<key>]=<value>]...
+#                                                  # every field as one JSON object, plus plugin_root,
+#                                                  # the core root it runs from, and roots, the folders
+#                                                  # a stage may search
+#        scripts/resolve-settings.sh show <task-dir> [--all] [--set ...]
+#                                                  # Task.md lines, with sources
+#                                                  # --all: every field, defaults included
 #        scripts/resolve-settings.sh raw  <dir> <block>        # the value lines of one config block
 # Exit:  0, or 2 on a usage error. One stderr line per entry it could not take at face value.
 #
-# Key by key: Task.md [FIELD] -> for a .step/ folder, the epic's Task.md above it -> the nearest
+# Key by key: --set, this run's own word -> Task.md [FIELD] -> for a .step/ folder, the epic's Task.md above it -> the nearest
 # CLAUDE-spine-toolkit.md -> the defaults below. walkthrough has one more step: off when the
 # resolved scale is lite, which beats the project and loses to the task's own [WALKTHROUGH].
 # walkthrough_check then follows it: auto is on at deep and off at brief, and off where no file is written.
@@ -26,10 +28,9 @@ EFFORTS="low medium high xhigh max session"
 # CAP map, and tests/foundation/lib/artifact-budget.test.bats fails when the two disagree.
 CAPS="Reproduce.md:120 Plan.md:200 Validation.md:100 Review.md:120 Done.md:80 Task.md:100"
 
-[ "$#" -ge 2 ] || { echo "usage: $0 json|show <task-dir> [--all] | raw <dir> <block>" >&2; exit 2; }
+[ "$#" -ge 2 ] || { echo "usage: $0 json|show <task-dir> [--all] [--set <field>=<value>]... | raw <dir> <block>" >&2; exit 2; }
 [ -d "$2" ] || { echo "not a directory: $2" >&2; exit 2; }
 [ "$1" != raw ] || [ "$#" -ge 3 ] || { echo "usage: $0 raw <dir> <block>" >&2; exit 2; }
-[ "$1" != show ] || [ "$#" -eq 2 ] || [ "$3" = --all ] || { echo "usage: $0 show <task-dir> [--all]" >&2; exit 2; }
 
 # Not a setting: where this installation lives, which a Method A script cannot find for itself.
 export SPINE_CORE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -52,9 +53,22 @@ def map_value(values, raw):
 
 CAPS = dict((n, int(v)) for n, v in (p.split(':') for p in sys.argv[5].split()))
 CMD, TARGET = sys.argv[6], sys.argv[7]
-EXTRA = sys.argv[8] if len(sys.argv) > 8 else None
-BLOCK = EXTRA if CMD == 'raw' else None
-SHOW_ALL = CMD == 'show' and EXTRA == '--all'
+BLOCK = sys.argv[8] if CMD == 'raw' else None
+SHOW_ALL = False
+# This run's own word on a field (conventions/task-settings.md → The chain): a scalar, or one key
+# of a map, in the order given; a later --set of the same field or key wins.
+RUN_SET = []
+rest = [] if CMD == 'raw' else sys.argv[8:]
+while rest:
+    arg = rest.pop(0)
+    if arg == '--all' and CMD == 'show':
+        SHOW_ALL = True
+    elif arg == '--set' and rest and re.fullmatch(r'[a-z_]+(\.[A-Za-z]+)?=\S+', rest[0]):
+        RUN_SET.append(rest.pop(0).split('=', 1))
+    else:
+        print('usage: resolve-settings.sh json|show <task-dir> [--all] [--set <field>[.<key>]=<value>]...',
+              file=sys.stderr)
+        sys.exit(2)
 
 # field, config/Task.md field name, values (None = open), default
 # A SCALARS values slot for a whole number >= 0, taken as an int.
@@ -258,9 +272,40 @@ if CMD not in ('json', 'show'):
 CFG_FIELDS = config_fields(CFG)
 resolved, sources, defaults = {}, {}, {}
 
+# What a run may set is what a task may say about itself: every field with a Task.md line.
+RUN_SCALARS, RUN_MAPS = {}, {}
+for target, raw in RUN_SET:
+    name, _, key = target.partition('.')
+    if not key and name in [s[0] for s in SCALARS] and name not in PROJECT_ONLY:
+        RUN_SCALARS[name] = raw
+    elif key and name in [m[0] for m in MAPS]:
+        RUN_MAPS.setdefault(name, {})[key.lower()] = raw
+    else:
+        print('--set %s: not a field a run can set, skipped' % name, file=sys.stderr)
+
+
+def task_scale():
+    """(label, value) of the nearest task file that names a usable [SCALE], or (None, None)."""
+    for label, path in task_files():
+        raw = (task_value(path, 'SCALE') or '').lower()
+        if raw in ('lite', 'full'):
+            return label, raw
+    return None, None
+
+
 for name, field, values, default in SCALARS:
     value, source = None, 'default'
-    for label, path in ([] if name in PROJECT_ONLY else task_files()):
+    if name in RUN_SCALARS:
+        value = accept(name, values, RUN_SCALARS[name], '--set %s' % name)
+        # A run may raise the size of a task, never lower one a task file already raised
+        # (conventions/task-scale.md → The ratchet): the file cannot say whose word it was.
+        if name == 'scale' and value == 'lite' and task_scale()[1] == 'full':
+            print("--set scale: 'lite' does not lower %sTask.md [SCALE] = [full], kept"
+                  % ("the epic's " if task_scale()[0] == 'epic' else ''), file=sys.stderr)
+            value = None
+        if value is not None:
+            source = 'run'
+    for label, path in ([] if value is not None or name in PROJECT_ONLY else task_files()):
         raw = task_value(path, field)
         if not raw:
             continue
@@ -283,8 +328,10 @@ show_source = {}
 
 # A QUICK task has one shape, and it is lite's (conventions/task-scale.md → QUICK).
 if (task_value(os.path.join(TARGET, 'Task.md'), 'TASK_TYPE') or '').upper() == 'QUICK':
-    if sources['scale'] == 'task' and resolved['scale'] != 'lite':
-        print("Task.md [SCALE]: '%s' ignored, a QUICK task is always lite" % resolved['scale'], file=sys.stderr)
+    if sources['scale'] in ('task', 'run') and resolved['scale'] != 'lite':
+        print("%s: '%s' ignored, a QUICK task is always lite"
+              % ('--set scale' if sources['scale'] == 'run' else 'Task.md [SCALE]', resolved['scale']),
+              file=sys.stderr)
     resolved['scale'], sources['scale'] = 'lite', 'type'
     show_source['scale'] = 'type: QUICK'
 
@@ -305,8 +352,9 @@ if check != chosen:
 
 for name, field, keys, values, unset, map_defaults in MAPS:
     out, decided = dict(map_defaults), set()
-    found = [(('Task.md [%s]' % field), label, task_map_entries(path, field))
-             for label, path in task_files()]
+    found = [('--set %s' % name, 'run', ['%s: %s' % kv for kv in RUN_MAPS.get(name, {}).items()])]
+    found += [(('Task.md [%s]' % field), label, task_map_entries(path, field))
+              for label, path in task_files()]
     found.append((('%s [%s]' % (CFG, field)), 'project', config_entries(field)))
     key_source = {}
     for label, source, entries in found:
@@ -328,8 +376,8 @@ for name, field, keys, values, unset, map_defaults in MAPS:
                 sources.setdefault('%s.%s' % (name, k), source)
     resolved[name], defaults[name] = out, dict(map_defaults)
     # The map's own source is the nearest label among the keys that were actually decided:
-    # task beats epic beats project, so a task-chosen key is never reported as the project's.
-    order = ['task', 'epic', 'project']
+    # run beats task beats epic beats project, so a task-chosen key is never reported as the project's.
+    order = ['run', 'task', 'epic', 'project']
     sources[name] = min((key_source.values()), key=order.index, default='default')
 
 lr = resolved['long_run']

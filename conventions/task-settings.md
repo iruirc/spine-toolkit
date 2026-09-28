@@ -12,14 +12,21 @@ choice.
 ## The chain
 
 ```
-Task.md  →  the epic's Task.md for a .step/ folder  →  the nearest CLAUDE-spine-toolkit.md at or above the task dir  →  the default
+run  →  Task.md  →  the epic's Task.md for a .step/ folder  →  the nearest CLAUDE-spine-toolkit.md at or above the task dir  →  the default
 ```
 
-First hit wins. `walkthrough` inserts one step between the task and the config, ahead of it rather
+First hit wins. `run` is what the owner said for this run alone — `--set <field>=<value>`, or
+`--set <field>.<key>=<value>` for one key of a map, as many as the run names. A run may set exactly
+the fields a task may: every field below with a `Task.md` column. Anything else is named on stderr
+as `--set <field>: not a field a run can set, skipped`; a value the field does not take is reported
+as a typo in `Task.md` is, and the chain goes on. Nothing here writes the value anywhere: it lives
+in the run, and the orchestrator keeps it in `Run.json` until the range it was said for is done.
+One exception: `--set scale=lite` never lowers a `[SCALE] = [full]` the task's or the epic's
+`Task.md` carries (`conventions/task-scale.md` → The ratchet). `walkthrough` inserts one step between the task and the config, ahead of it rather
 than instead of it:
 
 ```
-Task.md [WALKTHROUGH]  →  off when scale resolved to lite  →  CLAUDE-spine-toolkit.md [WALKTHROUGH]  →  deep
+run  →  Task.md [WALKTHROUGH]  →  off when scale resolved to lite  →  CLAUDE-spine-toolkit.md [WALKTHROUGH]  →  deep
 ```
 
 The task's own `[WALKTHROUGH]` is checked before the `lite` gate and wins outright; the project's
