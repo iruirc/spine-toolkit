@@ -238,6 +238,17 @@ section() {
   grep -qF '`task_doc_anchor_missing`' "$SKILL" || { echo "a missing anchor has no announcement"; return 1; }
 }
 
+@test "both artifact checks after a REVIEW that moved the task run at its new path" {
+  # The rule lives once, in the budget paragraph; the language check runs at the budget's path.
+  para="$(awk '/^\*\*Artifact budget\.\*\*/{f=1} f&&/^On a non-zero exit/{exit} f' "$SKILL")"
+  for token in '`moved-to-done`' 'Tasks/DONE/<folder>' 'both checks'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the Artifact budget paragraph does not name $token"; return 1; }
+  done
+  lang="$(awk '/^\*\*Artifact language\.\*\*/{f=1} f&&/^On exit 1/{exit} f' "$SKILL")"
+  grep -qF 'at the path the budget measured' <<<"$lang" || { echo "the language check does not share the budget's path"; return 1; }
+  if grep -qF 'Tasks/DONE/<folder>' <<<"$lang"; then echo "the language paragraph keeps its own copy of the rule"; return 1; fi
+}
+
 @test "an epic's auto Method A range stops at Plan so its steps are measured before they run" {
   # In auto the whole range returns at once; measured after that, a step has already run on the
   # Task.md the measurement exists to fix.
@@ -257,10 +268,10 @@ section() {
 @test "the artifact language is measured at the budget's boundaries and each file goes back once" {
   para="$(awk '/^\*\*Artifact language\.\*\*/{f=1} f&&/^\*\*Per-phase commits/{exit} f' "$SKILL")"
   [ -n "$para" ] || { echo "no Artifact language paragraph in the orchestrator"; return 1; }
-  for token in 'lint-artifact-lang.sh <task_dir>' 'conventions/artifact-language.md' 'stage_done_prompt' \
+  for token in 'lint-artifact-lang.sh`, at the path the budget measured' 'conventions/artifact-language.md' 'stage_done_prompt' \
                '`auto` Method A range' '`lang_mismatch`' '`lang_mismatch_persists`' '**once**' \
                '`research_agent`' 'names the' 'language goes first' 'before sending either rewrite' \
-               '`moved-to-done`' 'Tasks/DONE/<folder>' '`<task_dir>/<step_id>`' '`completed_steps`' '`failed_steps`' \
+               '`<task_dir>/<step_id>`' '`completed_steps`' '`failed_steps`' \
                '`[TASK_TYPE]` names' 'is not sent again' '`lang_mismatch_unowned`' '`lang_readers_disagree`' \
                'for `Done.md`, `mechanical` for what REVIEW'"'"'s `auto-move` writes' 'quoted logs and messages' "case title" \
                'Exit 0 reports only what the script printed on'; do

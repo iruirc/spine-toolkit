@@ -857,7 +857,9 @@ profile with no implementing stage, and on a `lite` task inside its ceilings. Af
 an EPIC that chose decomposition, add `--task-docs`, at any scale: it also measures the `Task.md` of
 every step not yet started — `[STATUS]` PENDING, as that stage writes them — its ceiling and its three
 anchors (`skills/task-documents/SKILL.md`). A step that has started or closed is not measured: its
-`Task.md` is already the record of what ran. A non-zero exit prints one line per finding.
+`Task.md` is already the record of what ran. A non-zero exit prints one line per finding. When a
+REVIEW result reports `moved-to-done` (`action_taken` under Method A, `moved-to-DONE` in the notes
+under Method B), the folder has moved: both checks run at the task's new `Tasks/DONE/<folder>` path.
 
 Measure rather than instruct: a count limit published in a brief and never checked is the class of
 directive this toolkit has already watched go unobserved, which is why the ceilings live in that
@@ -884,11 +886,9 @@ measurement runs between them: measured after the range, a step would already ha
 
 **Artifact language.** At the artifact budget's boundaries — after a stage returns and before
 `stage_done_prompt`, or once when an `auto` Method A range returns, over what the range wrote — run
-`<core root>/scripts/lint-artifact-lang.sh <task_dir>`. It reads `lang` through `resolve-settings.sh`
+`<core root>/scripts/lint-artifact-lang.sh`, at the path the budget measured. It reads `lang` through `resolve-settings.sh`
 and measures the prose of the task folder's own artifacts; which files, what counts as prose and
-where a finding starts are `conventions/artifact-language.md`'s. When a REVIEW result reports
-`moved-to-done` (`action_taken` under Method A, `moved-to-DONE` in the notes under Method B), the
-folder has moved: run the check at the task's new `Tasks/DONE/<folder>` path. After an EPIC Method A
+where a finding starts are `conventions/artifact-language.md`'s. After an EPIC Method A
 range, name in the same call the folder of every step the range ran, completed or failed:
 `<task_dir>/<step_id>` for each entry of `completed_steps` and `failed_steps`, `step_id` being the
 step folder's own name, `.step` suffix included. Exit 0 reports only what the script printed on
