@@ -24,11 +24,11 @@ SHA = r'[0-9a-f]{7,40}'
 TOKEN = re.compile(r'`(%s)(?:\.\.(%s))?`' % (SHA, SHA))
 NUMBER = re.compile(r'^###\s+([\d\u2013-]+)')
 FENCE = re.compile(r'^\s*(`{3,}|~{3,})')
-# task-walkthrough, ## Structure: the sections each depth carries.
+# task-walkthrough, ## Structure: the sections each depth always carries; the glossary and
+# ## How it works are left out when nothing earns them.
 SECTIONS = {
-    'deep': ['What changed', 'Glossary', 'Summary', 'Commit order', 'Plan vs. outcome', 'Commits',
-             'How it works', 'Out of scope', 'Follow-ups'],
-    'brief': ['What changed', 'Summary', 'Plan vs. outcome', 'Commits', 'How it works', 'Follow-ups'],
+    'deep': ['What changed', 'Summary', 'Commit order', 'Plan vs. outcome', 'Commits', 'Out of scope', 'Follow-ups'],
+    'brief': ['What changed', 'Summary', 'Plan vs. outcome', 'Commits', 'Follow-ups'],
 }
 
 
@@ -91,13 +91,13 @@ for line in open(path, encoding='utf-8'):
         m = NUMBER.match(line)
         where = '### ' + m.group(1) if m else '###'
         found = [t.groups() for t in TOKEN.finditer(line)]
-        headers.append((where, len(found)))
+        headers.append((where, len(found), bool(m)))
         named += [(t, where) for t in found]
     elif where in (None, 'Bookkeeping') and line.startswith('- '):
         # Bullets inside a commit's own section are its prose, not the log.
         named += [(t.groups(), where or 'brief') for t in TOKEN.finditer(line)]
 
-deep = 'Glossary' in headings or any(n for _, n in headers)
+deep = 'Glossary' in headings or any(n or numbered for _, n, numbered in headers)
 declared = []
 for row in perimeter:
     m = TOKEN.search(row[columns[0]]) if len(row) > max(columns) else None
@@ -116,7 +116,7 @@ if columns is None:
     found.append('section: no perimeter table with Range and Commits (header)')
 found += ['section: missing (## %s)' % s for s in SECTIONS['deep' if deep else 'brief'] if s not in headings]
 if deep:
-    found += ['heading: %d commits in one section (%s)' % (n, w) for w, n in headers if n > 1]
+    found += ['heading: %d commits in one section (%s)' % (n, w) for w, n, numbered in headers if n > 1 or (numbered and not n)]
 
 covered = set()
 for (a, b), _ in named:

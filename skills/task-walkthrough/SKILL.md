@@ -79,6 +79,8 @@ nothing else:
    | `app` | `a1b2c3d..f6e5d4c` | 9 | +2358/−72 |
    ```
 
+   `Range` is the first and the last of the task's own commits in that repository, both included, as in `[COVERS]`; `Commits` is how many that range holds, counted along the first parent.
+
 4. one line naming where the statement and the verdicts live — `Task.md`, `Validation.md`,
    `Review.md`, `Done.md` — by name, never restated. The build verdict has one home and this is not
    it.
@@ -110,6 +112,8 @@ A `deep` section with no number in the table — `## Summary`, the prose of `## 
 commit's sub-heading — is bounded by its scope alone. The first move holds there as everywhere. The
 third is the only test left: a section that grows run after run covers more than its row says, and
 the fix is fewer claims, never shorter sentences.
+
+The glossary and `## How it works` are not required: the first is left out when the task names no new term, the second when no diagram earns its place. Every other section of the depth is present, with `none` when it has nothing to say.
 
 See `## Style`.
 
@@ -282,7 +286,7 @@ The file is living, not append-once. On a stage that runs it when the file alrea
 
 1. Read `[COVERS]`. Its end already at the task's last commit, and `scripts/lint-walkthrough.sh` exits 0 → change nothing, report that. `[COVERS]` can match `HEAD` over a body that names commits long gone.
 2. Otherwise refresh, and treat the sections differently:
-   - A line of class `unreachable` — a commit the task's history no longer holds, because a reset or a squash dropped it — first: its section or bullet in `## Commits` is removed, and a `### Bookkeeping` line whose range starts or ends on it is rewritten to the commits that exist or removed. Append-only protects rework; it does not keep an account of what `git log` no longer shows. `## Plan vs. outcome` gains one row per repository with the trigger `history`: how many commits are gone, never why — the writer was not told.
+   - A line of class `unreachable` — a commit the task's history no longer holds, because a reset or a squash dropped it — first: its section or bullet in `## Commits` is removed, and a `### Bookkeeping` line or a perimeter row whose range starts or ends on it is rewritten to the commits that exist or removed. Append-only protects rework; it does not keep an account of what `git log` no longer shows. `## Plan vs. outcome` gains one row per repository with the trigger `history`: how many commits are gone, never why — the writer was not told.
    - A line of any other class, next: `section` — the section is written back from git and `Plan.md`; `missing` and `heading` — a section, or a `brief` bullet, for each commit named, split out of a section that held several; `count` — the header's number follows the history. Append-only is not broken: a missing commit is appended.
    - `## Commits` — **append only**, at both depths, except when the resolved depth changed — see below. It is a log; a rework commit arrives with its own reason (`addresses Review finding 2`) and does not overwrite its predecessors. New bookkeeping commits join `### Bookkeeping`.
    - `## Plan vs. outcome` — **accumulates**, each new row carrying its trigger. A round of fixes after Review is precisely the divergence worth keeping.
