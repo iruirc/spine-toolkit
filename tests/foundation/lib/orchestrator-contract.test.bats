@@ -490,3 +490,19 @@ section() {
     done
   done
 }
+
+@test "the open-questions gate collects through its script and offers a marked recommendation" {
+  para="$(awk '/^\*\*Open-questions inline/{f=1} f&&/^\*\*Scope:\*\*/{exit} f' "$SKILL")"
+  [ -n "$para" ] || { echo "no Open-questions inline paragraph in the orchestrator"; return 1; }
+  for token in '<core root>/scripts/open-questions.sh' '`{artifact, section, id, text, recommended}`' \
+               '`stage_done_dialog_accept`, only when `recommended` is not `null`' 'free-text option'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the gate paragraph does not name $token"; return 1; }
+  done
+  ! grep -qF 'first 80 chars' <<<"$para" || { echo "the gate still cuts an item to 80 characters"; return 1; }
+  for f in "$SKILL" "$ROOT"/skills/orchestrator/locales/*.md; do
+    ! grep -qF stage_done_dialog_answer "$f" || { echo "$f still names stage_done_dialog_answer"; return 1; }
+  done
+  for l in en ru; do
+    grep -qx '## stage_done_dialog_accept' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no stage_done_dialog_accept"; return 1; }
+  done
+}

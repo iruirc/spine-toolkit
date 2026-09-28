@@ -46,8 +46,8 @@ Edit artifact manually
 ## stage_done_dialog_question
 Question {n}/{total} — `{section}`: {text}
 
-## stage_done_dialog_answer
-Answer
+## stage_done_dialog_accept
+Accept the recommendation
 
 ## stage_done_dialog_defer
 Defer (DEFERRED)
