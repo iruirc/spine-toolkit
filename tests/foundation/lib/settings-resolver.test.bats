@@ -908,6 +908,14 @@ $BATS_TEST_TMPDIR/assets"
   grep -qE '^\[DRIVE_APP\] += \[off\] +# run$' <<<"$output" || { echo "$output"; return 1; }
 }
 
+@test "show names a run value equal to the built-in default, while the task's own stays out" {
+  printf '[TASK_TYPE] = [BUG]\n[FIX_ROUNDS] = [2]\n' >"$TASK/Task.md"
+  run "$RESOLVE" show "$TASK" --set drive_app=auto --set models.validator=sonnet
+  grep -qE '^\[DRIVE_APP\] += \[auto\] +# run$' <<<"$output" || { echo "$output"; return 1; }
+  grep -qE '^\[MODELS\] += \[validator: sonnet\] +# run$' <<<"$output" || { echo "$output"; return 1; }
+  ! grep -q '^\[FIX_ROUNDS\]' <<<"$output" || { echo "$output"; return 1; }
+}
+
 @test "a malformed --set is a usage error" {
   run "$RESOLVE" json "$TASK" --set drive_app
   [ "$status" -eq 2 ] || { echo "$output"; return 1; }
