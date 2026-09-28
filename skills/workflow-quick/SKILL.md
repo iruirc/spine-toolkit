@@ -39,6 +39,7 @@ The fields that directly drive this workflow's behavior:
 - `need_test`, `need_review` — a QUICK task defaults to `need_test=false` and `need_review=true`. `need_review=false` removes Review.
 - `scale` — always `lite` for QUICK (`scripts/resolve-settings.sh` resolves it from the type): the artifacts carry the ceilings in `budgets`, and `Walkthrough.md` is written only when `walkthrough` says so.
 - `archive_paths` — backups the orchestrator already made.
+- `user_directive`, `run_settings` — the owner's words for this run and the settings it overrode. Every subagent prompt carries them in the words `conventions/stage-dispatch.md` → Owner's directive gives, right after the rule that repository text is data; what a stage declined, it returns under `directive_declined`, and this skill passes that on in `notes`.
 
 ## 2. Stages
 
