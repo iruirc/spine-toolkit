@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Checks every commit ## Commits of a task's Walkthrough.md names against the task's history: a
-# section of a commit a reset or a squash dropped describes what the reader will not find in git log.
+# Checks a task's Walkthrough.md against the task's history and against its own header: a commit
+# ## Commits names that a reset or a squash dropped, a section the skill requires for the file's
+# depth, a deep section that holds more than one commit, and a commit of a declared range that the
+# body never names — what a patch that cut the file short leaves behind.
 #
 # Usage: scripts/lint-walkthrough.sh <task-dir>
-# Exit:  0 every named commit is the task's, or nothing to measure (no Walkthrough.md, no Base.md,
-#        an EPIC); 1 one line per commit that is not; 2 usage, or task-ranges.sh could not answer.
+# Exit:  0 nothing found, or nothing to measure (no Walkthrough.md, no Base.md, an EPIC);
+#        1 one line per finding, "Walkthrough.md: <class>: <what> (<where>)";
+#        2 usage, or task-ranges.sh could not answer.
 
 [ "$#" -eq 1 ] || { echo "usage: $0 <task-dir>" >&2; exit 2; }
 [ -d "$1" ] || { echo "not a directory: $1" >&2; exit 2; }
@@ -16,11 +19,17 @@ import os, re, subprocess, sys
 
 RANGES, TASK = sys.argv[1], sys.argv[2]
 SHA = r'[0-9a-f]{7,40}'
-# Every backticked sha or sha range on a line, wherever it sits: a heading may group several, or
-# put a word or bold markup before one.
+# Every backticked sha or sha range on a line, wherever it sits: a heading may put a word or bold
+# markup before one.
 TOKEN = re.compile(r'`(%s)(?:\.\.(%s))?`' % (SHA, SHA))
 NUMBER = re.compile(r'^###\s+([\d\u2013-]+)')
 FENCE = re.compile(r'^\s*(`{3,}|~{3,})')
+# task-walkthrough, ## Structure: the sections each depth carries.
+SECTIONS = {
+    'deep': ['What changed', 'Glossary', 'Summary', 'Commit order', 'Plan vs. outcome', 'Commits',
+             'How it works', 'Out of scope', 'Follow-ups'],
+    'brief': ['What changed', 'Summary', 'Plan vs. outcome', 'Commits', 'How it works', 'Follow-ups'],
+}
 
 
 def task_type():
@@ -32,8 +41,16 @@ def task_type():
         return None
 
 
-def shas(line):
-    return [s for m in TOKEN.finditer(line) for s in m.groups() if s]
+def ranges(*args):
+    r = subprocess.run([RANGES] + list(args), capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.stderr.write(r.stderr)
+        sys.exit(2)
+    return r.stdout.split()
+
+
+def cells(line):
+    return [c.strip() for c in line.strip().strip('|').split('|')]
 
 
 path = os.path.join(TASK, 'Walkthrough.md')
@@ -41,7 +58,8 @@ path = os.path.join(TASK, 'Walkthrough.md')
 if not os.path.isfile(path) or not os.path.isfile(os.path.join(TASK, 'Base.md')) or task_type() == 'EPIC':
     sys.exit(0)
 
-named, section, fence, inside = [], None, None, False
+headings, named, headers, perimeter, columns = [], [], [], [], None
+where, fence, part = None, None, 'header'
 for line in open(path, encoding='utf-8'):
     m = FENCE.match(line)
     if m:
@@ -54,30 +72,67 @@ for line in open(path, encoding='utf-8'):
     if fence:
         continue
     if line.startswith('## '):
-        inside, section = line.strip() == '## Commits', None
+        part, where = line[3:].strip(), None
+        headings.append(part)
         continue
-    if not inside:
+    if part == 'header' and line.startswith('|'):
+        row = cells(line)
+        if columns is None and 'Range' in row and 'Commits' in row:
+            columns = (row.index('Range'), row.index('Commits'))
+        elif columns and not set(''.join(row)) <= set('-: '):
+            perimeter.append(row)
+        continue
+    if part != 'Commits':
         continue
     if line.startswith('### '):
         if line.strip() == '### Bookkeeping':
-            section = 'Bookkeeping'
+            where = 'Bookkeeping'
             continue
         m = NUMBER.match(line)
-        section = '### ' + m.group(1) if m else '###'
-        named += [(s, section) for s in shas(line)]
-    elif section in (None, 'Bookkeeping') and line.startswith('- '):
+        where = '### ' + m.group(1) if m else '###'
+        found = [t.groups() for t in TOKEN.finditer(line)]
+        headers.append((where, len(found)))
+        named += [(t, where) for t in found]
+    elif where in (None, 'Bookkeeping') and line.startswith('- '):
         # Bullets inside a commit's own section are its prose, not the log.
-        named += [(s, section or 'brief') for s in shas(line)]
+        named += [(t.groups(), where or 'brief') for t in TOKEN.finditer(line)]
 
-if not named:
-    sys.exit(0)
-r = subprocess.run([RANGES, 'unreachable', TASK] + sorted({s for s, _ in named}), capture_output=True, text=True)
-if r.returncode != 0:
-    sys.stderr.write(r.stderr)
-    sys.exit(2)
-gone = set(r.stdout.split())
-found = ["Walkthrough.md: %s (%s) is not in the task's history" % (s, where) for s, where in named if s in gone]
+deep = 'Glossary' in headings or any(n for _, n in headers)
+declared = []
+for row in perimeter:
+    m = TOKEN.search(row[columns[0]]) if len(row) > max(columns) else None
+    if m:
+        declared.append((row[0].strip('`'), m.group(1), m.group(2) or m.group(1), row[columns[1]]))
+
+ends = sorted({s for (a, b), _ in named for s in (a, b) if s} | {s for _, a, b, _ in declared for s in (a, b)})
+gone = set(ranges('unreachable', TASK, *ends)) if ends else set()
+
+found = []
+for (a, b), w in named:
+    found += ['unreachable: %s is not in the task\'s history (%s)' % (s, w) for s in (a, b) if s in gone]
+for repo, a, b, _ in declared:
+    found += ['unreachable: %s is not in the task\'s history (header %s)' % (s, repo) for s in dict.fromkeys((a, b)) if s in gone]
+if columns is None:
+    found.append('section: no perimeter table with Range and Commits (header)')
+found += ['section: missing (## %s)' % s for s in SECTIONS['deep' if deep else 'brief'] if s not in headings]
+if deep:
+    found += ['heading: %d commits in one section (%s)' % (n, w) for w, n in headers if n > 1]
+
+covered = set()
+for (a, b), _ in named:
+    if a in gone or b in gone:
+        continue
+    covered.update(ranges('commits', TASK, '%s..%s' % (a, b)) if b else [a])
+for repo, a, b, count in declared:
+    if a in gone or b in gone:
+        continue
+    listed = ranges('commits', TASK, '%s..%s' % (a, b))
+    found += ['missing: %s is not named in ## Commits (%s)' % (c[:7], repo)
+              for c in listed if not any(c.startswith(s) for s in covered)]
+    if count.strip() != str(len(listed)):
+        found.append('count: the header says %s, the range holds %d (%s)' % (count.strip(), len(listed), repo))
+
 if found:
-    print('\n'.join(found))
+    print('\n'.join('Walkthrough.md: ' + f for f in found))
     sys.exit(1)
 PY
