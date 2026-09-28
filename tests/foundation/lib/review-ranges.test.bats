@@ -142,6 +142,39 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
   done
 }
 
+@test "a current walkthrough is not rewritten after a Done that committed nothing outside the tasks" {
+  idle='"done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": false}'
+  busy='"done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": true}'
+  handed='"done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": false, "walkthrough_findings": ["name the third commit"]}, "review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s", "done_findings": ["name the third commit"]}, "walkthrough": {"ok": true, "artifact_path": "w", "summary": "s", "changed": true}'
+  approved='"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s"}'
+  for p in $RANGED quick; do
+    out="$(run_profile "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "{$approved, $idle}")"
+    [ "$(pick "o.calls.filter((c) => c.label === 'walkthrough').length" <<<"$out")" = 0 ] || { echo "profile-$p: a writer ran over a current file"; return 1; }
+    grep -qF 'so its writer was not run' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: the skip is not noted"; return 1; }
+    [ "$(pick 'o.result.next_recommended_action' <<<"$out")" = stop ] || { echo "profile-$p: $(pick 'o.result' <<<"$out")"; return 1; }
+    [ "$(pick "JSON.stringify(o.calls.find((c) => c.label === 'done').schema.required.includes('committed_outside_tasks'))" <<<"$out")" = true ] \
+      || { echo "profile-$p: Done need not say whether it committed"; return 1; }
+    for why in "$approved, $busy" "$handed"; do
+      out="$(run_profile "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "{$why}")"
+      [ "$(pick "o.calls.filter((c) => c.label === 'walkthrough').length" <<<"$out")" = 1 ] || { echo "profile-$p: no writer for {$why}"; return 1; }
+    done
+    out="$(run_profile "$p" "$(contract Review ", \"review_ranges\": $TWO")" "{$approved, $idle}")"
+    [ "$(pick "o.calls.filter((c) => c.label === 'walkthrough').length" <<<"$out")" = 1 ] || { echo "profile-$p: no writer without the orchestrator's measure"; return 1; }
+  done
+}
+
+@test "a writer earlier in the run makes the file current for Done, unless its lint left lines" {
+  idle='"done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": false}'
+  rest="\"edit\": {\"ok\": true, \"artifact_path\": \"e\", \"summary\": \"s\", \"committed\": true}, \"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\"}, $PASSED, $idle"
+  for p in $RANGED quick; do
+    case "$p" in bug) code=Fix ;; feature) code=Execute ;; refactor) code=Refactor ;; test) code=Write ;; quick) code=Edit ;; esac
+    out="$(run_profile "$p" "$(contract "$code" ", \"review_ranges\": $TWO")" "{$rest}")"
+    [ "$(pick "o.calls.filter((c) => c.label === 'walkthrough').length" <<<"$out")" = 1 ] || { echo "profile-$p: $(pick "o.calls.map((c) => c.label)" <<<"$out")"; return 1; }
+    out="$(run_profile "$p" "$(contract "$code" ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"Walkthrough.md: count: x\"}}")"
+    [ "$(pick "o.calls.filter((c) => c.label === 'walkthrough').length" <<<"$out")" = 2 ] || { echo "profile-$p: a writer that left lint lines stood for current"; return 1; }
+  done
+}
+
 @test "an item about the walkthrough goes to its writer and is closed by it" {
   item='name the third commit in ## Commits'
   replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$item\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"walkthrough_findings\": [\"$item\"]}, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true}}"

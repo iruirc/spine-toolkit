@@ -90,6 +90,9 @@ const DRIVE_APP = A.drive_app === 'off' ? 'off' : 'auto'
 const MANUAL_CHECKS = A.manual_checks === 'always' ? 'always' : 'auto'
 const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'
 const WALKTHROUGH_CHECK = A.walkthrough_check === 'on' ? 'on' : 'off'
+// Whether Walkthrough.md names the task's newest commit: the orchestrator's measure before the run,
+// then each writer's result. Done's own commits are the one thing left that can move past it.
+let walkthroughCurrent = A.walkthrough_current === true
 const SECURITY = A.security === 'on' || A.security === 'off' ? A.security : 'auto'
 
 // From the contract: the workflow sandbox cannot expand ${CLAUDE_PLUGIN_ROOT} itself.
@@ -180,7 +183,7 @@ const REVIEW_RECORD = RANGED
 const CATCH_UP_VALIDATION = CATCH_UP && RANGES ? `\n\nThis run catches up commits that landed after the task's Done: ${rangeList()}. Validate them at the depth the spine-toolkit:phase-verification skill gives their diff, and name that depth in Validation.md.` : ''
 // Done's share: close what Review left it, stamp where the repositories stand.
 const doneRecord = (handed) =>
-  `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings.${walkthroughWriter() ? ` Never edit ${DIR}/Walkthrough.md: an item about it goes into walkthrough_findings instead, and under ## Review findings closed as handed to the walkthrough writer, who runs after you.` : ''} The first lines of Done.md are the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names those ranges, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}${AFTER_DONE ? ` These fixes follow a catch-up: before you rewrite Done.md, run "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since done, then append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names the ranges it printed, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}`
+  `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings.${walkthroughWriter() ? ` Never edit ${DIR}/Walkthrough.md: an item about it goes into walkthrough_findings instead, and under ## Review findings closed as handed to the walkthrough writer, who runs after you. Return committed_outside_tasks true when any commit you made changes a file outside the Tasks folder, false when none does: the writer runs only when it has something to do.` : ''} The first lines of Done.md are the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names those ranges, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}${AFTER_DONE ? ` These fixes follow a catch-up: before you rewrite Done.md, run "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since done, then append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names the ranges it printed, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}`
 // Whether a writer runs after Done to take its items about Walkthrough.md; without one Done closes them.
 const walkthroughWriter = () =>
   !!WALKTHROUGH_AGENT && A.walkthrough !== 'off' && A.walkthrough !== false && !!A.agents[WALKTHROUGH_AGENT] && A.agents[WALKTHROUGH_AGENT] !== '—'
@@ -215,7 +218,7 @@ const ARTIFACT = {
   },
 }
 // Done also says which of Review's done_findings it closed.
-const DONE_ARTIFACT = { ...ARTIFACT, properties: { ...ARTIFACT.properties, closed_findings: { type: 'array', items: { type: 'string' } }, walkthrough_findings: { type: 'array', items: { type: 'string' }, description: 'the ## For Done items about Walkthrough.md, left to its writer' } } }
+const DONE_ARTIFACT = { ...ARTIFACT, properties: { ...ARTIFACT.properties, closed_findings: { type: 'array', items: { type: 'string' } }, walkthrough_findings: { type: 'array', items: { type: 'string' }, description: 'the ## For Done items about Walkthrough.md, left to its writer' }, committed_outside_tasks: { type: 'boolean', description: 'whether any commit you made changes a file outside the Tasks folder' } }, required: [...ARTIFACT.required, 'committed_outside_tasks'] }
 
 const PLAN = {
   type: 'object',
@@ -557,6 +560,7 @@ Change no production code and no tests.`,
     ),
     { label: 'walkthrough', phase: stage, agentType, schema: WALKTHROUGH_ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'walkthrough') },
   )
+  walkthroughCurrent = !!(w && w.artifact_path) && !w.lint
   if (!w || !w.artifact_path) {
     result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
     return
