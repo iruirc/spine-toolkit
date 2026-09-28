@@ -148,3 +148,15 @@ MD
   run "$OQ" "$A"
   [ "$(field 'i["id"] + " " + str(len(i["text"].splitlines()))' <<<"$output")" = 'Q1 3' ] || { echo "$output"; return 1; }
 }
+
+@test "the Known unknowns template of feature-requirements yields a recommendation" {
+  awk '/^```markdown$/{f=1;next} f&&/^```$/{exit} f' "$ROOT/skills/feature-requirements/SKILL.md" >"$A"
+  run "$OQ" "$A"
+  [ "$(field 'i["id"] + " " + str(i["recommended"])' <<<"$output" | grep '^\[u1\]')" = '[u1] <option A> — <why>' ] \
+    || { echo "$output"; return 1; }
+}
+
+@test "rule 5 of task-documents names the mark the gate reads" {
+  grep -qF 'the recommended one carries `(recommended)`' "$ROOT/skills/task-documents/SKILL.md" \
+    || { echo "rule 5 does not say how a recommendation is marked"; return 1; }
+}

@@ -137,6 +137,8 @@ Acceptance criteria from briefing:
 
 ### Known unknowns
 - [u1] <description> — owner: designer — blocks: feature-landscape Step 2
+  - <option A> (recommended) — <why>
+  - <option B>
 - [u2] ...
 ```
 
