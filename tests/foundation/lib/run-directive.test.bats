@@ -135,3 +135,15 @@ epic_run() { # $1 extra contract members, $2 the step record's own fields (leadi
   args="$(epic_run '' '' | pick "o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-feature').args")"
   [ "$(pick 'JSON.stringify([o.user_directive, o.run_settings])' <<<"$args")" = '["",{}]' ] || { echo "$args"; return 1; }
 }
+
+@test "every Method B skill carries the directive to its subagents in the convention's words" {
+  n=0
+  for s in "$ROOT"/skills/workflow-*/SKILL.md; do
+    n=$((n + 1))
+    c="$(awk '/^## 1\. Input Contract$/{f=1;next} f&&/^## /{exit} f' "$s")"
+    for f in '`user_directive`, `run_settings`' '`conventions/stage-dispatch.md` → Owner'"'"'s directive' '`directive_declined`' '`notes`'; do
+      grep -qF -- "$f" <<<"$c" || { echo "${s#$ROOT/}: Input Contract lost $f"; return 1; }
+    done
+  done
+  [ "$n" -eq 8 ] || { echo "scanned $n skill(s), expected 8"; return 1; }
+}
