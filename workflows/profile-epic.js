@@ -792,17 +792,23 @@ const failed_steps = []
 const pending_steps = []
 let cancelled = false
 
-// This run's own settings, over whatever a step says for itself (conventions/task-settings.md →
-// The chain): the resolver takes them as --set, and a map key lands over the step's own.
-const RUN_ARGS = Object.entries(RUN_SETTINGS).map(([k, v]) => ` --set ${k}=${v}`).join('')
-const runKeys = (field) =>
-  Object.fromEntries(Object.entries(RUN_SETTINGS).filter(([k]) => k.startsWith(`${field}.`)).map(([k, v]) => [k.slice(field.length + 1), v]))
-
 // A step's own [MODELS] and [EFFORT] keys over the epic's resolved maps: the chain
 // scripts/resolve-settings.sh walks for a step, whose vocabulary these three lines copy.
 const TUNING_KEYS = { models: ['light', 'walkthrough', 'done', 'architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'], effort: ['walkthrough', 'done', 'architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'] }
 const TUNING_VALUES = { models: ['opus', 'sonnet', 'haiku', 'fable', 'session'], effort: ['low', 'medium', 'high', 'xhigh', 'max', 'session'] }
 const TUNING_UNSET = { models: ['platform'], effort: [] }
+
+// This run's own settings, over whatever a step says for itself (conventions/task-settings.md →
+// The chain): the resolver takes them as --set, and a map key lands over the step's own.
+const RUN_ARGS = Object.entries(RUN_SETTINGS).map(([k, v]) => ` --set '${k}=${v}'`).join('')
+// Only a key and a value a step's own Task.md could name, as overlay() below takes them.
+const runKeys = (field) =>
+  Object.fromEntries(
+    Object.entries(RUN_SETTINGS)
+      .filter(([k]) => k.startsWith(`${field}.`))
+      .map(([k, v]) => [k.slice(field.length + 1).toLowerCase(), String(v).toLowerCase()])
+      .filter(([k, v]) => TUNING_KEYS[field].includes(k) && TUNING_VALUES[field].includes(v)),
+  )
 const overlay = (field, st) => {
   const out = { ...(A[field] || {}) }
   for (const entry of String(st[field] || '').split(',').map((e) => e.trim()).filter(Boolean)) {
@@ -952,6 +958,10 @@ if (runs('Execute')) {
         result.notes.push(`Step ${st.step_id} hands back stage ${r.handback.stage}: no agent implements role "${r.handback.role}" on this platform.`)
         for (const rest of walk.slice(i)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
         break
+      }
+      // Its stages ran inside the step's own workflow, so their refusals would end there.
+      for (const s of r && Array.isArray(r.stages) ? r.stages : []) {
+        if (s && s.directive_declined) result.notes.push(`Step ${st.step_id}, ${s.stage} declined part of the owner's directive: ${s.directive_declined}`)
       }
       // A QUICK step whose entry check failed changed nothing, yet its run still says ok.
       if (r && r.quick_escalation) {
