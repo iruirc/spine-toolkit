@@ -397,6 +397,8 @@ NAMES
     grep -qF 'Refresh `Walkthrough.md` after `Done.md` is written and its commits are made' "$S" \
       || { echo "workflow-$p: the refresh does not follow Done's commits"; return 1; }
     grep -qF 'Done never edits `Walkthrough.md`' "$S" || { echo "workflow-$p: Done is not kept out of the file"; return 1; }
+    grep -qF 'When no item went to it and `scripts/lint-walkthrough.sh --current <task dir>` exits 0, the writer is not dispatched' "$S" \
+      || { echo "workflow-$p: the writer runs even over a current file"; return 1; }
     if grep -qF 'Refresh `Walkthrough.md` here when' "$S"; then echo "workflow-$p: the old gate is still there"; return 1; fi
   done
 }
