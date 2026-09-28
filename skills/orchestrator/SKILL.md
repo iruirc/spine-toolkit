@@ -818,7 +818,7 @@ someone reaches for it.
 
 What the failed stage left running or changed is **Stage leftovers**'s, before `stage_error_prompt`.
 
-**Open-questions inline (research-style stages).** In `manual` mode, before rendering `stage_done_prompt`, the orchestrator inspects the just-completed stage's primary artifact (`Research.md` in every profile — the research-style stage writes that name whatever the stage is called — plus `Reproduce.md` for BUG) for open items: run `<core root>/scripts/open-questions.sh` on those files. It prints a JSON array of `{artifact, section, id, text, recommended}` — which sections count and what an open item is are the script's; `text` is the item whole, sub-items included, and `recommended` is the sub-item marked `(recommended)` or `null`.
+**Open-questions inline (research-style stages).** In `manual` mode, before rendering `stage_done_prompt`, the orchestrator inspects the just-completed stage's primary artifact (`Research.md` in every profile — the research-style stage writes that name whatever the stage is called — plus `Reproduce.md` for BUG) for open items: run `<core root>/scripts/open-questions.sh` on those of them that exist — a BUG task has no `Research.md` before Diagnose, and none at `lite`. It prints a JSON array of `{artifact, section, id, text, recommended}` — which sections count and what an open item is are the script's; `text` is the item whole, sub-items included, and `recommended` is the sub-item marked `(recommended)` or `null`.
 
 If at least one open item is found → render `stage_done_prompt_with_questions` instead of `stage_done_prompt`, with placeholders `{stage}` and `{questions}` (the `id` of each open item, grouped by `section`). AUQ options:
 
