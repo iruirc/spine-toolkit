@@ -139,7 +139,8 @@ answered the question the axis asks. Neither folds, at either value.
 epic's `scale` unless its own `Task.md` carries `[SCALE]`, which wins — the same precedence every
 other per-step field has (`[WORKFLOW_MODE]`, `## 4. [Stack]`, `[NEED_TEST]`, `[NEED_REVIEW]`). This
 is where the axis pays: the artifacts of a twenty-six-step epic are the epic's volume, and its own
-two artifacts are a rounding error beside them.
+two artifacts are a rounding error beside them. A QUICK step is the exception: it is always `lite`,
+whatever the epic or its own `[SCALE]` says.
 
 A step that raises itself to `full` raises itself only. The raise is written into that step's
 `Task.md`, and the epic's value is untouched — one step turning out to be large says nothing about

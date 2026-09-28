@@ -829,6 +829,12 @@ const overlay = (field, st) => {
 // A QUICK task is always lite, whatever the step or the epic says.
 // A run may raise a step's own lite; its lite never lowers a step's own full.
 const stepScale = (st) => (st.task_type === 'QUICK' ? 'lite' : st.scale === undefined ? scale : RUN_SETTINGS.scale === 'full' ? 'full' : st.scale)
+// Fallbacks for a step the reader returned no depth or check for, along resolve-settings.sh's own
+// chain: lite turns the depth off unless the run set one, and no file means no check.
+const stepWalkthrough = (st) =>
+  st.walkthrough !== undefined ? st.walkthrough : stepScale(st) === 'lite' && RUN_SETTINGS.walkthrough === undefined ? 'off' : A.walkthrough
+const stepWalkthroughCheck = (st) =>
+  st.walkthrough_check !== undefined ? st.walkthrough_check : ['off', false].includes(stepWalkthrough(st)) ? 'off' : WALKTHROUGH_CHECK
 
 const toPending = (st) => ({
   step_id: st.step_id,
@@ -896,8 +902,8 @@ if (runs('Execute')) {
       drive_app: st.drive_app === undefined ? DRIVE_APP : st.drive_app,
       manual_checks: st.manual_checks === undefined ? MANUAL_CHECKS : st.manual_checks,
       phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
-      walkthrough: st.walkthrough === undefined ? A.walkthrough : st.walkthrough,
-      walkthrough_check: st.walkthrough_check === undefined ? WALKTHROUGH_CHECK : st.walkthrough_check,
+      walkthrough: stepWalkthrough(st),
+      walkthrough_check: stepWalkthroughCheck(st),
       security: st.security === undefined ? SECURITY : st.security,
       long_run: st.long_run === undefined ? LONG_RUN : st.long_run,
       research_agent: st.research_agent,
