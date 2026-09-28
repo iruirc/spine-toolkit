@@ -435,15 +435,17 @@ if CMD == 'json':
 # show: the column a human reads. Task.md spells a map as one bracketed list, so that is how
 # the column spells it too. A field is in the column when somebody chose it AND the value they
 # chose differs from the built-in default: the shipped config template writes every field down at
-# its default, and a column repeating those is one nobody reads. --all names every field and every
-# map key — defaults included — and never prints the "more" line.
+# its default, and a column repeating those is one nobody reads. A value the run set is in it
+# whatever it is: the owner said it for this run. --all names every field and every map key —
+# defaults included — and never prints the "more" line.
 FIELD_OF = dict((s[0], s[1]) for s in SCALARS)
 rows, rest = [], 0
 for name in [s[0] for s in SCALARS] + ['models', 'effort', 'long_run', 'budgets']:
     value = resolved[name]
     if isinstance(value, dict):
         chosen = [k for k in value
-                  if sources.get('%s.%s' % (name, k)) and value[k] != defaults[name][k]]
+                  if sources.get('%s.%s' % (name, k)) == 'run'
+                  or (sources.get('%s.%s' % (name, k)) and value[k] != defaults[name][k])]
         keys = list(value) if SHOW_ALL else chosen
         if not keys:
             rest += 1
@@ -451,8 +453,8 @@ for name in [s[0] for s in SCALARS] + ['models', 'effort', 'long_run', 'budgets'
         text = ', '.join('%s: %s' % (k, value[k]) for k in keys)
     else:
         # A value derived from the default (walkthrough_check's auto) is nobody's choice either.
-        if not SHOW_ALL and (sources[name] == 'default' or value == defaults[name]
-                             or CHOSEN.get(name) == defaults[name]):
+        if not SHOW_ALL and sources[name] != 'run' and (sources[name] == 'default' or value == defaults[name]
+                                                        or CHOSEN.get(name) == defaults[name]):
             rest += 1
             continue
         text = value
