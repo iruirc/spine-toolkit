@@ -239,6 +239,45 @@ origin_at() { # $1 commit: origin/main stands there and is the remote's HEAD, as
   grep -qF 'usage: task-ranges.sh unreachable' <<<"$output" || { echo "$output"; return 1; }
 }
 
+@test "commits lists a range from its first commit on, oldest first" {
+  commit "$PROJ" a.txt; a1="$(git -C "$PROJ" rev-parse HEAD)"
+  commit "$PROJ" b.txt; a2="$(git -C "$PROJ" rev-parse HEAD)"
+  commit "$PROJ" c.txt; a3="$(git -C "$PROJ" rev-parse HEAD)"
+  run "$TR" commits "$TASK" "${a1:0:7}..${a3:0:7}"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "$(printf '%s\n%s\n%s' "$a1" "$a2" "$a3")" ] || { echo "$output"; return 1; }
+}
+
+@test "commits leaves out what a merge brought in" {
+  commit "$PROJ" a.txt; a1="$(git -C "$PROJ" rev-parse HEAD)"
+  git -C "$PROJ" checkout -qb upstream HEAD~1
+  commit "$PROJ" u.txt
+  git -C "$PROJ" checkout -q main
+  git -C "$PROJ" -c user.name=t -c user.email=t@t merge -q --no-ff -m merge upstream; m="$(git -C "$PROJ" rev-parse HEAD)"
+  commit "$PROJ" c.txt; a3="$(git -C "$PROJ" rev-parse HEAD)"
+  run "$TR" commits "$TASK" "$a1..$a3"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "$(printf '%s\n%s\n%s' "$a1" "$m" "$a3")" ] || { echo "$output"; return 1; }
+}
+
+@test "commits finds a range in the task repository itself" {
+  commit "$PROJ/Tasks" plan.txt; t1="$(git -C "$PROJ/Tasks" rev-parse HEAD)"
+  commit "$PROJ/Tasks" plan.txt; t2="$(git -C "$PROJ/Tasks" rev-parse HEAD)"
+  run "$TR" commits "$TASK" "$t1..$t2"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "$(printf '%s\n%s' "$t1" "$t2")" ] || { echo "$output"; return 1; }
+}
+
+@test "commits refuses a range no repository holds, and a malformed one" {
+  a="$(git -C "$PROJ" rev-parse --short HEAD)"; c="$(git -C "$PROJ/Packages/Core" rev-parse --short HEAD)"
+  run "$TR" commits "$TASK" "$a..$c"
+  [ "$status" -eq 2 ] || { echo "split range: $status $output"; return 1; }
+  grep -qF "no repository of the task holds $a..$c" <<<"$output" || { echo "$output"; return 1; }
+  run "$TR" commits "$TASK" "$a"
+  [ "$status" -eq 2 ] || { echo "no range: $status $output"; return 1; }
+  grep -qF 'usage: task-ranges.sh commits' <<<"$output" || { echo "$output"; return 1; }
+}
+
 @test "a record it cannot trust stops with exit 2" {
   printf '[DONE_COMMIT] = .: not-a-sha\n' >"$TASK/Done.md"
   run "$TR" ranges "$TASK" --since done
