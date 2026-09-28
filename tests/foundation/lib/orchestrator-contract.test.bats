@@ -279,21 +279,22 @@ section() {
   done
 }
 
-@test "the walkthrough's history is measured at the same boundaries and the file goes back once" {
-  para="$(awk '/^\*\*Walkthrough history\.\*\*/{f=1;print;next} f&&/^\*\*/{exit} f' "$SKILL")"
-  [ -n "$para" ] || { echo "no Walkthrough history paragraph in the orchestrator"; return 1; }
-  for token in '<core root>/scripts/lint-walkthrough.sh' '`walkthrough_unreachable_commit`' '`walkthrough_unreachable_persists`' \
-               '**once**' 'kind `walkthrough`' '`task-walkthrough` → `## Refreshing`' 'Exit 2 is reported' \
-               'every folder the language check measures' 'is not sent again' 'history goes first'; do
-    grep -qF -- "$token" <<<"$para" || { echo "the Walkthrough history paragraph does not name $token"; return 1; }
+@test "the walkthrough is measured at the same boundaries and the file goes back once" {
+  para="$(awk '/^\*\*Walkthrough integrity\.\*\*/{f=1;print;next} f&&/^\*\*/{exit} f' "$SKILL")"
+  [ -n "$para" ] || { echo "no Walkthrough integrity paragraph in the orchestrator"; return 1; }
+  for token in '<core root>/scripts/lint-walkthrough.sh' '`walkthrough_lint_finding` (`{line}`)' '`walkthrough_lint_persists` (`{line}`)' \
+               '**once**' 'kind `walkthrough`' '`task-walkthrough` → `## Refreshing`' 'to the lines named' 'Exit 2 is reported' \
+               'every folder the language check measures' 'is not sent again' 'the walkthrough goes first'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the Walkthrough integrity paragraph does not name $token"; return 1; }
   done
   lang_at="$(grep -n '^\*\*Artifact language\.\*\*' "$SKILL" | cut -d: -f1)"
-  here_at="$(grep -n '^\*\*Walkthrough history\.\*\*' "$SKILL" | cut -d: -f1)"
+  here_at="$(grep -n '^\*\*Walkthrough integrity\.\*\*' "$SKILL" | cut -d: -f1)"
   [ "$here_at" -gt "$lang_at" ] || { echo "the paragraph does not follow Artifact language"; return 1; }
-  for key in walkthrough_unreachable_commit walkthrough_unreachable_persists; do
-    for l in en ru; do
+  for l in en ru; do
+    for key in walkthrough_lint_finding walkthrough_lint_persists; do
       grep -qx "## $key" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no $key"; return 1; }
     done
+    if grep -q '^## walkthrough_unreachable_' "$ROOT/skills/orchestrator/locales/$l.md"; then echo "$l.md keeps a key nothing sends"; return 1; fi
   done
 }
 
