@@ -142,6 +142,15 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
   done
 }
 
+@test "an epic writes its walkthrough after Done, which is told to keep out of it" {
+  out="$(run_profile epic "$(contract Done ", \"walkthrough\": \"deep\"")" '{"done:read-branch": {"branch": "decomposition"}}')"
+  order="$(pick "o.calls.map((c) => c.label).filter((l) => l === 'done' || l === 'walkthrough').join(' ')" <<<"$out")"
+  [ "$order" = 'done walkthrough' ] || { echo "dispatched $order"; return 1; }
+  grep -qF 'Never edit /p/Tasks/ACTIVE/001-x/Walkthrough.md' <<<"$(prompt_of done <<<"$out")" || { echo "Done is not kept out of the file"; return 1; }
+  out="$(run_profile epic "$(contract Done ", \"walkthrough\": \"off\"")" '{"done:read-branch": {"branch": "decomposition"}}')"
+  if grep -qF 'Walkthrough.md' <<<"$(prompt_of done <<<"$out")"; then echo "Done names a file no writer takes"; return 1; fi
+}
+
 @test "a current walkthrough is not rewritten after a Done that committed nothing outside the tasks" {
   idle='"done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": false}'
   busy='"done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": true}'

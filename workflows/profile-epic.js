@@ -1038,15 +1038,6 @@ if (runs('Done') && branch === null) {
 // Done reports a finished epic. A walk that stopped early has not finished one, so the report
 // waits until the orchestrator has taken the pending steps somewhere.
 if (runs('Done') && !failed_steps.length && !cancelled && !pending_steps.length) {
-  // Only a finished walk gets one, and only a decomposition: a pure-research epic ran no steps and
-  // has no diff to walk through.
-  if (branch !== 'pure_research') {
-    await writeWalkthrough(
-      'Done',
-      "This is an epic and has no commits of its own. Build the account a layer above its steps — how they compose into one delivery, in what order and why, and what changed in the intent along the way — linking to each step's own Walkthrough.md rather than restating it. [COVERS] spans the first and last commit across the completed steps.",
-    )
-  }
-
   const done = await agent(
     doneBrief(
       branch === 'pure_research'
@@ -1057,12 +1048,22 @@ if (runs('Done') && !failed_steps.length && !cancelled && !pending_steps.length)
 - Which BLOCKED steps need the user to act, listed explicitly with the blocker.
 - Overall progress: X of Y steps complete.
 - A ## Estimate retrospective section that rolls up every completed step's own retrospective: the aggregate estimated epic range against the summed actual effort, an in-range verdict, and the reason for any variance. Take actual effort per feature-estimation ## Estimate retrospective — the user's own figure when there is one, otherwise the git proxy, labelled as a proxy, otherwise unknown. Sum step rows only in matching units; never add human-days to proxy values in one total. Record this epic's data point in the calibration log: correct its row — the one whose task_id names this epic, as feature-estimation's Column semantics defines it — if the log already has one, otherwise append it.
-- Objections, aggregated from the steps' Done.md files where the user insisted on a contested decision.`,
+- Objections, aggregated from the steps' Done.md files where the user insisted on a contested decision.${walkthroughWriter() ? `
+
+Never edit ${DIR}/Walkthrough.md: its writer runs after you, so a commit of yours outside the Tasks folder is still in range when it does.` : ''}`,
     ),
     { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'done') },
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
+
+  // Only a decomposition gets one: a pure-research epic ran no steps and has no diff to walk through.
+  if (branch !== 'pure_research') {
+    await writeWalkthrough(
+      'Done',
+      "This is an epic and has no commits of its own. Build the account a layer above its steps — how they compose into one delivery, in what order and why, and what changed in the intent along the way — linking to each step's own Walkthrough.md rather than restating it. [COVERS] spans the first and last commit across the completed steps.",
+    )
+  }
 }
 
 // The key artifact of a pure-research epic is the research, not the report about it.
