@@ -31,6 +31,8 @@ Everything the authoring rule keeps English at any `[LANG]` is removed before co
 - block quotes, the lines starting with `>`: quoted logs and messages;
 - headings;
 - field lines, `[FIELD] = …`;
+- the `**Run:** …` line: the owner's words, in whatever language they were said
+  (`conventions/stage-dispatch.md` → Owner's directive);
 - bold labels ending in a colon, up to 40 characters, `**Label:**`;
 - table rows and their separators;
 - URLs, paths (a word holding `/` or `\`) and file names with an extension;
