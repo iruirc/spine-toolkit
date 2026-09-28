@@ -214,11 +214,11 @@ security; OWASP; vulnerability; certificate pinning; безопасность
 ## lang_readers_disagree
 Проверка языка мерила прозу по `{measured}`, а этот прогон пишет на `{lang}`: два прочтения `[LANG]` расходятся, поэтому ни один файл не возвращается на переписывание.
 
-## walkthrough_unreachable_commit
-`Walkthrough.md` → {where}: коммита `{sha}` нет в истории задачи. Возвращаю файл автору, чтобы убрать его описание.
+## walkthrough_lint_finding
+{line}. Возвращаю `Walkthrough.md` автору на исправление.
 
-## walkthrough_unreachable_persists
-`Walkthrough.md` → {where} после одного прохода всё ещё называет коммит `{sha}`, которого нет в истории задачи. Оставляю как есть, прогон продолжается.
+## walkthrough_lint_persists
+{line} — осталось и после одного прохода. Оставляю `Walkthrough.md` как есть, прогон продолжается.
 
 ## leftover_process
 Стадия оставила работающий процесс: `{cmd}` (pid {pid}, {age}, родитель {parent}).
