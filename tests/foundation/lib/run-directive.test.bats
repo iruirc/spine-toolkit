@@ -180,7 +180,7 @@ S_OF() { awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orch
   w="$(S_OF "The run's own words")"
   for f in '`Run.json`' '"request"' '"user_directive"' '"run_settings"' '"range"' '"started"' \
            'auq_run_resume_question' 'auq_run_resume_apply' 'auq_run_resume_discard' 'info_run_resumed' \
-           'the new last' 'deleted' 'pending_steps'; do
+           'the new last' 'not added again' 'deleted' 'pending_steps'; do
     grep -qF -- "$f" <<<"$w" || { echo "Run.json lost: $f"; return 1; }
   done
 }
