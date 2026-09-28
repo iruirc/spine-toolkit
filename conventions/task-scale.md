@@ -63,6 +63,11 @@ written, and still by the agent whose independence is the point.
 
 A `lite` run can be raised to `full`. It is never lowered, at any point, by anyone.
 
+That includes the owner's word for one run: `--set scale=full` always applies, while
+`--set scale=lite` does not beat a `[SCALE] = [full]` in the task's or the epic's `Task.md`, which
+may be this ratchet's own write-back — the file does not say whose word it was. Over the project's
+`[SCALE]` and the default, a run's `lite` applies (`conventions/task-settings.md` → The chain).
+
 Two points, both before anything expensive:
 
 | Point | Who decides | Why there |
@@ -95,7 +100,8 @@ task, not of one dispatch.
 ## Explicit beats the axis
 
 `scale` sets the default for an artifact that has its own switch, and loses to that switch when it
-is set. `[WALKTHROUGH] = [deep]` in `Task.md` writes `Walkthrough.md` on a `lite` run. The reverse
+is set. `[WALKTHROUGH] = [deep]` in `Task.md` writes `Walkthrough.md` on a `lite` run, and so does
+`--set walkthrough=deep` for one run. The reverse
 does not hold: `full` turns nothing back on that the user turned off. An axis that silently
 overrode an addressed decision would be the opacity this design exists to avoid. The same one-shot
 resolution means a mid-run raise to `full` does not turn `walkthrough` back on either: the
