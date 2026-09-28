@@ -822,6 +822,10 @@ const overlay = (field, st) => {
   return { ...out, ...runKeys(field) }
 }
 
+// A QUICK task is always lite, whatever the step or the epic says.
+// A run may raise a step's own lite; its lite never lowers a step's own full.
+const stepScale = (st) => (st.task_type === 'QUICK' ? 'lite' : st.scale === undefined ? scale : RUN_SETTINGS.scale === 'full' ? 'full' : st.scale)
+
 const toPending = (st) => ({
   step_id: st.step_id,
   task_id: st.task_id,
@@ -829,7 +833,7 @@ const toPending = (st) => ({
   profile: st.task_type,
   mode: st.mode || A.mode || 'auto',
   stack: st.stack || STACK,
-  scale: st.scale || scale,
+  scale: stepScale(st),
 })
 
 if (runs('Execute')) {
@@ -884,9 +888,7 @@ if (runs('Execute')) {
       effort: overlay('effort', st),
       need_test: st.need_test === undefined ? A.need_test : st.need_test,
       need_review: st.need_review === undefined ? A.need_review : st.need_review,
-      // A QUICK task is always lite, whatever the step or the epic says.
-      // A run may raise a step's own lite; its lite never lowers a step's own full.
-      scale: st.task_type === 'QUICK' ? 'lite' : st.scale === undefined ? scale : RUN_SETTINGS.scale === 'full' ? 'full' : st.scale,
+      scale: stepScale(st),
       drive_app: st.drive_app === undefined ? DRIVE_APP : st.drive_app,
       manual_checks: st.manual_checks === undefined ? MANUAL_CHECKS : st.manual_checks,
       phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
