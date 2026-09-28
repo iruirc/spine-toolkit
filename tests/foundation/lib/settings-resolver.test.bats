@@ -512,13 +512,13 @@ FIELDS
   # The fallback is the prelude's guarded local (DRIVE_APP, …), not A.<field> directly — an
   # absent contract field must not push a bare `undefined` into the pushed step's args.
   E="$ROOT/workflows/profile-epic.js"
-  for field in drive_app manual_checks phase_verification security walkthrough_check long_run; do
+  for field in drive_app manual_checks phase_verification security long_run; do
     guarded="$(tr '[:lower:]' '[:upper:]' <<<"$field")"
     grep -qF "$field: st.$field === undefined ? $guarded : st.$field" "$E" \
       || { echo "profile-epic.js does not forward $field to a step"; return 1; }
   done
-  # walkthrough has no guarded local: the gate and the depth read A.walkthrough, so the epic's own does.
-  grep -qF 'walkthrough: st.walkthrough === undefined ? A.walkthrough : st.walkthrough' "$E" \
+  # The depth and its check fall back along the chain, not to the epic's: quick-surfaces.test.bats.
+  grep -qF 'walkthrough: stepWalkthrough(st),' "$E" && grep -qF 'walkthrough_check: stepWalkthroughCheck(st),' "$E" \
     || { echo "profile-epic.js does not forward walkthrough to a step"; return 1; }
   grep -qF 'return its drive_app, manual_checks, phase_verification, security, walkthrough, walkthrough_check and long_run values' "$E" \
     || { echo "read-steps never asks for the step's own depth and check"; return 1; }
