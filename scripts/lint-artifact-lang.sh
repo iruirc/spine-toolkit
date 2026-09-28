@@ -37,7 +37,7 @@ INLINE = [
 ]
 HEADING = re.compile(r'^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$')
 FENCE = re.compile(r'^\s*(`{3,}|~{3,})(.*)$')
-DROPPED_LINE = re.compile(r'^\s*(\||>|\[[A-Z_]+\]\s*=)')
+DROPPED_LINE = re.compile(r'^\s*(\||>|\[[A-Z_]+\]\s*=|\*\*Run:\*\*)')
 LIST_ITEM = re.compile(r'^\s*[-*+]\s')
 
 

@@ -100,6 +100,18 @@ PY
   [ "$status" -eq 0 ] || { echo "a line with an info string closed the fence"; echo "$output"; return 1; }
 }
 
+@test "the Run line carries the owner's words in their own language and is not prose" {
+  printf '## Project settings\n\n[LANG] = [en]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  words="$(tr '\n' ' ' <"$FIX/paragraph.ru.md")"
+  english='The promo code is taken from the goods, and the delivery is priced after it.'
+  printf '# Research\n%s\n\n## Summary\n\n%s\n' "directive: «${words}»" "$english" >"$TASK/Research.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "the control passed, so this test proves nothing"; echo "$output"; return 1; }
+  printf '# Research\n%s\n\n## Summary\n\n%s\n' "**Run:** drive_app=off; directive: «${words}»" "$english" >"$TASK/Research.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
 @test "a file of short English sections is caught as a whole" {
   cp "$FIX/ops-short.en.md" "$TASK/OpsChecklist.md"
   run "$LINT" "$TASK"
