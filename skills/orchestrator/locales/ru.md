@@ -46,8 +46,8 @@
 ## stage_done_dialog_question
 Вопрос {n}/{total} — `{section}`: {text}
 
-## stage_done_dialog_answer
-Ответить
+## stage_done_dialog_accept
+Принять рекомендацию
 
 ## stage_done_dialog_defer
 Отложить (DEFERRED)

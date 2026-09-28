@@ -818,17 +818,9 @@ someone reaches for it.
 
 What the failed stage left running or changed is **Stage leftovers**'s, before `stage_error_prompt`.
 
-**Open-questions inline (research-style stages).** In `manual` mode, before rendering `stage_done_prompt`, the orchestrator inspects the just-completed stage's primary artifact (`Research.md` in every profile — the research-style stage writes that name whatever the stage is called — plus `Reproduce.md` for BUG) for non-empty open-question sections.
+**Open-questions inline (research-style stages).** In `manual` mode, before rendering `stage_done_prompt`, the orchestrator inspects the just-completed stage's primary artifact (`Research.md` in every profile — the research-style stage writes that name whatever the stage is called — plus `Reproduce.md` for BUG) for open items: run `<core root>/scripts/open-questions.sh` on those files. It prints a JSON array of `{artifact, section, id, text, recommended}` — which sections count and what an open item is are the script's; `text` is the item whole, sub-items included, and `recommended` is the sub-item marked `(recommended)` or `null`.
 
-Recognized H3 section titles (case-insensitive, scoped under any H2):
-- `### Designer questions`
-- `### Backend questions`
-- `### Known unknowns`
-- `### Open questions`
-
-Per-item rule: a bullet (`- ` or `* `) counts as open if it does NOT start with `[RESOLVED]` or `[DEFERRED]` after the bullet marker. The orchestrator collects open items as `{section, id_or_text}` pairs (id = leading token like `D1`, `U7`, `R3` when present; otherwise first 80 chars of the item text).
-
-If at least one open item is found → render `stage_done_prompt_with_questions` instead of `stage_done_prompt`, with placeholders `{stage}` and `{questions}` (the formatted list of open items, grouped by section). AUQ options:
+If at least one open item is found → render `stage_done_prompt_with_questions` instead of `stage_done_prompt`, with placeholders `{stage}` and `{questions}` (the `id` of each open item, grouped by `section`). AUQ options:
 
 1. `stage_done_option_continue` → proceed to next stage; open items propagate untouched (will hit Plan-stage estimation-gate later if blocking).
 2. `stage_done_option_resolve` → enter Q-by-Q resolution dialog (see below).
@@ -837,13 +829,13 @@ If at least one open item is found → render `stage_done_prompt_with_questions`
 
 If no open items found → render the unchanged `stage_done_prompt`.
 
-**Q-by-Q resolution dialog.** For each collected open item, in source order, AUQ using `stage_done_dialog_question` (placeholders `{n}`, `{total}`, `{section}`, `{text}`) with options:
-1. `stage_done_dialog_answer` → prompt the user for free-form text; append the answer as a sub-bullet under the original item and prefix the original bullet with `[RESOLVED]`.
+**Q-by-Q resolution dialog.** For each collected open item, in source order, AUQ using `stage_done_dialog_question` (placeholders `{n}`, `{total}`, `{section}`, `{text}` — the item's `text`) with options:
+1. `stage_done_dialog_accept`, only when `recommended` is not `null`, with `recommended` as the option's description → the answer is `recommended`. The user's own words come through AUQ's free-text option. Either answer is appended as a sub-bullet under the original item, and the original bullet is prefixed with `[RESOLVED]`.
 2. `stage_done_dialog_defer` → prefix the original bullet with `[DEFERRED]`; no answer recorded.
 3. `stage_done_dialog_skip` → leave item untouched.
 4. `confirm_dispatch_cancel` → abort the dialog; return to the `stage_done_prompt_with_questions` AUQ with the (possibly partially) updated list.
 
-Edits land in the primary artifact in-place; an `## Open Questions Log` section is appended to `Questions.md` (created if absent) with one bullet per resolved or deferred item, format: `- [<stage>] [<section>] <id_or_text> — <RESOLVED: answer | DEFERRED>`.
+Edits land in the primary artifact in-place; an `## Open Questions Log` section is appended to `Questions.md` (created if absent) with one bullet per resolved or deferred item, format: `- [<stage>] [<section>] <id> — <RESOLVED: answer | DEFERRED>`.
 
 After the dialog finishes (all items processed OR user aborted), re-run the open-questions inspection on the updated artifact and re-render `stage_done_prompt_with_questions` until either zero open items remain or the user picks `stage_done_option_continue` / `confirm_dispatch_cancel`.
 
