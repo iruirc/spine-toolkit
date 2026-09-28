@@ -408,3 +408,10 @@ NAMES
   grep -qF 'a perimeter row whose range starts or ends on it' <<<"$refresh" || { echo "## Refreshing does not repair a header row"; return 1; }
   grep -qF 'The glossary and `## How it works` are not required' "$SKILL" || { echo "the skill does not say which sections a file may leave out"; return 1; }
 }
+
+@test "a refresh repairs a range and files a phase-closing commit as bookkeeping" {
+  refresh="$(awk '/^## Refreshing$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  grep -qF '`range` — the range is rewritten to the commits that exist' <<<"$refresh" || { echo "## Refreshing does not repair a range"; return 1; }
+  grep -qF 'or a `### Bookkeeping` line for a commit that carries no engineering decision' <<<"$refresh" \
+    || { echo "the missing repair does not name bookkeeping"; return 1; }
+}
