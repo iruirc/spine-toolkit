@@ -173,3 +173,13 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
       || { echo "profile-$p: the writer may still take the change-nothing shortcut"; return 1; }
   done
 }
+
+@test "with no walkthrough written, Done closes the items about it itself" {
+  replies='{"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s"}}'
+  for p in $RANGED quick; do
+    out="$(run_profile "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough\": \"off\"")" "$replies")"
+    d="$(prompt_of done <<<"$out")"
+    [ -n "$d" ] || { echo "profile-$p: Done did not run"; return 1; }
+    if grep -qF 'Never edit' <<<"$d"; then echo "profile-$p: Done is told to hand items to a writer that will not run"; return 1; fi
+  done
+}
