@@ -96,6 +96,7 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
   - If `[STATUS]` ∈ {DEFERRED, BLOCKED, SKIPPED, DONE} — skip; record the skip in the output contract's `skipped_steps` with the reason and move on.
   - Otherwise — delegate the step (see push vs pull below).
   - If the step returned `status=error` — stop the walk, record in `failed_steps`, return control to the orchestrator with status `partial` (if at least one step had already finished) or `error` (if the very first executable step failed).
+  - If the step returned `status=ok` with `next_recommended_action=ask_user`, or with a `validation_status` other than `PASSED` or a `review_status` other than `APPROVED` — it did not reach its end and its work is unverified: stop the walk and record it in `failed_steps`, as for `status=error`, without ticking it in `Plan.md`.
   - If a QUICK step returned `quick_escalation` — its entry check found no QUICK change and nothing was changed: stop the walk and record it in `failed_steps` with that reason, as for `status=error`.
   - If the step returned `status=cancelled` (user declined in its AUQ) — stop the walk, status `partial` or `cancelled`.
 

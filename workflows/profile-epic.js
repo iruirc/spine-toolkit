@@ -990,6 +990,14 @@ if (runs('Execute')) {
         for (const rest of walk.slice(i + 1)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
         break
       }
+      // A profile hands back a verdict it cannot act on as ok with ask_user; a REVIEW step records
+      // CHANGES_REQUESTED and stops. Either way the step's work is unverified and stays unticked.
+      const verdict = [r.validation_status, r.review_status].find((v) => v && !['PASSED', 'APPROVED'].includes(v))
+      if (r.next_recommended_action === 'ask_user' || verdict) {
+        failed_steps.push({ step_id: st.step_id, task_id: st.task_id, error_reason: `${verdict || 'ask_user'}: ${r.notes || r.reason || 'no reason given'}` })
+        for (const rest of walk.slice(i + 1)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
+        break
+      }
 
       completed_steps.push({ step_id: st.step_id, task_id: st.task_id, status: 'ok' })
 
