@@ -128,3 +128,37 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
     fi
   done
 }
+
+@test "the walkthrough is refreshed after Done, which is told to keep out of it" {
+  replies='{"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s"}}'
+  for p in $RANGED quick; do
+    out="$(run_profile "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies")"
+    order="$(pick "o.calls.map((c) => c.label).filter((l) => l === 'done' || l === 'walkthrough').join(' ')" <<<"$out")"
+    [ "$order" = 'done walkthrough' ] || { echo "profile-$p: dispatched $order"; return 1; }
+    d="$(prompt_of done <<<"$out")"
+    grep -qF 'Never edit /p/Tasks/ACTIVE/001-x/Walkthrough.md' <<<"$d" || { echo "profile-$p: Done is not kept out of the file"; return 1; }
+    [ "$(pick "JSON.stringify(Object.keys(o.calls.find((c) => c.label === 'done').schema.properties).includes('walkthrough_findings'))" <<<"$out")" = true ] \
+      || { echo "profile-$p: DONE schema has no walkthrough_findings"; return 1; }
+  done
+}
+
+@test "an item about the walkthrough goes to its writer and is closed by it" {
+  item='name the third commit in ## Commits'
+  replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$item\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"walkthrough_findings\": [\"$item\"]}}"
+  for p in $RANGED quick; do
+    out="$(run_profile "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies")"
+    [ "$(pick 'o.result.next_recommended_action' <<<"$out")" = stop ] || { echo "profile-$p: $(pick 'o.result' <<<"$out")"; return 1; }
+    grep -qF "Close these Review findings in the file: $item" <<<"$(prompt_of walkthrough <<<"$out")" \
+      || { echo "profile-$p: the writer was not handed the item"; return 1; }
+  done
+}
+
+@test "an item handed to a writer that returned nothing stays open" {
+  item='name the third commit in ## Commits'
+  replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$item\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"walkthrough_findings\": [\"$item\"]}, \"walkthrough\": {\"ok\": false, \"summary\": \"s\"}}"
+  for p in $RANGED quick; do
+    out="$(run_profile "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies")"
+    [ "$(pick 'o.result.next_recommended_action' <<<"$out")" = ask_user ] || { echo "profile-$p: $(pick 'o.result' <<<"$out")"; return 1; }
+    grep -qF "$item" <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: the note does not name the item"; return 1; }
+  done
+}

@@ -314,8 +314,8 @@ NAMES
   n=0
   for p in "$ROOT"/workflows/profile-*.js; do
     n=$((n + 1))
-    for line in "if (WALKTHROUGH_CHECK !== 'on' || w.changed === false) return" \
-                "await checkWalkthrough(stage, agentType, depth, extra)" \
+    for line in "if (WALKTHROUGH_CHECK === 'on' && w.changed !== false) await checkWalkthrough(stage, agentType, depth, extra)" \
+                'return w' \
                 "label: 'walkthrough:check'" "label: 'walkthrough:revise'" \
                 "schema: COLD_READ, ...tuning(WALKTHROUGH_AGENT, 'light')" \
                 "schema: WALKTHROUGH_ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'walkthrough')" \
@@ -379,4 +379,14 @@ NAMES
   grep -qF "and again after Done's own commits" "$SKILL" || { echo "the description still places the refresh before Done's commits"; return 1; }
   when="$(awk '/^## When to use$/{f=1;next} /^## /{f=0} f' "$SKILL")"
   grep -qF 'Done itself never edits this file' <<<"$when" || { echo "## When to use does not keep Done out of the file"; return 1; }
+}
+
+@test "every profile script's writer repairs each class the lint names" {
+  n=0
+  for p in "$ROOT"/workflows/profile-*.js; do
+    n=$((n + 1))
+    grep -qF "Each line it prints names a class: apply the skill's ## Refreshing rule for that class and run it once more." "$p" \
+      || { echo "$(basename "$p"): the writer still reads every line as a commit gone from history"; return 1; }
+  done
+  [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
 }

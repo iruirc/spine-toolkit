@@ -175,10 +175,14 @@ const REVIEW_RECORD = RANGED
 const CATCH_UP_VALIDATION = CATCH_UP && RANGES ? `\n\nThis run catches up commits that landed after the task's Done: ${rangeList()}. Validate them at the depth the spine-toolkit:phase-verification skill gives their diff, and name that depth in Validation.md.` : ''
 // Done's share: close what Review left it, stamp where the repositories stand.
 const doneRecord = (handed) =>
-  `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings. The first lines of Done.md are the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names those ranges, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}${AFTER_DONE ? ` These fixes follow a catch-up: before you rewrite Done.md, run "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since done, then append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names the ranges it printed, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}`
-// Review's done_findings that Done did not report closed; none when Review did not run in this invocation.
-const unclosed = (review, done) =>
-  review && Array.isArray(review.done_findings) ? review.done_findings.slice(done && Array.isArray(done.closed_findings) ? done.closed_findings.length : 0) : []
+  `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings. Never edit ${DIR}/Walkthrough.md: an item about it goes into walkthrough_findings instead, and under ## Review findings closed as handed to the walkthrough writer, who runs after you. The first lines of Done.md are the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names those ranges, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}${AFTER_DONE ? ` These fixes follow a catch-up: before you rewrite Done.md, run "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since done, then append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names the ranges it printed, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}`
+// Review's done_findings that Done did not report closed, counting those it handed to a walkthrough
+// writer that returned the file; none when Review did not run in this invocation.
+const unclosed = (review, done, w) => {
+  if (!review || !Array.isArray(review.done_findings)) return []
+  const handed = w && w.artifact_path && done && Array.isArray(done.walkthrough_findings) ? done.walkthrough_findings.length : 0
+  return review.done_findings.slice((done && Array.isArray(done.closed_findings) ? done.closed_findings.length : 0) + handed)
+}
 // A report an earlier Done left is claims to check, never a draft to confirm.
 const PRIOR_DONE = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Done-[^/]*\.md$/.test(p))
 const doneBrief = (body, handed) => brief(
@@ -199,7 +203,7 @@ const ARTIFACT = {
   },
 }
 // Done also says which of Review's done_findings it closed.
-const DONE_ARTIFACT = { ...ARTIFACT, properties: { ...ARTIFACT.properties, closed_findings: { type: 'array', items: { type: 'string' } } } }
+const DONE_ARTIFACT = { ...ARTIFACT, properties: { ...ARTIFACT.properties, closed_findings: { type: 'array', items: { type: 'string' } }, walkthrough_findings: { type: 'array', items: { type: 'string' }, description: 'the ## For Done items about Walkthrough.md, left to its writer' } } }
 
 const PLAN = {
   type: 'object',
@@ -526,7 +530,7 @@ Derive the account from git — the task's own commits, git log over the range a
 
 If the file already exists, that range already ends at the task's last commit and "${core('scripts/lint-walkthrough.sh')}" ${DIR} exits 0, change nothing and say so. Return changed true when you wrote the file, false when you left it as it was.
 
-Last, run "${core('scripts/lint-walkthrough.sh')}" ${DIR}. Each line it prints is a commit the task's history no longer holds: apply the skill's ## Refreshing rule for such commits and run it once more. On exit 2 stop and return its output; a line that rule does not resolve is returned, not forced. Return what its last run printed in lint.${extra ? `
+Last, run "${core('scripts/lint-walkthrough.sh')}" ${DIR}. Each line it prints names a class: apply the skill's ## Refreshing rule for that class and run it once more. On exit 2 stop and return its output; a line that rule does not resolve is returned, not forced. Return what its last run printed in lint.${extra ? `
 
 ${extra}` : ''}
 
@@ -540,8 +544,8 @@ Change no production code and no tests.`,
   }
   log(`Walkthrough.md: ${w.summary || 'written'}`)
   if (w.lint) result.notes.push(`Walkthrough.md lint: ${w.lint}`)
-  if (WALKTHROUGH_CHECK !== 'on' || w.changed === false) return
-  await checkWalkthrough(stage, agentType, depth, extra)
+  if (WALKTHROUGH_CHECK === 'on' && w.changed !== false) await checkWalkthrough(stage, agentType, depth, extra)
+  return w
 }
 
 // The security lens (spine-toolkit:security-lens): a light triage decides whether the task touches
@@ -723,10 +727,6 @@ Judge the change against Task.md and Plan.md: does it do what Task.md asks and n
 }
 
 // ── Done ────────────────────────────────────────────────────────────────────
-// Done refreshes the walkthrough only when Edit did not run in this invocation: one that entered
-// at Review or Done has commits the file has not seen.
-if (runs('Done') && !runs('Edit')) await writeWalkthrough('Done')
-
 if (runs('Done')) {
   if (!need('Done', 'developer')) return finish('ask_user')
   const done = await agent(
@@ -738,7 +738,10 @@ if (runs('Done')) {
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
-  const open = unclosed(review, done)
+  // Done commits documentation and trackers of its own, so the walkthrough is refreshed after it.
+  const handed = Array.isArray(done.walkthrough_findings) ? done.walkthrough_findings : []
+  const w = await writeWalkthrough('Done', handed.length ? `Close these Review findings in the file: ${handed.join('; ')}` : '')
+  const open = unclosed(review, done, w)
   if (open.length) {
     result.notes.push(`Done left ${open.length} of Review's done_findings unclosed: ${open.join('; ')}. Close them in the task's files, then run Done again.`)
     return finish('ask_user')
