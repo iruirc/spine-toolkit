@@ -5,6 +5,7 @@
 #        scripts/task-ranges.sh tips   <task-dir> --kind reviewed|done            # record lines
 #        scripts/task-ranges.sh ranges <task-dir> --since base|reviewed|done      # JSON
 #        scripts/task-ranges.sh unreachable <task-dir> <sha>...                   # shas not the task's
+#        scripts/task-ranges.sh commits <task-dir> <a>..<b>                       # a and what follows
 # Exit:  0, or 2 on a usage error, a record it cannot read, or a recorded repository gone.
 set -euo pipefail
 
@@ -124,6 +125,14 @@ def count(top, sha):
     return int(git(top, 'rev-list', '--count', sha + '..HEAD', *spec))
 
 
+def with_own():
+    # The tasks repository is never a range to review, but its phase-closing commits are the task's.
+    own, out = git(TASK, 'rev-parse', '--show-toplevel'), dict(REPOS)
+    if own and inside(os.path.realpath(own), TASKS):
+        out[None] = os.path.realpath(own)
+    return out
+
+
 if CMD == 'record':
     if OPTS:
         die('usage: task-ranges.sh record <task-dir>')
@@ -175,14 +184,20 @@ elif CMD == 'unreachable':
         bounded = base and git(top, 'merge-base', '--is-ancestor', base, 'HEAD') is not None
         return not bounded or git(top, 'merge-base', '--is-ancestor', full, base) is None
 
-    # The tasks repository is never a range to review, but its phase-closing commits are the task's.
-    own = git(TASK, 'rev-parse', '--show-toplevel')
-    checked = dict(REPOS)
-    if own and inside(os.path.realpath(own), TASKS):
-        checked[None] = os.path.realpath(own)
     for sha in OPTS:
-        if not any(ours(rel, top, sha) for rel, top in checked.items()):
+        if not any(ours(rel, top, sha) for rel, top in with_own().items()):
             print(sha)
+elif CMD == 'commits':
+    m = re.fullmatch(r'([0-9a-f]{7,40})\.\.([0-9a-f]{7,40})', OPTS[0]) if len(OPTS) == 1 else None
+    if not m:
+        die('usage: task-ranges.sh commits <task-dir> <a>..<b>')
+    for top in with_own().values():
+        a, b = (git(top, 'rev-parse', '-q', '--verify', s + '^{commit}') for s in m.groups())
+        if a and b and git(top, 'merge-base', '--is-ancestor', a, b) is not None:
+            # First parent only: a merge brings upstream commits into a..b that are not the task's.
+            print('\n'.join([a] + git(top, 'rev-list', '--first-parent', '--reverse', a + '..' + b).split()))
+            sys.exit(0)
+    die('no repository of the task holds %s' % OPTS[0])
 else:
     die('unknown command "%s"' % CMD)
 PY

@@ -56,6 +56,11 @@ reachable from `HEAD` alone where `Base.md` has no line or the base is `rewritte
 branch holds is not reported while `HEAD` is elsewhere, nor one of the tasks repository's own. It is
 what `scripts/lint-walkthrough.sh` checks `Walkthrough.md` against.
 
+`commits <a>..<b>` prints the commits of that range, `a` included, oldest first, along the first
+parent — a merge's upstream side is not the task's — from whichever repository of the task, the
+tasks repository included, holds both ends. It is how `scripts/lint-walkthrough.sh` reads the
+ranges `Walkthrough.md` declares.
+
 ## Review and Done
 
 Review reads exactly the ranges it is given. On a re-review it marks each Critical and Major of its
