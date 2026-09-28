@@ -368,3 +368,15 @@ NAMES
   done
   [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
 }
+
+@test "a refresh repairs every class the lint names, and deep is one commit per section" {
+  refresh="$(awk '/^## Refreshing$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  for token in 'A line of class `unreachable`' '`section`' '`missing`' '`heading`' '`count`' 'a missing commit is appended'; do
+    grep -qF -- "$token" <<<"$refresh" || { echo "## Refreshing does not name $token"; return 1; }
+  done
+  grep -qF 'never one per phase: a heading names exactly one sha' "$SKILL" \
+    || { echo "deep does not forbid a section per phase"; return 1; }
+  grep -qF "and again after Done's own commits" "$SKILL" || { echo "the description still places the refresh before Done's commits"; return 1; }
+  when="$(awk '/^## When to use$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  grep -qF 'Done itself never edits this file' <<<"$when" || { echo "## When to use does not keep Done out of the file"; return 1; }
+}
