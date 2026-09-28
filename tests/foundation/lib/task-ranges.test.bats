@@ -278,6 +278,24 @@ origin_at() { # $1 commit: origin/main stands there and is the remote's HEAD, as
   grep -qF 'usage: task-ranges.sh commits' <<<"$output" || { echo "$output"; return 1; }
 }
 
+@test "last names each repository's newest own commit, outside the tasks folder" {
+  "$TR" record "$TASK"
+  run "$TR" last "$TASK"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "nothing yet: $status $output"; return 1; }
+  commit "$PROJ" a.txt; a="$(git -C "$PROJ" rev-parse HEAD)"
+  commit "$PROJ/Tasks" ACTIVE/001-x/Plan.md
+  run "$TR" last "$TASK"
+  [ "$output" = ". $a" ] || { echo "one repository: $output"; return 1; }
+  commit "$PROJ/Packages/Core" core.txt; c="$(git -C "$PROJ/Packages/Core" rev-parse HEAD)"
+  run "$TR" last "$TASK"
+  [ "$output" = "$(printf '. %s\nPackages/Core %s' "$a" "$c")" ] || { echo "two repositories: $output"; return 1; }
+  git -C "$PROJ/Packages/Core" reset -q --hard HEAD~1
+  commit "$PROJ/Packages/Core" other.txt
+  sed -i.bak "s|Packages/Core: .*|Packages/Core: $c|" "$TASK/Base.md"
+  run "$TR" last "$TASK"
+  grep -qxF 'Packages/Core unknown' <<<"$output" || { echo "rewritten: $output"; return 1; }
+}
+
 @test "a record it cannot trust stops with exit 2" {
   printf '[DONE_COMMIT] = .: not-a-sha\n' >"$TASK/Done.md"
   run "$TR" ranges "$TASK" --since done

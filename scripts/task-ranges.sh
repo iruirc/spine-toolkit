@@ -6,6 +6,7 @@
 #        scripts/task-ranges.sh ranges <task-dir> --since base|reviewed|done      # JSON
 #        scripts/task-ranges.sh unreachable <task-dir> <sha>...                   # shas not the task's
 #        scripts/task-ranges.sh commits <task-dir> <a>..<b>                       # a and what follows
+#        scripts/task-ranges.sh last <task-dir>                                   # newest own commit
 # Exit:  0, or 2 on a usage error, a record it cannot read, or a recorded repository gone.
 set -euo pipefail
 
@@ -174,6 +175,20 @@ elif CMD == 'ranges':
         else:
             repos[rel] = {'range': sha + '..HEAD', 'commits': count(top, sha), 'state': 'ok'}
     print(json.dumps({'since': since, 'repos': repos}, sort_keys=True))
+elif CMD == 'last':
+    if OPTS:
+        die('usage: task-ranges.sh last <task-dir>')
+    rec = recorded('BASE', 'Base.md')
+    for rel, top in sorted(REPOS.items()):
+        sha = rec.get(rel) or fallback_base(top)
+        if not sha or git(top, 'merge-base', '--is-ancestor', sha, 'HEAD') is None:
+            print('%s unknown' % rel)
+            continue
+        tasks = os.path.relpath(TASKS, top)
+        spec = ['--', '.', ':(exclude)' + tasks] if not tasks.startswith('..') else []
+        last = git(top, 'rev-list', '-1', '--first-parent', sha + '..HEAD', *spec)
+        if last:
+            print('%s %s' % (rel, last))
 elif CMD == 'unreachable':
     if not OPTS:
         die('usage: task-ranges.sh unreachable <task-dir> <sha>...')

@@ -6,18 +6,23 @@ set -euo pipefail
 # depth, a deep section that holds more than one commit, and a commit of a declared range that the
 # body never names — what a patch that cut the file short leaves behind.
 #
-# Usage: scripts/lint-walkthrough.sh <task-dir>
+# With --current it also asks whether the file is up to date: every repository's newest own commit
+# named in ## Commits. Nothing to measure is then a finding, since there is nothing up to date.
+#
+# Usage: scripts/lint-walkthrough.sh [--current] <task-dir>
 # Exit:  0 nothing found, or nothing to measure (no Walkthrough.md, no Base.md, an EPIC);
 #        1 one line per finding, "Walkthrough.md: <class>: <what> (<where>)";
 #        2 usage, or task-ranges.sh could not answer.
 
-[ "$#" -eq 1 ] || { echo "usage: $0 <task-dir>" >&2; exit 2; }
+current=0
+[ "${1:-}" = --current ] && { current=1; shift; }
+[ "$#" -eq 1 ] || { echo "usage: $0 [--current] <task-dir>" >&2; exit 2; }
 [ -d "$1" ] || { echo "not a directory: $1" >&2; exit 2; }
 
-python3 - "$(dirname -- "${BASH_SOURCE[0]}")/task-ranges.sh" "$1" <<'PY'
+python3 - "$(dirname -- "${BASH_SOURCE[0]}")/task-ranges.sh" "$1" "$current" <<'PY'
 import os, re, subprocess, sys
 
-RANGES, TASK = sys.argv[1], sys.argv[2]
+RANGES, TASK, CURRENT = sys.argv[1], sys.argv[2], sys.argv[3] == '1'
 SHA = r'[0-9a-f]{7,40}'
 # Every backticked sha or sha range on a line, wherever it sits: a heading may put a word or bold
 # markup before one.
@@ -68,6 +73,9 @@ def cells(line):
 path = os.path.join(TASK, 'Walkthrough.md')
 # An epic's ## Commits holds a section per step, not per commit.
 if not os.path.isfile(path) or not os.path.isfile(os.path.join(TASK, 'Base.md')) or task_type() == 'EPIC':
+    if CURRENT:
+        print('Walkthrough.md: behind: no file, no Base.md, or an EPIC (%s)' % TASK)
+        sys.exit(1)
     sys.exit(0)
 
 headings, named, headers, perimeter, columns = [], [], [], [], None
@@ -151,6 +159,17 @@ for repo, a, b, count in declared:
               for c in listed if not any(c.startswith(s) for s in covered)]
     if count.strip() != str(len(listed)):
         found.append('count: the header says %s, the range holds %d (%s)' % (count.strip(), len(listed), repo))
+
+if CURRENT:
+    r = subprocess.run([RANGES, 'last', TASK], capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.stderr.write(r.stderr)
+        sys.exit(2)
+    for repo, sha in (line.rsplit(' ', 1) for line in r.stdout.splitlines()):
+        if sha == 'unknown':
+            found.append('behind: no base to find the newest commit by (%s)' % repo)
+        elif not any(sha.startswith(s) for s in covered):
+            found.append('behind: %s is not named in ## Commits (%s)' % (sha[:7], repo))
 
 if found:
     print('\n'.join('Walkthrough.md: ' + f for f in found))
