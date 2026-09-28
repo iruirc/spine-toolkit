@@ -59,6 +59,13 @@ block() { # $1 index, $2 directive, $3 run line
   [[ "$pr" == *'«use the "slow" suite'$'\n''then stop»'* ]] || { echo "$pr"; return 1; }
 }
 
+@test "the Run line stays one line, while the directive's block keeps it verbatim" {
+  pr="$(run_profile bug "$(contract ', "start_stage": "Validation", "user_directive": "use the slow suite\n\t then  stop"')" | pick "o.calls[0].prompt")"
+  want="$(block 2 '' 'directive: «use the slow suite then stop»')"
+  grep -qF -- "$want" <<<"$pr" || { echo "$pr"; return 1; }
+  [[ "$pr" == *'«use the slow suite'$'\n\t'' then  stop». Apply'* ]] || { echo "$pr"; return 1; }
+}
+
 @test "a directive of blanks is no directive" {
   a="$(run_profile bug "$(contract ', "start_stage": "Validation"')" | pick "o.calls[0].prompt")"
   b="$(run_profile bug "$(contract ', "start_stage": "Validation", "user_directive": "  \n "')" | pick "o.calls[0].prompt")"

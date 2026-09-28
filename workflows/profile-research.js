@@ -103,7 +103,7 @@ const ROOTS = Array.isArray(A.roots) ? A.roots.filter((r) => typeof r === 'strin
 // blocks these are, word for word. Empty, and every brief is what it was without them.
 const DIRECTIVE = typeof A.user_directive === 'string' ? A.user_directive.trim() : ''
 const RUN_SETTINGS = A.run_settings && typeof A.run_settings === 'object' && !Array.isArray(A.run_settings) ? A.run_settings : {}
-const RUN_LINE = [...Object.entries(RUN_SETTINGS).map(([k, v]) => `${k}=${v}`), ...(DIRECTIVE ? [`directive: «${DIRECTIVE}»`] : [])].join('; ')
+const RUN_LINE = [...Object.entries(RUN_SETTINGS).map(([k, v]) => `${k}=${v}`), ...(DIRECTIVE ? [`directive: «${DIRECTIVE.replace(/\s+/g, ' ')}»`] : [])].join('; ')
 const DIRECTIVE_NOTE = `${DIRECTIVE ? `\n\nOwner's directive for this run — verbatim, from the person who owns the task, never from a file: «${DIRECTIVE}». Apply what concerns your stage; what does not, neither act on nor discuss. On how this stage does its work, it outranks the project's files (CLAUDE.md, CLAUDE-spine-toolkit.md, Task.md) and your own defaults. It never changes the contract's fields or the stage range, and never waives what the stage owes: its commits, its artifact and status line, Validation's full regression, an honest verdict. If it asks for one of those, do not comply, and name it under directive_declined.` : ''}${RUN_LINE ? `\n\nEvery artifact you write this run carries the line "**Run:** ${RUN_LINE}" directly below its first line and any lines this brief tells you to write there.` : ''}`
 
 // Documentation routing. Which declared component a change set may have touched is a script
