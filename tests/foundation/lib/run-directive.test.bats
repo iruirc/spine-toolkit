@@ -138,6 +138,12 @@ epic_run() { # $1 extra contract members, $2 the step record's own fields (leadi
   [ "$(pick 'o.scale' <<<"$args")" = full ] || { echo "$args"; return 1; }
 }
 
+@test "a pending step carries the scale a pushed one would run at" {
+  out="$(run_profile epic "$(contract ', "start_stage": "Execute", "mode": "manual", "scale": "lite", "run_settings": {"scale": "full"}')" \
+    '{"execute:read-steps": {"branch": "decomposition", "steps": [{"step_id": "1-a.step", "task_id": "001.1", "task_type": "FEATURE", "status": "PENDING", "scale": "lite"}, {"step_id": "2-b.step", "task_id": "001.2", "task_type": "QUICK", "status": "PENDING"}]}}')"
+  [ "$(pick 'JSON.stringify(o.result.pending_steps.map((s) => s.scale))' <<<"$out")" = '["full","lite"]' ] || { echo "$out"; return 1; }
+}
+
 @test "a step of a run without a directive gets empty fields, never missing ones" {
   args="$(epic_run '' '' | pick "o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-feature').args")"
   [ "$(pick 'JSON.stringify([o.user_directive, o.run_settings])' <<<"$args")" = '["",{}]' ] || { echo "$args"; return 1; }
