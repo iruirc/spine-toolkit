@@ -111,7 +111,7 @@ epic_run() { # $1 extra contract members, $2 the step record's own fields (leadi
 
 @test "the epic resolves each step with this run's settings" {
   pr="$(epic_run ', "run_settings": {"drive_app": "off", "models.reviewer": "opus"}' '' | pick "o.calls.find((c) => c.label === 'execute:read-steps').prompt")"
-  grep -qF 'resolve-settings.sh json <step folder> --set drive_app=off --set models.reviewer=opus"' <<<"$pr" || { echo "$pr"; return 1; }
+  grep -qF "resolve-settings.sh json <step folder> --set 'drive_app=off' --set 'models.reviewer=opus'\"" <<<"$pr" || { echo "$pr"; return 1; }
   pr="$(epic_run '' '' | pick "o.calls.find((c) => c.label === 'execute:read-steps').prompt")"
   grep -qF 'resolve-settings.sh json <step folder>"' <<<"$pr" || { echo "$pr"; return 1; }
 }
@@ -196,4 +196,35 @@ S_OF() { awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orch
       grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md lacks $k"; return 1; }
     done
   done
+}
+
+@test "an auto epic reports what its pushed steps declined" {
+  out="$(run_profile epic "$(contract ', "start_stage": "Execute", "mode": "auto", "user_directive": "do not commit"')" \
+    '{"execute:read-steps": {"branch": "decomposition", "steps": [{"step_id": "1-a.step", "task_id": "001.1", "task_type": "FEATURE", "status": "PENDING"}]}, "workflow:spine-toolkit:profile-feature": {"status": "ok", "last_completed_stage": "Done", "stages": [{"stage": "Execute", "directive_declined": "1: committed anyway"}, {"stage": "Done", "directive_declined": ""}]}}')"
+  n="$(pick 'o.result.notes' <<<"$out")"
+  grep -qF "Step 1-a.step, Execute declined part of the owner's directive: 1: committed anyway" <<<"$n" || { echo "$n"; return 1; }
+  ! grep -qF 'Done declined' <<<"$n" || { echo "$n"; return 1; }
+}
+
+@test "the epic passes a step only the run's model keys a step could take itself" {
+  args="$(epic_run ', "run_settings": {"models.Reviewer": "opus", "models.architect": "gpt", "effort.developer": "platform"}' '' | pick "o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-feature').args")"
+  [ "$(pick 'o.models.reviewer' <<<"$args")" = opus ] || { echo "$args"; return 1; }
+  [ "$(pick 'JSON.stringify([o.models.architect, o.models.Reviewer, o.effort.developer])' <<<"$args")" = '[null,null,null]' ] || { echo "$args"; return 1; }
+}
+
+@test "the epic quotes each --set it hands the step resolver" {
+  pr="$(epic_run ', "run_settings": {"drive_app": "off"}' '' | pick "o.calls.find((c) => c.label === 'execute:read-steps').prompt")"
+  grep -qF "resolve-settings.sh json <step folder> --set 'drive_app=off'\"" <<<"$pr" || { echo "$pr"; return 1; }
+}
+
+@test "a run keeps only the settings the resolver applied, and a single-stage range ends at its stage" {
+  w="$(S_OF "The run's own words")"
+  for f in 'whose source in that call is not `run`' '`start_stage` when `stage_scope` is `single`' \
+           'tracked by git' 'warn_run_file_tracked'; do
+    grep -qF -- "$f" <<<"$w" || { echo "the run's own words lost: $f"; return 1; }
+  done
+  p="$(S_OF 'Progress reporting')"
+  grep -qF '`{to}` the value it resolved to' <<<"$p" || { echo "info_run_setting still takes the raw value"; return 1; }
+  grep -qF "an epic's notes" <<<"$p" || { echo "an epic's step refusals are not surfaced"; return 1; }
+  for l in en ru; do grep -qx '## warn_run_file_tracked' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l lacks warn_run_file_tracked"; return 1; }; done
 }

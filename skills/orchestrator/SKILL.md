@@ -82,18 +82,25 @@ were said for is done. It is the one place they live, so a later dispatch of the
  "started": "2026-09-28T14:30:22+03:00"}
 ```
 
-- **Written** once Resolution step 1 has found the task folder, before step 3 resolves its settings;
-  nothing is written for a request that carries neither.
+- **Written** once Resolution step 3 has resolved the settings with them: a `run_settings`
+  entry whose source in that call is not `run` — a value the field does not take, a field a run
+  cannot set, a `lite` kept below a task's `full` — was not applied, and is dropped before the file
+  is written, so neither the contract nor an artifact's `**Run:**` line claims it. Nothing is
+  written for a request left with neither.
 - **Read** at every dispatch of the range — each stage of a `manual` Method A run is one — rather
   than recalled from the conversation.
+- **Tracked by git**, it is not the owner's word for this run: a file tracked by git is one anyone
+  could have committed. Ignore it, announce `warn_run_file_tracked` (`{path}`), and go on as if
+  there were none.
 - **Found by a request that did not write it** — a new session, or a later command in this one: in
   `manual`, AUQ using key `auq_run_resume_question` (`{started}`, `{settings}`, `{directive}`),
   options `auq_run_resume_apply` and `auq_run_resume_discard`; in `auto`, apply it and announce
   `info_run_resumed` with the same placeholders. Applied, the new request's own values win key by
   key, both directives are kept — the old first, the new last, a line break between — and the file
   is rewritten with the new range. Discarded, it is deleted.
-- **Deleted** once a return's `last_completed_stage` is the range's last stage — `end_stage`, or the
-  profile's last. A stop at a gate, a failure or a cancel leaves it in place.
+- **Deleted** once a return's `last_completed_stage` is the range's last stage — `end_stage`, else
+  `start_stage` when `stage_scope` is `single`, else the profile's last, in the folder the task is in
+  after the return. A stop at a gate, a failure or a cancel leaves it in place.
 - **An epic's run** is the epic's file. The script resolves each step with `--set` and hands the
   directive on; the `pending_steps` it returns are dispatched with the same `run_settings` and
   `user_directive` and write no file of their own. A step run on its own writes its file in its own
@@ -190,7 +197,7 @@ Algorithm:
 
 3. Resolve the settings — one call, every field:
      bash "<core root>/scripts/resolve-settings.sh" json <task dir> [--set <field>=<value> ...]
-   • one --set per run_settings entry, as Run.json holds them (The run's own words)
+   • one --set per run_settings entry, from the request or from Run.json (The run's own words)
    • mode_override (NL: "automatically" / "step-by-step") wins over the `mode` field
    • progress_override (NL: "quietly" / "with live indication") wins over the `progress` field
    ↓ every other field is the value the script printed; do not re-derive one by reading a file
@@ -680,7 +687,8 @@ left on the shipped template prints just two rows: `[SCALE]`, the one field whos
 absent-field default differ, and the `[WALKTHROUGH]` that a `lite` scale drags to `off` with it.
 
 **The run's own words.** With `run_settings` non-empty, render `info_run_setting` once per entry —
-`{field}`, `{from}` the value a `json` call without `--set` gives, `{to}` — and with `user_directive`
+`{field}`, `{from}` the value a `json` call without `--set` gives, `{to}` the value it resolved to
+with them — and with `user_directive`
 non-empty, `info_run_directive` (`{directive}`). At `normal` and above they close the opening block;
 at `quiet` they open the final report. They are how the user sees what went to the agents.
 
@@ -718,7 +726,7 @@ wrote one, plus the agent's own one-or-two-sentence summary, plus `progress_stag
 the stage carries a verdict.
 
 A stage that declined part of the directive — a non-empty `directive_declined` in its `stages[]`
-record under Method A, a refusal in `notes` under Method B — gets `info_directive_declined`
+record under Method A, a refusal in `notes` under Method B or in an epic's notes for its steps — gets `info_directive_declined`
 (`{stage}`, `{what}`) right after its report, at every `progress` value, `quiet` included: it is a
 refusal, not progress.
 
