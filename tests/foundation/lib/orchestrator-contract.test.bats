@@ -405,6 +405,16 @@ section() {
   done
 }
 
+@test "the outbound contract carries walkthrough_current, measured by the lint's --current" {
+  grep -qxF 'walkthrough_current=true|false' "$SKILL" || { echo "no walkthrough_current= line in the contract block"; return 1; }
+  para="$(awk '/^`walkthrough_current` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`walkthrough_current\` paragraph in the Outbound Contract"; return 1; }
+  for token in 'lint-walkthrough.sh --current <task dir>' 'exit 0 is `true`' 'Always filled' \
+               'wherever `walkthrough` is `off`' 'JSON boolean' 'a Method B run asks the same script after Done'; do
+    grep -qF "$token" <<<"$para" || { echo "the walkthrough_current paragraph does not say $token"; return 1; }
+  done
+}
+
 @test "the outbound contract carries research_experiment, for research only" {
   contract="$(awk '/^## Outbound Contract$/{c=1;next} /^## Dispatch$/{c=0} c' "$SKILL")"
   para="$(grep -F '**RESEARCH-only field — `research_experiment`.**' <<<"$contract")"
