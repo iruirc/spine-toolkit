@@ -494,7 +494,7 @@ section() {
 @test "the open-questions gate collects through its script and offers a marked recommendation" {
   para="$(awk '/^\*\*Open-questions inline/{f=1} f&&/^\*\*Scope:\*\*/{exit} f' "$SKILL")"
   [ -n "$para" ] || { echo "no Open-questions inline paragraph in the orchestrator"; return 1; }
-  for token in '<core root>/scripts/open-questions.sh' '`{artifact, section, id, text, recommended}`' \
+  for token in '<core root>/scripts/open-questions.sh` on those of them that exist' '`{artifact, section, id, text, recommended}`' \
                '`stage_done_dialog_accept`, only when `recommended` is not `null`' 'free-text option'; do
     grep -qF -- "$token" <<<"$para" || { echo "the gate paragraph does not name $token"; return 1; }
   done
