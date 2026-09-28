@@ -390,3 +390,13 @@ NAMES
   done
   [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
 }
+
+@test "every workflow skill with an implementing stage refreshes the walkthrough after Done" {
+  for p in feature bug refactor test quick; do
+    S="$ROOT/skills/workflow-$p/SKILL.md"
+    grep -qF 'Refresh `Walkthrough.md` after `Done.md` is written and its commits are made' "$S" \
+      || { echo "workflow-$p: the refresh does not follow Done's commits"; return 1; }
+    grep -qF 'Done never edits `Walkthrough.md`' "$S" || { echo "workflow-$p: Done is not kept out of the file"; return 1; }
+    if grep -qF 'Refresh `Walkthrough.md` here when' "$S"; then echo "workflow-$p: the old gate is still there"; return 1; fi
+  done
+}
