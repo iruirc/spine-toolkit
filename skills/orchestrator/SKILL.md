@@ -96,8 +96,9 @@ were said for is done. It is the one place they live, so a later dispatch of the
   `manual`, AUQ using key `auq_run_resume_question` (`{started}`, `{settings}`, `{directive}`),
   options `auq_run_resume_apply` and `auq_run_resume_discard`; in `auto`, apply it and announce
   `info_run_resumed` with the same placeholders. Applied, the new request's own values win key by
-  key, both directives are kept — the old first, the new last, a line break between — and the file
-  is rewritten with the new range. Discarded, it is deleted.
+  key, both directives are kept — the old first, the new last, a line break between — unless the
+  old one already ends with the new, which is then not added again; the file is rewritten with the
+  new range. Discarded, it is deleted.
 - **Deleted** once a return's `last_completed_stage` is the range's last stage — `end_stage`, else
   `start_stage` when `stage_scope` is `single`, else the profile's last, in the folder the task is in
   after the return. A stop at a gate, a failure or a cancel leaves it in place.
