@@ -144,11 +144,11 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
 
 @test "an item about the walkthrough goes to its writer and is closed by it" {
   item='name the third commit in ## Commits'
-  replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$item\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"walkthrough_findings\": [\"$item\"]}}"
+  replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$item\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"walkthrough_findings\": [\"$item\"]}, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true}}"
   for p in $RANGED quick; do
     out="$(run_profile "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies")"
     [ "$(pick 'o.result.next_recommended_action' <<<"$out")" = stop ] || { echo "profile-$p: $(pick 'o.result' <<<"$out")"; return 1; }
-    grep -qF "Close these Review findings in the file: $item" <<<"$(prompt_of walkthrough <<<"$out")" \
+    grep -qF "Close these Review findings in the file, even when [COVERS] already ends at the last commit: $item" <<<"$(prompt_of walkthrough <<<"$out")" \
       || { echo "profile-$p: the writer was not handed the item"; return 1; }
   done
 }
@@ -160,5 +160,16 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
     out="$(run_profile "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies")"
     [ "$(pick 'o.result.next_recommended_action' <<<"$out")" = ask_user ] || { echo "profile-$p: $(pick 'o.result' <<<"$out")"; return 1; }
     grep -qF "$item" <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: the note does not name the item"; return 1; }
+  done
+}
+
+@test "an item handed to a writer that changed nothing stays open" {
+  item='name the third commit in ## Commits'
+  replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$item\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"walkthrough_findings\": [\"$item\"]}, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": false}}"
+  for p in $RANGED quick; do
+    out="$(run_profile "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies")"
+    [ "$(pick 'o.result.next_recommended_action' <<<"$out")" = ask_user ] || { echo "profile-$p: $(pick 'o.result' <<<"$out")"; return 1; }
+    grep -qF 'even when [COVERS] already ends at the last commit' <<<"$(prompt_of walkthrough <<<"$out")" \
+      || { echo "profile-$p: the writer may still take the change-nothing shortcut"; return 1; }
   done
 }

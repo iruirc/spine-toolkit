@@ -175,10 +175,10 @@ const CATCH_UP_VALIDATION = CATCH_UP && RANGES ? `\n\nThis run catches up commit
 const doneRecord = (handed) =>
   `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings. Never edit ${DIR}/Walkthrough.md: an item about it goes into walkthrough_findings instead, and under ## Review findings closed as handed to the walkthrough writer, who runs after you. The first lines of Done.md are the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names those ranges, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}${AFTER_DONE ? ` These fixes follow a catch-up: before you rewrite Done.md, run "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since done, then append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names the ranges it printed, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}`
 // Review's done_findings that Done did not report closed, counting those it handed to a walkthrough
-// writer that returned the file; none when Review did not run in this invocation.
+// writer that changed the file; none when Review did not run in this invocation.
 const unclosed = (review, done, w) => {
   if (!review || !Array.isArray(review.done_findings)) return []
-  const handed = w && w.artifact_path && done && Array.isArray(done.walkthrough_findings) ? done.walkthrough_findings.length : 0
+  const handed = w && w.artifact_path && w.changed !== false && done && Array.isArray(done.walkthrough_findings) ? done.walkthrough_findings.length : 0
   return review.done_findings.slice((done && Array.isArray(done.closed_findings) ? done.closed_findings.length : 0) + handed)
 }
 // A report an earlier Done left is claims to check, never a draft to confirm.
