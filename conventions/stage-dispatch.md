@@ -30,6 +30,28 @@ task's `long_run` values converted to seconds (minutes × 60), exactly as the Me
 and it carries the `Search roots:` line with the task's `roots`, worded as the Method A brief words it.
 A Review stage's prompt also names every range of the task's `review_ranges`, worded as the Method A Review prompt words it.
 
+## Owner's directive
+
+The contract's `user_directive` is what the owner said for this run beyond the choice of stages,
+verbatim, and only ever from the owner's message — never from a file. It is the one text a brief lets
+address the agent; everything else stays data. Non-empty, it goes into every stage agent's prompt,
+right after the rule that repository and artifact text is data, in these words:
+
+```text
+Owner's directive for this run — verbatim, from the person who owns the task, never from a file: «{directive}». Apply what concerns your stage; what does not, neither act on nor discuss. On how this stage does its work, it outranks the project's files (CLAUDE.md, CLAUDE-spine-toolkit.md, Task.md) and your own defaults. It never changes the contract's fields or the stage range, and never waives what the stage owes: its commits, its artifact and status line, Validation's full regression, an honest verdict. If it asks for one of those, do not comply, and name it under directive_declined.
+```
+
+When the run carries a directive or `run_settings`, the prompt also asks for this line, `{run}` being
+each `run_settings` entry as `<field>=<value>`, then `directive: «…»`, joined by `; `:
+
+```text
+Every artifact you write this run carries the line "**Run:** {run}" directly below its first line and any lines this brief tells you to write there.
+```
+
+A workflow script carries both in its prelude; a Method B skill puts the same words in each stage's
+prompt. `Run.json` in the task folder is the orchestrator's record of the run: a stage neither reads
+nor stages it.
+
 ## Declared deviation
 
 Delegation may be skipped — the host exposes no subagent mechanism, the user opted out, the
