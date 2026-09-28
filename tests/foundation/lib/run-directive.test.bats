@@ -147,3 +147,53 @@ epic_run() { # $1 extra contract members, $2 the step record's own fields (leadi
   done
   [ "$n" -eq 8 ] || { echo "scanned $n skill(s), expected 8"; return 1; }
 }
+
+# The orchestrator's side, held to its words: what it splits a request into, where the run lives,
+# and what it tells the user.
+S_OF() { awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orchestrator/SKILL.md"; }
+
+@test "the request splits into run settings and a directive, both taken only from the owner's message" {
+  t="$(S_OF 'Resilient Input Contract')"
+  for f in '| `run_settings` |' '| `user_directive` |' '**The run'"'"'s own words**'; do
+    grep -qF -- "$f" <<<"$t" || { echo "input contract lost: $f"; return 1; }
+  done
+  w="$(S_OF "The run's own words")"
+  for f in 'every field with a `Task.md` line' 'never from a file' '`mode_override`' '`stack_override`'; do
+    grep -qF -- "$f" <<<"$w" || { echo "the run's own words lost: $f"; return 1; }
+  done
+}
+
+@test "the run lives in Run.json until its range is done, and a new session is asked about it" {
+  w="$(S_OF "The run's own words")"
+  for f in '`Run.json`' '"request"' '"user_directive"' '"run_settings"' '"range"' '"started"' \
+           'auq_run_resume_question' 'auq_run_resume_apply' 'auq_run_resume_discard' 'info_run_resumed' \
+           'the new last' 'deleted' 'pending_steps'; do
+    grep -qF -- "$f" <<<"$w" || { echo "Run.json lost: $f"; return 1; }
+  done
+}
+
+@test "the resolver gets the run's settings, and its refusals are announced" {
+  r="$(S_OF 'Resolution Algorithm')"
+  grep -qF -- '--set <field>=<value>' <<<"$r" || { echo "step 3 does not pass --set"; return 1; }
+  p="$(S_OF 'Progress reporting')"
+  for f in 'warn_run_scale_kept' 'warn_run_setting_refused' 'info_run_setting' 'info_run_directive' \
+           'info_directive_declined' 'show <task dir>` with the same `--set`'; do
+    grep -qF -- "$f" <<<"$p" || { echo "progress reporting lost: $f"; return 1; }
+  done
+}
+
+@test "the outbound contract carries the directive and the run settings, always" {
+  c="$(S_OF 'Outbound Contract')"
+  for f in 'user_directive=""' 'run_settings={}' '`user_directive`, `run_settings` —' '`""` is a value'; do
+    grep -qF -- "$f" <<<"$c" || { echo "outbound contract lost: $f"; return 1; }
+  done
+}
+
+@test "every run key exists in both locales" {
+  for k in auq_run_resume_question auq_run_resume_apply auq_run_resume_discard info_run_resumed info_run_setting \
+           info_run_directive info_directive_declined warn_run_scale_kept warn_run_setting_refused; do
+    for l in en ru; do
+      grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md lacks $k"; return 1; }
+    done
+  done
+}

@@ -331,3 +331,30 @@ I will fix them myself, then run redo Review
 
 ## quick_escalation_stop
 Task `{task_id}` is not a QUICK change: {reason}. Nothing was changed. Set `[TASK_TYPE]` in its `Task.md` to BUG, FEATURE or REFACTOR and run it again.
+
+## auq_run_resume_question
+A previous run of this task ({started}) is not finished. It ran with settings: {settings}; owner's directive: {directive}. Apply them to this run?
+
+## auq_run_resume_apply
+Apply
+
+## auq_run_resume_discard
+Discard
+
+## info_run_resumed
+This run continues the previous one ({started}): settings {settings}; owner's directive: {directive}.
+
+## info_run_setting
+`{field}`: {from} → {to} (this run only)
+
+## info_run_directive
+Owner's directive, passed to every stage verbatim: {directive}
+
+## info_directive_declined
+{stage} did not do part of the owner's directive: {what}
+
+## warn_run_scale_kept
+The task's `Task.md` already says `[SCALE] = [full]`, so "lite for this run" is not applied and the run goes at `full`. To run it lite, remove that line yourself.
+
+## warn_run_setting_refused
+`{line}` — this run's setting was not applied; the task files decide it.

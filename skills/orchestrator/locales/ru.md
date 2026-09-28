@@ -331,3 +331,30 @@ Review требует изменений:
 
 ## quick_escalation_stop
 Задача `{task_id}` — не QUICK-правка: {reason}. Ничего не изменено. Поменяйте `[TASK_TYPE]` в её `Task.md` на BUG, FEATURE или REFACTOR и запустите заново.
+
+## auq_run_resume_question
+Прошлый прогон этой задачи ({started}) не закончен. Он шёл с настройками: {settings}; уточнение владельца: {directive}. Применить их к этому запуску?
+
+## auq_run_resume_apply
+Применить
+
+## auq_run_resume_discard
+Отбросить
+
+## info_run_resumed
+Этот запуск продолжает прошлый ({started}): настройки {settings}; уточнение владельца: {directive}.
+
+## info_run_setting
+`{field}`: {from} → {to} (только на этот запуск)
+
+## info_run_directive
+Уточнение владельца, дословно уходит каждой стадии: {directive}
+
+## info_directive_declined
+{stage} не выполнила часть уточнения владельца: {what}
+
+## warn_run_scale_kept
+В `Task.md` задачи уже стоит `[SCALE] = [full]`, поэтому «облегчённо на этот запуск» не применено, прогон идёт на `full`. Чтобы прогнать облегчённо, уберите эту строку сами.
+
+## warn_run_setting_refused
+`{line}` — настройка на этот запуск не применена, её решают файлы задачи.
