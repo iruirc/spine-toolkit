@@ -531,6 +531,17 @@ FIELDS
   grep -qF "long_run: { type: 'object'" "$E" || { echo "the step record has no long_run"; return 1; }
 }
 
+@test "an epic run through Plan and Execute reads its steps off disk before pushing them" {
+  # The Plan agent reports the steps it created, never their settings: only read-steps runs the resolver.
+  AGENTS='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"—","diagnostics":"g","init":"—"}'
+  contract='{"task_id": "050", "task_dir": "/p/Tasks/ACTIVE/050-e", "plugin_root": "/core", "lang": "en", "mode": "auto", "walkthrough": "deep", "agents": '"$AGENTS"', "start_stage": "Plan", "end_stage": "Execute", "stage_scope": "forward"}'
+  step='"step_id": "1.step", "task_id": "050.1", "task_type": "BUG", "status": "PENDING"'
+  replies='{"plan": {"ok": true, "artifact_path": "Plan.md", "summary": "s", "branch": "decomposition", "steps": [{'"$step"'}]}, "execute:read-steps": {"ok": true, "branch": "decomposition", "steps": [{'"$step"', "walkthrough": "brief", "security": "on"}]}, "workflow:spine-toolkit:profile-bug": {"status": "ok", "next_recommended_action": "stop"}}'
+  out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-epic.js" "$contract" "$replies")"
+  node -e 'const o = JSON.parse(process.argv[1]); const w = o.calls.find((c) => c.label === "workflow:spine-toolkit:profile-bug")
+    if (!o.calls.some((c) => c.label === "execute:read-steps") || !w || w.args.walkthrough !== "brief" || w.args.security !== "on") { console.log(JSON.stringify(o.calls.map((c) => c.args || c.label))); process.exit(1) }' "$out"
+}
+
 @test "every contract field a script gates on defaults through a guarded local" {
   for p in "$ROOT"/workflows/profile-*.js; do
     grep -qxF "const DRIVE_APP = A.drive_app === 'off' ? 'off' : 'auto'" "$p" \

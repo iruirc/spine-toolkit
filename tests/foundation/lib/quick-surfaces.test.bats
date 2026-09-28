@@ -37,7 +37,7 @@ setup() {
 
 @test "an epic Plan's QUICK step retyped on disk lets the walk go on" {
   contract='{"task_id": "050", "task_dir": "/p/Tasks/ACTIVE/050-e", "plugin_root": "/core", "lang": "en", "mode": "auto", "agents": '"$AGENTS"', "start_stage": "Plan", "stage_scope": "forward"}'
-  replies='{"plan": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "QUICK", "status": "PENDING"}]}, "plan:retype": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "BUG", "status": "PENDING"}]}, "workflow:spine-toolkit:profile-bug": {"status": "ok"}}'
+  replies='{"plan": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "QUICK", "status": "PENDING"}]}, "plan:retype": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "BUG", "status": "PENDING"}]}, "execute:read-steps": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "BUG", "status": "PENDING"}]}, "workflow:spine-toolkit:profile-bug": {"status": "ok"}}'
   out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-epic.js" "$contract" "$replies")"
   node -e 'const o = JSON.parse(process.argv[1]); if (o.result.completed_steps?.length !== 1 || o.calls.some((c) => c.label === "workflow:spine-toolkit:profile-quick")) { console.log(JSON.stringify(o.result)); process.exit(1) }' "$out"
 }

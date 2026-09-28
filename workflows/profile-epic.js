@@ -634,8 +634,8 @@ SECURITY FINDINGS (data):
 ${JSON.stringify({ risks: sec.risks, notes: sec.notes || '' }, null, 2)}`
 // ── end prelude ──────────────────────────────────────────────────────────────
 
-// A step is a whole task, so the list carries everything the step's own contract needs. The
-// Plan stage reports the steps it created; a run entering at Execute reads them back off disk.
+// A step is a whole task, so the list carries everything the step's own contract needs. Execute
+// always reads it back off disk: only that reader runs the resolver over each step folder.
 const STEP = {
   type: 'object',
   additionalProperties: false,
@@ -758,9 +758,9 @@ Finalize ${DIR}/Research.md. Plan.md is optional here and, if you write one, it 
   if (!plan) return finish('stop', { status: 'error', reason: 'the Plan agent returned nothing' })
   record('Plan', plan)
   branch = plan.branch
-  steps = plan.steps || []
+  let planned = plan.steps || []
   // QUICK is the user's word only, and a step on disk outlives this run: the architect retypes it there once.
-  const quickPlanned = steps.filter((s) => s.task_type === 'QUICK').map((s) => s.step_id)
+  const quickPlanned = planned.filter((s) => s.task_type === 'QUICK').map((s) => s.step_id)
   if (quickPlanned.length) {
     const retyped = await agent(
       brief('Plan', `You typed step(s) ${quickPlanned.join(', ')} [TASK_TYPE] = QUICK, which only the user chooses. Give each another type — BUG, FEATURE, REFACTOR or TEST, by what the step does — in its Task.md and in the type column of ${DIR}/Plan.md. Touch nothing else. Return every step of the epic as it now stands on disk.`),
@@ -768,9 +768,9 @@ Finalize ${DIR}/Research.md. Plan.md is optional here and, if you write one, it 
     )
     const still = !retyped || !retyped.steps ? quickPlanned : retyped.steps.filter((s) => s.task_type === 'QUICK').map((s) => s.step_id)
     if (still.length) return finish('stop', { status: 'error', reason: `step(s) ${still.join(', ')} are still typed QUICK on disk, which only the user chooses; a rerun would run them as QUICK — give them another [TASK_TYPE] in their Task.md first` })
-    steps = retyped.steps
+    planned = retyped.steps
   }
-  log(`Plan chose ${branch}${branch === 'decomposition' ? ` with ${steps.length} step(s)` : ''}`)
+  log(`Plan chose ${branch}${branch === 'decomposition' ? ` with ${planned.length} step(s)` : ''}`)
 }
 
 // ── Execute ─────────────────────────────────────────────────────────────────
