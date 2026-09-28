@@ -1,6 +1,6 @@
 ---
 name: task-walkthrough
-description: "Use at the end of an implementing stage (Execute / Fix / Refactor / Write), and again at Done, to write or refresh `Walkthrough.md` — the human-facing account of what a task actually landed. It opens with what changed, before and after, then goes to the depth the axis resolves to: `deep`, a section per commit with the failure each one is written against; `brief`, a summary with a commit log; or `off`, not written at all. Governed by `[WALKTHROUGH]` and `[WALKTHROUGH_CHECK]` in Task.md and CLAUDE-spine-toolkit.md."
+description: "Use at the end of an implementing stage (Execute / Fix / Refactor / Write), and again after Done's own commits, to write or refresh `Walkthrough.md` — the human-facing account of what a task actually landed. It opens with what changed, before and after, then goes to the depth the axis resolves to: `deep`, a section per commit with the failure each one is written against; `brief`, a summary with a commit log; or `off`, not written at all. Governed by `[WALKTHROUGH]` and `[WALKTHROUGH_CHECK]` in Task.md and CLAUDE-spine-toolkit.md."
 ---
 
 # Task Walkthrough
@@ -19,7 +19,7 @@ Commit messages do not make this artifact redundant. `conventions/commit-message
 ## When to use
 
 - End of the implementing stage: `Execute` (FEATURE), `Fix` (BUG), `Refactor` (REFACTOR), `Write` (TEST)
-- Again at `Done`, but only when that stage did not run in the same invocation — a run that reached Done through a passing Validation and Review has added no commits since, one that entered at Review or Done has
+- Again after `Done` has made its own commits — documentation and tracker commits land after the last write, so the refresh follows them; Done itself never edits this file
 - At `Done` only, for EPIC — see **EPIC**
 - Not for RESEARCH or REVIEW — see **Not applicable**
 
@@ -189,7 +189,7 @@ Per commit: short sha, subject, then what it does, which files carry it, and wha
 
 ### `## Commits` — `deep`
 
-One `###` section per commit. Four parts are always present: the heading, which names what the commit did *in the reader's words* rather than repeating the subject; the subject itself on its own line; the files with their line counts; and `**Changes:**` — the items of `## What changed` the commit serves, or `—` when it serves none, and then its section says why it exists: preparation, a characterisation, a guard.
+One `###` section per commit — never one per phase: a heading names exactly one sha. Four parts are always present: the heading, which names what the commit did *in the reader's words* rather than repeating the subject; the subject itself on its own line; the files with their line counts; and `**Changes:**` — the items of `## What changed` the commit serves, or `—` when it serves none, and then its section says why it exists: preparation, a characterisation, a guard.
 
 ```markdown
 ### 3. `d770f52` — the one door untrusted data comes through
@@ -282,7 +282,8 @@ The file is living, not append-once. On a stage that runs it when the file alrea
 
 1. Read `[COVERS]`. Its end already at the task's last commit, and `scripts/lint-walkthrough.sh` exits 0 → change nothing, report that. `[COVERS]` can match `HEAD` over a body that names commits long gone.
 2. Otherwise refresh, and treat the sections differently:
-   - A commit `scripts/lint-walkthrough.sh` names — one the task's history no longer holds, because a reset or a squash dropped it — first: its section or bullet in `## Commits` is removed, and a `### Bookkeeping` line whose range starts or ends on it is rewritten to the commits that exist or removed. Append-only protects rework; it does not keep an account of what `git log` no longer shows. `## Plan vs. outcome` gains one row per repository with the trigger `history`: how many commits are gone, never why — the writer was not told.
+   - A line of class `unreachable` — a commit the task's history no longer holds, because a reset or a squash dropped it — first: its section or bullet in `## Commits` is removed, and a `### Bookkeeping` line whose range starts or ends on it is rewritten to the commits that exist or removed. Append-only protects rework; it does not keep an account of what `git log` no longer shows. `## Plan vs. outcome` gains one row per repository with the trigger `history`: how many commits are gone, never why — the writer was not told.
+   - A line of any other class, next: `section` — the section is written back from git and `Plan.md`; `missing` and `heading` — a section, or a `brief` bullet, for each commit named, split out of a section that held several; `count` — the header's number follows the history. Append-only is not broken: a missing commit is appended.
    - `## Commits` — **append only**, at both depths, except when the resolved depth changed — see below. It is a log; a rework commit arrives with its own reason (`addresses Review finding 2`) and does not overwrite its predecessors. New bookkeeping commits join `### Bookkeeping`.
    - `## Plan vs. outcome` — **accumulates**, each new row carrying its trigger. A round of fixes after Review is precisely the divergence worth keeping.
    - `## What changed`, `## Glossary`, `## Summary`, `## Commit order`, `## How it works`, `## Out of scope`, `## Follow-ups` — **rewritten** to the current state. The reader needs what is true now, not archaeology.
