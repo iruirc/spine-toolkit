@@ -261,8 +261,8 @@ origin_at() { # $1 commit: origin/main stands there and is the remote's HEAD, as
 }
 
 @test "commits finds a range in the task repository itself" {
-  commit "$PROJ/Tasks" plan.txt; t1="$(git -C "$PROJ/Tasks" rev-parse HEAD)"
-  commit "$PROJ/Tasks" plan.txt; t2="$(git -C "$PROJ/Tasks" rev-parse HEAD)"
+  commit "$PROJ/Tasks" ACTIVE/001-x/Plan.md; t1="$(git -C "$PROJ/Tasks" rev-parse HEAD)"
+  commit "$PROJ/Tasks" ACTIVE/001-x/Plan.md; t2="$(git -C "$PROJ/Tasks" rev-parse HEAD)"
   run "$TR" commits "$TASK" "$t1..$t2"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ "$output" = "$(printf '%s\n%s' "$t1" "$t2")" ] || { echo "$output"; return 1; }
@@ -290,4 +290,14 @@ origin_at() { # $1 commit: origin/main stands there and is the remote's HEAD, as
   [ "$status" -eq 2 ] || { echo "bad --since: $status"; return 1; }
   run "$TR" nope "$TASK"
   [ "$status" -eq 2 ] || { echo "bad subcommand: $status"; return 1; }
+}
+
+@test "commits leaves out what other tasks committed in a shared tasks repository" {
+  mkdir -p "$TASK" "$PROJ/Tasks/ACTIVE/002-y"
+  echo a >"$TASK/Plan.md"; git -C "$PROJ/Tasks" add -A; git -C "$PROJ/Tasks" -c user.name=t -c user.email=t@t commit -qm mine1; t1="$(git -C "$PROJ/Tasks" rev-parse HEAD)"
+  echo b >"$PROJ/Tasks/ACTIVE/002-y/Plan.md"; git -C "$PROJ/Tasks" add -A; git -C "$PROJ/Tasks" -c user.name=t -c user.email=t@t commit -qm theirs
+  echo c >>"$TASK/Plan.md"; git -C "$PROJ/Tasks" add -A; git -C "$PROJ/Tasks" -c user.name=t -c user.email=t@t commit -qm mine2; t2="$(git -C "$PROJ/Tasks" rev-parse HEAD)"
+  run "$TR" commits "$TASK" "$t1..$t2"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "$(printf '%s\n%s' "$t1" "$t2")" ] || { echo "$output"; return 1; }
 }

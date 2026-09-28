@@ -125,6 +125,12 @@ def count(top, sha):
     return int(git(top, 'rev-list', '--count', sha + '..HEAD', *spec))
 
 
+def elsewhere(top, sha):
+    # A commit touching only another task's folder: the tasks folder is shared by every task.
+    paths = [os.path.join(top, f) for f in (git(top, 'diff-tree', '--no-commit-id', '--name-only', '-r', '--root', sha) or '').splitlines()]
+    return bool(paths) and all(inside(p, TASKS) and not inside(p, TASK) for p in paths)
+
+
 def with_own():
     # The tasks repository is never a range to review, but its phase-closing commits are the task's.
     own, out = git(TASK, 'rev-parse', '--show-toplevel'), dict(REPOS)
@@ -195,7 +201,8 @@ elif CMD == 'commits':
         a, b = (git(top, 'rev-parse', '-q', '--verify', s + '^{commit}') for s in m.groups())
         if a and b and git(top, 'merge-base', '--is-ancestor', a, b) is not None:
             # First parent only: a merge brings upstream commits into a..b that are not the task's.
-            print('\n'.join([a] + git(top, 'rev-list', '--first-parent', '--reverse', a + '..' + b).split()))
+            listed = [a] + git(top, 'rev-list', '--first-parent', '--reverse', a + '..' + b).split()
+            print('\n'.join(c for c in listed if not elsewhere(top, c)))
             sys.exit(0)
     die('no repository of the task holds %s' % OPTS[0])
 else:

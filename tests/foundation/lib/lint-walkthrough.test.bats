@@ -85,8 +85,29 @@ open(p, 'w', encoding='utf-8').write(s[:s.index('## Follow-ups')].rstrip() + '\n
 PY
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
-  [ "$output" = "$(printf 'Walkthrough.md: section: missing (## How it works)\nWalkthrough.md: section: missing (## Out of scope)\nWalkthrough.md: missing: %s is not named in ## Commits (.)' "$A2")" ] \
+  [ "$output" = "$(printf 'Walkthrough.md: section: missing (## Out of scope)\nWalkthrough.md: missing: %s is not named in ## Commits (.)' "$A2")" ] \
     || { echo "$output"; return 1; }
+}
+
+@test "a deep file may leave out its glossary and How it works" {
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")"
+  python3 - "$TASK/Walkthrough.md" <<'PY2'
+import re, sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+s = re.sub(r'\n## (Glossary|How it works)\n\n[^\n]*\n', '\n', s)
+open(p, 'w', encoding='utf-8').write(s)
+PY2
+  grep -q '^## Glossary' "$TASK/Walkthrough.md" && { echo "the fixture still has a glossary"; return 1; }
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "a numbered deep heading with no sha is a finding" {
+  walkthrough deep "$(printf '### 1. The first change\n\n**Files:** `.` `%s`\n\n### 2. `%s` — second' "$A1" "$A2")"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "$(printf 'Walkthrough.md: heading: 0 commits in one section (### 1)\nWalkthrough.md: missing: %s is not named in ## Commits (.)' "$A1")" ] || { echo "$output"; return 1; }
 }
 
 @test "a deep section per phase instead of per commit is a finding" {

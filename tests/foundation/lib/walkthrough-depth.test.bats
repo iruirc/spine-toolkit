@@ -400,3 +400,11 @@ NAMES
     if grep -qF 'Refresh `Walkthrough.md` here when' "$S"; then echo "workflow-$p: the old gate is still there"; return 1; fi
   done
 }
+
+@test "the header's perimeter is defined the way the lint measures it, and a refresh repairs it" {
+  grep -qF 'both included, as in `[COVERS]`' "$SKILL" || { echo "## Structure does not say a Range includes its first commit"; return 1; }
+  grep -qF 'counted along the first parent' "$SKILL" || { echo "## Structure does not say how Commits is counted"; return 1; }
+  refresh="$(awk '/^## Refreshing$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  grep -qF 'a perimeter row whose range starts or ends on it' <<<"$refresh" || { echo "## Refreshing does not repair a header row"; return 1; }
+  grep -qF 'The glossary and `## How it works` are not required' "$SKILL" || { echo "the skill does not say which sections a file may leave out"; return 1; }
+}
