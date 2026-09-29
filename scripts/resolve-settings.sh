@@ -15,6 +15,8 @@ set -euo pipefail
 #                                         [--progress <value>] [--run-file <path>] [--profile <type>]
 #                                         [--set ...]
 #                                                  # the run's opening block, in the resolved lang
+#        scripts/resolve-settings.sh open --contract <file|-> --method A|B
+#                                                  # the same block, every fact from the Outbound Contract
 #        scripts/resolve-settings.sh raw  <dir> <block>        # the value lines of one config block
 # Exit:  0, or 2 on a usage error. One stderr line per entry it could not take at face value.
 #
@@ -33,7 +35,18 @@ EFFORTS="low medium high xhigh max session"
 CAPS="Reproduce.md:120 Plan.md:200 Validation.md:100 Review.md:120 Done.md:80 Task.md:100"
 
 [ "$#" -ge 2 ] || { echo "usage: $0 json|show|open <task-dir> [--all] [--set <field>=<value>]... | raw <dir> <block>" >&2; exit 2; }
-[ -d "$2" ] || { echo "not a directory: $2" >&2; exit 2; }
+if [ "$1" = open ] && [ "$2" = --contract ]; then
+  [ "$#" -ge 3 ] || { echo "usage: $0 open --contract <file|-> --method A|B" >&2; exit 2; }
+  # The script below is python's stdin, so a contract on stdin goes to a file first.
+  if [ "$3" = - ]; then
+    contract="$(mktemp)"
+    trap 'rm -f "$contract"' EXIT
+    cat >"$contract"
+    set -- "$1" "$2" "$contract" "${@:4}"
+  fi
+else
+  [ -d "$2" ] || { echo "not a directory: $2" >&2; exit 2; }
+fi
 [ "$1" != raw ] || [ "$#" -ge 3 ] || { echo "usage: $0 raw <dir> <block>" >&2; exit 2; }
 
 # Not a setting: where this installation lives, which a Method A script cannot find for itself.
@@ -58,25 +71,78 @@ def map_value(values, raw):
 CAPS = dict((n, int(v)) for n, v in (p.split(':') for p in sys.argv[5].split()))
 CMD, TARGET = sys.argv[6], sys.argv[7]
 BLOCK = sys.argv[8] if CMD == 'raw' else None
+
+
+def usage_error(why):
+    print('resolve-settings.sh: %s' % why, file=sys.stderr)
+    sys.exit(2)
+
+
+def read_contract(path):
+    """The Outbound Contract: Method A's JSON object, or Method B's key=value lines."""
+    try:
+        with open(path, encoding='utf-8') as fh:
+            text = fh.read()
+        if text.lstrip().startswith('{'):
+            data = json.loads(text)
+            return data if isinstance(data, dict) else None
+    except (OSError, ValueError):
+        return None
+    data = {}
+    for line in text.splitlines():
+        key, sep, value = line.partition('=')
+        if not sep or not re.fullmatch(r'[a-z_]+', key):
+            continue
+        value = value.strip()
+        if value.startswith('"'):
+            try:
+                value = json.loads(value)
+            except ValueError:
+                pass
+        elif key == 'run_settings' and value.startswith('{') and value.endswith('}'):
+            value = dict((k.strip(), v.strip()) for k, _, v in
+                         (e.partition(':') for e in value[1:-1].split(',')) if k.strip())
+        elif value == 'null':
+            value = None
+        data[key] = value
+    return data if 'task_dir' in data else None
+
+
+# open --contract: every fact of the run from the dispatch's own args (hooks/opening-block), so
+# nothing else may name one.
+CONTRACT = None
+if CMD == 'open' and TARGET == '--contract':
+    CONTRACT = read_contract(sys.argv[8])
+    if CONTRACT is None:
+        usage_error('open: %s is not an Outbound Contract' % sys.argv[8])
+    TARGET = str(CONTRACT.get('task_dir') or '')
+    if not os.path.isdir(TARGET):
+        usage_error("open: the contract's task_dir '%s' is not a directory" % TARGET)
 SHOW_ALL = False
 # open's own flags: --method, --why, --range, --progress, --run-file, --profile.
 OPEN = {}
 # This run's own word on a field (conventions/task-settings.md → The chain): a scalar, or one key
 # of a map, in the order given; a later --set of the same field or key wins.
 RUN_SET = []
-rest = [] if CMD == 'raw' else sys.argv[8:]
+rest = [] if CMD == 'raw' else sys.argv[9:] if CONTRACT is not None else sys.argv[8:]
 while rest:
     arg = rest.pop(0)
     if arg == '--all' and CMD == 'show':
         SHOW_ALL = True
-    elif arg == '--set' and rest and re.fullmatch(r'[a-z_]+(\.[A-Za-z]+)?=\S(.*\S)?', rest[0]):
+    elif arg == '--set' and CONTRACT is None and rest and re.fullmatch(r'[a-z_]+(\.[A-Za-z]+)?=\S(.*\S)?', rest[0]):
         RUN_SET.append(rest.pop(0).split('=', 1))
-    elif CMD == 'open' and arg in ('--method', '--why', '--range', '--progress', '--run-file', '--profile') and rest:
+    elif CMD == 'open' and arg in ('--method', '--why', '--range', '--progress', '--run-file', '--profile') and rest \
+            and (CONTRACT is None or arg == '--method'):
         OPEN[arg[2:]] = rest.pop(0)
     else:
         print('usage: resolve-settings.sh json|show|open <task-dir> [--all] [--set <field>[.<key>]=<value>]...',
               file=sys.stderr)
         sys.exit(2)
+if CONTRACT is not None:
+    OPEN.update((k, str(CONTRACT[f])) for k, f in (('profile', 'profile'), ('progress', 'progress'),
+                                                   ('why', 'method_reason')) if CONTRACT.get(f))
+    settings = CONTRACT.get('run_settings')
+    RUN_SET += [[k, str(v)] for k, v in (settings.items() if isinstance(settings, dict) else [])]
 
 # field, config/Task.md field name, values (None = open), default
 # A SCALARS values slot for a whole number >= 0, taken as an int.
@@ -498,7 +564,7 @@ if CMD == 'show':
 # profile, task, range, Progress, method (under B, its skill and why); every stage of the range and
 # its role, from the profile script's meta; under A, /workflows; every setting this run set, from
 # json without --set to what it resolved to; the owner's directive, verbatim, from Run.json (the
-# epic's, through --run-file, for a step it handed back); under
+# epic's, through --run-file, for a step it handed back; the contract's own, under --contract); under
 # B, the roles whose effort does not travel; at live, the token panel; the settings column, sized
 # by settings_report. Nothing at quiet.
 CORE = os.environ['SPINE_CORE_ROOT']
@@ -529,13 +595,21 @@ with open(script, encoding='utf-8') as fh:
 # The same reading as scripts/lint-workflows.sh.
 phases = re.findall(r"title:\s*'([^']+)'[^}]*?agent:\s*'([^']+)'", meta.group(1) if meta else '')
 titles = [t for t, _ in phases]
+if CONTRACT is not None and titles:
+    scope = CONTRACT.get('stage_scope')
+    first = titles[0] if scope == 'all' else CONTRACT.get('start_stage') or titles[0]
+    last = first if scope == 'single' else titles[-1] if scope == 'all' else CONTRACT.get('end_stage') or titles[-1]
+    OPEN['range'] = '%s:%s' % (first, last)
 start, _, end = OPEN.get('range', '').partition(':')
 if start not in titles or end not in titles or titles.index(start) > titles.index(end):
     refuse("--range '%s' is not <start>:<end> of %s" % (OPEN.get('range', ''), ', '.join(titles)))
 
+lang = str((CONTRACT or {}).get('lang') or resolved['lang'])
+locale = os.path.join(CORE, 'skills', 'orchestrator', 'locales', '%s.md' % lang)
+if not re.fullmatch(r'[a-z]+', lang) or not os.path.isfile(locale):
+    refuse("no orchestrator locale for lang '%s'" % lang)
 LOCALE = {}
-with open(os.path.join(CORE, 'skills', 'orchestrator', 'locales', '%s.md' % resolved['lang']),
-          encoding='utf-8') as fh:
+with open(locale, encoding='utf-8') as fh:
     for part in re.split(r'^## ', fh.read(), flags=re.M)[1:]:
         key, _, body = part.partition('\n')
         LOCALE[key.strip()] = body.strip()
@@ -571,7 +645,9 @@ for name in ('models', 'effort', 'long_run'):
 
 # Run.json is the owner's word only while git does not track it (SKILL.md → The run's own words).
 directive, run_file = '', os.path.abspath(OPEN.get('run-file', os.path.join(TARGET, 'Run.json')))
-if os.path.isfile(run_file):
+if CONTRACT is not None:
+    directive = str(CONTRACT.get('user_directive') or '').strip()
+elif os.path.isfile(run_file):
     tracked = subprocess.run(['git', '-C', os.path.dirname(run_file), 'ls-files', '--error-unmatch',
                               os.path.basename(run_file)],
                              capture_output=True).returncode == 0

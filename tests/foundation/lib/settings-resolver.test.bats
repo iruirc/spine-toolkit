@@ -1145,3 +1145,70 @@ body_of() { awk -v k="## $2" '$0==k{p=1;next} /^## /{p=0} p&&NF' "$ROOT/skills/o
   grep -qF 'BUG 042' "$BATS_TEST_TMPDIR/out" || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
   grep -qF "open: $TASK/Run.json" "$ERR" || { cat "$ERR"; return 1; }
 }
+
+# open --contract: the same block from the dispatch's own args, which is all hooks/opening-block has.
+contract_json() {
+  python3 -c 'import json,sys; c={"task_id":"042","task_dir":sys.argv[1],"profile":"bug","start_stage":"Reproduce","end_stage":None,"stage_scope":"forward","lang":"en","progress":"normal","method_reason":"","user_directive":"","run_settings":{}}; c.update(json.loads(sys.argv[2]) or {}); print(json.dumps(c))' "$TASK" "${1:-null}"
+}
+
+@test "open --contract prints what the flags print for the same run" {
+  printf '{"user_directive": "leave the Net package alone"}' >"$TASK/Run.json"
+  flags="$("$RESOLVE" open "$TASK" --method A --range Reproduce:Done --set drive_app=off --set models.reviewer=opus)"
+  contract_json '{"user_directive": "leave the Net package alone", "run_settings": {"drive_app": "off", "models.reviewer": "opus"}}' >"$BATS_TEST_TMPDIR/c.json"
+  run "$RESOLVE" open --contract "$BATS_TEST_TMPDIR/c.json" --method A
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "$flags" ] || { diff <(echo "$flags") <(echo "$output"); return 1; }
+  run "$RESOLVE" open --contract - --method A <"$BATS_TEST_TMPDIR/c.json"
+  [ "$output" = "$flags" ] || { diff <(echo "$flags") <(echo "$output"); return 1; }
+}
+
+@test "open --contract reads Method B's key=value lines" {
+  flags="$("$RESOLVE" open "$TASK" --method B --why 'Workflow is not callable here' --range Reproduce:Done --set drive_app=off)"
+  printf '%s\n' 'task_id=042' "task_dir=$TASK" 'profile=bug' 'start_stage=Reproduce' 'end_stage=null' \
+    'stage_scope=forward' 'lang=en' 'progress=normal' 'agents={architect: x:y, developer: x:z}' \
+    'method_reason="Workflow is not callable here"' 'user_directive=""' 'run_settings={drive_app: off}' \
+    >"$BATS_TEST_TMPDIR/c.txt"
+  run "$RESOLVE" open --contract "$BATS_TEST_TMPDIR/c.txt" --method B
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "$flags" ] || { diff <(echo "$flags") <(echo "$output"); return 1; }
+}
+
+@test "open --contract takes the range from start_stage, end_stage and stage_scope" {
+  for c in '{"stage_scope": "single", "start_stage": "Plan"}|Plan → Plan' \
+           '{"end_stage": "Validation", "start_stage": "Plan"}|Plan → Validation' \
+           '{"stage_scope": "all", "start_stage": "Plan"}|Reproduce → Done'; do
+    contract_json "${c%%|*}" >"$BATS_TEST_TMPDIR/c.json"
+    run "$RESOLVE" open --contract "$BATS_TEST_TMPDIR/c.json" --method A
+    [ "${lines[0]}" = "BUG 042 · ${c##*|} · Progress: normal · Method A" ] || { echo "$c: $output"; return 1; }
+  done
+}
+
+@test "open --contract takes progress, lang and the directive from the contract, not from the project" {
+  printf '{"user_directive": "from the file"}' >"$TASK/Run.json"
+  contract_json '{"progress": "quiet"}' >"$BATS_TEST_TMPDIR/c.json"
+  run "$RESOLVE" open --contract "$BATS_TEST_TMPDIR/c.json" --method A
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; return 1; }
+  contract_json '{"lang": "ru", "user_directive": "from the contract"}' >"$BATS_TEST_TMPDIR/c.json"
+  run "$RESOLVE" open --contract "$BATS_TEST_TMPDIR/c.json" --method A
+  grep -qxF "$(body_of ru open_stages)" <<<"$output" || { echo "$output"; return 1; }
+  grep -qF 'from the contract' <<<"$output" || { echo "$output"; return 1; }
+  ! grep -qF 'from the file' <<<"$output" || { echo "Run.json was read: $output"; return 1; }
+}
+
+@test "open --contract is the only source, and keeps the method's reason rule" {
+  contract_json >"$BATS_TEST_TMPDIR/c.json"
+  for args in "--method A --range Reproduce:Done" "--method A --set drive_app=off" "--method A --progress live" \
+              "--method A --profile QUICK" "--method A --run-file $TASK/Run.json" "--method A --why x" "--method B"; do
+    # shellcheck disable=SC2086
+    run "$RESOLVE" open --contract "$BATS_TEST_TMPDIR/c.json" $args
+    [ "$status" -eq 2 ] || { echo "accepted: $args"; return 1; }
+  done
+  run "$RESOLVE" open "$TASK" --contract "$BATS_TEST_TMPDIR/c.json" --method A
+  [ "$status" -eq 2 ] || { echo "accepted a path beside the contract"; return 1; }
+  contract_json '{"task_dir": "/no/such/dir"}' >"$BATS_TEST_TMPDIR/c.json"
+  run "$RESOLVE" open --contract "$BATS_TEST_TMPDIR/c.json" --method A
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  printf 'not a contract' >"$BATS_TEST_TMPDIR/c.json"
+  run "$RESOLVE" open --contract "$BATS_TEST_TMPDIR/c.json" --method A
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+}
