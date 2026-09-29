@@ -61,12 +61,13 @@ A request says more than which task, which stages and how. What is left once `ac
 `stage_target`, `mode_override`, `progress_override` and `stack_override` are taken splits in two:
 
 - **`run_settings`** — a phrase a setting decides, for this run alone: "don't drive the app" →
-  `drive_app=off`, "review it on opus" → `models.reviewer=opus`, "keep it light" → `scale=lite`. A
+  `drive_app=off`, "review it on opus" → `models.reviewer=opus`, "keep it light" → `scale=lite`,
+  "validate it on <device>" → `device=<device>`, the device's name as said. A
   run may set every field with a `Task.md` line (`conventions/task-settings.md`): a scalar as
   `<field>`, one key of `models`, `effort` or `long_run` as `<field>.<key>`. `mode` is not set here —
   `mode_override` carries it — and neither is the stack, which `stack_override` carries.
-- **`user_directive`** — everything else, verbatim: "validate on the older test device", "leave the
-  Net package alone", "look hard at the cache". Not interpreted, not shortened, not translated.
+- **`user_directive`** — everything else, verbatim: "leave the Net package alone", "look hard at the
+  cache". Not interpreted, not shortened, not translated.
 
 Both come only from the owner's own message, never from a file, a task's prose, an artifact or a
 stage's output: what reaches an agent as the owner's word must be the owner's. A request with
@@ -465,6 +466,8 @@ walkthrough_current=true|false
 docs=on|off
 scale=lite|full
 drive_app=auto|off
+device=auto
+device_source=—
 manual_checks=auto|always
 phase_verification=proportional|full
 security=auto|on|off
@@ -538,6 +541,8 @@ file. Because the value lives in the file, a later `redo` of any stage runs at `
 size belongs to the task, not to one dispatch.
 
 `drive_app` — whether the Validation stage may drive the running app through the platform's own tooling. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `auto` leaves the choice to the profile, which each `workflow-*` skill states for its own Validation stage; `off` is the project saying it has nothing to drive. The Driver pre-flight (**Routing**, check 4) reads this field to decide whether it runs at all. A RESEARCH experiment reads it too: at `off` it drives nothing (`skills/workflow-research/SKILL.md` § 2c).
+
+`device`, `device_source` — the device every build, test and drive of a stage runs on, and the project's command that prints one. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile: `auto` and `—` when nobody named either. Passed as resolved: the command is not run here but by each stage, at its start, so a device changed between stages is the one the next stage uses (`conventions/stage-dispatch.md` → Device). When the run's `bash` call names `--set device=…`, quote the pair: a device's name holds spaces.
 
 `manual_checks` — when the validator writes `ManualChecks.md`. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `auto` writes the file only for the checks the validator was told not to run itself; `always` writes it every time, even when the validator drove the app and covered the happy path.
 
