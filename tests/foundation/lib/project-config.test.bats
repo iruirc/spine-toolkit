@@ -34,7 +34,7 @@ core_grep() {
   done
   for f in LANG PROGRESS SETTINGS_REPORT BUDGETS DOCS_MAP DOCS_STRICTNESS DOCS_FRESHNESS \
            WORKFLOW_MODE SCALE DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION WALKTHROUGH \
-           WALKTHROUGH_CHECK SECURITY DOCS MODELS EFFORT LONG_RUN FIX_ROUNDS; do
+           WALKTHROUGH_CHECK SECURITY DOCS MODELS EFFORT LONG_RUN FIX_ROUNDS DEVICE DEVICE_SOURCE; do
     grep -q "^\[$f\] = \[" "$TPL" || { echo "missing field: [$f]"; return 1; }
   done
 }
@@ -145,6 +145,14 @@ catalog_words() {
     f="$ROOT/templates/task-md/$t.md"
     grep -q '\[DRIVER\]' "$f" || { echo "no [DRIVER] in $t.md"; return 1; }
     grep -q '\[DRIVE_APP\]' "$f" || { echo "no [DRIVE_APP] in $t.md — the anchor moved"; return 1; }
+  done
+}
+
+@test "both task templates offer the DEVICE override, and neither the DEVICE_SOURCE one" {
+  for t in task-root task-step; do
+    f="$ROOT/templates/task-md/$t.md"
+    grep -q '^# \[DEVICE\] = \[' "$f" || { echo "no [DEVICE] in $t.md"; return 1; }
+    ! grep -q 'DEVICE_SOURCE' "$f" || { echo "$t.md offers a field no task can set"; return 1; }
   done
 }
 

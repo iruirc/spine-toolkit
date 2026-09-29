@@ -30,11 +30,11 @@ to, run `scripts/resolve-settings.sh show <task-dir> --all`.
 
 ## The two blocks
 
-**`## Project settings`** is what a task cannot change. No `Task.md` is read for these seven fields:
+**`## Project settings`** is what a task cannot change. No `Task.md` is read for these eight fields:
 the config's line, or the default, is the answer.
 
 **`## Task defaults`** is what a task can change, by writing the same field into its own `Task.md`.
-The config's line is the project's default for these twelve fields, and the task's own line beats it.
+The config's line is the project's default for these thirteen fields, and the task's own line beats it.
 
 Every other block of the file — `## Persona`, `## Rules`, `## Platform`, `## Agents`, `## Stack`,
 `## Modules`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`,
@@ -118,6 +118,17 @@ skill
 
 Whether a component's files carry the Status / Synced / Owner / Source of truth header.
 
+### [DEVICE_SOURCE]
+
+**Values:** a command, `—` · **Default:** `—` · **Task override:** no · **Defined by:**
+[`../conventions/stage-dispatch.md`](../conventions/stage-dispatch.md) → Device
+
+The command that prints the device when `[DEVICE]` resolves to `auto`. It runs from the project
+root, once at the start of every stage that builds or tests, and its first non-empty line is the
+device. This is how one clone of a repository runs on its own device without a commit: the line
+here is the same in every clone, and the command reads whatever the project keeps locally. A
+command that fails or prints nothing leaves the choice to the platform, and the stage says so.
+
 ## Task defaults
 
 ### [WORKFLOW_MODE]
@@ -194,6 +205,18 @@ cannot do becomes a manual check automatically.
 
 This field is the orchestrator's pre-flight concern alone: it never rides the Outbound Contract, so
 no workflow script gates on it.
+
+### [DEVICE]
+
+**Values:** `auto`, or a device in the platform's own terms · **Default:** `auto` · **Task
+override:** `[DEVICE] = [<device>]` · **Defined by:**
+[`../conventions/stage-dispatch.md`](../conventions/stage-dispatch.md) → Device
+
+The device every build, test and drive of a stage runs on, packages included. The value goes to the
+platform's agents as written: what it means — a simulator name, an identifier, a destination — is
+the platform's to say. `auto` hands the choice to `[DEVICE_SOURCE]`, and without one to the
+platform, which is what a project that never touched this field keeps doing. A run sets it like any
+other field a task can: "validate it on <device>" is `--set device=<device>`.
 
 ### [PHASE_VERIFICATION]
 

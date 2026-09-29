@@ -10,6 +10,7 @@
 # [WORKFLOW_MODE] = [auto]    # manual | auto
 # [DRIVE_APP] = [off]         # auto | off
 # [DRIVER] = [auto]           # <driver-plugin> | auto | —
+# [DEVICE] = [auto]           # auto | <device>
 # [MANUAL_CHECKS] = [always]  # auto | always
 # [PHASE_VERIFICATION] = [full] # proportional | full
 # [FIX_ROUNDS] = [0]         # a whole number, 0 turns the auto loop off

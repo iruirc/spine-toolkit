@@ -15,6 +15,7 @@
 [DOCS_MAP] = [DocsMap.md]
 [DOCS_STRICTNESS] = [advisory]         # blocking | advisory | off
 [DOCS_FRESHNESS] = [on]                # on | off
+[DEVICE_SOURCE] = [—]                  # a command printing the device | —
 
 ## Task defaults
 
@@ -23,6 +24,7 @@
 [DRIVE_APP] = [auto]                   # auto | off
 [MANUAL_CHECKS] = [auto]               # auto | always
 [DRIVER] = [auto]                      # <driver-plugin> | auto | —
+[DEVICE] = [auto]                      # auto | <device>
 [PHASE_VERIFICATION] = [proportional]  # proportional | full
 [FIX_ROUNDS] = [2]                     # a whole number, 0 turns the auto loop off
 [WALKTHROUGH] = [deep]                 # brief | deep | off

@@ -116,6 +116,7 @@ For reference, the templates contain these placeholders:
      one task must be driven by a different driver than the project's, by the platform's default, or
      by none. Do not ask about it: the project default is right for nearly every task, and a field
      the user has to decline is a field that costs more than it saves.
+   - `[DEVICE] = [<device>]` — write it only when the user names the device this task must build, test and drive on; the words as said.
    - `[MANUAL_CHECKS] = [<auto|always>]` — write `always` when the user wants a hand-run test script out of this task whether or not the agent drove the app itself.
    - `[PHASE_VERIFICATION] = [<proportional|full>]` — write `full` when the user wants every phase of this task to run the full regression — a change risky enough that a wrong rung would cost more than the builds. Never written for `REVIEW` or `RESEARCH`, which have no phases to check.
    - `[WALKTHROUGH] = [<brief|deep|off>]` — write `off` to suppress `Walkthrough.md` for this task, `brief` when its readers already know the area and a section per commit would be ceremony, or `deep` to force the file onto a `lite` run, which is the one thing the default cannot do for itself (`conventions/task-scale.md`). Never written for `REVIEW` or `RESEARCH`, where the profile has nothing to write it from.
