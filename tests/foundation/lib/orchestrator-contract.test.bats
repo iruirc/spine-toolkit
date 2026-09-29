@@ -538,3 +538,14 @@ section() {
     grep -qx '## stage_done_dialog_accept' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no stage_done_dialog_accept"; return 1; }
   done
 }
+
+@test "the plugin registers the opening-block hook on the orchestrator's dispatch tools" {
+  python3 - "$ROOT/hooks/hooks.json" <<'PY' || return 1
+import json, sys
+entries = json.load(open(sys.argv[1]))['hooks'].get('PreToolUse', [])
+hit = [e for e in entries if e.get('matcher') == 'Workflow|Skill'
+       and any(h.get('command', '').endswith('/hooks/opening-block"') for h in e.get('hooks', []))]
+sys.exit(0 if hit else 'no PreToolUse hook on Workflow|Skill runs hooks/opening-block')
+PY
+  [ -x "$ROOT/hooks/opening-block" ] || { echo "hooks/opening-block is not executable"; return 1; }
+}

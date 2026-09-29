@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# PreToolUse hook: the run's opening block, shown by the host before the orchestrator's dispatch
+# (skills/orchestrator/SKILL.md → The opening block). A reply that skips it cannot drop it.
+#
+# Fires on every Workflow and Skill call of a session. It never stands in the way of one: every
+# path exits 0, and a call that is not a dispatch, or input it cannot read, is silence.
+
+core="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+SPINE_HOOK_INPUT="$(cat 2>/dev/null)" SPINE_CORE_ROOT="$core" python3 - 2>/dev/null <<'PY' || true
+import json, os, re, subprocess, sys, tempfile
+
+hook = json.loads(os.environ.get('SPINE_HOOK_INPUT') or 'null')
+given = hook.get('tool_input') if isinstance(hook, dict) else None
+if not isinstance(given, dict):
+    sys.exit(0)
+tool = hook.get('tool_name')
+if tool == 'Workflow' and (re.fullmatch(r'spine-toolkit:profile-[a-z]+', str(given.get('name') or ''))
+                           or re.search(r'/workflows/profile-[a-z]+\.js$', str(given.get('scriptPath') or ''))):
+    method = 'A'
+elif tool == 'Skill' and re.fullmatch(r'spine-toolkit:workflow-[a-z]+', str(given.get('skill') or '')):
+    method = 'B'
+else:
+    sys.exit(0)
+
+args = given.get('args')
+if isinstance(args, str) and args.lstrip().startswith('{'):
+    args = json.loads(args)
+if isinstance(args, dict):
+    text, task_dir = json.dumps(args), args.get('task_dir')
+elif isinstance(args, str):
+    found = re.search(r'^task_dir=(.+)$', args, flags=re.M)
+    text, task_dir = args, found and found.group(1).strip()
+else:
+    sys.exit(0)
+if not task_dir:
+    sys.exit(0)
+
+# Once per task in a turn: a retry or a hand-back's re-dispatch in the same turn is the same run.
+marks = os.path.join(tempfile.gettempdir(), 'spine-toolkit-open', re.sub(r'[^\w-]', '_', str(hook.get('session_id'))))
+mark = '%s %s' % (hook.get('prompt_id'), task_dir)
+seen = open(marks, encoding='utf-8').read().splitlines() if os.path.isfile(marks) else []
+if mark in seen:
+    sys.exit(0)
+os.makedirs(os.path.dirname(marks), exist_ok=True)
+with open(marks, 'a', encoding='utf-8') as fh:
+    fh.write(mark + '\n')
+
+run = subprocess.run(['bash', os.path.join(os.environ['SPINE_CORE_ROOT'], 'scripts', 'resolve-settings.sh'),
+                      'open', '--contract', '-', '--method', method],
+                     input=text, capture_output=True, text=True, cwd=hook.get('cwd') or None, timeout=50)
+if run.returncode:
+    why = (run.stderr.strip().splitlines() or ['exit %d' % run.returncode])[0]
+    message = 'spine-toolkit: the opening block did not come out: %s' % why
+elif run.stdout.strip():
+    message = run.stdout.rstrip('\n')
+else:
+    sys.exit(0)
+print(json.dumps({'systemMessage': message}, ensure_ascii=False))
+PY
+exit 0
