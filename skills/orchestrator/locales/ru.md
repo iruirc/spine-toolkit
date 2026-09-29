@@ -127,6 +127,39 @@ security; OWASP; vulnerability; certificate pinning; безопасность
 ## stage_error_option_stop
 Остановиться и вернуть управление
 
+## open_header
+{profile} {task} · {start} → {end} · Progress: {progress} · {method}
+
+## open_method_a
+Method A
+
+## open_method_b
+Method B ({skill}): {why}
+
+## open_stages
+Стадии:
+
+## open_workflows
+Ход — во вьюхе /workflows: каждый диспатч там отдельная строка {workflow}, новые сверху.
+
+## open_run_setting
+Только на этот прогон: {field} {from} → {to}
+
+## open_directive
+Уточнение владельца, дословно уходит каждой стадии: {directive}
+
+## open_live_a
+Панель токенов: запусти `bash "{script}" --session {session}` в соседней панели терминала.
+
+## open_live_b
+Каждый вызов агента хост рисует сам; панель токенов добавляет цифры, которых он не показывает.
+
+## open_settings
+Настройки:
+
+## open_settings_rest
+ещё {n} по умолчанию.
+
 ## progress_stage_metrics
 {tuning} · {out} out · {ctx} ctx · {cacheWrite} cache-w · {cacheRead} cache-r · {tools} tools · {elapsed}
 

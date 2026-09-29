@@ -994,3 +994,111 @@ $BATS_TEST_TMPDIR/assets"
   [ "$(field driver <"$BATS_TEST_TMPDIR/out")" = auto ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
   grep -qF "'foo bar' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
 }
+
+# open: the run's opening block, which the orchestrator shows as it is (SKILL.md → Progress reporting).
+body_of() { awk -v k="## $2" '$0==k{p=1;next} /^## /{p=0} p&&NF' "$ROOT/skills/orchestrator/locales/$1.md"; }
+
+@test "open heads the block with profile, task, range, Progress and method, then the range's stages" {
+  run "$RESOLVE" open "$TASK" --method A --range Plan:Validation
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "${lines[0]}" = "BUG 042 · Plan → Validation · Progress: normal · Method A" ] || { echo "$output"; return 1; }
+  grep -qxF '  Plan — architect' <<<"$output" || { echo "$output"; return 1; }
+  grep -qxF '  Validation — validator' <<<"$output" || { echo "$output"; return 1; }
+  ! grep -qE '^  (Reproduce|Review) — ' <<<"$output" || { echo "a stage outside the range: $output"; return 1; }
+  grep -qxF "$(body_of en open_workflows | sed 's/{workflow}/profile-bug/')" <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "open names Method B's skill and reason, and sends nobody to /workflows" {
+  run "$RESOLVE" open "$TASK" --method B --why 'Workflow is not callable here' --range Reproduce:Done
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "${lines[0]}" = "BUG 042 · Reproduce → Done · Progress: normal · Method B (spine-toolkit:workflow-bug): Workflow is not callable here" ] \
+    || { echo "$output"; return 1; }
+  ! grep -qF '/workflows' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "open refuses a method without its reason, a reason without Method B, and a range the profile lacks" {
+  for args in '--method B --range Reproduce:Done' '--method A --why x --range Reproduce:Done' \
+              '--method C --range Reproduce:Done' '--method A --range Done:Plan' '--method A --range Edit:Done' \
+              '--method A'; do
+    # shellcheck disable=SC2086
+    run "$RESOLVE" open "$TASK" $args
+    [ "$status" -eq 2 ] || { echo "accepted: $args"; return 1; }
+  done
+}
+
+@test "open shows a run setting as from → to, the from being what json gives without --set" {
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [full]\n' >"$TASK/Task.md"
+  [ "$("$RESOLVE" json "$TASK" | field drive_app)" = auto ]
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done \
+    --set drive_app=off --set models.reviewer=opus --set scale=lite
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  run_line() { body_of en open_run_setting | sed "s/{field}/$1/; s/{from}/$2/; s/{to}/$3/"; }
+  grep -qxF "$(run_line drive_app auto off)" <<<"$output" || { echo "$output"; return 1; }
+  grep -qxF "$(run_line models.reviewer session opus)" <<<"$output" || { echo "$output"; return 1; }
+  # A value the resolver kept below the task's own is not what the run got.
+  ! grep -qF "$(run_line scale full lite)" <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "open quotes the directive from Run.json verbatim, and not from a tracked one" {
+  printf '{"user_directive": "leave the Net package alone\\nlook hard at the cache", "run_settings": {}}' >"$TASK/Run.json"
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done
+  grep -qxF "$(body_of en open_directive | sed 's/{directive}/leave the Net package alone/')" <<<"$output" \
+    || { echo "$output"; return 1; }
+  grep -qxF 'look hard at the cache' <<<"$output" || { echo "$output"; return 1; }
+  git -C "$PROJ" init -q && git -C "$PROJ" add Tasks
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done
+  ! grep -qF 'leave the Net package alone' <<<"$output" || { echo "a tracked Run.json was read: $output"; return 1; }
+}
+
+@test "settings_report sizes open's settings, and the count at default is in the run's language" {
+  printf '## Task defaults\n\n[SCALE] = [lite]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done
+  grep -qE '^  \[SCALE\] += \[lite\]  # project$' <<<"$output" || { echo "$output"; return 1; }
+  grep -qE '^  [0-9]+ more at their default\.$' <<<"$output" || { echo "$output"; return 1; }
+  ! grep -qE '^# [0-9]+ more' <<<"$output" || { echo "show's own tail leaked: $output"; return 1; }
+
+  printf '## Project settings\n\n[SETTINGS_REPORT] = [full]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done
+  grep -qE '^  \[FIX_ROUNDS\] += \[2\]  # default$' <<<"$output" || { echo "$output"; return 1; }
+  ! grep -qF 'more at their default' <<<"$output" || { echo "$output"; return 1; }
+
+  printf '## Project settings\n\n[SETTINGS_REPORT] = [off]\n\n## Task defaults\n\n[SCALE] = [lite]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done
+  ! grep -qF "$(body_of en open_settings)" <<<"$output" || { echo "$output"; return 1; }
+  ! grep -qF '[SCALE]' <<<"$output" || { echo "$output"; return 1; }
+
+  printf '## Project settings\n\n[LANG] = [ru]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done
+  grep -qxF "$(body_of ru open_stages)" <<<"$output" || { echo "$output"; return 1; }
+  [ "$(tail -1 <<<"$output" | sed -E 's/[0-9]+/{n}/')" = "  $(body_of ru open_settings_rest)" ] \
+    || { echo "$output"; return 1; }
+}
+
+@test "open adds the effort warning under Method B only" {
+  printf '## Task defaults\n\n[EFFORT] = [reviewer: high]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  warn="$(body_of en warn_effort_method_b | sed 's/{roles}/reviewer/')"
+  run "$RESOLVE" open "$TASK" --method B --why x --range Reproduce:Done
+  grep -qxF "$warn" <<<"$output" || { echo "$output"; return 1; }
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done
+  ! grep -qxF "$warn" <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "at live open gives Method A the panel's command when the session is known, and Method B the host's note" {
+  run env CLAUDE_CODE_SESSION_ID=s-1 "$RESOLVE" open "$TASK" --method A --range Reproduce:Done --progress live
+  [ "${lines[0]}" = "BUG 042 · Reproduce → Done · Progress: live · Method A" ] || { echo "$output"; return 1; }
+  grep -qF "bash \"$ROOT/scripts/agent-monitor.sh\" --session s-1" <<<"$output" || { echo "$output"; return 1; }
+  run env -u CLAUDE_CODE_SESSION_ID "$RESOLVE" open "$TASK" --method A --range Reproduce:Done --progress live
+  ! grep -qF 'agent-monitor.sh' <<<"$output" || { echo "$output"; return 1; }
+  run env -u CLAUDE_CODE_SESSION_ID "$RESOLVE" open "$TASK" --method B --why x --range Reproduce:Done --progress live
+  grep -qxF "$(body_of en open_live_b)" <<<"$output" || { echo "$output"; return 1; }
+  run env CLAUDE_CODE_SESSION_ID=s-1 "$RESOLVE" open "$TASK" --method A --range Reproduce:Done
+  ! grep -qF 'agent-monitor.sh' <<<"$output" || { echo "the panel at normal: $output"; return 1; }
+}
+
+@test "open prints nothing at quiet" {
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done --progress quiet
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; return 1; }
+  printf '## Project settings\n\n[PROGRESS] = [quiet]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; return 1; }
+}
