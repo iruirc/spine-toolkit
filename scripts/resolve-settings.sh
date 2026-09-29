@@ -12,7 +12,7 @@ set -euo pipefail
 #                                                  # Task.md lines, with sources
 #                                                  # --all: every field, defaults included
 #        scripts/resolve-settings.sh open <task-dir> --method A|B [--why <text>] --range <start>:<end>
-#                                         [--progress <value>] [--set ...]
+#                                         [--progress <value>] [--run-file <path>] [--set ...]
 #                                                  # the run's opening block, in the resolved lang
 #        scripts/resolve-settings.sh raw  <dir> <block>        # the value lines of one config block
 # Exit:  0, or 2 on a usage error. One stderr line per entry it could not take at face value.
@@ -58,7 +58,7 @@ CAPS = dict((n, int(v)) for n, v in (p.split(':') for p in sys.argv[5].split()))
 CMD, TARGET = sys.argv[6], sys.argv[7]
 BLOCK = sys.argv[8] if CMD == 'raw' else None
 SHOW_ALL = False
-# open's own flags: --method, --why, --range, --progress.
+# open's own flags: --method, --why, --range, --progress, --run-file.
 OPEN = {}
 # This run's own word on a field (conventions/task-settings.md → The chain): a scalar, or one key
 # of a map, in the order given; a later --set of the same field or key wins.
@@ -70,7 +70,7 @@ while rest:
         SHOW_ALL = True
     elif arg == '--set' and rest and re.fullmatch(r'[a-z_]+(\.[A-Za-z]+)?=\S(.*\S)?', rest[0]):
         RUN_SET.append(rest.pop(0).split('=', 1))
-    elif CMD == 'open' and arg in ('--method', '--why', '--range', '--progress') and rest:
+    elif CMD == 'open' and arg in ('--method', '--why', '--range', '--progress', '--run-file') and rest:
         OPEN[arg[2:]] = rest.pop(0)
     else:
         print('usage: resolve-settings.sh json|show|open <task-dir> [--all] [--set <field>[.<key>]=<value>]...',
@@ -496,7 +496,8 @@ if CMD == 'show':
 # open: the opening block, which the orchestrator shows as it is. One line per fact, in this order:
 # profile, task, range, Progress, method (under B, its skill and why); every stage of the range and
 # its role, from the profile script's meta; under A, /workflows; every setting this run set, from
-# json without --set to what it resolved to; the owner's directive, verbatim, from Run.json; under
+# json without --set to what it resolved to; the owner's directive, verbatim, from Run.json (the
+# epic's, through --run-file, for a step it handed back); under
 # B, the roles whose effort does not travel; at live, the token panel; the settings column, sized
 # by settings_report. Nothing at quiet.
 CORE = os.environ['SPINE_CORE_ROOT']
@@ -566,9 +567,10 @@ for name in ('models', 'effort', 'long_run'):
                 if sources.get('%s.%s' % (name, k)) == 'run']
 
 # Run.json is the owner's word only while git does not track it (SKILL.md → The run's own words).
-directive, run_file = '', os.path.join(TARGET, 'Run.json')
+directive, run_file = '', os.path.abspath(OPEN.get('run-file', os.path.join(TARGET, 'Run.json')))
 if os.path.isfile(run_file):
-    tracked = subprocess.run(['git', '-C', TARGET, 'ls-files', '--error-unmatch', 'Run.json'],
+    tracked = subprocess.run(['git', '-C', os.path.dirname(run_file), 'ls-files', '--error-unmatch',
+                              os.path.basename(run_file)],
                              capture_output=True).returncode == 0
     if not tracked:
         try:

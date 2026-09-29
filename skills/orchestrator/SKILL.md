@@ -662,7 +662,7 @@ On a non-empty `handback` the orchestrator runs that stage itself in the main co
 
 `status: error` with `reason: no-args` means the contract never reached the script. Do not run the stage by hand and do not slide over to Method B as if nothing happened — say what happened, then re-dispatch with the contract filled. `reason: no-plugin-root` is the same stop for one field: re-dispatch with `plugin_root` as `resolve-settings.sh json` printed it.
 
-**Method B — invoke.** Unchanged: invoke the `Skill` tool with the name from the table and `args` in Outbound Contract format.
+**Method B — invoke.** The opening block goes out before this call, exactly as under Method A: a skill's first stage is as silent from outside as a workflow. Then invoke the `Skill` tool with the name from the table and `args` in Outbound Contract format.
 
 ## Progress reporting
 
@@ -684,14 +684,17 @@ gives them.
 `Workflow` or `Skill` dispatch. A script writes it, so no fact depends on a reply choosing to say it:
 
 ```
-bash "<core root>/scripts/resolve-settings.sh" open <task dir> --method A|B [--why "<reason>"] \
-  --range "<start>:<end>" [--progress <value>] [--set <field>=<value> ...]
+bash "<core root>/scripts/resolve-settings.sh" open <task dir> --method A|B [--why '<reason>'] \
+  --range "<start>:<end>" [--progress <value>] [--run-file <epic dir>/Run.json] [--set <field>=<value> ...]
 ```
 
 - `--set` exactly as in step 3; `--progress` only when `progress_override` is set;
-- `--why` under Method B only: why the workflow path was not taken, in the resolved `lang`;
-- its stdout is the first thing the user reads about this run: put it in the reply as it is, in a
-  code block, adding nothing and leaving nothing out, then dispatch. Which facts it names, and in
+- `--why` under Method B only: why the workflow path was not taken, in the resolved `lang`, in
+  single quotes — a backtick or a `$` inside double quotes is the shell's, not the reason's;
+- `--run-file` only for a step an epic handed back in `pending_steps`: its directive is the epic's;
+- its stdout is the run's first report: put it in your reply as it is, in a code block, adding
+  nothing and leaving nothing out, in the same turn as the dispatch and before it —
+  not held back for the final report. Which facts it names, and in
   which order, is the script's header, not this section.
 
 A non-zero exit costs one line — the block did not come out, and the script's stderr — and the run

@@ -1102,3 +1102,13 @@ body_of() { awk -v k="## $2" '$0==k{p=1;next} /^## /{p=0} p&&NF' "$ROOT/skills/o
   run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done
   [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; return 1; }
 }
+
+@test "open reads the directive from --run-file, the epic's file for a step it handed back" {
+  mkdir -p "$PROJ/epic" && printf '{"user_directive": "leave the Net package alone"}' >"$PROJ/epic/Run.json"
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done --run-file "$PROJ/epic/Run.json"
+  grep -qxF "$(body_of en open_directive | sed 's/{directive}/leave the Net package alone/')" <<<"$output" \
+    || { echo "$output"; return 1; }
+  git -C "$PROJ" init -q && git -C "$PROJ" add epic
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done --run-file "$PROJ/epic/Run.json"
+  ! grep -qF 'leave the Net package alone' <<<"$output" || { echo "a tracked run file was read: $output"; return 1; }
+}
