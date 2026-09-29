@@ -117,9 +117,15 @@ const DIRECTIVE_NOTE = `${DIRECTIVE ? `\n\nOwner's directive for this run — ve
 
 // The device every build and test of a stage runs on: conventions/stage-dispatch.md → Device, whose
 // two blocks these are, word for word. A named device makes the project's command moot.
-const DEVICE = typeof A.device === 'string' && A.device.trim() !== 'auto' ? A.device.trim() : ''
-const DEVICE_SOURCE = typeof A.device_source === 'string' && A.device_source.trim() !== '—' ? A.device_source.trim() : ''
-const DEVICE_NOTE = DEVICE ? `\n\nDevice: «${DEVICE}» — every build, test and drive of this stage runs on it, packages included, whatever the project's files or your own defaults name. Say at the top of your artifact which device you used, and that the brief named it.` : DEVICE_SOURCE ? `\n\nDevice: run \`${DEVICE_SOURCE}\` from the project root once, at the start of this stage; its first non-empty line is the device every build, test and drive of this stage runs on, packages included, whatever the project's files or your own defaults name. If the command exits non-zero or prints nothing, the platform's own choice stands. Say at the top of your artifact which device you used, and whether the command gave it.` : ''
+const DEVICE = typeof A.device === 'string' && A.device.trim().toLowerCase() !== 'auto' ? A.device.trim() : ''
+const DEVICE_SOURCE = typeof A.device_source === 'string' && !['—', '-'].includes(A.device_source.trim()) ? A.device_source.trim() : ''
+const DEVICE_ORIGINS = { run: 'this run', task: "the task's Task.md", epic: "the epic's Task.md", project: "the project's config" }
+const DEVICE_FROM = Object.prototype.hasOwnProperty.call(DEVICE_ORIGINS, A.device_from) ? `, set by ${DEVICE_ORIGINS[A.device_from]}` : ''
+const DEVICE_RUN = (() => {
+  const n = Math.max(0, ...(DEVICE_SOURCE.match(/`+/g) || []).map((r) => r.length))
+  return n ? `${'`'.repeat(n + 1)} ${DEVICE_SOURCE} ${'`'.repeat(n + 1)}` : `\`${DEVICE_SOURCE}\``
+})()
+const DEVICE_NOTE = DEVICE ? `\n\nDevice: «${DEVICE}» — every build, test and drive of this stage runs on it, packages included, whatever the project's files or your own defaults name. Say at the top of your artifact which device you used, and that the brief named it${DEVICE_FROM}.` : DEVICE_SOURCE ? `\n\nDevice: run ${DEVICE_RUN} from the project root once, at the start of this stage; its first non-empty line is the device every build, test and drive of this stage runs on, packages included, whatever the project's files or your own defaults name. If the command exits non-zero or prints nothing, the platform's own choice stands. Say at the top of your artifact which device you used, and whether the command gave it.` : ''
 
 // Documentation routing. Which declared component a change set may have touched is a script
 // (conventions/docs-components.md), because matching a diff against a dozen glob patterns by

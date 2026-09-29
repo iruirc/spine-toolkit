@@ -65,11 +65,25 @@ prompt, after the owner's directive, in these words:
 Device: «{device}» — every build, test and drive of this stage runs on it, packages included, whatever the project's files or your own defaults name. Say at the top of your artifact which device you used, and that the brief named it.
 ```
 
+When the contract's `device_from` says where the device was set, the last sentence ends `that the
+brief named it, set by <origin>.`, the origin in these words; any other value keeps the sentence as
+it is:
+
+| `device_from` | origin |
+|---|---|
+| `run` | this run |
+| `task` | the task's Task.md |
+| `epic` | the epic's Task.md |
+| `project` | the project's config |
+
 At `auto` with a command, in these words instead:
 
 ```text
 Device: run `{device_source}` from the project root once, at the start of this stage; its first non-empty line is the device every build, test and drive of this stage runs on, packages included, whatever the project's files or your own defaults name. If the command exits non-zero or prints nothing, the platform's own choice stands. Say at the top of your artifact which device you used, and whether the command gave it.
 ```
+
+A command holding a backtick goes in a code span one backtick longer than its longest run, padded
+with a space on each side.
 
 The command runs in every stage rather than once per run, so a device changed between two stages
 is the one the second stage uses. It comes from the contract, not from a file, which is what lets a
