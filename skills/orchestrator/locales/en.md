@@ -145,6 +145,9 @@ Watch it in /workflows: each dispatch is a row of its own, listed as {workflow},
 ## open_run_setting
 For this run only: {field} {from} → {to}
 
+## open_run_setting_kept
+For this run only: {field} {to}, as it already was
+
 ## open_directive
 Owner's directive, verbatim, to every stage: {directive}
 

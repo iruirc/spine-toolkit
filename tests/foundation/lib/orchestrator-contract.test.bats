@@ -396,6 +396,7 @@ section() {
   [ -n "$para" ] || { echo "no opening block paragraph"; return 1; }
   for f in 'resolve-settings.sh" open <task dir> --method A|B' '--range "<start>:<end>"' '`--set` exactly as in step 3' \
            "--why '<reason>'" '--run-file <epic dir>/Run.json' 'not held back for the final report' \
+           '`--profile <type>` only when `fallback_profile_question` chose the profile' 'never merged into it' \
            '`progress_override`' 'in the resolved `lang`' 'in the same turn as the dispatch and before it' \
            "the script's header" '`Progress` never changes what runs' 'At `quiet` the script is not called' \
            '`from → to`' '`user_directive`, verbatim'; do

@@ -685,17 +685,20 @@ gives them.
 
 ```
 bash "<core root>/scripts/resolve-settings.sh" open <task dir> --method A|B [--why '<reason>'] \
-  --range "<start>:<end>" [--progress <value>] [--run-file <epic dir>/Run.json] [--set <field>=<value> ...]
+  --range "<start>:<end>" [--progress <value>] [--run-file <epic dir>/Run.json] [--profile <type>] \
+  [--set <field>=<value> ...]
 ```
 
 - `--set` exactly as in step 3; `--progress` only when `progress_override` is set;
 - `--why` under Method B only: why the workflow path was not taken, in the resolved `lang`, in
   single quotes — a backtick or a `$` inside double quotes is the shell's, not the reason's;
 - `--run-file` only for a step an epic handed back in `pending_steps`: its directive is the epic's;
-- its stdout is the run's first report: put it in your reply as it is, in a code block, adding
+- `--profile <type>` only when `fallback_profile_question` chose the profile: `Task.md` names none;
+- its stdout is the run's opening report — the announcements and questions of steps 1–5.6 may
+  come before it, never merged into it: put it in your reply as it is, in a code block, adding
   nothing and leaving nothing out, in the same turn as the dispatch and before it —
-  not held back for the final report. Which facts it names, and in
-  which order, is the script's header, not this section.
+  not held back for the final report. Which facts it names, and in which order, is
+  the script's header, not this section.
 
 A non-zero exit costs one line — the block did not come out, and the script's stderr — and the run
 dispatches as usual: `Progress` never changes what runs. At `quiet` the script is not called, and

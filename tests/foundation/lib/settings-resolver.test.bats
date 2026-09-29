@@ -1112,3 +1112,36 @@ body_of() { awk -v k="## $2" '$0==k{p=1;next} /^## /{p=0} p&&NF' "$ROOT/skills/o
   run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done --run-file "$PROJ/epic/Run.json"
   ! grep -qF 'leave the Net package alone' <<<"$output" || { echo "a tracked run file was read: $output"; return 1; }
 }
+
+@test "a run setting that changes nothing says so instead of showing a change" {
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [reviewer: opus]\n' >"$TASK/Task.md"
+  run "$RESOLVE" open "$TASK" --method A --range Reproduce:Done --set models.reviewer=opus
+  grep -qxF "$(body_of en open_run_setting_kept | sed 's/{field}/models.reviewer/; s/{to}/opus/')" <<<"$output" \
+    || { echo "$output"; return 1; }
+  ! grep -qF 'opus → opus' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "open takes --profile when Task.md names no type, and refuses one that is not a profile" {
+  printf '[NEED_TEST] = [true]\n' >"$TASK/Task.md"
+  run "$RESOLVE" open "$TASK" --method A --range Edit:Done
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  run "$RESOLVE" open "$TASK" --method A --range Edit:Done --profile QUICK
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "${lines[0]}" = "QUICK 042 · Edit → Done · Progress: normal · Method A" ] || { echo "$output"; return 1; }
+  run "$RESOLVE" open "$TASK" --method A --range Edit:Done --profile ../../etc
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+}
+
+@test "a nested epic step is labelled with every id above it" {
+  STEP="$TASK/02-sub.step/01-leaf.step"; mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [QUICK]\n' >"$STEP/Task.md"
+  run "$RESOLVE" open "$STEP" --method A --range Edit:Done
+  [ "${lines[0]}" = "QUICK 042/02/01 · Edit → Done · Progress: normal · Method A" ] || { echo "$output"; return 1; }
+}
+
+@test "a Run.json open cannot read is said on stderr, and the block still goes out" {
+  printf '["not", "an object"]' >"$TASK/Run.json"
+  "$RESOLVE" open "$TASK" --method A --range Reproduce:Done >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  grep -qF 'BUG 042' "$BATS_TEST_TMPDIR/out" || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  grep -qF "open: $TASK/Run.json" "$ERR" || { cat "$ERR"; return 1; }
+}
