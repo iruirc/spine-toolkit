@@ -147,12 +147,13 @@ anything — which is what lets F take the language and the platform from the fi
    STATE B (existing_md):
      a. Ask qM, qP.
      b. Render the toolkit template. Write to <project>/CLAUDE-spine-toolkit.md.
-     c. Backup CLAUDE.md → CLAUDE.md.bak (collision suffix: .bak.YYYYMMDD-HHMMSS).
+     c. If the `@./CLAUDE-spine-toolkit.md` line already exists anywhere in the file → skip
+        c and d: CLAUDE.md is neither written nor backed up. Otherwise backup CLAUDE.md →
+        CLAUDE.md.bak (collision suffix: .bak.YYYYMMDD-HHMMSS).
      d. Insert `@./CLAUDE-spine-toolkit.md` as a new line:
         - if the first non-empty line is an H1 (`# ...`), insert immediately after it
           (with one blank line before and after).
         - otherwise, insert at the very top of the file (with one blank line after).
-        - if the line already exists anywhere in the file → skip insertion (idempotent).
 
    STATE C (already_configured):
      a. AUQ using key `auq_reconfigure_toolkit` with options `auq_reconfigure_toolkit_options`
@@ -408,7 +409,7 @@ Empty `user_sections` → the file ends at the `@import` line (with a trailing n
 
 ### Safeguards
 
-1. **Backup always**: the source file → `<name>.bak` (or `.bak.YYYYMMDD-HHMMSS` on collision) **before** any disk write.
+1. **Backup before a write**: the source file → `<name>.bak` (or `.bak.YYYYMMDD-HHMMSS` on collision) **before** any disk write to it. A file setup does not write gets no backup.
 2. **Atomic writes**: write to `*.new`, then atomic rename.
 3. **Idempotency**: if the toolkit file exists AND CLAUDE.md has the `@import` line, state detection routes to C, not D or E — and to F rather than C while that file is still in the 1.x block format.
 4. **Rollback hint** in the report: `mv {backup_path} CLAUDE.md && rm CLAUDE-spine-toolkit.md`. State F rewrote one file, so its hint is `mv {backup_path} CLAUDE-spine-toolkit.md`.

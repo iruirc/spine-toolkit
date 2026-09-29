@@ -50,3 +50,20 @@ algorithm_step() {
       || { echo "missing in $l.md"; return 1; }
   done
 }
+
+# State B, heading excluded, up to state C.
+state_b() { awk '/^   STATE B /{f=1;next} f&&/^   STATE C /{exit} f' "$SKILL"; }
+
+@test "state B backs up CLAUDE.md only when it will insert the import line" {
+  body="$(state_b)"
+  [ -n "$body" ] || { echo "state B not found"; return 1; }
+  skip_at="$(grep -n 'already exists anywhere' <<<"$body" | head -1 | cut -d: -f1)"
+  backup_at="$(grep -n 'CLAUDE.md.bak' <<<"$body" | head -1 | cut -d: -f1)"
+  [ -n "$skip_at" ] || { echo "no already-present check"; return 1; }
+  [ -n "$backup_at" ] || { echo "no backup step"; return 1; }
+  [ "$skip_at" -lt "$backup_at" ] || { echo "backup precedes the already-present check"; return 1; }
+}
+
+@test "the backup safeguard is tied to a write, not to every run" {
+  grep -qF 'A file setup does not write gets no backup' "$SKILL"
+}
