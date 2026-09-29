@@ -83,3 +83,8 @@ message() { python3 -c 'import json,sys; print(json.load(sys.stdin)["systemMessa
     [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$input: $output"; return 1; }
   done
 }
+
+@test "at live the panel's command names the session the hook was given" {
+  hook Workflow "$(workflow '{"progress": "live"}')"
+  message | grep -qF 'agent-monitor.sh" --session s-1' || { echo "$output"; return 1; }
+}
