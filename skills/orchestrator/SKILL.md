@@ -207,8 +207,8 @@ Algorithm:
      nothing. `docs-route.sh` and `lint-artifact-budget.sh` end their own runs at exit 2 for the
      same reason, and a run that guessed a setting here would carry the guess into every stage.
 
-   An unrecognized `progress` value resolves to "normal" without an error: the resolved value is
-   printed in the settings column, so a typo shows up as a mismatch with the file rather than as
+   An unrecognized `progress` value resolves to "normal" without an error: the opening block names
+   the resolved `Progress` value, so a typo shows up as a mismatch with the file rather than as
    silence. Every other value the script could not take at face value reaches this call on
    stderr; which key announces which line is in **Progress reporting**.
 
@@ -692,7 +692,7 @@ gives them.
   as `meta.name`, newest on top;
 - unless `settings_report` is `off`, the settings: the `[FIELD] = [...]` lines of
   `bash "<core root>/scripts/resolve-settings.sh" show <task dir>` at `diff`, or of
-  `show <task dir> --all` at `full`, and how many fields are left at their default. Run
+  `show <task dir> --all` at `full`, and, at `diff`, how many fields are left at their default. Run
   `show <task dir>` with the same `--set` as step 3, so a value the run set is among them, sourced
   `run`. The script's trailing `# <n> more at their default` is English whatever `lang` is: give
   the count in the report's own words. At `diff` a project left on the shipped template shows just
@@ -700,12 +700,13 @@ gives them.
   `[WALKTHROUGH]` that a `lite` scale drags to `off` with it;
 - **the run's own words** — every entry of `run_settings`: its field, `from → to` (`from` the value a
   `json` call without `--set` gives, `to` the value it resolved to with them), and that it holds
-  for this run only; and a non-empty `user_directive`, verbatim. They are how the user sees what
-  went to the agents. At `quiet` they open the final report instead;
-- at `live`: under Method A, the token panel's command, verbatim — `bash "<script>" --session
-  <session>`, `<script>` being the absolute path to `scripts/agent-monitor.sh` built from
-  `${CLAUDE_PLUGIN_ROOT}` and `<session>` being `$CLAUDE_CODE_SESSION_ID`; under Method B, that the
-  host renders every agent call itself and the panel adds the token figures it does not show.
+  for this run only; and a non-empty `user_directive`, verbatim, as it went to every stage. They
+  are how the user sees what went to the agents. At `quiet` they open the final report instead;
+- at `live`: under Method A, the token panel's command, verbatim, to run in a second terminal pane
+  — `bash "<script>" --session <session>`, `<script>` being
+  the absolute path to `scripts/agent-monitor.sh` built from `${CLAUDE_PLUGIN_ROOT}` and `<session>`
+  being `$CLAUDE_CODE_SESSION_ID`; under Method B, that the host renders every agent call itself and
+  the panel adds the token figures it does not show.
 
 **The experiment line.** With `research_experiment=on` and a range that includes the Research
 stage, render `research_experiment_announce`, `{branch}` being `experiment/<task>` as

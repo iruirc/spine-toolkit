@@ -215,7 +215,7 @@ Stop the stage
 `on` is the pre-depth value, so it is read as `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. A project's `on` still ends at `off` when this task's `scale` is `lite`, the gate sitting below the task's own field and above the project's. To keep the older shape, write `brief` in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`.
 
 ## warn_walkthrough_unrecognised
-`{value}` is not one of the three walkthrough depths, so it was skipped and the rest of the chain decides: `off` when this task's `scale` is `lite`, otherwise the project's `[WALKTHROUGH]` where it names one, and `deep` where nothing does. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`. The settings column above names the depth this run actually resolved to.
+`{value}` is not one of the three walkthrough depths, so it was skipped and the rest of the chain decides: `off` when this task's `scale` is `lite`, otherwise the project's `[WALKTHROUGH]` where it names one, and `deep` where nothing does. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`. The settings above name the depth this run actually resolved to.
 
 ## warn_tuning_unrecognised
 `{entry}` in {source} is not a key and value this run can use, so it was skipped and the next setting down applies. Model keys are `light`, `walkthrough`, `done` and the eight roles, with `opus`, `sonnet`, `haiku`, `fable` or `session`; effort keys are `walkthrough`, `done` and the eight roles, with `low`, `medium`, `high`, `xhigh`, `max` or `session`.

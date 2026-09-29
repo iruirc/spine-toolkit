@@ -20,7 +20,7 @@ Task.md  →  the epic's Task.md for a .step/ folder  →  the nearest CLAUDE-sp
 A missing field is the default, not an error: nothing stops because a setting was left unwritten. An
 unrecognized value is named on stderr and the chain continues past it, so a typo in a task lands on
 the project's choice rather than on the built-in default. `[PROGRESS]` is the one field whose bad
-value is skipped in silence — the settings column prints what it resolved to, so the mismatch with
+value is skipped in silence — the opening block names what it resolved to, so the mismatch with
 the file is visible already.
 
 [`../conventions/task-settings.md`](../conventions/task-settings.md) is the normative statement of
@@ -60,18 +60,18 @@ the file, and `/lang en|ru` is what rewrites it.
 **Defined by:** the `orchestrator` skill
 
 How much the orchestrator narrates a profile run: `quiet` — the final report only; `normal` — the
-stage-to-agent plan once, then a report after every stage; `live` — everything from `normal` plus
-each stage's token cost, a totals line when the run finishes, and the command for a live agent panel
-you can run in a second terminal pane.
+stages and their agents once, then a report after every stage; `live` — everything from `normal`
+plus each stage's token cost, a totals line when the run finishes, and the command for a live agent
+panel you can run in a second terminal pane.
 
 ### [SETTINGS_REPORT]
 
 **Values:** `diff` `full` `off` · **Default:** `diff` · **Task override:** no · **Defined by:** the
 `orchestrator` skill
 
-How much of what the run resolved the settings column prints: `diff` — the fields this task or this
-project chose a value for that is not the built-in default (a line that writes the default down
-again is not a choice this run has to report), `full` — every field, `off` — none. The full list is
+How much of what the run resolved the opening block's settings show: `diff` — the fields this task
+or this project chose a value for that is not the built-in default (a line that writes the default
+down again is not a choice this run has to report), `full` — every field, `off` — none. The full list is
 one `scripts/resolve-settings.sh show <task dir> --all` away at any time.
 
 This field governs reporting only — the between-stage confirmations of `manual` mode are unaffected
