@@ -63,7 +63,7 @@ while rest:
     arg = rest.pop(0)
     if arg == '--all' and CMD == 'show':
         SHOW_ALL = True
-    elif arg == '--set' and rest and re.fullmatch(r'[a-z_]+(\.[A-Za-z]+)?=\S+', rest[0]):
+    elif arg == '--set' and rest and re.fullmatch(r'[a-z_]+(\.[A-Za-z]+)?=\S(.*\S)?', rest[0]):
         RUN_SET.append(rest.pop(0).split('=', 1))
     else:
         print('usage: resolve-settings.sh json|show <task-dir> [--all] [--set <field>[.<key>]=<value>]...',
@@ -84,6 +84,7 @@ SCALARS = (
     ('drive_app', 'DRIVE_APP', ['auto', 'off'], 'auto'),
     ('manual_checks', 'MANUAL_CHECKS', ['auto', 'always'], 'auto'),
     ('driver', 'DRIVER', None, 'auto'),
+    ('device', 'DEVICE', None, 'auto'),
     ('phase_verification', 'PHASE_VERIFICATION', ['proportional', 'full'], 'proportional'),
     ('fix_rounds', 'FIX_ROUNDS', INT, 2),
     ('security', 'SECURITY', ['auto', 'on', 'off'], 'auto'),
@@ -91,10 +92,11 @@ SCALARS = (
     ('docs_map', 'DOCS_MAP', None, 'DocsMap.md'),
     ('docs_strictness', 'DOCS_STRICTNESS', ['blocking', 'advisory', 'off'], 'advisory'),
     ('docs_freshness', 'DOCS_FRESHNESS', ['on', 'off'], 'on'),
+    ('device_source', 'DEVICE_SOURCE', None, '—'),
 )
 # A field the config alone answers: no Task.md is read for it, which is what ## Project settings means.
 PROJECT_ONLY = {'lang', 'progress', 'settings_report', 'docs_map', 'docs_strictness',
-                'docs_freshness', 'budgets'}
+                'docs_freshness', 'budgets', 'device_source'}
 # A map's field is one bracketed, comma-separated list, in the config exactly as in a Task.md.
 MAPS = (
     ('models', 'MODELS', ['light', 'walkthrough', 'done'] + ROLES, MODEL_VALUES, UNSET_MODELS,

@@ -209,7 +209,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
     ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
   done
   [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
-  grep -qxF '# 19 more at their default' <<<"$out" || { echo "$out"; return 1; }
+  grep -qxF '# 21 more at their default' <<<"$out" || { echo "$out"; return 1; }
 }
 
 @test "a project budget equal to the default is not a diff, and --all still names it" {
@@ -936,4 +936,43 @@ $BATS_TEST_TMPDIR/assets"
   [ "$status" -eq 2 ] || { echo "$output"; return 1; }
   run "$RESOLVE" show "$TASK" --bogus
   [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+}
+
+@test "the device is open, auto by default, and a task's is taken whole" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(field device <<<"$output")" = auto ] || { echo "$output"; return 1; }
+  [ "$(source_of device <<<"$output")" = default ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[DEVICE] = [platform=iOS Simulator,id=AB-12]\n' >"$TASK/Task.md"
+  "$RESOLVE" json "$TASK" >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field device <"$BATS_TEST_TMPDIR/out")" = 'platform=iOS Simulator,id=AB-12' ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ "$(source_of device <"$BATS_TEST_TMPDIR/out")" = task ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+}
+
+@test "a run sets a device with spaces and commas in it" {
+  printf '[TASK_TYPE] = [BUG]\n[DEVICE] = [Phone A]\n' >"$TASK/Task.md"
+  "$RESOLVE" json "$TASK" --set 'device=platform=iOS Simulator,name=Phone B' >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field device <"$BATS_TEST_TMPDIR/out")" = 'platform=iOS Simulator,name=Phone B' ] || { cat "$BATS_TEST_TMPDIR/out" "$ERR"; return 1; }
+  [ "$(source_of device <"$BATS_TEST_TMPDIR/out")" = run ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  run "$RESOLVE" show "$TASK" --set 'device=platform=iOS Simulator,name=Phone B'
+  grep -qxF '[DEVICE] = [platform=iOS Simulator,name=Phone B]  # run' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "a run device of blanks alone is refused" {
+  run "$RESOLVE" json "$TASK" --set 'device= '
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+}
+
+@test "the device source is the project's alone" {
+  printf '## Project settings\n\n[DEVICE_SOURCE] = [scripts/device.sh get]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[DEVICE_SOURCE] = [other.sh]\n' >"$TASK/Task.md"
+  "$RESOLVE" json "$TASK" --set device_source=x.sh >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field device_source <"$BATS_TEST_TMPDIR/out")" = 'scripts/device.sh get' ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ "$(source_of device_source <"$BATS_TEST_TMPDIR/out")" = project ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  grep -qxF -- '--set device_source: not a field a run can set, skipped' "$ERR" || { cat "$ERR"; return 1; }
+}
+
+@test "no device source is an em dash" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(field device_source <<<"$output")" = '—' ] || { echo "$output"; return 1; }
 }

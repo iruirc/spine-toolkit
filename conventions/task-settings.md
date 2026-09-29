@@ -71,6 +71,7 @@ answers.
 | `drive_app` | `[DRIVE_APP]` | `[DRIVE_APP]` | `auto` `off` | `auto` |
 | `manual_checks` | `[MANUAL_CHECKS]` | `[MANUAL_CHECKS]` | `auto` `always` | `auto` |
 | `driver` | `[DRIVER]` | `[DRIVER]` | a plugin name, `auto`, `—` | `auto` |
+| `device` | `[DEVICE]` | `[DEVICE]` | `auto`, or a device in the platform's own terms | `auto` |
 | `phase_verification` | `[PHASE_VERIFICATION]` | `[PHASE_VERIFICATION]` | `proportional` `full` | `proportional` |
 | `fix_rounds` | `[FIX_ROUNDS]` | `[FIX_ROUNDS]` | a whole number ≥ 0 | `2` |
 | `security` | `[SECURITY]` | `[SECURITY]` | `auto` `on` `off` | `auto` |
@@ -78,6 +79,7 @@ answers.
 | `docs_map` | — | `[DOCS_MAP]` | a path | `DocsMap.md` |
 | `docs_strictness` | — | `[DOCS_STRICTNESS]` | `blocking` `advisory` `off` | `advisory` |
 | `docs_freshness` | — | `[DOCS_FRESHNESS]` | `on` `off` | `on` |
+| `device_source` | — | `[DEVICE_SOURCE]` | a command run from the project root, `—` | `—` |
 | `budgets` | — | `[BUDGETS]`, entries `<artifact>: <lines>` | a positive integer | the `CAPS` table |
 | `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | `opus` `sonnet` `haiku` `fable` `session` | `sonnet` for `light` and `validator`, `session` for `walkthrough`, `done` and the other seven roles |
 | `effort` | `[EFFORT]` | `[EFFORT]`, entries `<key>: <value>` | `low` `medium` `high` `xhigh` `max` `session` | `session` |
