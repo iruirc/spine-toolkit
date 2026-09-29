@@ -392,12 +392,13 @@ section() {
 }
 
 @test "the opening block names each of its facts" {
-  para="$(awk '/^\*\*The opening block\*\*/{f=1} /^\*\*The experiment line\*\*/{exit} f' "$SKILL")"
-  [ -n "$para" ] || { echo "no opening block list"; return 1; }
-  for f in '`<start> → <end>`' 'why the workflow path was not taken' '`meta.phases[].agent`' \
-           'newest on top' '`settings_report`' 'how many fields are left at their default' \
-           '`from → to`' 'for this run only' '`user_directive`, verbatim' \
-           '`scripts/agent-monitor.sh`' 'the panel adds the token figures'; do
+  para="$(awk '/^\*\*The opening block\*\*/{f=1} f&&/^- /{l=1} l&&/^$/{exit} f' "$SKILL")"
+  grep -qF 'the panel adds the token figures' <<<"$(tail -2 <<<"$para")" || { echo "the opening block list does not end where it should"; return 1; }
+  for f in 'the `Progress` value' '`<start> → <end>`' 'the method, A or B' 'why the workflow path was not taken' \
+           '`meta.phases[].agent`' 'newest on top' '`settings_report`' 'how many fields are left at their default' \
+           '`from → to`' 'for this run only' '`user_directive`, verbatim' 'At `quiet` they open the final report' \
+           "the token panel's command, verbatim" '--session' 'the absolute path to `scripts/agent-monitor.sh`' \
+           'the panel adds the token figures'; do
     grep -qF -- "$f" <<<"$para" || { echo "the opening block lost: $f"; return 1; }
   done
 }
@@ -409,14 +410,21 @@ section() {
   done
 }
 
+@test "an auto run names its time once, at the close, and quiet moves the method to the final report" {
+  para="$(awk '/^\*\*Timing\.\*\*/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  grep -qF 'name it once, at the end' <<<"$para" || { echo "the close lost the run's time"; return 1; }
+  d="$(section "$SKILL" '## Dispatch')"
+  grep -qF 'state it in the final report instead' <<<"$d" || { echo "quiet no longer names the method"; return 1; }
+}
+
 @test "no progress template key comes back" {
   for k in progress_open_header progress_open_live_hint progress_open_live_ticker_note progress_open_method_b_live \
            progress_open_settings progress_open_settings_rest progress_dispatch progress_stage_report \
            progress_stage_artifact progress_stage_verdict progress_run_elapsed dispatch_method_a dispatch_method_b \
            info_run_setting info_run_directive; do
-    for f in "$SKILL" "$ROOT"/skills/orchestrator/locales/*.md; do
-      ! grep -qw "$k" "$f" || { echo "$k is back in $f"; return 1; }
-    done
+    hits="$(grep -rlw "$k" "$ROOT/skills" "$ROOT/workflows" "$ROOT/docs" "$ROOT/conventions" \
+      "$ROOT/commands" "$ROOT/templates" "$ROOT/README.md" || true)"
+    [ -z "$hits" ] || { echo "$k is back in: $hits"; return 1; }
   done
 }
 
