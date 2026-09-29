@@ -811,7 +811,7 @@ const TUNING_UNSET = { models: ['platform'], effort: [] }
 
 // This run's own settings, over whatever a step says for itself (conventions/task-settings.md →
 // The chain): the resolver takes them as --set, and a map key lands over the step's own.
-const RUN_ARGS = Object.entries(RUN_SETTINGS).map(([k, v]) => ` --set '${k}=${v}'`).join('')
+const RUN_ARGS = Object.entries(RUN_SETTINGS).map(([k, v]) => ` --set '${`${k}=${v}`.replace(/'/g, "'\\''")}'`).join('')
 // Only a key and a value a step's own Task.md could name, as overlay() below takes them.
 const runKeys = (field) =>
   Object.fromEntries(

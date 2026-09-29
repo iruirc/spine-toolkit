@@ -97,6 +97,14 @@ epic_run() { # $1 extra contract members, $2 extra step members
   [ "$(pick 'o.device_source' <<<"$args")" = '—' ] || { echo "$args"; return 1; }
 }
 
+@test "a run device with an apostrophe reaches each step's resolver whole" {
+  pr="$(epic_run ", \"run_settings\": {\"device\": \"Sam's phone\"}" '' | pick "o.calls.find((c) => c.label === 'execute:read-steps').prompt")"
+  cmd="$(sed -n 's/.*run "\([^"]*resolve-settings\.sh json <step folder>[^"]*\)".*/\1/p' <<<"$pr")"
+  [ -n "$cmd" ] || { echo "$pr"; return 1; }
+  eval "set -- ${cmd#*<step folder>}" || { echo "$cmd"; return 1; }
+  [ "$#" -eq 2 ] && [ "$2" = "device=Sam's phone" ] || { echo "$cmd"; return 1; }
+}
+
 @test "every Method B skill carries the device to its subagents in the convention's words" {
   n=0
   for s in "$ROOT"/skills/workflow-*/SKILL.md; do
