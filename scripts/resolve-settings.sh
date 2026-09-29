@@ -11,6 +11,9 @@ set -euo pipefail
 #        scripts/resolve-settings.sh show <task-dir> [--all] [--set ...]
 #                                                  # Task.md lines, with sources
 #                                                  # --all: every field, defaults included
+#        scripts/resolve-settings.sh open <task-dir> --method A|B [--why <text>] --range <start>:<end>
+#                                         [--progress <value>] [--set ...]
+#                                                  # the run's opening block, in the resolved lang
 #        scripts/resolve-settings.sh raw  <dir> <block>        # the value lines of one config block
 # Exit:  0, or 2 on a usage error. One stderr line per entry it could not take at face value.
 #
@@ -28,7 +31,7 @@ EFFORTS="low medium high xhigh max session"
 # CAP map, and tests/foundation/lib/artifact-budget.test.bats fails when the two disagree.
 CAPS="Reproduce.md:120 Plan.md:200 Validation.md:100 Review.md:120 Done.md:80 Task.md:100"
 
-[ "$#" -ge 2 ] || { echo "usage: $0 json|show <task-dir> [--all] [--set <field>=<value>]... | raw <dir> <block>" >&2; exit 2; }
+[ "$#" -ge 2 ] || { echo "usage: $0 json|show|open <task-dir> [--all] [--set <field>=<value>]... | raw <dir> <block>" >&2; exit 2; }
 [ -d "$2" ] || { echo "not a directory: $2" >&2; exit 2; }
 [ "$1" != raw ] || [ "$#" -ge 3 ] || { echo "usage: $0 raw <dir> <block>" >&2; exit 2; }
 
@@ -36,7 +39,7 @@ CAPS="Reproduce.md:120 Plan.md:200 Validation.md:100 Review.md:120 Done.md:80 Ta
 export SPINE_CORE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
 python3 - "$ROLES" "$MODELS" "$EFFORTS" "$UNSET_MODELS" "$CAPS" "$@" <<'PY'
-import glob, json, os, re, sys
+import glob, json, os, re, subprocess, sys
 
 ROLES, MODEL_VALUES, EFFORT_VALUES, UNSET_MODELS = (s.split() for s in sys.argv[1:5])
 
@@ -55,6 +58,8 @@ CAPS = dict((n, int(v)) for n, v in (p.split(':') for p in sys.argv[5].split()))
 CMD, TARGET = sys.argv[6], sys.argv[7]
 BLOCK = sys.argv[8] if CMD == 'raw' else None
 SHOW_ALL = False
+# open's own flags: --method, --why, --range, --progress.
+OPEN = {}
 # This run's own word on a field (conventions/task-settings.md → The chain): a scalar, or one key
 # of a map, in the order given; a later --set of the same field or key wins.
 RUN_SET = []
@@ -65,8 +70,10 @@ while rest:
         SHOW_ALL = True
     elif arg == '--set' and rest and re.fullmatch(r'[a-z_]+(\.[A-Za-z]+)?=\S(.*\S)?', rest[0]):
         RUN_SET.append(rest.pop(0).split('=', 1))
+    elif CMD == 'open' and arg in ('--method', '--why', '--range', '--progress') and rest:
+        OPEN[arg[2:]] = rest.pop(0)
     else:
-        print('usage: resolve-settings.sh json|show <task-dir> [--all] [--set <field>[.<key>]=<value>]...',
+        print('usage: resolve-settings.sh json|show|open <task-dir> [--all] [--set <field>[.<key>]=<value>]...',
               file=sys.stderr)
         sys.exit(2)
 
@@ -275,7 +282,7 @@ if CMD == 'raw':
     for line in block(CFG, BLOCK):
         print(line)
     sys.exit(0)
-if CMD not in ('json', 'show'):
+if CMD not in ('json', 'show', 'open'):
     print('unknown command "%s"' % CMD, file=sys.stderr)
     sys.exit(2)
 
@@ -449,30 +456,151 @@ if CMD == 'json':
 # whatever it is: the owner said it for this run. --all names every field and every map key —
 # defaults included — and never prints the "more" line.
 FIELD_OF = dict((s[0], s[1]) for s in SCALARS)
-rows, rest = [], 0
-for name in [s[0] for s in SCALARS] + ['models', 'effort', 'long_run', 'budgets']:
-    value = resolved[name]
-    if isinstance(value, dict):
-        chosen = [k for k in value
-                  if sources.get('%s.%s' % (name, k)) == 'run'
-                  or (sources.get('%s.%s' % (name, k)) and value[k] != defaults[name][k])]
-        keys = list(value) if SHOW_ALL else chosen
-        if not keys:
-            rest += 1
-            continue
-        text = ', '.join('%s: %s' % (k, value[k]) for k in keys)
-    else:
-        # A value derived from the default (walkthrough_check's auto) is nobody's choice either.
-        if not SHOW_ALL and sources[name] != 'run' and (sources[name] == 'default' or value == defaults[name]
-                                                        or CHOSEN.get(name) == defaults[name]):
-            rest += 1
-            continue
-        text = value
-    rows.append(('[%s]' % FIELD_OF.get(name, name.upper()), text,
-                 show_source.get(name, sources[name])))
-width = max(len(r[0]) for r in rows) if rows else 0
-for label, text, source in rows:
-    print('%-*s = [%s]  # %s' % (width, label, text, source))
-if rest:
-    print('# %d more at their default' % rest)
+
+
+def show_rows(show_all):
+    """The column's lines, and how many fields it left out."""
+    rows, rest = [], 0
+    for name in [s[0] for s in SCALARS] + ['models', 'effort', 'long_run', 'budgets']:
+        value = resolved[name]
+        if isinstance(value, dict):
+            chosen = [k for k in value
+                      if sources.get('%s.%s' % (name, k)) == 'run'
+                      or (sources.get('%s.%s' % (name, k)) and value[k] != defaults[name][k])]
+            keys = list(value) if show_all else chosen
+            if not keys:
+                rest += 1
+                continue
+            text = ', '.join('%s: %s' % (k, value[k]) for k in keys)
+        else:
+            # A value derived from the default (walkthrough_check's auto) is nobody's choice either.
+            if not show_all and sources[name] != 'run' and (sources[name] == 'default' or value == defaults[name]
+                                                            or CHOSEN.get(name) == defaults[name]):
+                rest += 1
+                continue
+            text = value
+        rows.append(('[%s]' % FIELD_OF.get(name, name.upper()), text,
+                     show_source.get(name, sources[name])))
+    width = max(len(r[0]) for r in rows) if rows else 0
+    return ['%-*s = [%s]  # %s' % (width, label, text, source) for label, text, source in rows], rest
+
+
+if CMD == 'show':
+    lines, rest = show_rows(SHOW_ALL)
+    for line in lines:
+        print(line)
+    if rest:
+        print('# %d more at their default' % rest)
+    sys.exit(0)
+
+# open: the opening block, which the orchestrator shows as it is. One line per fact, in this order:
+# profile, task, range, Progress, method (under B, its skill and why); every stage of the range and
+# its role, from the profile script's meta; under A, /workflows; every setting this run set, from
+# json without --set to what it resolved to; the owner's directive, verbatim, from Run.json; under
+# B, the roles whose effort does not travel; at live, the token panel; the settings column, sized
+# by settings_report. Nothing at quiet.
+CORE = os.environ['SPINE_CORE_ROOT']
+
+
+def refuse(why):
+    print('open: %s' % why, file=sys.stderr)
+    sys.exit(2)
+
+
+method, why, progress = OPEN.get('method'), OPEN.get('why'), OPEN.get('progress', resolved['progress'])
+if method not in ('A', 'B'):
+    refuse('--method A|B is required')
+if (method == 'B') != bool(why):
+    refuse('--why goes with --method B, and only with it')
+if progress not in ('quiet', 'normal', 'live'):
+    refuse("--progress '%s' is not quiet, normal or live" % progress)
+if progress == 'quiet':
+    sys.exit(0)
+
+profile = (task_value(os.path.join(TARGET, 'Task.md'), 'TASK_TYPE') or '').lower()
+script = os.path.join(CORE, 'workflows', 'profile-%s.js' % profile)
+if not os.path.isfile(script):
+    refuse("no workflow script for [TASK_TYPE] = [%s]" % profile.upper())
+with open(script, encoding='utf-8') as fh:
+    meta = re.search(r'export const meta\s*=\s*\{(.*?)^\}', fh.read(), flags=re.M | re.S)
+# The same reading as scripts/lint-workflows.sh.
+phases = re.findall(r"title:\s*'([^']+)'[^}]*?agent:\s*'([^']+)'", meta.group(1) if meta else '')
+titles = [t for t, _ in phases]
+start, _, end = OPEN.get('range', '').partition(':')
+if start not in titles or end not in titles or titles.index(start) > titles.index(end):
+    refuse("--range '%s' is not <start>:<end> of %s" % (OPEN.get('range', ''), ', '.join(titles)))
+
+LOCALE = {}
+with open(os.path.join(CORE, 'skills', 'orchestrator', 'locales', '%s.md' % resolved['lang']),
+          encoding='utf-8') as fh:
+    for part in re.split(r'^## ', fh.read(), flags=re.M)[1:]:
+        key, _, body = part.partition('\n')
+        LOCALE[key.strip()] = body.strip()
+
+
+def say(key, **values):
+    text = LOCALE[key]
+    for k, v in values.items():
+        text = text.replace('{%s}' % k, str(v))
+    return text
+
+
+def task_label(path):
+    """The id a user types: 042 for 042-a-task, 042/02 for its step 02-login.step."""
+    path = os.path.normpath(os.path.abspath(path))
+    own = re.match(r'[^-.]*', os.path.basename(path)).group(0)
+    if not path.endswith('.step'):
+        return own
+    return '%s/%s' % (re.match(r'[^-.]*', os.path.basename(os.path.dirname(path))).group(0), own)
+
+
+# from: the chain without this run's word, so a value the run did not change never shows.
+plain = subprocess.run([os.path.join(CORE, 'scripts', 'resolve-settings.sh'), 'json', TARGET],
+                       capture_output=True, text=True)
+if plain.returncode:
+    refuse('json without --set failed: %s' % plain.stderr.strip())
+before = json.loads(plain.stdout)
+changed = [(n, before[n], resolved[n]) for n in [s[0] for s in SCALARS] if sources[n] == 'run']
+for name in ('models', 'effort', 'long_run'):
+    changed += [('%s.%s' % (name, k), before[name][k], v) for k, v in resolved[name].items()
+                if sources.get('%s.%s' % (name, k)) == 'run']
+
+# Run.json is the owner's word only while git does not track it (SKILL.md → The run's own words).
+directive, run_file = '', os.path.join(TARGET, 'Run.json')
+if os.path.isfile(run_file):
+    tracked = subprocess.run(['git', '-C', TARGET, 'ls-files', '--error-unmatch', 'Run.json'],
+                             capture_output=True).returncode == 0
+    if not tracked:
+        try:
+            with open(run_file, encoding='utf-8') as fh:
+                directive = (json.load(fh).get('user_directive') or '').strip()
+        except (OSError, ValueError, AttributeError):
+            pass
+
+out = [say('open_header', profile=profile.upper(), task=task_label(TARGET), start=start, end=end,
+           progress=progress,
+           method=say('open_method_a') if method == 'A' else
+           say('open_method_b', skill='spine-toolkit:workflow-%s' % profile, why=why)),
+       say('open_stages')]
+out += ['  %s — %s' % p for p in phases[titles.index(start):titles.index(end) + 1]]
+if method == 'A':
+    out.append(say('open_workflows', workflow='profile-%s' % profile))
+out += [say('open_run_setting', field=f, **{'from': a, 'to': b}) for f, a, b in changed]
+if directive:
+    out.append(say('open_directive', directive=directive))
+slow = [k for k, v in resolved['effort'].items() if v != 'session']
+if method == 'B' and slow:
+    out.append(say('warn_effort_method_b', roles=', '.join(slow)))
+if progress == 'live':
+    session = os.environ.get('CLAUDE_CODE_SESSION_ID')
+    if method == 'A' and session:
+        out.append(say('open_live_a', script=os.path.join(CORE, 'scripts', 'agent-monitor.sh'), session=session))
+    if method == 'B':
+        out.append(say('open_live_b'))
+if resolved['settings_report'] != 'off':
+    lines, rest = show_rows(resolved['settings_report'] == 'full')
+    out += [say('open_settings')] + ['  ' + line for line in lines]
+    if rest:
+        out.append('  ' + say('open_settings_rest', n=rest))
+print('\n'.join(out))
 PY

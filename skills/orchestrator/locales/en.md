@@ -127,6 +127,39 @@ Retry {stage}
 ## stage_error_option_stop
 Stop and hand back control
 
+## open_header
+{profile} {task} · {start} → {end} · Progress: {progress} · {method}
+
+## open_method_a
+Method A
+
+## open_method_b
+Method B ({skill}): {why}
+
+## open_stages
+Stages:
+
+## open_workflows
+Watch it in /workflows: each dispatch is a row of its own, listed as {workflow}, newest on top.
+
+## open_run_setting
+For this run only: {field} {from} → {to}
+
+## open_directive
+Owner's directive, verbatim, to every stage: {directive}
+
+## open_live_a
+Token panel: run `bash "{script}" --session {session}` in a second terminal pane.
+
+## open_live_b
+The host draws every agent call itself; the token panel adds the figures it does not show.
+
+## open_settings
+Settings:
+
+## open_settings_rest
+{n} more at their default.
+
 ## progress_stage_metrics
 {tuning} · {out} out · {ctx} ctx · {cacheWrite} cache-w · {cacheRead} cache-r · {tools} tools · {elapsed}
 
