@@ -189,8 +189,7 @@ S_OF() { awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orch
   r="$(S_OF 'Resolution Algorithm')"
   grep -qF -- '--set <field>=<value>' <<<"$r" || { echo "step 3 does not pass --set"; return 1; }
   p="$(S_OF 'Progress reporting')"
-  for f in 'warn_run_scale_kept' 'warn_run_setting_refused' 'info_run_setting' 'info_run_directive' \
-           'info_directive_declined' 'show <task dir>` with the same `--set`'; do
+  for f in 'warn_run_scale_kept' 'warn_run_setting_refused' 'info_directive_declined' 'show <task dir>` with the same `--set`'; do
     grep -qF -- "$f" <<<"$p" || { echo "progress reporting lost: $f"; return 1; }
   done
 }
@@ -203,8 +202,8 @@ S_OF() { awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orch
 }
 
 @test "every run key exists in both locales" {
-  for k in auq_run_resume_question auq_run_resume_apply auq_run_resume_discard info_run_resumed info_run_setting \
-           info_run_directive info_directive_declined warn_run_scale_kept warn_run_setting_refused; do
+  for k in auq_run_resume_question auq_run_resume_apply auq_run_resume_discard info_run_resumed \
+           info_directive_declined warn_run_scale_kept warn_run_setting_refused; do
     for l in en ru; do
       grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md lacks $k"; return 1; }
     done
@@ -237,7 +236,7 @@ S_OF() { awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orch
     grep -qF -- "$f" <<<"$w" || { echo "the run's own words lost: $f"; return 1; }
   done
   p="$(S_OF 'Progress reporting')"
-  grep -qF '`{to}` the value it resolved to' <<<"$p" || { echo "info_run_setting still takes the raw value"; return 1; }
+  grep -qF '`to` the value it resolved to' <<<"$p" || { echo "a run setting's to is the raw value"; return 1; }
   grep -qF "an epic's notes" <<<"$p" || { echo "an epic's step refusals are not surfaced"; return 1; }
   for l in en ru; do grep -qx '## warn_run_file_tracked' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l lacks warn_run_file_tracked"; return 1; }; done
 }
