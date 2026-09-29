@@ -189,7 +189,7 @@ S_OF() { awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orch
   r="$(S_OF 'Resolution Algorithm')"
   grep -qF -- '--set <field>=<value>' <<<"$r" || { echo "step 3 does not pass --set"; return 1; }
   p="$(S_OF 'Progress reporting')"
-  for f in 'warn_run_scale_kept' 'warn_run_setting_refused' 'info_directive_declined' 'show <task dir>` with the same `--set`'; do
+  for f in 'warn_run_scale_kept' 'warn_run_setting_refused' 'info_directive_declined' '`--set` exactly as in step 3'; do
     grep -qF -- "$f" <<<"$p" || { echo "progress reporting lost: $f"; return 1; }
   done
 }

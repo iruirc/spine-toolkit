@@ -620,9 +620,9 @@ A `—` in the Method A column means that profile always takes Method B. Never c
   options `dispatch_blocked_option_a` / `dispatch_blocked_option_b`. Never downgrade in silence: a
   Method B run chosen this way is indistinguishable from one that never had the workflow path.
 
-State the choice **once** per task, as the method the opening block names — the one **Progress reporting** requires before the first dispatch. At `quiet` there is no opening block: state it in the final report instead. Not per stage.
+State the choice **once** per task, as the `--method` of the opening block — the one **Progress reporting** has a script print before the first dispatch. At `quiet` there is no opening block: state it in the final report instead. Not per stage.
 
-Under Method B, when the contract's `effort` names any value other than `session`, add `warn_effort_method_b` (placeholder `{roles}`: those roles, comma-separated) to the same opening block, or to the final report at `quiet`, once per task. A Method B dispatch cannot carry an effort, so every stage runs at the session's (`conventions/stage-dispatch.md` → Model and effort).
+Under Method B, when the contract's `effort` names any value other than `session`, the opening block carries `warn_effort_method_b` (placeholder `{roles}`: those roles, comma-separated) — the script adds it; at `quiet` add it to the final report yourself, once per task. A Method B dispatch cannot carry an effort, so every stage runs at the session's (`conventions/stage-dispatch.md` → Model and effort).
 
 **Method A — invoke.** The opening block goes out before this call, not after it: once the workflow is running, the feed shows a spinner and nothing about what is inside.
 
@@ -675,44 +675,36 @@ background still deserves one plain line saying a stage started; that line names
 method, no scope and no artifact, and it does not point at `/workflows`. Each of those belongs to
 the opening block or the dispatch line, and `quiet` is the value that renders neither.
 
-**What a report must name.** Each moment below lists facts, not a layout. Name every fact that
+**What a report must name.** Each moment below but the opening block lists facts, not a layout. Name every fact that
 applies, in the resolved `lang`, in any order, wording and markup: a fact left out is the failure,
 a template not followed is not one. The keys this section still names render as their locale
 gives them.
 
-**The opening block** — at `normal` and above, once per task, before the first dispatch:
+**The opening block** — at `normal` and above, once per task, after step 5.6 and before the first
+`Workflow` or `Skill` dispatch. A script writes it, so no fact depends on a reply choosing to say it:
 
-- the profile, the task, the range `<start> → <end>`, and the `Progress` value;
-- the method, A or B, and under B why the workflow path was not taken;
-- every stage of the range and the agent that runs it, from `meta.phases[].agent` in
-  `workflows/profile-<profile>.js`. Read that file's `meta` block — it is the same file that
-  dispatches, and a second copy of the map in this skill would drift from it. Method B reads it
-  too: the Workflow tool is absent there, but the file is on disk;
-- under Method A, where to watch it: `/workflows`, where each dispatch is a run of its own listed
-  as `meta.name`, newest on top;
-- unless `settings_report` is `off`, the settings: the `[FIELD] = [...]` lines of
-  `bash "<core root>/scripts/resolve-settings.sh" show <task dir>` at `diff`, or of
-  `show <task dir> --all` at `full`, and, at `diff`, how many fields are left at their default. Run
-  `show <task dir>` with the same `--set` as step 3, so a value the run set is among them, sourced
-  `run`. The script's trailing `# <n> more at their default` is English whatever `lang` is: give
-  the count in the report's own words. At `diff` a project left on the shipped template shows just
-  two fields: `[SCALE]`, whose shipped line and absent-field default differ, and the
-  `[WALKTHROUGH]` that a `lite` scale drags to `off` with it;
-- **the run's own words** — every entry of `run_settings`: its field, `from → to` (`from` the value a
-  `json` call without `--set` gives, `to` the value it resolved to with them), and that it holds
-  for this run only; and a non-empty `user_directive`, verbatim, as it went to every stage. They
-  are how the user sees what went to the agents. At `quiet` they open the final report instead;
-- at `live`: under Method A, the token panel's command, verbatim, to run in a second terminal pane
-  — `bash "<script>" --session <session>`, `<script>` being
-  the absolute path to `scripts/agent-monitor.sh` built from `${CLAUDE_PLUGIN_ROOT}` and `<session>`
-  being `$CLAUDE_CODE_SESSION_ID`; under Method B, that the host renders every agent call itself and
-  the panel adds the token figures it does not show.
+```
+bash "<core root>/scripts/resolve-settings.sh" open <task dir> --method A|B [--why "<reason>"] \
+  --range "<start>:<end>" [--progress <value>] [--set <field>=<value> ...]
+```
+
+- `--set` exactly as in step 3; `--progress` only when `progress_override` is set;
+- `--why` under Method B only: why the workflow path was not taken, in the resolved `lang`;
+- its stdout is the first thing the user reads about this run: put it in the reply as it is, in a
+  code block, adding nothing and leaving nothing out, then dispatch. Which facts it names, and in
+  which order, is the script's header, not this section.
+
+A non-zero exit costs one line — the block did not come out, and the script's stderr — and the run
+dispatches as usual: `Progress` never changes what runs. At `quiet` the script is not called, and
+the run's own words open the final report instead: every `run_settings` entry as its field and
+`from → to` (`from` the value a `json` call without `--set` gives, `to` the value it resolved to
+with them), and a non-empty `user_directive`, verbatim.
 
 **The experiment line.** With `research_experiment=on` and a range that includes the Research
 stage, render `research_experiment_announce`, `{branch}` being `experiment/<task>` as
 `skills/workflow-research/SKILL.md` § 2c names it. It goes out at every `progress` value,
 `quiet` included: it is a permission to change code, not progress. At `normal` and above it
-follows the stages of the opening block; at `quiet` it is one line of its own before the first
+follows the opening block; at `quiet` it is one line of its own before the first
 dispatch.
 
 **Announcing what the resolver could not use.** Every such line is shaped `<source>: '<value>'
