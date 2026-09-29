@@ -72,6 +72,14 @@ teardown() {
   done
 }
 
+# Two clones validating the same task number at once wrote to the same /tmp/v<task>… logs.
+@test "the rule keeps an agent's logs out of shared fixed paths" {
+  s="$(awk '$0=="## Long-running commands"{f=1;next} f&&/^## /{exit} f' "$ROOT/conventions/agent-tooling.md")"
+  for f in 'mktemp -d' 'never a fixed path'; do
+    grep -qF -- "$f" <<<"$s" || { echo "the section lost: $f"; return 1; }
+  done
+}
+
 @test "start records the job in the registry stage-leftovers.sh reads" {
   run "$LR" start --log "$LOG" -- sh -c 'echo hi'
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
