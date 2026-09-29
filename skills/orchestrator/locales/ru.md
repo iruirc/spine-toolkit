@@ -145,6 +145,9 @@ Method B ({skill}): {why}
 ## open_run_setting
 Только на этот прогон: {field} {from} → {to}
 
+## open_run_setting_kept
+Только на этот прогон: {field} {to}, как и было
+
 ## open_directive
 Уточнение владельца, дословно уходит каждой стадии: {directive}
 

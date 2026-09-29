@@ -12,7 +12,8 @@ set -euo pipefail
 #                                                  # Task.md lines, with sources
 #                                                  # --all: every field, defaults included
 #        scripts/resolve-settings.sh open <task-dir> --method A|B [--why <text>] --range <start>:<end>
-#                                         [--progress <value>] [--run-file <path>] [--set ...]
+#                                         [--progress <value>] [--run-file <path>] [--profile <type>]
+#                                         [--set ...]
 #                                                  # the run's opening block, in the resolved lang
 #        scripts/resolve-settings.sh raw  <dir> <block>        # the value lines of one config block
 # Exit:  0, or 2 on a usage error. One stderr line per entry it could not take at face value.
@@ -58,7 +59,7 @@ CAPS = dict((n, int(v)) for n, v in (p.split(':') for p in sys.argv[5].split()))
 CMD, TARGET = sys.argv[6], sys.argv[7]
 BLOCK = sys.argv[8] if CMD == 'raw' else None
 SHOW_ALL = False
-# open's own flags: --method, --why, --range, --progress, --run-file.
+# open's own flags: --method, --why, --range, --progress, --run-file, --profile.
 OPEN = {}
 # This run's own word on a field (conventions/task-settings.md → The chain): a scalar, or one key
 # of a map, in the order given; a later --set of the same field or key wins.
@@ -70,7 +71,7 @@ while rest:
         SHOW_ALL = True
     elif arg == '--set' and rest and re.fullmatch(r'[a-z_]+(\.[A-Za-z]+)?=\S(.*\S)?', rest[0]):
         RUN_SET.append(rest.pop(0).split('=', 1))
-    elif CMD == 'open' and arg in ('--method', '--why', '--range', '--progress', '--run-file') and rest:
+    elif CMD == 'open' and arg in ('--method', '--why', '--range', '--progress', '--run-file', '--profile') and rest:
         OPEN[arg[2:]] = rest.pop(0)
     else:
         print('usage: resolve-settings.sh json|show|open <task-dir> [--all] [--set <field>[.<key>]=<value>]...',
@@ -518,9 +519,10 @@ if progress not in ('quiet', 'normal', 'live'):
 if progress == 'quiet':
     sys.exit(0)
 
-profile = (task_value(os.path.join(TARGET, 'Task.md'), 'TASK_TYPE') or '').lower()
+# --profile: a type the owner picked because Task.md names none.
+profile = (OPEN.get('profile') or task_value(os.path.join(TARGET, 'Task.md'), 'TASK_TYPE') or '').lower()
 script = os.path.join(CORE, 'workflows', 'profile-%s.js' % profile)
-if not os.path.isfile(script):
+if not re.fullmatch(r'[a-z]+', profile) or not os.path.isfile(script):
     refuse("no workflow script for [TASK_TYPE] = [%s]" % profile.upper())
 with open(script, encoding='utf-8') as fh:
     meta = re.search(r'export const meta\s*=\s*\{(.*?)^\}', fh.read(), flags=re.M | re.S)
@@ -547,12 +549,13 @@ def say(key, **values):
 
 
 def task_label(path):
-    """The id a user types: 042 for 042-a-task, 042/02 for its step 02-login.step."""
-    path = os.path.normpath(os.path.abspath(path))
-    own = re.match(r'[^-.]*', os.path.basename(path)).group(0)
-    if not path.endswith('.step'):
-        return own
-    return '%s/%s' % (re.match(r'[^-.]*', os.path.basename(os.path.dirname(path))).group(0), own)
+    """The id a user types: 042 for 042-a-task, 042/02 for its step 02-login.step, 042/02/01 below."""
+    ids, path = [], os.path.normpath(os.path.abspath(path))
+    while True:
+        ids.insert(0, re.match(r'[^-.]*', os.path.basename(path)).group(0))
+        if not path.endswith('.step'):
+            return '/'.join(ids)
+        path = os.path.dirname(path)
 
 
 # from: the chain without this run's word, so a value the run did not change never shows.
@@ -577,7 +580,8 @@ if os.path.isfile(run_file):
             with open(run_file, encoding='utf-8') as fh:
                 directive = (json.load(fh).get('user_directive') or '').strip()
         except (OSError, ValueError, AttributeError):
-            pass
+            print('open: %s is not a readable JSON object, no directive in the block' % run_file,
+                  file=sys.stderr)
 
 out = [say('open_header', profile=profile.upper(), task=task_label(TARGET), start=start, end=end,
            progress=progress,
@@ -587,7 +591,8 @@ out = [say('open_header', profile=profile.upper(), task=task_label(TARGET), star
 out += ['  %s — %s' % p for p in phases[titles.index(start):titles.index(end) + 1]]
 if method == 'A':
     out.append(say('open_workflows', workflow='profile-%s' % profile))
-out += [say('open_run_setting', field=f, **{'from': a, 'to': b}) for f, a, b in changed]
+out += [say('open_run_setting', field=f, **{'from': a, 'to': b}) if a != b else
+        say('open_run_setting_kept', field=f, to=b) for f, a, b in changed]
 if directive:
     out.append(say('open_directive', directive=directive))
 slow = [k for k, v in resolved['effort'].items() if v != 'session']
