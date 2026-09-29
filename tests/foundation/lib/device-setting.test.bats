@@ -37,7 +37,7 @@ prompts() { pick 'o.calls.filter((c) => c.prompt).map((c) => c.prompt).join("\n-
 }
 
 @test "a device reaches every agent of every profile in the convention's words" {
-  d='platform=iOS Simulator,name=Phone B'
+  d='kind=Handset,name=Phone B'
   want="$(block 1 "$d")"
   [ -n "$want" ] || { echo "the convention has no ## Device block"; return 1; }
   for p in bug feature refactor test quick research review epic; do
@@ -105,12 +105,47 @@ epic_run() { # $1 extra contract members, $2 extra step members
   [ "$#" -eq 2 ] && [ "$2" = "device=Sam's phone" ] || { echo "$cmd"; return 1; }
 }
 
+@test "the device's own files name no ecosystem" {
+  words='simul''ator|emul''ator|\bi''OS\b|andr''oid|xc''ode|\ba''db\b'
+  for f in docs/configuration.md conventions/stage-dispatch.md conventions/task-settings.md scripts/resolve-settings.sh \
+           tests/foundation/lib/device-setting.test.bats tests/foundation/lib/settings-resolver.test.bats; do
+    ! command grep -niE "$words" "$ROOT/$f" || { echo "$f names an ecosystem"; return 1; }
+  done
+}
+
+# The convention's origin table: `<source>` → the words a brief uses for it.
+origin() { awk '/^## Device$/{f=1;next} f&&/^## /{exit} f' "$CONV" | sed -n "s/^| \`$1\` | \(.*\) |$/\1/p"; }
+
+@test "a named device says where it was set, in the convention's words" {
+  for s in run task epic project; do
+    o="$(origin "$s")"
+    [ -n "$o" ] || { echo "the convention has no origin for $s"; return 1; }
+    pr="$(run_profile bug "$(contract ", \"start_stage\": \"Validation\", \"device\": \"Phone B\", \"device_from\": \"$s\"")" | pick "o.calls[0].prompt")"
+    grep -qF "and that the brief named it, set by $o." <<<"$pr" || { echo "$s: $pr"; return 1; }
+  done
+  pr="$(run_profile bug "$(contract ', "start_stage": "Validation", "device": "Phone B", "device_from": "bogus"')" | pick "o.calls[0].prompt")"
+  grep -qF 'and that the brief named it.' <<<"$pr" || { echo "$pr"; return 1; }
+}
+
+@test "a command with a backtick in it stays one code span" {
+  pr="$(run_profile bug "$(contract ', "start_stage": "Validation", "device_source": "cat `pwd`/dev"')" | pick "o.calls[0].prompt")"
+  grep -qF 'Device: run `` cat `pwd`/dev `` from the project root' <<<"$pr" || { echo "$pr"; return 1; }
+}
+
+@test "the epic hands each step where its device was set" {
+  args="$(epic_run ', "device": "Phone A", "device_from": "project"' ', "device": "Phone C", "device_from": "task"' | pick "o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-feature').args")"
+  [ "$(pick 'o.device_from' <<<"$args")" = task ] || { echo "$args"; return 1; }
+  out="$(epic_run ', "device": "Phone A", "device_from": "project"' '')"
+  [ "$(pick "o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-feature').args.device_from" <<<"$out")" = project ] || { echo "$out"; return 1; }
+  grep -qF 'sources.device as device_from' <<<"$(pick "o.calls.find((c) => c.label === 'execute:read-steps').prompt" <<<"$out")" || { echo "read-steps never asks"; return 1; }
+}
+
 @test "every Method B skill carries the device to its subagents in the convention's words" {
   n=0
   for s in "$ROOT"/skills/workflow-*/SKILL.md; do
     n=$((n + 1))
     c="$(awk '/^## 1\. Input Contract$/{f=1;next} f&&/^## /{exit} f' "$s")"
-    for f in '`device`, `device_source`' '`conventions/stage-dispatch.md` → Device'; do
+    for f in '`device`, `device_source`, `device_from`' '`conventions/stage-dispatch.md` → Device'; do
       grep -qF -- "$f" <<<"$c" || { echo "${s#$ROOT/}: Input Contract lost $f"; return 1; }
     done
   done
@@ -121,7 +156,7 @@ S_OF() { awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orch
 
 @test "the outbound contract carries the device and its command, always" {
   c="$(S_OF 'Outbound Contract')"
-  for f in 'device=auto' 'device_source=—' '`device`, `device_source` —'; do
+  for f in 'device=auto' 'device_source=—' 'device_from=default' '`device`, `device_source` —' '`device_from` —'; do
     grep -qF -- "$f" <<<"$c" || { echo "outbound contract lost: $f"; return 1; }
   done
 }
