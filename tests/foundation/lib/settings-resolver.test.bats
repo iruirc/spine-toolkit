@@ -520,8 +520,10 @@ FIELDS
   # The depth and its check fall back along the chain, not to the epic's: quick-surfaces.test.bats.
   grep -qF 'walkthrough: stepWalkthrough(st),' "$E" && grep -qF 'walkthrough_check: stepWalkthroughCheck(st),' "$E" \
     || { echo "profile-epic.js does not forward walkthrough to a step"; return 1; }
-  grep -qF 'return its drive_app, manual_checks, phase_verification, security, walkthrough, walkthrough_check and long_run values' "$E" \
+  grep -qF 'return its drive_app, device, manual_checks, phase_verification, security, walkthrough, walkthrough_check and long_run values' "$E" \
     || { echo "read-steps never asks for the step's own depth and check"; return 1; }
+  grep -qF "device: st.device === undefined ? DEVICE || 'auto' : st.device," "$E" && grep -qF "device_source: DEVICE_SOURCE || '—'," "$E" \
+    || { echo "profile-epic.js does not forward the device to a step"; return 1; }
   grep -qF "walkthrough_check: { type: 'string', enum: ['on', 'off']" "$E" \
     || { echo "the step record has no walkthrough_check"; return 1; }
   grep -qF "security: { type: 'string', enum: ['auto', 'on', 'off']" "$E" \

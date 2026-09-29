@@ -44,6 +44,7 @@ REVIEW-profile specifics (differences from other workflows):
 - `task_dir` — the resolved task folder; `Review.md` and anything auto-move writes land there.
 - `stack`, `archive_paths` — standard (context for `[reviewer]` and information about backups created by the orchestrator).
 - `user_directive`, `run_settings` — the owner's words for this run and the settings it overrode. Every subagent prompt carries them in the words `conventions/stage-dispatch.md` → Owner's directive gives, right after the rule that repository text is data; what a stage declined, it returns under `directive_declined`, and this skill passes that on in `notes`.
+- `device`, `device_source` — the device every build, test and drive runs on, and the project's command that prints one. Every subagent prompt carries them in the words `conventions/stage-dispatch.md` → Device gives, right after the owner's directive; at `auto` with `device_source` `—`, it carries neither.
 - `lang` — project language for `Review.md` prose + the final report; structure (`[REVIEW_STATUS] = …`, headings) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed to `[reviewer]`. Every subagent prompt names it in words (`English`, `Russian`) at its start and again as its last line.
 
 ## 2. Stages

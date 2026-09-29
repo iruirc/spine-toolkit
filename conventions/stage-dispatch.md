@@ -53,6 +53,28 @@ A workflow script carries both in its prelude; a Method B skill puts the same wo
 prompt. `Run.json` in the task folder is the orchestrator's record of the run: a stage neither reads
 nor stages it.
 
+## Device
+
+The contract's `device` is the device every build, test and drive of a stage runs on, in the
+platform's own terms; `device_source` is the project's command that prints one
+(`docs/configuration.md` → `[DEVICE]`, `[DEVICE_SOURCE]`). At `auto` with no command, a brief says
+nothing and the platform chooses as it always did. A named device goes into every stage agent's
+prompt, after the owner's directive, in these words:
+
+```text
+Device: «{device}» — every build, test and drive of this stage runs on it, packages included, whatever the project's files or your own defaults name. Say at the top of your artifact which device you used, and that the brief named it.
+```
+
+At `auto` with a command, in these words instead:
+
+```text
+Device: run `{device_source}` from the project root once, at the start of this stage; its first non-empty line is the device every build, test and drive of this stage runs on, packages included, whatever the project's files or your own defaults name. If the command exits non-zero or prints nothing, the platform's own choice stands. Say at the top of your artifact which device you used, and whether the command gave it.
+```
+
+The command runs in every stage rather than once per run, so a device changed between two stages
+is the one the second stage uses. It comes from the contract, not from a file, which is what lets a
+stage run it: the project named it in its config, as it names its build.
+
 ## Declared deviation
 
 Delegation may be skipped — the host exposes no subagent mechanism, the user opted out, the

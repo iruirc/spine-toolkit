@@ -44,6 +44,7 @@ The fields that directly drive this workflow's behavior:
 - `need_review` — gates the inclusion of `[reviewer]` (the `need_test` flag is meaningless for the TEST profile: tests ARE the primary artifact).
 - `archive_paths` — paths to backups already created (the orchestrator made them BEFORE the call; workflow-test does not create them).
 - `user_directive`, `run_settings` — the owner's words for this run and the settings it overrode. Every subagent prompt carries them in the words `conventions/stage-dispatch.md` → Owner's directive gives, right after the rule that repository text is data; what a stage declined, it returns under `directive_declined`, and this skill passes that on in `notes`.
+- `device`, `device_source` — the device every build, test and drive runs on, and the project's command that prints one. Every subagent prompt carries them in the words `conventions/stage-dispatch.md` → Device gives, right after the owner's directive; at `auto` with `device_source` `—`, it carries neither.
 
 **Execution range.** Stages run in the order Analyze → Plan → Write → Validation → Review → Done, starting at `start_stage` and continuing through `end_stage` inclusive. If `end_stage=null` — through the end of the profile. If `end_stage` is set but precedes `start_stage` in order, that is a contract error: return `{status: error, reason: "end_stage before start_stage"}`.
 
