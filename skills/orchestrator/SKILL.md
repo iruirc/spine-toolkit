@@ -484,6 +484,8 @@ fix_round=0
 after_done=false
 user_directive=""
 run_settings={}
+progress=quiet|normal|live
+method_reason=""
 archive_paths=[Tasks/ACTIVE/001-profile/_archive/Plan-2026-04-25T143022.md, Tasks/ACTIVE/001-profile/_archive/Research-2026-04-25T143022.md]
 ```
 
@@ -571,7 +573,9 @@ size belongs to the task, not to one dispatch.
 
 `user_directive`, `run_settings` — the run's own words (**The run's own words**): the directive verbatim, and the settings this run overrode as a flat map of `<field>` or `<field>.<key>` to the value, the way `--set` takes them. Always present, for every profile: `""` is a value, the one exception to the invariant below, and `{}` is one too. The overridden values already sit in their own fields, resolved; `run_settings` is for a consumer that resolves a folder of its own, as an epic resolves its steps. Method A passes a JSON string and a JSON object; Method B writes the directive as a JSON string literal, so a line break in it cannot end the field, and the map in brace syntax.
 
-**Invariant:** workflow-* never receives empty fields, `user_directive` aside. If a field arrives empty — workflow-* returns an error to the orchestrator and does not try to recover.
+`progress`, `method_reason` — what the opening block reads (**Progress reporting** → The opening block): the `progress` step 5 resolved, `progress_override` included, and under Method B why the workflow path was not taken, in the resolved `lang` — `""` under Method A. Method B writes the reason as a JSON string literal, as it writes the directive. No stage reads either.
+
+**Invariant:** workflow-* never receives empty fields, `user_directive` and Method A's `method_reason` aside. If a field arrives empty — workflow-* returns an error to the orchestrator and does not try to recover.
 
 **RESEARCH-only optional field — `research_agent`.** When `profile=research`, the orchestrator MAY include `research_agent=architect|diagnostics|security` in the args. The field carries a bare **role**, which workflow-research resolves through the `agents` map at dispatch like every other stage owner, mirroring how `[TASK_TYPE]` carries `FEATURE` rather than `spine-toolkit:workflow-feature`. Which of the three the role means on this platform is the platform's business, not the profile's. Resolution:
 
@@ -620,11 +624,11 @@ A `—` in the Method A column means that profile always takes Method B. Never c
   options `dispatch_blocked_option_a` / `dispatch_blocked_option_b`. Never downgrade in silence: a
   Method B run chosen this way is indistinguishable from one that never had the workflow path.
 
-State the choice **once** per task, as the `--method` of the opening block — the one **Progress reporting** has a script print before the first dispatch. At `quiet` there is no opening block: state it in the final report instead. Not per stage.
+State the choice **once** per task: the opening block names it from the tool the dispatch calls, and under Method B its reason from `method_reason`. At `quiet` there is no opening block: state it in the final report instead. Not per stage.
 
 Under Method B, when the contract's `effort` names any value other than `session`, the opening block carries `warn_effort_method_b` (placeholder `{roles}`: those roles, comma-separated) — the script adds it; at `quiet` add it to the final report yourself, once per task. A Method B dispatch cannot carry an effort, so every stage runs at the session's (`conventions/stage-dispatch.md` → Model and effort).
 
-**Method A — invoke.** The opening block goes out before this call, not after it: once the workflow is running, the feed shows a spinner and nothing about what is inside.
+**Method A — invoke.** This call is what shows the opening block: the plugin's hook prints it above the call, before the spinner that is all the feed shows of a running workflow.
 
 ```
 Workflow({
@@ -662,7 +666,7 @@ On a non-empty `handback` the orchestrator runs that stage itself in the main co
 
 `status: error` with `reason: no-args` means the contract never reached the script. Do not run the stage by hand and do not slide over to Method B as if nothing happened — say what happened, then re-dispatch with the contract filled. `reason: no-plugin-root` is the same stop for one field: re-dispatch with `plugin_root` as `resolve-settings.sh json` printed it.
 
-**Method B — invoke.** The opening block goes out before this call, exactly as under Method A: a skill's first stage is as silent from outside as a workflow. Then invoke the `Skill` tool with the name from the table and `args` in Outbound Contract format.
+**Method B — invoke.** This call shows the opening block too, through the same hook: a skill's first stage is as silent from outside as a workflow. Then invoke the `Skill` tool with the name from the table and `args` in Outbound Contract format.
 
 ## Progress reporting
 
@@ -680,31 +684,18 @@ applies, in the resolved `lang`, in any order, wording and markup: a fact left o
 a template not followed is not one. The keys this section still names render as their locale
 gives them.
 
-**The opening block** — at `normal` and above, once per task, after step 5.6 and before the first
-`Workflow` or `Skill` dispatch. A script writes it, so no fact depends on a reply choosing to say it:
+**The opening block** — at `normal` and above, once per task, before the first `Workflow` or
+`Skill` dispatch. The host shows it, not a reply: the plugin's `PreToolUse` hook
+(`hooks/opening-block`) runs `resolve-settings.sh open --contract` on that call's own `args` and
+hands its stdout to the host, which prints it above the call. Which facts it names, and in which
+order, is the script's header, not this section. Do not print it and do not retell it: the owner
+already has it, word for word. What the hook reads is the contract, so
+fill `progress` and `method_reason` as **Outbound Contract** says. With hooks off, or a host
+without them, there is no block, and the final report is what names the run.
 
-```
-bash "<core root>/scripts/resolve-settings.sh" open <task dir> --method A|B [--why '<reason>'] \
-  --range "<start>:<end>" [--progress <value>] [--run-file <epic dir>/Run.json] [--profile <type>] \
-  [--set <field>=<value> ...]
-```
-
-- `--set` exactly as in step 3; `--progress` only when `progress_override` is set;
-- `--why` under Method B only: why the workflow path was not taken, in the resolved `lang`, in
-  single quotes — a backtick or a `$` inside double quotes is the shell's, not the reason's;
-- `--run-file` only for a step an epic handed back in `pending_steps`: its directive is the epic's;
-- `--profile <type>` only when `fallback_profile_question` chose the profile: `Task.md` names none;
-- its stdout is the run's opening report — the announcements and questions of steps 1–5.6 may
-  come before it, never merged into it: put it in your reply as it is, in a code block, adding
-  nothing and leaving nothing out, in the same turn as the dispatch and before it —
-  not held back for the final report. Which facts it names, and in which order, is
-  the script's header, not this section.
-
-A non-zero exit costs one line — the block did not come out, and the script's stderr — and the run
-dispatches as usual: `Progress` never changes what runs. At `quiet` the script is not called, and
-the run's own words open the final report instead: every `run_settings` entry as its field and
-`from → to` (`from` the value a `json` call without `--set` gives, `to` the value it resolved to
-with them), and a non-empty `user_directive`, verbatim.
+At `quiet` the hook prints nothing, and the run's own words open the final report instead:
+every `run_settings` entry as its field and `from → to` (`from` the value a `json` call without
+`--set` gives, `to` the value it resolved to with them), and a non-empty `user_directive`, verbatim.
 
 **The experiment line.** With `research_experiment=on` and a range that includes the Research
 stage, render `research_experiment_announce`, `{branch}` being `experiment/<task>` as

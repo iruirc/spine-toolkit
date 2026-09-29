@@ -391,25 +391,33 @@ section() {
     || { echo "the section does not say facts are the contract"; return 1; }
 }
 
-@test "the opening block is what resolve-settings.sh open prints, shown as it is before the first dispatch" {
+@test "the opening block is the hook's, and the reply neither prints nor retells it" {
   para="$(awk '/^\*\*The opening block\*\*/{f=1} /^\*\*The experiment line\*\*/{exit} f' "$SKILL")"
   [ -n "$para" ] || { echo "no opening block paragraph"; return 1; }
-  for f in 'resolve-settings.sh" open <task dir> --method A|B' '--range "<start>:<end>"' '`--set` exactly as in step 3' \
-           "--why '<reason>'" '--run-file <epic dir>/Run.json' 'not held back for the final report' \
-           '`--profile <type>` only when `fallback_profile_question` chose the profile' 'never merged into it' \
-           '`progress_override`' 'in the resolved `lang`' 'in the same turn as the dispatch and before it' \
-           "the script's header" '`Progress` never changes what runs' 'At `quiet` the script is not called' \
-           '`from → to`' '`user_directive`, verbatim'; do
+  for f in '`PreToolUse` hook' '`hooks/opening-block`' 'resolve-settings.sh open --contract' "the script's header" \
+           'Do not print it and do not retell it' 'fill `progress` and `method_reason`' 'there is no block' \
+           'At `quiet` the hook prints nothing' '`from → to`' '`user_directive`, verbatim'; do
     grep -qF -- "$f" <<<"$para" || { echo "the opening block lost: $f"; return 1; }
   done
-  ! grep -qF '`meta.phases[].agent`' <<<"$para" || { echo "the skill lists the opening block's facts again"; return 1; }
+  for f in 'open <task dir> --method' '--run-file' 'in a code block' '`meta.phases[].agent`'; do
+    ! grep -qF -- "$f" <<<"$para" || { echo "the reply is still told to write the block: $f"; return 1; }
+  done
 }
 
-@test "both invoke paragraphs send the opening block out before the call" {
+@test "both invoke paragraphs leave the opening block to the hook" {
   for m in 'Method A' 'Method B'; do
     para="$(awk -v h="**$m — invoke.**" 'index($0,h)==1{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
     [ -n "$para" ] || { echo "no $m invoke paragraph"; return 1; }
-    grep -qF 'The opening block goes out before this call' <<<"$para" || { echo "$m: the block is not sent first"; return 1; }
+    grep -qF 'shows the opening block' <<<"$para" || { echo "$m: the call does not show the block"; return 1; }
+    ! grep -qF 'goes out before this call' <<<"$para" || { echo "$m: the reply still sends the block"; return 1; }
+  done
+}
+
+@test "the outbound contract carries what the opening block reads" {
+  c="$(section "$SKILL" '## Outbound Contract')"
+  for f in 'progress=quiet|normal|live' 'method_reason=""' '`progress`, `method_reason` —' '`progress_override` included' \
+           "Method A's \`method_reason\` aside"; do
+    grep -qF -- "$f" <<<"$c" || { echo "outbound contract lost: $f"; return 1; }
   done
 }
 
