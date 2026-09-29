@@ -371,17 +371,10 @@ section() {
 
 # The host labels a run by meta.name alone, so a manual task's rows are identical.
 @test "every Method A dispatch says which stages its /workflows row runs" {
-  para="$(awk '/^Under Method A, every `Workflow` call/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  para="$(awk '/^\*\*The dispatch line\*\*/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "Progress reporting never ties a /workflows row to its stage"; return 1; }
-  grep -qF '`progress_dispatch`' <<<"$para" || { echo "the paragraph names no key"; return 1; }
-  grep -qF '`manual`' <<<"$para" || { echo "the paragraph does not cover manual"; return 1; }
-  for l in en ru; do
-    L="$ROOT/skills/orchestrator/locales/$l.md"
-    body="$(awk '/^## progress_dispatch$/{p=1;next} /^## /{p=0} p' "$L")"
-    grep -qF '{range}' <<<"$body" || { echo "$l: progress_dispatch lacks {range}"; return 1; }
-    grep -qF '{workflow}' <<<"$body" || { echo "$l: progress_dispatch lacks {workflow}"; return 1; }
-    body="$(awk '/^## progress_open_live_hint$/{p=1;next} /^## /{p=0} p' "$L")"
-    grep -qF '{workflow}' <<<"$body" || { echo "$l: progress_open_live_hint lacks {workflow}"; return 1; }
+  for f in '`manual`' '`<start> → <end>`' 'the new top row in `/workflows`' 'a hand-back or a retry'; do
+    grep -qF -- "$f" <<<"$para" || { echo "the dispatch line lost: $f"; return 1; }
   done
 }
 
@@ -392,17 +385,38 @@ section() {
   done
 }
 
-@test "the opening block names the settings column and its key" {
+@test "a report names facts, not a template" {
   block="$(section "$SKILL" '## Progress reporting')"
-  grep -qF 'progress_open_settings' <<<"$block" || { echo "the opening block does not render the settings column"; return 1; }
-  grep -qF 'settings_report' <<<"$block" || { echo "nothing says which key sizes the column"; return 1; }
+  grep -qF 'a fact left out is the failure,' <<<"$block" \
+    || { echo "the section does not say facts are the contract"; return 1; }
 }
 
-@test "both locales carry the settings keys" {
-  for l in en ru; do
-    f="$ROOT/skills/orchestrator/locales/$l.md"
-    grep -qxF '## progress_open_settings' "$f" || { echo "$l.md lacks progress_open_settings"; return 1; }
-    grep -qF '{count}' "$f" || { echo "$l.md lacks the {count} placeholder"; return 1; }
+@test "the opening block names each of its facts" {
+  para="$(awk '/^\*\*The opening block\*\*/{f=1} /^\*\*The experiment line\*\*/{exit} f' "$SKILL")"
+  [ -n "$para" ] || { echo "no opening block list"; return 1; }
+  for f in '`<start> → <end>`' 'why the workflow path was not taken' '`meta.phases[].agent`' \
+           'newest on top' '`settings_report`' 'how many fields are left at their default' \
+           '`from → to`' 'for this run only' '`user_directive`, verbatim' \
+           '`scripts/agent-monitor.sh`' 'the panel adds the token figures'; do
+    grep -qF -- "$f" <<<"$para" || { echo "the opening block lost: $f"; return 1; }
+  done
+}
+
+@test "the stage report names each of its facts" {
+  para="$(awk '/^\*\*The stage report\*\*/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  for f in 'the stage and its agent' "the artifact's path" 'one-or-two-sentence summary' 'the verdict'; do
+    grep -qF -- "$f" <<<"$para" || { echo "the stage report lost: $f"; return 1; }
+  done
+}
+
+@test "no progress template key comes back" {
+  for k in progress_open_header progress_open_live_hint progress_open_live_ticker_note progress_open_method_b_live \
+           progress_open_settings progress_open_settings_rest progress_dispatch progress_stage_report \
+           progress_stage_artifact progress_stage_verdict progress_run_elapsed dispatch_method_a dispatch_method_b \
+           info_run_setting info_run_directive; do
+    for f in "$SKILL" "$ROOT"/skills/orchestrator/locales/*.md; do
+      ! grep -qw "$k" "$f" || { echo "$k is back in $f"; return 1; }
+    done
   done
 }
 

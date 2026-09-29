@@ -118,12 +118,6 @@ security; OWASP; vulnerability; certificate pinning
 ## research_experiment_announce
 Experiment: the Research agent may change code on branch `{branch}`, build it and run the app. The branch is never merged.
 
-## dispatch_method_a
-Stages of the {profile} profile run through the workflow pipeline — the runtime holds the sequence, one agent per stage.
-
-## dispatch_method_b
-The Workflow tool is not available in this session, so the {profile} profile runs through its skill. Same stages and same agents; the sequence is held by the assistant rather than by code.
-
 ## stage_error_prompt
 Stage {stage} returned an error: {reason}. The range stops here — a later stage would build on work that was never finished.
 
@@ -133,41 +127,8 @@ Retry {stage}
 ## stage_error_option_stop
 Stop and hand back control
 
-## progress_open_header
-{profile} {task_id} · {method} · {start} → {end} · Progress: {progress}
-
-## progress_open_live_hint
-Live progress — the /workflows view. Each dispatch below is a run of its own there, listed as `{workflow}`, newest on top.
-
-## progress_open_live_ticker_note
-Token panel — run `bash "{script}" --session {session}` in a second terminal pane.
-
-## progress_open_method_b_live
-Under Method B the host renders every agent call itself; the panel adds the token figures it does not show.
-
-## progress_open_settings
-Settings:
-
-## progress_open_settings_rest
-{count} more at their default
-
-## progress_dispatch
-{range} → new `{workflow}` run, the top row in /workflows.
-
-## progress_stage_report
-{stage} — {agent}
-
-## progress_stage_artifact
-Artifact: {path}
-
-## progress_stage_verdict
-Verdict: {verdict}
-
 ## progress_stage_metrics
 {tuning} · {out} out · {ctx} ctx · {cacheWrite} cache-w · {cacheRead} cache-r · {tools} tools · {elapsed}
-
-## progress_run_elapsed
-Run finished in {elapsed}.
 
 ## progress_run_totals
 {agents} agents · {out} out · {elapsed}
@@ -343,12 +304,6 @@ Discard
 
 ## info_run_resumed
 This run continues the previous one ({started}): settings {settings}; owner's directive: {directive}.
-
-## info_run_setting
-`{field}`: {from} → {to} (this run only)
-
-## info_run_directive
-Owner's directive, passed to every stage verbatim: {directive}
 
 ## info_directive_declined
 {stage} did not do part of the owner's directive: {what}

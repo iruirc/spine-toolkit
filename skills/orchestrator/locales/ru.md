@@ -118,12 +118,6 @@ security; OWASP; vulnerability; certificate pinning; безопасность
 ## research_experiment_announce
 Опыт: агент Research может менять код на ветке `{branch}`, собирать его и запускать приложение. Ветка не вливается.
 
-## dispatch_method_a
-Стадии профиля {profile} идут через workflow-конвейер — последовательность держит рантайм, по агенту на стадию.
-
-## dispatch_method_b
-Тул Workflow в этой сессии недоступен, поэтому профиль {profile} идёт через свой скилл. Стадии и агенты те же, но последовательность держит ассистент, а не код.
-
 ## stage_error_prompt
 Стадия {stage} вернула ошибку: {reason}. Диапазон останавливается здесь — следующая стадия строила бы работу на незавершённой.
 
@@ -133,41 +127,8 @@ security; OWASP; vulnerability; certificate pinning; безопасность
 ## stage_error_option_stop
 Остановиться и вернуть управление
 
-## progress_open_header
-{profile} {task_id} · {method} · {start} → {end} · Progress: {progress}
-
-## progress_open_live_hint
-Живой ход — вьюха /workflows. Каждый запуск ниже — там отдельная строка `{workflow}`, новые сверху.
-
-## progress_open_live_ticker_note
-Панель с токенами — запусти `bash "{script}" --session {session}` в соседней панели терминала.
-
-## progress_open_method_b_live
-В Method B хост сам рисует каждый вызов агента; панель добавляет к нему цифры расхода, которых хост не показывает.
-
-## progress_open_settings
-Настройки:
-
-## progress_open_settings_rest
-ещё {count} по умолчанию
-
-## progress_dispatch
-{range} → новый запуск `{workflow}`, верхняя строка в /workflows.
-
-## progress_stage_report
-{stage} — {agent}
-
-## progress_stage_artifact
-Артефакт: {path}
-
-## progress_stage_verdict
-Вердикт: {verdict}
-
 ## progress_stage_metrics
 {tuning} · {out} out · {ctx} ctx · {cacheWrite} cache-w · {cacheRead} cache-r · {tools} tools · {elapsed}
-
-## progress_run_elapsed
-Прогон занял {elapsed}.
 
 ## progress_run_totals
 {agents} агентов · {out} out · {elapsed}
@@ -343,12 +304,6 @@ Review требует изменений:
 
 ## info_run_resumed
 Этот запуск продолжает прошлый ({started}): настройки {settings}; уточнение владельца: {directive}.
-
-## info_run_setting
-`{field}`: {from} → {to} (только на этот запуск)
-
-## info_run_directive
-Уточнение владельца, дословно уходит каждой стадии: {directive}
 
 ## info_directive_declined
 {stage} не выполнила часть уточнения владельца: {what}

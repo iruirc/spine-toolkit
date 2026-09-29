@@ -620,7 +620,7 @@ A `—` in the Method A column means that profile always takes Method B. Never c
   options `dispatch_blocked_option_a` / `dispatch_blocked_option_b`. Never downgrade in silence: a
   Method B run chosen this way is indistinguishable from one that never had the workflow path.
 
-State the choice **once** per task, using key `dispatch_method_a` or `dispatch_method_b`, inside the opening block that **Progress reporting** requires before the first dispatch. At `quiet` there is no opening block: state it in the final report instead. Not per stage.
+State the choice **once** per task, as the method the opening block names — the one **Progress reporting** requires before the first dispatch. At `quiet` there is no opening block: state it in the final report instead. Not per stage.
 
 Under Method B, when the contract's `effort` names any value other than `session`, add `warn_effort_method_b` (placeholder `{roles}`: those roles, comma-separated) to the same opening block, or to the final report at `quiet`, once per task. A Method B dispatch cannot carry an effort, so every stage runs at the session's (`conventions/stage-dispatch.md` → Model and effort).
 
@@ -675,34 +675,44 @@ background still deserves one plain line saying a stage started; that line names
 method, no scope and no artifact, and it does not point at `/workflows`. Each of those belongs to
 the opening block or the dispatch line, and `quiet` is the value that renders neither.
 
-**At `normal` and above** — an opening block, once per task, before the first dispatch. Render
-`progress_open_header` (`{method}` is the literal `Method A` or `Method B`), then the sentence
-from `dispatch_method_a` / `dispatch_method_b`, then the stage-to-agent table, then
-`progress_open_live_hint` for Method A only, `{workflow}` being the script's `meta.name`.
+**What a report must name.** Each moment below lists facts, not a layout. Name every fact that
+applies, in the resolved `lang`, in any order, wording and markup: a fact left out is the failure,
+a template not followed is not one. The keys this section still names render as their locale
+gives them.
+
+**The opening block** — at `normal` and above, once per task, before the first dispatch:
+
+- the profile, the task, the range `<start> → <end>`, and the `Progress` value;
+- the method, A or B, and under B why the workflow path was not taken;
+- every stage of the range and the agent that runs it, from `meta.phases[].agent` in
+  `workflows/profile-<profile>.js`. Read that file's `meta` block — it is the same file that
+  dispatches, and a second copy of the map in this skill would drift from it. Method B reads it
+  too: the Workflow tool is absent there, but the file is on disk;
+- under Method A, where to watch it: `/workflows`, where each dispatch is a run of its own listed
+  as `meta.name`, newest on top;
+- unless `settings_report` is `off`, the settings: the `[FIELD] = [...]` lines of
+  `bash "<core root>/scripts/resolve-settings.sh" show <task dir>` at `diff`, or of
+  `show <task dir> --all` at `full`, and how many fields are left at their default. Run
+  `show <task dir>` with the same `--set` as step 3, so a value the run set is among them, sourced
+  `run`. The script's trailing `# <n> more at their default` is English whatever `lang` is: give
+  the count in the report's own words. At `diff` a project left on the shipped template shows just
+  two fields: `[SCALE]`, whose shipped line and absent-field default differ, and the
+  `[WALKTHROUGH]` that a `lite` scale drags to `off` with it;
+- **the run's own words** — every entry of `run_settings`: its field, `from → to` (`from` the value a
+  `json` call without `--set` gives, `to` the value it resolved to with them), and that it holds
+  for this run only; and a non-empty `user_directive`, verbatim. They are how the user sees what
+  went to the agents. At `quiet` they open the final report instead;
+- at `live`: under Method A, the token panel's command, verbatim — `bash "<script>" --session
+  <session>`, `<script>` being the absolute path to `scripts/agent-monitor.sh` built from
+  `${CLAUDE_PLUGIN_ROOT}` and `<session>` being `$CLAUDE_CODE_SESSION_ID`; under Method B, that the
+  host renders every agent call itself and the panel adds the token figures it does not show.
 
 **The experiment line.** With `research_experiment=on` and a range that includes the Research
 stage, render `research_experiment_announce`, `{branch}` being `experiment/<task>` as
 `skills/workflow-research/SKILL.md` § 2c names it. It goes out at every `progress` value,
 `quiet` included: it is a permission to change code, not progress. At `normal` and above it
-follows the stage-to-agent table of the opening block; at `quiet` it is one line of its own
-before the first dispatch.
-
-Then, unless `settings_report` is `off`, the settings column: `progress_open_settings`, then the
-`[FIELD] = [...]` lines of `bash "<core root>/scripts/resolve-settings.sh" show <task dir>` at
-`diff`, or of `show <task dir> --all` at `full`. Run `show <task dir>` with the same `--set` as step 3,
-so a value the run set is in the column, sourced `run`. Drop the command's own trailing `# <n> more at
-their default` line — that line is the script talking to whoever ran it directly, in English
-regardless of `lang` — and render `progress_open_settings_rest` in its place, `{count}` filled
-from the same number; `--all` never prints that line, so nothing renders there. At `diff` the
-column names a field only where the value somebody chose is not the built-in default, so a project
-left on the shipped template prints just two rows: `[SCALE]`, the one field whose shipped line and
-absent-field default differ, and the `[WALKTHROUGH]` that a `lite` scale drags to `off` with it.
-
-**The run's own words.** With `run_settings` non-empty, render `info_run_setting` once per entry —
-`{field}`, `{from}` the value a `json` call without `--set` gives, `{to}` the value it resolved to
-with them — and with `user_directive`
-non-empty, `info_run_directive` (`{directive}`). At `normal` and above they close the opening block;
-at `quiet` they open the final report. They are how the user sees what went to the agents.
+follows the stages of the opening block; at `quiet` it is one line of its own before the first
+dispatch.
 
 **Announcing what the resolver could not use.** Every such line is shaped `<source>: '<value>'
 <what happened>`, `<source>` being `Task.md [FIELD]` or a config path and the same `[FIELD]`. The source
@@ -722,20 +732,15 @@ next source down applied. Each line is announced once per run, whichever call su
 script that reads the resolver forwards only the lines about the fields it asked for, so the same
 typo never arrives twice under two different names.
 
-Under Method A, every `Workflow` call is then preceded by `progress_dispatch` — the one per stage in
-`manual`, the single one in `auto`, and any re-dispatch after a hand-back or a retry. `{range}` is
-what that call covers: one stage, or `<start> → <end>`. The host lists each run by `meta.name`
-alone, so a `manual` task fills `/workflows` with identical rows; this line is what ties a row to
-its stage.
+**The dispatch line** — under Method A, before every `Workflow` call: the one per stage in `manual`,
+the single one in `auto`, and any re-dispatch after a hand-back or a retry. It names what that call
+covers — one stage, or `<start> → <end>` — and that the call is the new top row in `/workflows`.
+The host lists each run by `meta.name` alone, so a `manual` task fills `/workflows` with identical
+rows; this line is what ties a row to its stage.
 
-The table's agent column comes from `meta.phases[].agent` in `workflows/profile-<profile>.js`.
-Read that file's `meta` block — it is the same file that dispatches, and a second copy of the map
-in this skill would drift from it. Method B reads it too: the Workflow tool is absent there, but
-the file is on disk.
-
-Then, after each stage: `progress_stage_report`, plus `progress_stage_artifact` where the stage
-wrote one, plus the agent's own one-or-two-sentence summary, plus `progress_stage_verdict` where
-the stage carries a verdict.
+**The stage report** — after each stage: the stage and its agent, the artifact's path where the
+stage wrote one, the agent's own one-or-two-sentence summary, and the verdict where the stage
+carries one.
 
 A stage that declined part of the directive — a non-empty `directive_declined` in its `stages[]`
 record under Method A, a refusal in `notes` under Method B or in an epic's notes for its steps — gets `info_directive_declined`
@@ -782,15 +787,10 @@ same rule as `progress_stage_metrics` above.
 Then render `progress_run_volume`, immediately after `progress_run_totals`, from the same `totals`
 object.
 
-**At `live`** — additionally append `progress_open_live_ticker_note` to the opening block under
-Method A, rendered with `{script}` (the absolute path to `scripts/agent-monitor.sh`, built from
-`${CLAUDE_PLUGIN_ROOT}`) and `{session}` (`$CLAUDE_CODE_SESSION_ID`), and
-`progress_open_method_b_live` under Method B.
-
 **Timing.** The elapsed figure comes from the Workflow tool result, not from the script — the
 sandbox has no clock. In `manual` one call is one stage, so it is that stage's time — and the host
 already prints it above the stage report, so do not repeat it. In `auto` it
-covers the whole range and is printed once, via `progress_run_elapsed`, at the end. Per-stage
+covers the whole range: name it once, at the end, after the last stage report. Per-stage
 durations inside an `auto` run do not exist; do not invent them.
 
 ## Gating
