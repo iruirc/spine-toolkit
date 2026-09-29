@@ -944,20 +944,20 @@ $BATS_TEST_TMPDIR/assets"
   run "$RESOLVE" json "$TASK"
   [ "$(field device <<<"$output")" = auto ] || { echo "$output"; return 1; }
   [ "$(source_of device <<<"$output")" = default ] || { echo "$output"; return 1; }
-  printf '[TASK_TYPE] = [BUG]\n[DEVICE] = [platform=iOS Simulator,id=AB-12]\n' >"$TASK/Task.md"
+  printf '[TASK_TYPE] = [BUG]\n[DEVICE] = [kind=Handset,id=AB-12]\n' >"$TASK/Task.md"
   "$RESOLVE" json "$TASK" >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
-  [ "$(field device <"$BATS_TEST_TMPDIR/out")" = 'platform=iOS Simulator,id=AB-12' ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ "$(field device <"$BATS_TEST_TMPDIR/out")" = 'kind=Handset,id=AB-12' ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
   [ "$(source_of device <"$BATS_TEST_TMPDIR/out")" = task ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
   [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
 }
 
 @test "a run sets a device with spaces and commas in it" {
   printf '[TASK_TYPE] = [BUG]\n[DEVICE] = [Phone A]\n' >"$TASK/Task.md"
-  "$RESOLVE" json "$TASK" --set 'device=platform=iOS Simulator,name=Phone B' >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
-  [ "$(field device <"$BATS_TEST_TMPDIR/out")" = 'platform=iOS Simulator,name=Phone B' ] || { cat "$BATS_TEST_TMPDIR/out" "$ERR"; return 1; }
+  "$RESOLVE" json "$TASK" --set 'device=kind=Handset,name=Phone B' >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field device <"$BATS_TEST_TMPDIR/out")" = 'kind=Handset,name=Phone B' ] || { cat "$BATS_TEST_TMPDIR/out" "$ERR"; return 1; }
   [ "$(source_of device <"$BATS_TEST_TMPDIR/out")" = run ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
-  run "$RESOLVE" show "$TASK" --set 'device=platform=iOS Simulator,name=Phone B'
-  grep -qxF '[DEVICE] = [platform=iOS Simulator,name=Phone B]  # run' <<<"$output" || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK" --set 'device=kind=Handset,name=Phone B'
+  grep -qxF '[DEVICE] = [kind=Handset,name=Phone B]  # run' <<<"$output" || { echo "$output"; return 1; }
 }
 
 @test "a run device of blanks alone is refused" {
@@ -977,4 +977,20 @@ $BATS_TEST_TMPDIR/assets"
 @test "no device source is an em dash" {
   run "$RESOLVE" json "$TASK"
   [ "$(field device_source <<<"$output")" = '—' ] || { echo "$output"; return 1; }
+}
+
+@test "auto is auto in any case, and a hyphen is no device source" {
+  printf '## Project settings\n\n[DEVICE_SOURCE] = [-]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[DEVICE] = [Auto]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field device <<<"$output")" = auto ] || { echo "$output"; return 1; }
+  [ "$(field device_source <<<"$output")" = '—' ] || { echo "$output"; return 1; }
+  run "$RESOLVE" json "$TASK" --set device=AUTO
+  [ "$(field device <<<"$output")" = auto ] || { echo "$output"; return 1; }
+}
+
+@test "a driver is one word, so a run's driver with a space is refused" {
+  "$RESOLVE" json "$TASK" --set 'driver=foo bar' >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(field driver <"$BATS_TEST_TMPDIR/out")" = auto ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  grep -qF "'foo bar' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
 }

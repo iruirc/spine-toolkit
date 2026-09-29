@@ -118,6 +118,14 @@ def warn(label, entry):
 def accept(name, values, raw, label):
     """What this entry contributes, or None when it contributes nothing and the chain goes on."""
     if values is None:
+        # The open fields' own words: a plugin name is one word, and a sentinel is read in any spelling.
+        if name == 'driver' and re.search(r'\s', raw.strip()):
+            warn(label, raw)
+            return None
+        if name == 'device' and raw.strip().lower() == 'auto':
+            return 'auto'
+        if name == 'device_source' and raw.strip() == '-':
+            return '—'
         return raw
     if values == INT:
         if re.fullmatch(r'[0-9]+', raw.strip()):
