@@ -47,7 +47,9 @@ with open(marks, 'a', encoding='utf-8') as fh:
 
 run = subprocess.run(['bash', os.path.join(os.environ['SPINE_CORE_ROOT'], 'scripts', 'resolve-settings.sh'),
                       'open', '--contract', '-', '--method', method],
-                     input=text, capture_output=True, text=True, cwd=hook.get('cwd') or None, timeout=50)
+                     input=text, capture_output=True, text=True, cwd=hook.get('cwd') or None, timeout=50,
+                     env=dict(os.environ, CLAUDE_CODE_SESSION_ID=str(hook.get('session_id') or
+                                                                  os.environ.get('CLAUDE_CODE_SESSION_ID', ''))))
 if run.returncode:
     why = (run.stderr.strip().splitlines() or ['exit %d' % run.returncode])[0]
     message = 'spine-toolkit: the opening block did not come out: %s' % why

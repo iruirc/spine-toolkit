@@ -557,3 +557,11 @@ sys.exit(0 if hit else 'no PreToolUse hook on Workflow|Skill runs hooks/opening-
 PY
   [ -x "$ROOT/hooks/opening-block" ] || { echo "hooks/opening-block is not executable"; return 1; }
 }
+
+@test "nothing waits for the opening block, which comes out at the dispatch itself" {
+  para="$(awk '/^\*\*The experiment line\.\*\*/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no experiment line paragraph"; return 1; }
+  grep -qF 'before the first dispatch, at every `progress` value' <<<"$para" || { echo "$para"; return 1; }
+  ! grep -qF 'follows the opening block' <<<"$para" || { echo "the experiment line waits for the block"; return 1; }
+  ! grep -qF 'no second opening block' "$SKILL" || { echo "a dispatch in a turn of its own is said to have no block"; return 1; }
+}

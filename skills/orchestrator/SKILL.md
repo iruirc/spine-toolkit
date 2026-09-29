@@ -699,10 +699,9 @@ every `run_settings` entry as its field and `from → to` (`from` the value a `j
 
 **The experiment line.** With `research_experiment=on` and a range that includes the Research
 stage, render `research_experiment_announce`, `{branch}` being `experiment/<task>` as
-`skills/workflow-research/SKILL.md` § 2c names it. It goes out at every `progress` value,
-`quiet` included: it is a permission to change code, not progress. At `normal` and above it
-follows the opening block; at `quiet` it is one line of its own before the first
-dispatch.
+`skills/workflow-research/SKILL.md` § 2c names it. It is one line of its own,
+before the first dispatch, at every `progress` value, `quiet` included: it is a permission to
+change code, not progress, and the opening block only comes out at the dispatch itself.
 
 **Announcing what the resolver could not use.** Every such line is shaped `<source>: '<value>'
 <what happened>`, `<source>` being `Task.md [FIELD]` or a config path and the same `[FIELD]`. The source
@@ -872,7 +871,8 @@ over what the range wrote. An EPIC range holding both Plan and Execute is dispat
 instead — the first with `end_stage=Plan`, the second from Execute — and the `--task-docs`
 measurement runs between them: measured after the range, a step would already have run on the
 `Task.md` the measurement exists to fix. The second call continues the same run: `start_stage=Execute`,
-`stage_scope=forward`, no new archiving, and no second opening block.
+`stage_scope=forward`, no new archiving. It goes out in the turn the Plan call's notification
+opens, so the hook shows a block for it too, naming Execute onward.
 
 **Artifact language.** At the artifact budget's boundaries — after a stage returns and before
 `stage_done_prompt`, or once when an `auto` Method A range returns, over what the range wrote — run
