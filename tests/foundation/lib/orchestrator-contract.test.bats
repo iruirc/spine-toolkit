@@ -391,16 +391,16 @@ section() {
     || { echo "the section does not say facts are the contract"; return 1; }
 }
 
-@test "the opening block names each of its facts" {
-  para="$(awk '/^\*\*The opening block\*\*/{f=1} f&&/^- /{l=1} l&&/^$/{exit} f' "$SKILL")"
-  grep -qF 'the panel adds the token figures' <<<"$(tail -2 <<<"$para")" || { echo "the opening block list does not end where it should"; return 1; }
-  for f in 'the `Progress` value' '`<start> → <end>`' 'the method, A or B' 'why the workflow path was not taken' \
-           '`meta.phases[].agent`' 'newest on top' '`settings_report`' 'how many fields are left at their default' \
-           '`from → to`' 'for this run only' '`user_directive`, verbatim' 'At `quiet` they open the final report' \
-           "the token panel's command, verbatim" '--session' 'the absolute path to `scripts/agent-monitor.sh`' \
-           'the panel adds the token figures'; do
+@test "the opening block is what resolve-settings.sh open prints, shown as it is before the first dispatch" {
+  para="$(awk '/^\*\*The opening block\*\*/{f=1} /^\*\*The experiment line\*\*/{exit} f' "$SKILL")"
+  [ -n "$para" ] || { echo "no opening block paragraph"; return 1; }
+  for f in 'resolve-settings.sh" open <task dir> --method A|B' '--range "<start>:<end>"' '`--set` exactly as in step 3' \
+           '`progress_override`' 'in the resolved `lang`' 'adding nothing and leaving nothing out, then dispatch' \
+           "the script's header" '`Progress` never changes what runs' 'At `quiet` the script is not called' \
+           '`from → to`' '`user_directive`, verbatim'; do
     grep -qF -- "$f" <<<"$para" || { echo "the opening block lost: $f"; return 1; }
   done
+  ! grep -qF '`meta.phases[].agent`' <<<"$para" || { echo "the skill lists the opening block's facts again"; return 1; }
 }
 
 @test "the stage report names each of its facts" {
