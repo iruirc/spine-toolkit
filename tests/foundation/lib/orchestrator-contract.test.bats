@@ -395,12 +395,21 @@ section() {
   para="$(awk '/^\*\*The opening block\*\*/{f=1} /^\*\*The experiment line\*\*/{exit} f' "$SKILL")"
   [ -n "$para" ] || { echo "no opening block paragraph"; return 1; }
   for f in 'resolve-settings.sh" open <task dir> --method A|B' '--range "<start>:<end>"' '`--set` exactly as in step 3' \
-           '`progress_override`' 'in the resolved `lang`' 'adding nothing and leaving nothing out, then dispatch' \
+           "--why '<reason>'" '--run-file <epic dir>/Run.json' 'not held back for the final report' \
+           '`progress_override`' 'in the resolved `lang`' 'in the same turn as the dispatch and before it' \
            "the script's header" '`Progress` never changes what runs' 'At `quiet` the script is not called' \
            '`from → to`' '`user_directive`, verbatim'; do
     grep -qF -- "$f" <<<"$para" || { echo "the opening block lost: $f"; return 1; }
   done
   ! grep -qF '`meta.phases[].agent`' <<<"$para" || { echo "the skill lists the opening block's facts again"; return 1; }
+}
+
+@test "both invoke paragraphs send the opening block out before the call" {
+  for m in 'Method A' 'Method B'; do
+    para="$(awk -v h="**$m — invoke.**" 'index($0,h)==1{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+    [ -n "$para" ] || { echo "no $m invoke paragraph"; return 1; }
+    grep -qF 'The opening block goes out before this call' <<<"$para" || { echo "$m: the block is not sent first"; return 1; }
+  done
 }
 
 @test "the stage report names each of its facts" {
