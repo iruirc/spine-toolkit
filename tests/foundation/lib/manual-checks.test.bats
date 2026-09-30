@@ -423,3 +423,12 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
       || { echo "$(basename "$f"): the revision never checks the scene against the steps"; return 1; }
   done
 }
+
+@test "the refresh names its diff command verbatim, so no validator reads one commit only" {
+  for p in feature bug refactor test quick; do
+    grep -qF 'the changed files are what git diff --name-only <the file'"'"'s [COVERS]>..HEAD prints, never one commit'"'"'s' "$ROOT/workflows/profile-$p.js" \
+      || { echo "profile-$p.js: the refresh leaves the diff command to the validator"; return 1; }
+    bullet "$ROOT/skills/workflow-$p/SKILL.md" Validation | grep -qF '`git diff --name-only <COVERS>..HEAD`' \
+      || { echo "workflow-$p: Method B leaves the diff command to the validator"; return 1; }
+  done
+}
