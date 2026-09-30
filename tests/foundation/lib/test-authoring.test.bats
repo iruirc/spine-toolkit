@@ -189,13 +189,17 @@ review_brief() {
   awk -v stop="label: .review." '/^\/\/ ── Review ─/{p=1;next} p&&$0~stop{exit} p' "$1"
 }
 
-@test "every phased profile's Review judges the tests by the skill" {
-  for p in feature bug refactor test; do
+@test "every profile with a Review judges the tests by the skill, and the first two findings block" {
+  for p in feature bug refactor test quick; do
     b="$(review_brief "$ROOT/workflows/profile-$p.js")"
     grep -qF "the way the test-authoring skill's ## Review section does" <<<"$b" \
       || { echo "profile-$p.js: Review never judges test quality"; return 1; }
-    grep -qF 'these are defects in what was delivered and may block' <<<"$b" \
-      || { echo "profile-$p.js: the clause reads as non-blocking, like its neighbour"; return 1; }
+    # The brief once listed the findings itself and dropped half of the fifth; it
+    # now names the one it lost and leaves the list to the skill.
+    grep -qF 'a name that does not say what broke included' <<<"$b" \
+      || { echo "profile-$p.js: the brief still carries a partial copy of the list"; return 1; }
+    grep -qF 'always go into blocking_findings' <<<"$b" \
+      || { echo "profile-$p.js: a test that cannot fail may still go out as non-blocking"; return 1; }
   done
 }
 
@@ -209,6 +213,23 @@ review_brief() {
   # is two sources that drift, which is the defect this change exists to remove.
   if grep -qF 'What counts here: edge-case coverage' "$ROOT/workflows/profile-test.js"; then
     echo "profile-test.js still lists the criteria inline"
+    return 1
+  fi
+}
+
+@test "every workflow skill's Review sends the tests to the skill as well" {
+  # Method B had the clause in QUICK only; FEATURE, BUG and REFACTOR never named the
+  # skill, and TEST carried a list of its own.
+  for s in feature bug refactor test quick; do
+    f="$ROOT/skills/workflow-$s/SKILL.md"
+    r="$(grep -E '^- \*\*Review\*\* — `\[reviewer\]`' "$f")"
+    grep -qF "the \`test-authoring\` skill's \`## Review\` section" <<<"$r" \
+      || { echo "workflow-$s: Review does not judge tests by the skill"; return 1; }
+    grep -qF 'its first two findings always block' <<<"$r" \
+      || { echo "workflow-$s: Review does not say which findings block"; return 1; }
+  done
+  if grep -qF 'edge-case coverage, meaningful assertions' "$ROOT/skills/workflow-test/SKILL.md"; then
+    echo "workflow-test still lists its own criteria"
     return 1
   fi
 }
