@@ -157,6 +157,7 @@ SCALARS = (
     ('walkthrough_check', 'WALKTHROUGH_CHECK', ['auto', 'on', 'off'], 'auto'),
     ('drive_app', 'DRIVE_APP', ['auto', 'off'], 'auto'),
     ('manual_checks', 'MANUAL_CHECKS', ['auto', 'always'], 'auto'),
+    ('manual_checks_check', 'MANUAL_CHECKS_CHECK', ['on', 'off'], 'on'),
     ('driver', 'DRIVER', None, 'auto'),
     ('device', 'DEVICE', None, 'auto'),
     ('phase_verification', 'PHASE_VERIFICATION', ['proportional', 'full'], 'proportional'),

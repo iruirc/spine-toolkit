@@ -209,7 +209,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
     ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
   done
   [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
-  grep -qxF '# 21 more at their default' <<<"$out" || { echo "$out"; return 1; }
+  grep -qxF '# 22 more at their default' <<<"$out" || { echo "$out"; return 1; }
 }
 
 @test "a project budget equal to the default is not a diff, and --all still names it" {
@@ -445,6 +445,7 @@ walkthrough off
 walkthrough_check off
 drive_app auto
 manual_checks auto
+manual_checks_check on
 driver auto
 phase_verification proportional
 security auto
@@ -512,7 +513,7 @@ FIELDS
   # The fallback is the prelude's guarded local (DRIVE_APP, …), not A.<field> directly — an
   # absent contract field must not push a bare `undefined` into the pushed step's args.
   E="$ROOT/workflows/profile-epic.js"
-  for field in drive_app manual_checks phase_verification security long_run; do
+  for field in drive_app manual_checks manual_checks_check phase_verification security long_run; do
     guarded="$(tr '[:lower:]' '[:upper:]' <<<"$field")"
     grep -qF "$field: st.$field === undefined ? $guarded : st.$field" "$E" \
       || { echo "profile-epic.js does not forward $field to a step"; return 1; }
@@ -520,12 +521,14 @@ FIELDS
   # The depth and its check fall back along the chain, not to the epic's: quick-surfaces.test.bats.
   grep -qF 'walkthrough: stepWalkthrough(st),' "$E" && grep -qF 'walkthrough_check: stepWalkthroughCheck(st),' "$E" \
     || { echo "profile-epic.js does not forward walkthrough to a step"; return 1; }
-  grep -qF 'return its drive_app, device, manual_checks, phase_verification, security, walkthrough, walkthrough_check and long_run values' "$E" \
+  grep -qF 'return its drive_app, device, manual_checks, manual_checks_check, phase_verification, security, walkthrough, walkthrough_check and long_run values' "$E" \
     || { echo "read-steps never asks for the step's own depth and check"; return 1; }
   grep -qF "device: st.device === undefined ? DEVICE || 'auto' : st.device," "$E" && grep -qF "device_source: DEVICE_SOURCE || '—'," "$E" \
     || { echo "profile-epic.js does not forward the device to a step"; return 1; }
   grep -qF "walkthrough_check: { type: 'string', enum: ['on', 'off']" "$E" \
     || { echo "the step record has no walkthrough_check"; return 1; }
+  grep -qF "manual_checks_check: { type: 'string', enum: ['on', 'off']" "$E" \
+    || { echo "the step record has no manual_checks_check"; return 1; }
   grep -qF "security: { type: 'string', enum: ['auto', 'on', 'off']" "$E" \
     || { echo "the step record has no security"; return 1; }
   grep -qF 'plugin_root: A.plugin_root,' "$E" || { echo "profile-epic.js does not forward plugin_root"; return 1; }
@@ -550,12 +553,44 @@ FIELDS
       || { echo "$(basename "$p"): drive_app is not guarded"; return 1; }
     grep -qxF "const MANUAL_CHECKS = A.manual_checks === 'always' ? 'always' : 'auto'" "$p" \
       || { echo "$(basename "$p"): manual_checks is not guarded"; return 1; }
+    grep -qxF "const MANUAL_CHECKS_CHECK = A.manual_checks_check === 'off' ? 'off' : 'on'" "$p" \
+      || { echo "$(basename "$p"): manual_checks_check is not guarded"; return 1; }
     grep -qxF "const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'" "$p" \
       || { echo "$(basename "$p"): phase_verification is not guarded"; return 1; }
     grep -qxF "const WALKTHROUGH_CHECK = A.walkthrough_check === 'on' ? 'on' : 'off'" "$p" \
       || { echo "$(basename "$p"): walkthrough_check is not guarded"; return 1; }
     grep -qxF "const SECURITY = A.security === 'on' || A.security === 'off' ? A.security : 'auto'" "$p" \
       || { echo "$(basename "$p"): security is not guarded"; return 1; }
+  done
+}
+
+@test "manual_checks_check is on unless a task or the project turns it off, and auto is no value of it" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(field manual_checks_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(source_of manual_checks_check <<<"$output")" = default ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[MANUAL_CHECKS_CHECK] = [off]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field manual_checks_check <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(source_of manual_checks_check <<<"$output")" = task ] || { echo "$output"; return 1; }
+  printf '## Task defaults\n\n[MANUAL_CHECKS_CHECK] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[MANUAL_CHECKS_CHECK] = [auto]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  grep -qF "Task.md [MANUAL_CHECKS_CHECK]: 'auto' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+  [ "$(field manual_checks_check <<<"$out")" = off ] || { echo "$out"; return 1; }
+  [ "$(source_of manual_checks_check <<<"$out")" = project ] || { echo "$out"; return 1; }
+}
+
+@test "manual_checks_check is documented wherever its neighbours are" {
+  grep -qF '| `manual_checks_check` | `[MANUAL_CHECKS_CHECK]` | `[MANUAL_CHECKS_CHECK]` | `on` `off` | `on` |' \
+    "$ROOT/conventions/task-settings.md" || { echo "task-settings.md has no row for the field"; return 1; }
+  D="$ROOT/docs/configuration.md"
+  grep -qxF '### [MANUAL_CHECKS_CHECK]' "$D" || { echo "docs/configuration.md has no section for the field"; return 1; }
+  grep -qF '`[MANUAL_CHECKS_CHECK] = [on|off]`' "$D" || { echo "the override spelling is missing"; return 1; }
+  grep -qF '`[MANUAL_CHECKS_CHECK] = [<on|off>]`' "$ROOT/skills/task-new/SKILL.md" \
+    || { echo "task-new does not offer the field"; return 1; }
+  for t in task-root task-step; do
+    grep -qxF '# [MANUAL_CHECKS_CHECK] = [off] # on | off' "$ROOT/templates/task-md/$t.md" \
+      || { echo "no [MANUAL_CHECKS_CHECK] in $t.md"; return 1; }
   done
 }
 

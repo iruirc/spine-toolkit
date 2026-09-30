@@ -456,6 +456,17 @@ section() {
   done
 }
 
+@test "the outbound contract carries manual_checks_check, on or off" {
+  grep -qxF 'manual_checks_check=on|off' "$SKILL" || { echo "no manual_checks_check= line in the contract block"; return 1; }
+  para="$(awk '/^`manual_checks_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`manual_checks_check\` paragraph in the Outbound Contract"; return 1; }
+  for token in 'resolve-settings.sh json' 'Always filled' '`manual-checks` → `## Check`'; do
+    grep -qF "$token" <<<"$para" || { echo "the manual_checks_check paragraph does not say $token"; return 1; }
+  done
+  own="$(awk '/^`walkthrough_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL" | wc -c)"
+  [ "$(printf '%s' "$para" | wc -c)" -le "$own" ] || { echo "the paragraph outgrew the walkthrough_check one"; return 1; }
+}
+
 @test "the outbound contract carries walkthrough_current, measured by the lint's --current" {
   grep -qxF 'walkthrough_current=true|false' "$SKILL" || { echo "no walkthrough_current= line in the contract block"; return 1; }
   para="$(awk '/^`walkthrough_current` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
