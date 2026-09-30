@@ -350,5 +350,8 @@ The task's `Task.md` already says `[SCALE] = [full]`, so "lite for this run" is 
 ## warn_run_setting_refused
 `{line}` — this run's setting was not applied; the task files decide it.
 
+## info_task_docs_uncommitted
+`{path}` is outside git or ignored by it, so the task's documents were not committed.
+
 ## warn_run_file_tracked
 `{path}` is tracked by git, so it is not your word for this run but a file anyone could have written: it is ignored. Say the settings and the directive again if you meant them.
