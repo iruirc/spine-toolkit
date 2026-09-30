@@ -2,12 +2,12 @@
 # ManualChecks.md is the one artifact of a task a person executes rather than reads.
 # A vague sentence in a walkthrough costs a re-read; a vague step here cannot be run at
 # all. This suite holds the parts of that spec a reviewer cannot see: that both halves
-# of the two-stage contract reached both execution forms of all four profiles.
+# of the two-stage contract reached both execution forms of all five profiles.
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   SKILL="$ROOT/skills/manual-checks/SKILL.md"
-  PROFILES="feature bug refactor test"
+  PROFILES="feature bug refactor test quick"
 }
 
 @test "the skill exists and resolves under its own name" {
@@ -53,9 +53,11 @@ setup() {
 # The Plan brief of a profile script runs from its own banner to the next stage's.
 # Grepping the whole file would pass on a mention in the Validation brief, which is
 # the one place this clause must NOT be, since by then the plan is already written.
+# QUICK has no Plan stage: its Edit brief writes the plan.
 plan_brief() {
-  awk '/^\/\/ ── Plan ─/{p=1;next} p&&/^\/\/ ── /{exit} p' "$1"
+  awk '/^\/\/ ── (Plan|Edit) ─/{p=1;next} p&&/^\/\/ ── /{exit} p' "$1"
 }
+plan_stage() { [ "$1" = quick ] && echo Edit || echo Plan; }
 
 # A stage's own bullet in a Method B skill, from its "- **Stage**" line to the next
 # bullet. Whole-file greps do not work here: by Task 3 the Validation bullet quotes the
@@ -80,7 +82,7 @@ bullet() { # $1 = SKILL.md, $2 = stage name
 
 @test "the same requirement reached the Method B skill of every profile" {
   for p in $PROFILES; do
-    bullet "$ROOT/skills/workflow-$p/SKILL.md" Plan | grep -q '## Manual acceptance' \
+    bullet "$ROOT/skills/workflow-$p/SKILL.md" "$(plan_stage "$p")" | grep -q '## Manual acceptance' \
       || { echo "workflow-$p/SKILL.md: the Plan stage says nothing about ## Manual acceptance"; return 1; }
   done
 }
@@ -197,4 +199,60 @@ review_brief() {
     bullet "$ROOT/skills/workflow-$p/SKILL.md" Review | grep -q '## Manual acceptance' \
       || { echo "workflow-$p/SKILL.md: the plan-side check did not reach Method B"; return 1; }
   done
+}
+
+# One section of the skill, heading excluded, up to the next H2.
+skill_section() { awk -v h="$1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
+
+@test "a case steps through a table, each row with what the doer sees" {
+  grep -qxF '| # | Action | Data | You see |' "$SKILL" || { echo "the case has no steps table"; return 1; }
+  grep -qF '**Wrap-up:**' "$SKILL" || { echo "the skill never names **Wrap-up:**"; return 1; }
+  grep -qF '| `## Cases` | Numbered, one per check | ≤ 40 lines each |' "$SKILL" || { echo "a case is not budgeted at 40 lines"; return 1; }
+  grep -qF 'a case to 20 lines' "$SKILL" || { echo "lite does not say what a case shrinks to"; return 1; }
+  grep -qF '**Cases are independent.**' "$SKILL" || { echo "cases may still lean on each other"; return 1; }
+}
+
+@test "Preparation is an environment and a dictionary of actions, and Scope says what BLOCKED means" {
+  grep -qF 'dictionary of actions' "$SKILL" || { echo "## Preparation has no dictionary of actions"; return 1; }
+  grep -qF 'BLOCKED' "$SKILL" || { echo "## Scope never says when a case is BLOCKED"; return 1; }
+  grep -qF '| `## Charter` |' "$SKILL" || { echo "the structure has no ## Charter"; return 1; }
+}
+
+@test "a plan line carries its intent" {
+  skill_section '## Two stages, two halves' | grep -qF 'what must be true — what changed' \
+    || { echo "## Manual acceptance lines carry no intent"; return 1; }
+}
+
+@test "claims are grounded in the code, and an empty case is deleted" {
+  g="$(skill_section '## Grounding')"
+  [ -n "$g" ] || { echo "no ## Grounding"; return 1; }
+  for token in 'checked against the code' '`Review.md`' '`[COVERS]`' '**The empty case.**' '`## Not covered`'; do
+    grep -qF -- "$token" <<<"$g" || { echo "## Grounding does not name $token"; return 1; }
+  done
+  [ "$(grep -c . <<<"$g")" -le 10 ] || { echo "## Grounding outgrew ten lines"; return 1; }
+}
+
+@test "a refresh re-checks only the cases whose code moved" {
+  r="$(skill_section '## Refreshing')"
+  [ -n "$r" ] || { echo "no ## Refreshing"; return 1; }
+  for token in 'git diff --name-only <COVERS>..HEAD' 'the others are left alone' '`[COVERS]` becomes HEAD'; do
+    grep -qF -- "$token" <<<"$r" || { echo "## Refreshing does not name $token"; return 1; }
+  done
+  [ "$(grep -c . <<<"$r")" -le 6 ] || { echo "## Refreshing outgrew six lines"; return 1; }
+}
+
+@test "the check walks the file cold and names each smell by kind" {
+  c="$(skill_section '## Check')"
+  [ -n "$c" ] || { echo "no ## Check"; return 1; }
+  for token in '`[MANUAL_CHECKS_CHECK]`' '`manual_checks_check`' '`PASSED`' "validator's role" '`light`' 'nothing else' \
+               '`walk`' '`smells`' '`ambiguous`' '`unverified`' '`precondition`' '`tacit`' '`oracle`' 'one pass' \
+               '`ManualChecks.md check: N place(s), revised.`' '`ManualChecks.md check: nothing unclear.`'; do
+    grep -qF -- "$token" <<<"$c" || { echo "## Check does not name $token"; return 1; }
+  done
+}
+
+@test "Review judges a case by the case and its grounding" {
+  r="$(skill_section '## Review')"
+  grep -qF '`## The case` and `## Grounding`' <<<"$r" || { echo "## Review does not name its rules"; return 1; }
+  grep -qF 'an empty case' <<<"$r" || { echo "## Review does not name the empty case"; return 1; }
 }
