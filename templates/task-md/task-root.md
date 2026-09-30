@@ -11,6 +11,7 @@
 # [DRIVER] = [auto]           # <driver-plugin> | auto | —
 # [DEVICE] = [auto]           # auto | <device>
 # [MANUAL_CHECKS] = [always]  # auto | always
+# [MANUAL_CHECKS_CHECK] = [off] # on | off
 # [PHASE_VERIFICATION] = [full] # proportional | full
 # [FIX_ROUNDS] = [0]         # a whole number, 0 turns the auto loop off
 # [WALKTHROUGH] = [off]       # brief | deep | off

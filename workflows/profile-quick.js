@@ -90,6 +90,7 @@ const LANG = A.lang || 'en'
 const STACK = A.stack || 'unspecified'
 const DRIVE_APP = A.drive_app === 'off' ? 'off' : 'auto'
 const MANUAL_CHECKS = A.manual_checks === 'always' ? 'always' : 'auto'
+const MANUAL_CHECKS_CHECK = A.manual_checks_check === 'off' ? 'off' : 'on'
 const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'
 const WALKTHROUGH_CHECK = A.walkthrough_check === 'on' ? 'on' : 'off'
 // Whether Walkthrough.md names the task's newest commit: the orchestrator's measure before the run,

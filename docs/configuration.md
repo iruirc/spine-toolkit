@@ -191,6 +191,22 @@ checks it was told not to run itself; `always` — every time, so a UI-bearing t
 even when the validator drove the app and covered the happy path. What goes inside that file is
 fixed by the `manual-checks` skill, not by this field.
 
+### [MANUAL_CHECKS_CHECK]
+
+**Values:** `on` `off` · **Default:** `on` · **Task override:** `[MANUAL_CHECKS_CHECK] = [on|off]` ·
+**Defined by:** the `manual-checks` skill, `## Check`
+
+Whether `ManualChecks.md` is walked by a reader with none of the task's context before it is handed
+over, and revised once from what that reader could not execute. The reader is a fresh agent of the
+validator's role that opens the file and nothing else. It retells every step of every case as the
+action it would take and names each place it could not execute as written; an empty list ends the
+check, otherwise the validator fixes the places named. One round, and the run notes how many places
+there were.
+
+It runs after a Validation that passed and wrote or changed a file with at least one case. There is
+no `auto`: the file has no depth for it to follow. The check costs one `light` dispatch, and one
+more validator dispatch when it finds something.
+
 ### [DRIVER]
 
 **Values:** a driver-plugin name, `auto`, `—` · **Default:** `auto` · **Task override:**

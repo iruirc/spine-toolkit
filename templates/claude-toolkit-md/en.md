@@ -23,6 +23,7 @@
 [SCALE] = [lite]                       # lite | full
 [DRIVE_APP] = [auto]                   # auto | off
 [MANUAL_CHECKS] = [auto]               # auto | always
+[MANUAL_CHECKS_CHECK] = [on]           # on | off
 [DRIVER] = [auto]                      # <driver-plugin> | auto | —
 [DEVICE] = [auto]                      # auto | <device>
 [PHASE_VERIFICATION] = [proportional]  # proportional | full
