@@ -283,6 +283,7 @@ const VALIDATION = {
     ops_checklist_path: { type: 'string' },
     manual_checks_path: { type: 'string' },
     manual_checks: { type: 'array', items: { type: 'string' }, description: 'case titles from ManualChecks.md' },
+    manual_checks_changed: { type: 'boolean', description: 'false when this run left ManualChecks.md as it was' },
     driver_status: { type: 'string', enum: ['ok', 'none', 'unavailable', 'incompatible'], description: 'the driver state, per conventions/driver-contract.md' },
     summary: { type: 'string' },
     directive_declined: DECLINED,
@@ -494,6 +495,39 @@ const COLD_READ = {
   },
 }
 
+const MANUAL_CHECKS_READ = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['walk', 'smells'],
+  properties: {
+    walk: { type: 'array', items: { type: 'string' }, description: 'one line per step of every case: the action you would take, and what you expect to see' },
+    smells: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['case', 'step', 'kind', 'quote', 'missing'],
+        properties: {
+          case: { type: 'string' },
+          step: { type: 'string' },
+          kind: { type: 'string', enum: ['ambiguous', 'unverified', 'precondition', 'tacit', 'oracle'] },
+          quote: { type: 'string' },
+          missing: { type: 'string' },
+        },
+      },
+    },
+  },
+}
+const MANUAL_CHECKS_REVISED = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['changed', 'artifact_path'],
+  properties: {
+    changed: { type: 'boolean', description: 'false when the revision found nothing to change' },
+    artifact_path: { type: 'string' },
+  },
+}
+
 // A reader with none of the writer's context, then one revision: task-walkthrough → ## Check.
 const checkWalkthrough = async (stage, agentType, depth, extra) => {
   const read = await agent(
@@ -539,6 +573,53 @@ Return changed true once the file is revised. Change no production code and no t
         ? `Walkthrough.md check: ${unclear.length} unclear place(s); the revision found nothing to change.`
         : `Walkthrough.md check: ${unclear.length} unclear place(s), revised.`
       : `Walkthrough.md check: ${unclear.length} unclear place(s); the revision returned nothing, so the file stands as written.`,
+  )
+}
+
+// A reader with none of the task's context, then one revision: manual-checks → ## Check.
+const checkManualChecks = async (stage, role, agentType, path) => {
+  const file = path || `${DIR}/ManualChecks.md`
+  const read = await agent(
+    brief(
+      stage,
+      `Apply the spine-toolkit:manual-checks skill, its ## Check section, as the reader it describes: a person about to execute the file who was not on this task. Of the task and the repository, read ${file} and nothing else — open no other file of the task and no source file, and run no git command. Return walk, one line per step of every case: the action you would take and what you expect to see; and smells, every place you could not execute as written: its case and step, its kind as that section names them, a quote of at most one line, and what was missing. Change nothing on disk.`,
+    ),
+    { label: 'manual-checks:check', phase: stage, agentType, schema: MANUAL_CHECKS_READ, ...tuning(role, 'light') },
+  )
+  if (!read) {
+    result.notes.push('The ManualChecks.md check returned nothing, so ManualChecks.md went unchecked.')
+    return
+  }
+  const smells = read.smells || []
+  if (!smells.length) {
+    result.notes.push('ManualChecks.md check: nothing unclear.')
+    return
+  }
+  const places = smells.map((s, i) => `${i + 1}. case ${s.case}, step ${s.step}, ${s.kind}: "${s.quote}" — ${s.missing}`).join('\n')
+  const walked = (read.walk || []).map((w, i) => `${i + 1}. ${w}`).join('\n')
+  const fix = await agent(
+    brief(
+      stage,
+      `A reader who was not on this task read ${file} and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. What you change is checked against the code, as its ## Grounding section requires. [COVERS] stays as it is.
+
+Places the reader could not execute as written:
+${places}
+
+How the reader walked the cases:
+${walked}
+
+The reader's notes above may be in another language; the file's prose stays ${LANG_NAME}.
+
+Return changed true once the file is revised. Change no production code and no tests.`,
+    ),
+    { label: 'manual-checks:revise', phase: stage, agentType, schema: MANUAL_CHECKS_REVISED, ...tuning(role, 'stage') },
+  )
+  result.notes.push(
+    fix && fix.artifact_path
+      ? fix.changed === false
+        ? `ManualChecks.md check: ${smells.length} place(s); the revision found nothing to change.`
+        : `ManualChecks.md check: ${smells.length} place(s), revised.`
+      : `ManualChecks.md check: ${smells.length} place(s); the revision returned nothing, so the file stands as written.`,
   )
 }
 
@@ -684,7 +765,7 @@ If any one of them fails, change nothing, write nothing, commit nothing: return 
 
 When ${DIR}/Plan.md already exists, an earlier run made this check and wrote the phase: finish its outstanding items instead of writing a new plan.
 
-Otherwise write ${DIR}/Plan.md with a single phase: a top-level table of one row, using the status glyphs ⬜ 🔄 ✅, and a detail section whose action items are "- [ ]" checkboxes, one per file to edit. Open the detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill; the full regression belongs to Validation. Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, stated as what must be true; when nothing qualifies, the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds.
+Otherwise write ${DIR}/Plan.md with a single phase: a top-level table of one row, using the status glyphs ⬜ 🔄 ✅, and a detail section whose action items are "- [ ]" checkboxes, one per file to edit. Open the detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill; the full regression belongs to Validation. Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, stated as what must be true and what changed to make it so; when nothing qualifies, the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds.
 
 Then make the change. Per item: complete it, then tick its checkbox "- [ ]" → "- [x]". When every checkbox except the verification checks is ticked: build, run the checks the **Verification:** line names and tick each one as it passes, flip the row ⬜ → ✅, git add the change together with Plan.md, and commit once. Commit autonomously — do not ask.${A.need_test === false ? '' : ' This task owes a test (need_test=true): write it in the same phase by applying the spine-toolkit:test-authoring skill, and commit it with the change.'}
 
@@ -719,7 +800,7 @@ if (runs('Validation')) {
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
-For QUICK a build and a full test run are both mandatory, through this platform's own build and test tooling. There is no reproduction scenario to replay: the task had no Reproduce stage. The checks a person makes come from Plan.md ## Manual acceptance: drive a running instance of the app for them where this run can — drive_app is ${DRIVE_APP} — and otherwise put them into ${DIR}/ManualChecks.md and their titles into manual_checks. Which driver condition applied comes back in driver_status, as ${core('conventions/driver-contract.md')} defines it. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the two rules that decide whether a case can be executed at all.
+For QUICK a build and a full test run are both mandatory, through this platform's own build and test tooling. There is no reproduction scenario to replay: the task had no Reproduce stage. The checks a person makes come from Plan.md ## Manual acceptance: drive a running instance of the app for them where this run can — drive_app is ${DRIVE_APP} — and otherwise put them into ${DIR}/ManualChecks.md and their titles into manual_checks. Which driver condition applied comes back in driver_status, as ${core('conventions/driver-contract.md')} defines it. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the rules that decide whether a case can be executed at all.
 
 Change no production code and no tests. Return the same status you wrote on the first line.${CATCH_UP_VALIDATION}${cap('Validation.md')}`,
     ),
@@ -738,6 +819,9 @@ Change no production code and no tests. Return the same status you wrote on the 
     result.notes.push(`Validation returned ${validation.validation_status}; Review and Done were not run.`)
     return finish('ask_user', { validation_status: validation.validation_status })
   }
+  if (MANUAL_CHECKS_CHECK === 'on' && validation.manual_checks && validation.manual_checks.length && validation.manual_checks_changed !== false) {
+    await checkManualChecks('Validation', 'validator', A.agents.validator, validation.manual_checks_path)
+  }
 }
 
 // ── Review ──────────────────────────────────────────────────────────────────
@@ -751,7 +835,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-Judge the change against Task.md and Plan.md: does it do what Task.md asks and nothing more, and is it still a QUICK change — at most two production files, no public API or package boundary crossed, nothing on the security perimeter? No security lens ran on this task, because its entry check kept the perimeter out: a diff that touches the perimeter anyway is a blocking finding. When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge the phase's **Verification:** line the way the phase-verification skill's ## Review section does: a missing line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does: an assertion that cannot fail, a double standing in for the behaviour under test, state crossing between tests, behaviour in the diff that no test names, and a test asserting more than one behaviour. Unlike the plan findings above, these are defects in what was delivered and may block. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${cap('Review.md')}`,
+Judge the change against Task.md and Plan.md: does it do what Task.md asks and nothing more, and is it still a QUICK change — at most two production files, no public API or package boundary crossed, nothing on the security perimeter? No security lens ran on this task, because its entry check kept the perimeter out: a diff that touches the perimeter anyway is a blocking finding. When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the rules of the manual-checks skill's ## The case and ## Grounding — an empty case, whose failure looks the same as its success, and a claim about behaviour with no code reference are findings too. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge the phase's **Verification:** line the way the phase-verification skill's ## Review section does: a missing line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does: an assertion that cannot fail, a double standing in for the behaviour under test, state crossing between tests, behaviour in the diff that no test names, and a test asserting more than one behaviour. Unlike the plan findings above, these are defects in what was delivered and may block. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${cap('Review.md')}`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )

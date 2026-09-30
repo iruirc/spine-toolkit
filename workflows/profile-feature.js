@@ -287,6 +287,7 @@ const VALIDATION = {
     ops_checklist_path: { type: 'string' },
     manual_checks_path: { type: 'string' },
     manual_checks: { type: 'array', items: { type: 'string' }, description: 'case titles from ManualChecks.md' },
+    manual_checks_changed: { type: 'boolean', description: 'false when this run left ManualChecks.md as it was' },
     driver_status: { type: 'string', enum: ['ok', 'none', 'unavailable', 'incompatible'], description: 'the driver state, per conventions/driver-contract.md' },
     summary: { type: 'string' },
     directive_declined: DECLINED,
@@ -498,6 +499,39 @@ const COLD_READ = {
   },
 }
 
+const MANUAL_CHECKS_READ = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['walk', 'smells'],
+  properties: {
+    walk: { type: 'array', items: { type: 'string' }, description: 'one line per step of every case: the action you would take, and what you expect to see' },
+    smells: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['case', 'step', 'kind', 'quote', 'missing'],
+        properties: {
+          case: { type: 'string' },
+          step: { type: 'string' },
+          kind: { type: 'string', enum: ['ambiguous', 'unverified', 'precondition', 'tacit', 'oracle'] },
+          quote: { type: 'string' },
+          missing: { type: 'string' },
+        },
+      },
+    },
+  },
+}
+const MANUAL_CHECKS_REVISED = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['changed', 'artifact_path'],
+  properties: {
+    changed: { type: 'boolean', description: 'false when the revision found nothing to change' },
+    artifact_path: { type: 'string' },
+  },
+}
+
 // A reader with none of the writer's context, then one revision: task-walkthrough → ## Check.
 const checkWalkthrough = async (stage, agentType, depth, extra) => {
   const read = await agent(
@@ -543,6 +577,53 @@ Return changed true once the file is revised. Change no production code and no t
         ? `Walkthrough.md check: ${unclear.length} unclear place(s); the revision found nothing to change.`
         : `Walkthrough.md check: ${unclear.length} unclear place(s), revised.`
       : `Walkthrough.md check: ${unclear.length} unclear place(s); the revision returned nothing, so the file stands as written.`,
+  )
+}
+
+// A reader with none of the task's context, then one revision: manual-checks → ## Check.
+const checkManualChecks = async (stage, role, agentType, path) => {
+  const file = path || `${DIR}/ManualChecks.md`
+  const read = await agent(
+    brief(
+      stage,
+      `Apply the spine-toolkit:manual-checks skill, its ## Check section, as the reader it describes: a person about to execute the file who was not on this task. Of the task and the repository, read ${file} and nothing else — open no other file of the task and no source file, and run no git command. Return walk, one line per step of every case: the action you would take and what you expect to see; and smells, every place you could not execute as written: its case and step, its kind as that section names them, a quote of at most one line, and what was missing. Change nothing on disk.`,
+    ),
+    { label: 'manual-checks:check', phase: stage, agentType, schema: MANUAL_CHECKS_READ, ...tuning(role, 'light') },
+  )
+  if (!read) {
+    result.notes.push('The ManualChecks.md check returned nothing, so ManualChecks.md went unchecked.')
+    return
+  }
+  const smells = read.smells || []
+  if (!smells.length) {
+    result.notes.push('ManualChecks.md check: nothing unclear.')
+    return
+  }
+  const places = smells.map((s, i) => `${i + 1}. case ${s.case}, step ${s.step}, ${s.kind}: "${s.quote}" — ${s.missing}`).join('\n')
+  const walked = (read.walk || []).map((w, i) => `${i + 1}. ${w}`).join('\n')
+  const fix = await agent(
+    brief(
+      stage,
+      `A reader who was not on this task read ${file} and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. What you change is checked against the code, as its ## Grounding section requires. [COVERS] stays as it is.
+
+Places the reader could not execute as written:
+${places}
+
+How the reader walked the cases:
+${walked}
+
+The reader's notes above may be in another language; the file's prose stays ${LANG_NAME}.
+
+Return changed true once the file is revised. Change no production code and no tests.`,
+    ),
+    { label: 'manual-checks:revise', phase: stage, agentType, schema: MANUAL_CHECKS_REVISED, ...tuning(role, 'stage') },
+  )
+  result.notes.push(
+    fix && fix.artifact_path
+      ? fix.changed === false
+        ? `ManualChecks.md check: ${smells.length} place(s); the revision found nothing to change.`
+        : `ManualChecks.md check: ${smells.length} place(s), revised.`
+      : `ManualChecks.md check: ${smells.length} place(s); the revision returned nothing, so the file stands as written.`,
   )
 }
 
@@ -705,7 +786,7 @@ Write Plan.md by applying the task-documents skill, its Plan.md section — it h
 
 Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation, and at proportional a phase checks only what it can break — repeating the whole suite there is a defect of this plan; at full every phase repeats it too. This run's phase_verification is ${PHASE_VERIFICATION}.
 
-Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, each stated as what must be true rather than as what to press, so Validation can turn it into a case a person walks. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}${lite() ? '\n\nIf you raise the scale, the plan you write is a full-depth one: apply the feature-estimation skill, add the ## Estimation section, and report estimation_gate, exactly as a full run would. That skill holds what the section carries and when the gate blocks.' : ''}`,
+Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, each stated as what must be true and what changed to make it so, rather than as what to press, so Validation can turn it into a case a person walks. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}${lite() ? '\n\nIf you raise the scale, the plan you write is a full-depth one: apply the feature-estimation skill, add the ## Estimation section, and report estimation_gate, exactly as a full run would. That skill holds what the section carries and when the gate blocks.' : ''}`,
     ),
     {
       label: 'plan',
@@ -774,7 +855,7 @@ if (runs('Validation')) {
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
-For FEATURE a build and a full test run are both mandatory, through whatever build and test tooling this platform prescribes. Driving a running instance of the app is mandatory when the feature has a UI layer — views, screens, navigation — and skipped for a purely domain or infrastructure feature; say which case this is and why. Four things can suspend it, and all four hand it over the same way: drive_app resolving to off — this run's value is ${DRIVE_APP} — no driver resolving at all, a driver that cannot be reached for this run's surface — its server not connected, the module for that surface not installed, or that surface absent from this machine — or a driver that drives none of the surfaces this platform produces. The second of those reaches only a platform that takes part in the driver contract: a platform whose manifest declares no ## Driver block drives with its own tooling exactly as it did before this contract existed, and that cause fires for it only when it has no tooling to drive a running instance at all, which you announce as a declared deviation. Which driver condition applied comes back in driver_status — no driver, one that cannot be reached, or a mismatched one — while drive_app: off is the project's own setting rather than a driver condition and needs no such report; ${core('conventions/driver-contract.md')} has the full vocabulary and what each one means for the user. Whichever it is, you drive nothing: write the UI cases a human has to run into ${DIR}/ManualChecks.md and return their titles in manual_checks${lite() ? '' : ', and mark the matching OpsChecklist items Pending rather than Applicable'}. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the two rules that decide whether a case can be executed at all. Its input is Plan.md ## Manual acceptance; when the plan carries no such section, say so in ## Scope and derive the cases yourself. Independently of that, manual_checks decides whether this file also covers a run you drove yourself: auto stops at the deferred checks above, always writes it on every UI-bearing run regardless, covering what the happy path did not reach and what driving the app cannot do at all. This run's manual_checks is ${MANUAL_CHECKS}.${lite() ? '' : `\n\nAlso apply the ops-checklist skill and write ${DIR}/OpsChecklist.md, marking every item Applicable with its verification evidence (file path, test name, commit ref), N/A with a reason, or Pending. A Pending item is not by itself a FAILED verdict — Pending items go to Review, which decides.`}
+For FEATURE a build and a full test run are both mandatory, through whatever build and test tooling this platform prescribes. Driving a running instance of the app is mandatory when the feature has a UI layer — views, screens, navigation — and skipped for a purely domain or infrastructure feature; say which case this is and why. Four things can suspend it, and all four hand it over the same way: drive_app resolving to off — this run's value is ${DRIVE_APP} — no driver resolving at all, a driver that cannot be reached for this run's surface — its server not connected, the module for that surface not installed, or that surface absent from this machine — or a driver that drives none of the surfaces this platform produces. The second of those reaches only a platform that takes part in the driver contract: a platform whose manifest declares no ## Driver block drives with its own tooling exactly as it did before this contract existed, and that cause fires for it only when it has no tooling to drive a running instance at all, which you announce as a declared deviation. Which driver condition applied comes back in driver_status — no driver, one that cannot be reached, or a mismatched one — while drive_app: off is the project's own setting rather than a driver condition and needs no such report; ${core('conventions/driver-contract.md')} has the full vocabulary and what each one means for the user. Whichever it is, you drive nothing: write the UI cases a human has to run into ${DIR}/ManualChecks.md and return their titles in manual_checks${lite() ? '' : ', and mark the matching OpsChecklist items Pending rather than Applicable'}. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the rules that decide whether a case can be executed at all. Its input is Plan.md ## Manual acceptance; when the plan carries no such section, say so in ## Scope and derive the cases yourself. Independently of that, manual_checks decides whether this file also covers a run you drove yourself: auto stops at the deferred checks above, always writes it on every UI-bearing run regardless, covering what the happy path did not reach and what driving the app cannot do at all. This run's manual_checks is ${MANUAL_CHECKS}.${lite() ? '' : `\n\nAlso apply the ops-checklist skill and write ${DIR}/OpsChecklist.md, marking every item Applicable with its verification evidence (file path, test name, commit ref), N/A with a reason, or Pending. A Pending item is not by itself a FAILED verdict — Pending items go to Review, which decides.`}
 
 Change no production code and no tests. Return the same status you wrote on the first line.${CATCH_UP_VALIDATION}${cap('Validation.md')}`,
     ),
@@ -797,6 +878,9 @@ Change no production code and no tests. Return the same status you wrote on the 
     result.notes.push(`Validation returned ${validation.validation_status}; Review and Done were not run.`)
     return finish('ask_user', { validation_status: validation.validation_status })
   }
+  if (MANUAL_CHECKS_CHECK === 'on' && validation.manual_checks && validation.manual_checks.length && validation.manual_checks_changed !== false) {
+    await checkManualChecks('Validation', 'validator', A.agents.validator, validation.manual_checks_path)
+  }
 }
 
 // ── Review ──────────────────────────────────────────────────────────────────
@@ -810,7 +894,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION${lite() ? '' : `\n\nCross-check ${DIR}/OpsChecklist.md: every item marked Applicable must have implementation evidence visible in the diff or in the test results. An Applicable item without evidence is a finding and normally yields CHANGES_REQUESTED. Collect the Pending items under a ## Outstanding ops items section in Review.md for the user to accept or defer explicitly.`}
 
-When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the two rules the manual-checks skill states — an expectation only an instrument can settle is backed by that instrument's command somewhere in the file and by the value in its output that decides, and no case identifies a state by the name of a function, a file, or a variable. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does: an assertion that cannot fail, a double standing in for the behaviour under test, state crossing between tests, behaviour in the diff that no test names, and a test asserting more than one behaviour. Unlike the plan findings above, these are defects in what was delivered and may block.
+When ${DIR}/ManualChecks.md exists, read it too: a case a person cannot execute as written is an ordinary finding, judged by the rules of the manual-checks skill's ## The case and ## Grounding — an empty case, whose failure looks the same as its success, and a claim about behaviour with no code reference are findings too. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does: an assertion that cannot fail, a double standing in for the behaviour under test, state crossing between tests, behaviour in the diff that no test names, and a test asserting more than one behaviour. Unlike the plan findings above, these are defects in what was delivered and may block.
 
 Apply the spine-toolkit:security-lens skill, its ## Review rule, to the security verdict line of Research.md, or of Plan.md where there is no Research.md: a lens skipped by triage or returned empty on a diff that touches the perimeter is a finding, and none goes into blocking_findings. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${cap('Review.md')}`,
     ),

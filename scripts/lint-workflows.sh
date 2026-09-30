@@ -58,6 +58,7 @@ KIND_OF_LABEL = (
     (r'walkthrough:revise', 'walkthrough'),
     (r'walkthrough:check', 'light'),
     (r'security:triage', 'light'),
+    (r'manual-checks:check', 'light'),
 )
 
 # Dispatches whose role is a variable, as (agentType expression, tuning role expression). An unlisted

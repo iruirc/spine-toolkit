@@ -83,3 +83,13 @@ REVIEW_LINE="{ label: 'review', phase: 'Review', agentType: A.agents.reviewer, s
   mutate profile-review.js "schema: TRIAGE, ...tuning(role, 'light') }" "schema: TRIAGE, ...tuning(role, 'stage') }"
   expect_violation "dispatch 'security:triage' is tuned stage; conventions/stage-dispatch.md → Model and effort makes it light"
 }
+
+@test "the ManualChecks.md walk tuned as a stage fails" {
+  mutate profile-review.js "schema: MANUAL_CHECKS_READ, ...tuning(role, 'light') }" "schema: MANUAL_CHECKS_READ, ...tuning(role, 'stage') }"
+  expect_violation "dispatch 'manual-checks:check' is tuned stage; conventions/stage-dispatch.md → Model and effort makes it light"
+}
+
+@test "a walk that drifts in one profile fails the prelude check" {
+  mutate profile-feature.js "ManualChecks.md check: nothing unclear." "ManualChecks.md check: all clear."
+  expect_violation 'workflows/profile-feature.js: prelude differs'
+}

@@ -283,6 +283,7 @@ const VALIDATION = {
     ops_checklist_path: { type: 'string' },
     manual_checks_path: { type: 'string' },
     manual_checks: { type: 'array', items: { type: 'string' }, description: 'case titles from ManualChecks.md' },
+    manual_checks_changed: { type: 'boolean', description: 'false when this run left ManualChecks.md as it was' },
     driver_status: { type: 'string', enum: ['ok', 'none', 'unavailable', 'incompatible'], description: 'the driver state, per conventions/driver-contract.md' },
     summary: { type: 'string' },
     directive_declined: DECLINED,
@@ -494,6 +495,39 @@ const COLD_READ = {
   },
 }
 
+const MANUAL_CHECKS_READ = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['walk', 'smells'],
+  properties: {
+    walk: { type: 'array', items: { type: 'string' }, description: 'one line per step of every case: the action you would take, and what you expect to see' },
+    smells: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['case', 'step', 'kind', 'quote', 'missing'],
+        properties: {
+          case: { type: 'string' },
+          step: { type: 'string' },
+          kind: { type: 'string', enum: ['ambiguous', 'unverified', 'precondition', 'tacit', 'oracle'] },
+          quote: { type: 'string' },
+          missing: { type: 'string' },
+        },
+      },
+    },
+  },
+}
+const MANUAL_CHECKS_REVISED = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['changed', 'artifact_path'],
+  properties: {
+    changed: { type: 'boolean', description: 'false when the revision found nothing to change' },
+    artifact_path: { type: 'string' },
+  },
+}
+
 // A reader with none of the writer's context, then one revision: task-walkthrough → ## Check.
 const checkWalkthrough = async (stage, agentType, depth, extra) => {
   const read = await agent(
@@ -539,6 +573,53 @@ Return changed true once the file is revised. Change no production code and no t
         ? `Walkthrough.md check: ${unclear.length} unclear place(s); the revision found nothing to change.`
         : `Walkthrough.md check: ${unclear.length} unclear place(s), revised.`
       : `Walkthrough.md check: ${unclear.length} unclear place(s); the revision returned nothing, so the file stands as written.`,
+  )
+}
+
+// A reader with none of the task's context, then one revision: manual-checks → ## Check.
+const checkManualChecks = async (stage, role, agentType, path) => {
+  const file = path || `${DIR}/ManualChecks.md`
+  const read = await agent(
+    brief(
+      stage,
+      `Apply the spine-toolkit:manual-checks skill, its ## Check section, as the reader it describes: a person about to execute the file who was not on this task. Of the task and the repository, read ${file} and nothing else — open no other file of the task and no source file, and run no git command. Return walk, one line per step of every case: the action you would take and what you expect to see; and smells, every place you could not execute as written: its case and step, its kind as that section names them, a quote of at most one line, and what was missing. Change nothing on disk.`,
+    ),
+    { label: 'manual-checks:check', phase: stage, agentType, schema: MANUAL_CHECKS_READ, ...tuning(role, 'light') },
+  )
+  if (!read) {
+    result.notes.push('The ManualChecks.md check returned nothing, so ManualChecks.md went unchecked.')
+    return
+  }
+  const smells = read.smells || []
+  if (!smells.length) {
+    result.notes.push('ManualChecks.md check: nothing unclear.')
+    return
+  }
+  const places = smells.map((s, i) => `${i + 1}. case ${s.case}, step ${s.step}, ${s.kind}: "${s.quote}" — ${s.missing}`).join('\n')
+  const walked = (read.walk || []).map((w, i) => `${i + 1}. ${w}`).join('\n')
+  const fix = await agent(
+    brief(
+      stage,
+      `A reader who was not on this task read ${file} and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. What you change is checked against the code, as its ## Grounding section requires. [COVERS] stays as it is.
+
+Places the reader could not execute as written:
+${places}
+
+How the reader walked the cases:
+${walked}
+
+The reader's notes above may be in another language; the file's prose stays ${LANG_NAME}.
+
+Return changed true once the file is revised. Change no production code and no tests.`,
+    ),
+    { label: 'manual-checks:revise', phase: stage, agentType, schema: MANUAL_CHECKS_REVISED, ...tuning(role, 'stage') },
+  )
+  result.notes.push(
+    fix && fix.artifact_path
+      ? fix.changed === false
+        ? `ManualChecks.md check: ${smells.length} place(s); the revision found nothing to change.`
+        : `ManualChecks.md check: ${smells.length} place(s), revised.`
+      : `ManualChecks.md check: ${smells.length} place(s); the revision returned nothing, so the file stands as written.`,
   )
 }
 

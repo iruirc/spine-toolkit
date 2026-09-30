@@ -508,7 +508,7 @@ A platform with no way to drive a running instance declares that deviation in it
 cases move to `ManualChecks.md` for a human, and the run continues with nothing claimed.
 
 The artifact's shape is core's, not yours: `skills/manual-checks/SKILL.md` holds the structure, the
-required fields of a case, and the two rules that decide whether a case is executable. Your
+required fields of a case, and the rules that decide whether a case is executable. Your
 validator points at that skill instead of describing the file. What stays platform-side is when a
 check is deferred and what this ecosystem measures it with — a case whose verdict comes from an
 instrument is backed by that instrument's exact invocation, written where the `manual-checks`

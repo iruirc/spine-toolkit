@@ -121,7 +121,7 @@ does with the result. A dispatch is one of five kinds:
 - `done` — writing the final report, which on a Done run again is checking a report against the
   task: `done`.
 - `light` — work the script's own prompt defines that still takes judgement: `walkthrough:check`,
-  `security:triage`.
+  `security:triage`, `manual-checks:check`.
 - `mechanical` — reading a file back, ticking a box, moving a task: `<stage>:read-plan`,
   `execute:read-steps`, `execute:tick:<step>`, `done:read-branch`, `auto-move`.
 
