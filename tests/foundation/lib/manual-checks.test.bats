@@ -375,3 +375,36 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
       || { echo "profile-$p.js: Validation never reports an untouched file, so the walk reruns"; return 1; }
   done
 }
+
+@test "a BUG that passed but still reproduces, or was not replayed, is not walked" {
+  for status in still-reproduces not-replayed; do
+    out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-bug.js" \
+      "{\"task_id\": \"001\", \"task_dir\": \"/p/t\", \"plugin_root\": \"/core\", \"agents\": $AGENTS, \"start_stage\": \"Validation\", \"end_stage\": \"Validation\"}" \
+      "{\"validation\": {\"validation_status\": \"PASSED\", \"reproduction_status\": \"$status\", \"artifact_path\": \"v\", \"summary\": \"s\", \"manual_checks\": [\"a\"]}}")"
+    [ "$(labels <<<"$out")" = validation ] || { echo "profile-bug: walked a run whose reproduction is $status"; return 1; }
+  done
+}
+
+@test "the symbol rule covers the steps table, and lite keeps the ceilings too small to halve" {
+  grep -qF 'Neither `**Scene:**`, a cell of `**Steps:**`, nor either expectation' "$SKILL" \
+    || { echo "the symbol rule does not reach the steps table"; return 1; }
+  grep -qF '`## Scope` and `## Charter` keep theirs' "$SKILL" \
+    || { echo "lite halves ## Scope and ## Charter"; return 1; }
+}
+
+@test "Method B refreshes a file behind HEAD, and the orchestrator names the case it gates on" {
+  for p in $PROFILES; do
+    bullet "$ROOT/skills/workflow-$p/SKILL.md" Validation | grep -qF 'refreshing one behind HEAD by `## Refreshing`' \
+      || { echo "workflow-$p: Method B never refreshes"; return 1; }
+  done
+  grep -qF 'a Validation that passed and wrote or changed one holding a case' "$ROOT/skills/orchestrator/SKILL.md" \
+    || { echo "the orchestrator paragraph omits the case"; return 1; }
+}
+
+@test "the configuration entry says what the switch does and leaves the protocol to the skill" {
+  s="$(awk '/^### \[MANUAL_CHECKS_CHECK\]/{f=1;next} f&&/^### /{exit} f' "$ROOT/docs/configuration.md")"
+  [ "$(grep -c . <<<"$s")" -le 6 ] || { echo "the entry retells ## Check"; return 1; }
+  for t in 'no `auto`' '`light`' 'holding a case'; do
+    grep -qF -- "$t" <<<"$s" || { echo "the entry lost: $t"; return 1; }
+  done
+}
