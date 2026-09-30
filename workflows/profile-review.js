@@ -597,7 +597,7 @@ const checkManualChecks = async (stage, role, agentType, path) => {
   const fix = await agent(
     brief(
       stage,
-      `A reader who was not on this task read ${file} and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. What you change is checked against the code, as its ## Grounding section requires. [COVERS] stays as it is.
+      `A reader who was not on this task read ${file} and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. What you change is checked against the code, as its ## Grounding section requires. Then read each case's **Scene:** against its first step and its steps against each other, fix what disagrees, and run "${core('scripts/lint-manual-checks.sh')}" on the file once more. [COVERS] stays as it is.
 
 Places the reader could not execute as written:
 ${places}
