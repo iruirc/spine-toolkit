@@ -100,6 +100,7 @@ A case states what the code does, so it is written from the code, never from mem
 - Every claim about behaviour in `**Scene:**`, `You see` and `**Failure looks like:**` — a direction, a target, how neighbours react, a threshold — is checked against the code and carries its reference as a gloss, under the symbol rule: `the edge snaps to the cursor line (snap_resolver:88)`. Advice from `Review.md` enters a case only after that check.
 - A case about a resource or a style names the element that draws it, with a reference to where it is used.
 - A step uses only what exists in the build at `[COVERS]`; a check of what a later step of an epic adds is a `## Not covered` line with its reason.
+- `scripts/lint-manual-checks.sh`, run on the file, names every case with no reference; the author runs it after writing the file and after a revision.
 - **The empty case.** `**Failure looks like:**` is what the code before the change would show on the same scene. When it matches `You see`, the case checks nothing: delete it, and give `## Not covered` a line with the reason.
 
 ## Refreshing

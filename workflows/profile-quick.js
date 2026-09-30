@@ -600,7 +600,7 @@ const checkManualChecks = async (stage, role, agentType, path) => {
   const fix = await agent(
     brief(
       stage,
-      `A reader who was not on this task read ${file} and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. What you change is checked against the code, as its ## Grounding section requires. [COVERS] stays as it is.
+      `A reader who was not on this task read ${file} and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. What you change is checked against the code, as its ## Grounding section requires. Then read each case's **Scene:** against its first step and its steps against each other, fix what disagrees, and run "${core('scripts/lint-manual-checks.sh')}" on the file once more. [COVERS] stays as it is.
 
 Places the reader could not execute as written:
 ${places}
@@ -800,7 +800,7 @@ if (runs('Validation')) {
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
-For QUICK a build and a full test run are both mandatory, through this platform's own build and test tooling. There is no reproduction scenario to replay: the task had no Reproduce stage. The checks a person makes come from Plan.md ## Manual acceptance: drive a running instance of the app for them where this run can — drive_app is ${DRIVE_APP} — and otherwise put them into ${DIR}/ManualChecks.md and their titles into manual_checks. Which driver condition applied comes back in driver_status, as ${core('conventions/driver-contract.md')} defines it. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the rules that decide whether a case can be executed at all. When the file is already there with a [COVERS] behind HEAD, refresh it by that skill's ## Refreshing section, and return manual_checks_changed false when no case was added, removed or rewritten — moving [COVERS] alone is no change.
+For QUICK a build and a full test run are both mandatory, through this platform's own build and test tooling. There is no reproduction scenario to replay: the task had no Reproduce stage. The checks a person makes come from Plan.md ## Manual acceptance: drive a running instance of the app for them where this run can — drive_app is ${DRIVE_APP} — and otherwise put them into ${DIR}/ManualChecks.md and their titles into manual_checks. Which driver condition applied comes back in driver_status, as ${core('conventions/driver-contract.md')} defines it. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the rules that decide whether a case can be executed at all. When the file is already there with a [COVERS] behind HEAD, refresh it by that skill's ## Refreshing section, and return manual_checks_changed false when no case was added, removed or rewritten — moving [COVERS] alone is no change. Then run "${core('scripts/lint-manual-checks.sh')}" on the file and give every case it names a code reference, as that skill's ## Grounding requires.
 
 Change no production code and no tests. Return the same status you wrote on the first line.${CATCH_UP_VALIDATION}${cap('Validation.md')}`,
     ),

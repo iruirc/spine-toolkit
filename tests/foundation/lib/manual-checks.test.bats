@@ -408,3 +408,18 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     grep -qF -- "$t" <<<"$s" || { echo "the entry lost: $t"; return 1; }
   done
 }
+
+@test "the grounding lint runs after Validation writes the file and after the revision" {
+  grep -qF '`scripts/lint-manual-checks.sh`' <<<"$(skill_section '## Grounding')" \
+    || { echo "## Grounding does not name its lint"; return 1; }
+  for p in feature bug refactor test quick; do
+    grep -qF "Then run \"\${core('scripts/lint-manual-checks.sh')}\" on the file and give every case it names a code reference" "$ROOT/workflows/profile-$p.js" \
+      || { echo "profile-$p.js: Validation never runs the grounding lint"; return 1; }
+    bullet "$ROOT/skills/workflow-$p/SKILL.md" Validation | grep -qF '`scripts/lint-manual-checks.sh`' \
+      || { echo "workflow-$p: Method B never runs the grounding lint"; return 1; }
+  done
+  for f in "$ROOT"/workflows/profile-*.js; do
+    grep -qF "read each case's **Scene:** against its first step and its steps against each other" "$f" \
+      || { echo "$(basename "$f"): the revision never checks the scene against the steps"; return 1; }
+  done
+}
