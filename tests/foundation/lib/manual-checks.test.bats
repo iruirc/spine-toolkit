@@ -183,7 +183,11 @@ review_brief() {
   # The Plan clause has a count guard; without the same for these two, shortening
   # PROFILES and stripping one profile's Validation pointer and Review clause
   # leaves the whole suite green.
-  v="$(grep -l 'manual-checks skill' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  # The shared prelude names the skill in every script, so only the Validation brief counts.
+  v=0
+  for f in "$ROOT"/workflows/profile-*.js; do
+    if validation_brief "$f" | grep -q 'manual-checks skill'; then v=$((v + 1)); fi
+  done
   [ "$v" -eq 5 ] || { echo "$v profile script(s) point Validation at the skill, expected 5"; return 1; }
   r="$(grep -l 'ManualChecks.md exists, read it too' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
   [ "$r" -eq 5 ] || { echo "$r profile script(s) carry the Review clause, expected 5"; return 1; }
@@ -255,4 +259,93 @@ skill_section() { awk -v h="$1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
   r="$(skill_section '## Review')"
   grep -qF '`## The case` and `## Grounding`' <<<"$r" || { echo "## Review does not name its rules"; return 1; }
   grep -qF 'an empty case' <<<"$r" || { echo "## Review does not name the empty case"; return 1; }
+}
+
+# ── Method A: the cold walk after Validation, driven with stubbed agents ──
+AGENTS='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"—","diagnostics":"g","init":"—"}'
+
+walk_run() { # $1 profile, $2 extra contract members (leading comma), $3 validation reply members (leading comma), $4 check reply
+  node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" \
+    "{\"task_id\": \"001\", \"task_dir\": \"/p/Tasks/ACTIVE/001-x\", \"plugin_root\": \"/core\", \"lang\": \"en\", \"agents\": $AGENTS, \"start_stage\": \"Validation\", \"end_stage\": \"Validation\", \"stage_scope\": \"forward\"$2}" \
+    "{\"validation\": {\"validation_status\": \"PASSED\", \"reproduction_status\": \"fixed\", \"artifact_path\": \"v\", \"summary\": \"s\", \"manual_checks\": [\"the icon is new\"], \"manual_checks_path\": \"/p/Tasks/ACTIVE/001-x/ManualChecks.md\"$3}, \"manual-checks:check\": ${4:-$CLEAN}, \"manual-checks:revise\": {\"changed\": true, \"artifact_path\": \"/p/Tasks/ACTIVE/001-x/ManualChecks.md\"}}"
+}
+
+CLEAN='{"walk": ["I open the header"], "smells": []}'
+
+pick() { node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8")); const v = eval(process.argv[1]); console.log(typeof v === "string" ? v : JSON.stringify(v))' "$1"; }
+
+labels() { pick 'o.calls.map((c) => c.label).join(" ")'; }
+
+SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", "kind": "ambiguous", "quote": "find the start of the cell", "missing": "which cell, where"}]}'
+
+@test "a passed Validation that wrote cases has the file walked cold by the validator's role" {
+  for p in $PROFILES; do
+    out="$(walk_run "$p")"
+    [ "$(labels <<<"$out")" = "validation manual-checks:check" ] || { echo "profile-$p: $(labels <<<"$out")"; return 1; }
+    pr="$(pick 'o.calls[1].prompt' <<<"$out")"
+    for f in 'spine-toolkit:manual-checks skill, its ## Check section' '/p/Tasks/ACTIVE/001-x/ManualChecks.md and nothing else' 'run no git command'; do
+      grep -qF -- "$f" <<<"$pr" || { echo "profile-$p: the reader brief lost: $f"; return 1; }
+    done
+    grep -qF 'ManualChecks.md check: nothing unclear.' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: no note"; return 1; }
+  done
+}
+
+@test "what the reader could not execute goes back to the validator for one revision" {
+  for p in $PROFILES; do
+    out="$(walk_run "$p" '' '' "$SMELL")"
+    [ "$(labels <<<"$out")" = "validation manual-checks:check manual-checks:revise" ] || { echo "profile-$p: $(labels <<<"$out")"; return 1; }
+    pr="$(pick 'o.calls[2].prompt' <<<"$out")"
+    for f in 'find the start of the cell' 'which cell, where' 'ambiguous' 'I look for the start' '## Grounding'; do
+      grep -qF -- "$f" <<<"$pr" || { echo "profile-$p: the revision brief lost: $f"; return 1; }
+    done
+    grep -qF 'ManualChecks.md check: 1 place(s), revised.' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: no note"; return 1; }
+  done
+}
+
+@test "no walk when the switch is off, the verdict is not PASSED, or the file was left as it was" {
+  for p in $PROFILES; do
+    [ "$(walk_run "$p" ', "manual_checks_check": "off"' | labels)" = validation ] || { echo "profile-$p: walked with the switch off"; return 1; }
+    [ "$(walk_run "$p" '' ', "manual_checks_changed": false' | labels)" = validation ] || { echo "profile-$p: walked an unchanged file"; return 1; }
+    out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$p.js" \
+      "{\"task_id\": \"001\", \"task_dir\": \"/p/t\", \"plugin_root\": \"/core\", \"agents\": $AGENTS, \"start_stage\": \"Validation\", \"end_stage\": \"Validation\"}" \
+      '{"validation": {"validation_status": "FAILED", "artifact_path": "v", "summary": "s", "manual_checks": ["a"]}}')"
+    [ "$(labels <<<"$out")" = validation ] || { echo "profile-$p: walked after FAILED"; return 1; }
+    out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$p.js" \
+      "{\"task_id\": \"001\", \"task_dir\": \"/p/t\", \"plugin_root\": \"/core\", \"agents\": $AGENTS, \"start_stage\": \"Validation\", \"end_stage\": \"Validation\"}" \
+      '{"validation": {"validation_status": "PASSED", "reproduction_status": "fixed", "artifact_path": "v", "summary": "s"}}')"
+    [ "$(labels <<<"$out")" = validation ] || { echo "profile-$p: walked a run with no cases"; return 1; }
+  done
+}
+
+@test "the walk is one prelude text, tuned light, and the validator says whether it touched the file" {
+  n=0
+  for f in "$ROOT"/workflows/profile-*.js; do
+    n=$((n + 1))
+    for line in '// A reader with none of the task'"'"'s context, then one revision: manual-checks → ## Check.' \
+                "schema: MANUAL_CHECKS_READ, ...tuning(role, 'light')" \
+                "kind: { type: 'string', enum: ['ambiguous', 'unverified', 'precondition', 'tacit', 'oracle'] }" \
+                "manual_checks_changed: { type: 'boolean', description: 'false when this run left ManualChecks.md as it was' }"; do
+      grep -qF -- "$line" "$f" || { echo "$(basename "$f"): missing '$line'"; return 1; }
+    done
+  done
+  [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
+  grep -qxF "    (r'manual-checks:check', 'light')," "$ROOT/scripts/lint-workflows.sh" || { echo "the lint does not hold the walk at light"; return 1; }
+  grep -qF '`manual-checks:check`' "$ROOT/conventions/stage-dispatch.md" || { echo "the dispatch rule does not list the walk"; return 1; }
+}
+
+@test "the Plan brief asks each line for its intent" {
+  for p in $PROFILES; do
+    plan_brief "$ROOT/workflows/profile-$p.js" | grep -qF 'what must be true and what changed to make it so' \
+      || { echo "profile-$p.js: the plan line carries no intent"; return 1; }
+  done
+}
+
+@test "Review judges the hand-run script by the case and its grounding" {
+  for p in $PROFILES; do
+    rb="$(review_brief "$ROOT/workflows/profile-$p.js")"
+    grep -qF "the rules of the manual-checks skill's ## The case and ## Grounding" <<<"$rb" \
+      || { echo "profile-$p.js: Review does not name the sections it judges by"; return 1; }
+    grep -qF 'an empty case' <<<"$rb" || { echo "profile-$p.js: Review does not name the empty case"; return 1; }
+    ! grep -qF 'two rules the manual-checks skill states' <<<"$rb" || { echo "profile-$p.js: the two-rule clause is back"; return 1; }
+  done
 }
