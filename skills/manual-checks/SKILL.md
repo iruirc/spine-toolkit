@@ -107,7 +107,7 @@ A case states what the code does, so it is written from the code, never from mem
 A Validation that finds `ManualChecks.md` with a `[COVERS]` behind HEAD refreshes it rather than rewriting it:
 
 1. `git diff --name-only <COVERS>..HEAD` names the changed files.
-2. A case with a code reference into one of them is checked again; the others are left alone.
+2. A case with a code reference into one of them is checked again, and so is a case with no code reference at all; the others are left alone.
 3. A new `## Manual acceptance` line becomes a new case; a case automation now covers moves to `## Scope` with a reference to that evidence.
 4. `[COVERS]` becomes HEAD.
 
@@ -132,7 +132,7 @@ Neither `**Scene:**` nor either expectation identifies a state by the name of a 
 
 `[MANUAL_CHECKS_CHECK]` decides whether the file is walked by someone who was not there before it is handed over; it reaches a run as the contract's `manual_checks_check`, `on` by default.
 
-**When.** Validation returned `PASSED`, the file holds at least one case, and this Validation wrote or changed it. The author never checks its own file: the dispatcher does — the profile script under Method A, the workflow skill's main context under Method B.
+**When.** Validation returned `PASSED`, the file holds at least one case, and this Validation wrote or changed it — a case added, removed or rewritten; moving `[COVERS]` alone is no change. The author never checks its own file: the dispatcher does — the profile script under Method A, the workflow skill's main context under Method B.
 
 **The reader** is a fresh dispatch of the validator's role, tuned `light`. Of the task and the repository it reads `ManualChecks.md` and nothing else — no other file of the task, no source file, no git — and returns two lists:
 

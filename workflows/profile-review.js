@@ -280,7 +280,7 @@ const VALIDATION = {
     ops_checklist_path: { type: 'string' },
     manual_checks_path: { type: 'string' },
     manual_checks: { type: 'array', items: { type: 'string' }, description: 'case titles from ManualChecks.md' },
-    manual_checks_changed: { type: 'boolean', description: 'false when this run left ManualChecks.md as it was' },
+    manual_checks_changed: { type: 'boolean', description: 'false when no case was added, removed or rewritten; moving [COVERS] alone is no change' },
     driver_status: { type: 'string', enum: ['ok', 'none', 'unavailable', 'incompatible'], description: 'the driver state, per conventions/driver-contract.md' },
     summary: { type: 'string' },
     directive_declined: DECLINED,

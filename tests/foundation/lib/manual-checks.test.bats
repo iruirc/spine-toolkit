@@ -239,7 +239,7 @@ skill_section() { awk -v h="$1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
 @test "a refresh re-checks only the cases whose code moved" {
   r="$(skill_section '## Refreshing')"
   [ -n "$r" ] || { echo "no ## Refreshing"; return 1; }
-  for token in 'git diff --name-only <COVERS>..HEAD' 'the others are left alone' '`[COVERS]` becomes HEAD'; do
+  for token in 'git diff --name-only <COVERS>..HEAD' 'the others are left alone' 'and so is a case with no code reference' '`[COVERS]` becomes HEAD'; do
     grep -qF -- "$token" <<<"$r" || { echo "## Refreshing does not name $token"; return 1; }
   done
   [ "$(grep -c . <<<"$r")" -le 6 ] || { echo "## Refreshing outgrew six lines"; return 1; }
@@ -250,7 +250,8 @@ skill_section() { awk -v h="$1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
   [ -n "$c" ] || { echo "no ## Check"; return 1; }
   for token in '`[MANUAL_CHECKS_CHECK]`' '`manual_checks_check`' '`PASSED`' "validator's role" '`light`' 'nothing else' \
                '`walk`' '`smells`' '`ambiguous`' '`unverified`' '`precondition`' '`tacit`' '`oracle`' 'one pass' \
-               '`ManualChecks.md check: N place(s), revised.`' '`ManualChecks.md check: nothing unclear.`'; do
+               '`ManualChecks.md check: N place(s), revised.`' '`ManualChecks.md check: nothing unclear.`' \
+               'moving `[COVERS]` alone is no change'; do
     grep -qF -- "$token" <<<"$c" || { echo "## Check does not name $token"; return 1; }
   done
 }
@@ -324,7 +325,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     for line in '// A reader with none of the task'"'"'s context, then one revision: manual-checks → ## Check.' \
                 "schema: MANUAL_CHECKS_READ, ...tuning(role, 'light')" \
                 "kind: { type: 'string', enum: ['ambiguous', 'unverified', 'precondition', 'tacit', 'oracle'] }" \
-                "manual_checks_changed: { type: 'boolean', description: 'false when this run left ManualChecks.md as it was' }"; do
+                "manual_checks_changed: { type: 'boolean', description: 'false when no case was added, removed or rewritten; moving [COVERS] alone is no change' }"; do
       grep -qF -- "$line" "$f" || { echo "$(basename "$f"): missing '$line'"; return 1; }
     done
   done
@@ -356,7 +357,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     bullet "$S" "$(plan_stage "$p")" | grep -qF 'what must be true and what changed to make it so' \
       || { echo "workflow-$p: the plan line carries no intent"; return 1; }
     v="$(bullet "$S" Validation)"
-    for f in '`manual_checks_check` is `on`' '`manual-checks` → `## Check`' 'main context'; do
+    for f in '`manual_checks_check` is `on`' '`manual-checks` → `## Check`' 'main context' 'moving `[COVERS]` alone is no change'; do
       grep -qF -- "$f" <<<"$v" || { echo "workflow-$p: the Validation stage lost: $f"; return 1; }
     done
     r="$(bullet "$S" Review)"
@@ -370,7 +371,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     f="$ROOT/workflows/profile-$p.js"
     grep -qF "refresh it by that skill's ## Refreshing section" "$f" \
       || { echo "profile-$p.js: Validation never refreshes a file behind HEAD"; return 1; }
-    grep -qF 'return manual_checks_changed false when you leave it as it was' "$f" \
+    grep -qF 'return manual_checks_changed false when no case was added, removed or rewritten — moving [COVERS] alone is no change' "$f" \
       || { echo "profile-$p.js: Validation never reports an untouched file, so the walk reruns"; return 1; }
   done
 }
