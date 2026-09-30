@@ -349,3 +349,18 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     ! grep -qF 'two rules the manual-checks skill states' <<<"$rb" || { echo "profile-$p.js: the two-rule clause is back"; return 1; }
   done
 }
+
+@test "Method B carries the plan-line intent, the cold walk and the Review rules" {
+  for p in $PROFILES; do
+    S="$ROOT/skills/workflow-$p/SKILL.md"
+    bullet "$S" "$(plan_stage "$p")" | grep -qF 'what must be true and what changed to make it so' \
+      || { echo "workflow-$p: the plan line carries no intent"; return 1; }
+    v="$(bullet "$S" Validation)"
+    for f in '`manual_checks_check` is `on`' '`manual-checks` → `## Check`' 'main context'; do
+      grep -qF -- "$f" <<<"$v" || { echo "workflow-$p: the Validation stage lost: $f"; return 1; }
+    done
+    r="$(bullet "$S" Review)"
+    grep -qF '`## The case` and `## Grounding`' <<<"$r" || { echo "workflow-$p: Review does not name its rules"; return 1; }
+    ! grep -qF 'two rules in the `manual-checks` skill' <<<"$r" || { echo "workflow-$p: the two-rule clause is back"; return 1; }
+  done
+}
