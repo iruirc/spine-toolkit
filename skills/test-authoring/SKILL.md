@@ -73,8 +73,9 @@ test stops being evidence.
   forbids, moved one level up.
 - **Written to fail.** A test exists to catch a change in behaviour. One written to go green, or with
   its expectation copied from whatever the code returns today, records the bug instead of catching it.
-  An expected value is written out in the test, never computed by the code under test or a helper it
-  calls: a value that code produced cannot catch that code being wrong.
+  An expected value is a literal or a builder the test owns, never a value
+  produced by the same code the assertion checks — that code cannot catch itself being wrong; only
+  a test marked as characterizing records today's output on purpose.
 
 ## Test doubles
 
@@ -114,7 +115,7 @@ carry it where it is absent.
 - Every test is idempotent: a hundred runs, alone or inside the suite, give the same result.
 - Arrange, Act and Assert are visible in every test.
 - Doubles stand on boundaries only, never on the behaviour under test.
-- Every expected value is written out, not returned by the code under test.
+- No expected value is produced by the same code the assertion checks.
 - Empty, boundary and error inputs are covered, not the happy path alone.
 - Every test would fail if the behaviour under it broke. If you cannot say how a test fails, it is not
   a test yet.
@@ -133,7 +134,8 @@ of its own — a phase holding only that edit reads as a test phase and stops th
 Findings read out of the tests a task added or changed — not out of the suite around them:
 
 1. an assertion that cannot fail: a tautology, a literal compared with itself, a value the double
-   beneath it was configured to return, or a value the code under test computed;
+   beneath it was configured to return, or an expected value
+   produced by the same code the assertion checks;
 2. a double standing in for the behaviour under test, where the real thing could have been called;
 3. state crossing between tests: a shared mutable fixture, a dependency on order, a hook that does not
    undo what the test wrote;
@@ -144,8 +146,8 @@ Findings read out of the tests a task added or changed — not out of the suite 
 **A finding here may block.** The neighbouring skills end their `## Review` with "none of them
 blocks", because they judge how a plan was written after Validation has already proven the code. This
 section judges the artifact: a test that cannot fail is a defect in what was delivered, and it belongs
-in `blocking_findings`. Findings 1 and 2 always go into `blocking_findings`, whatever severity
-they would otherwise read as; findings 3 to 5 go there when they hide a defect.
+in `blocking_findings`. Findings 1 and 2 always go into `blocking_findings`,
+at Major or above, never lower; findings 3 to 5 go there when they hide a defect.
 
 Where `need_test` was false, a test the task added is a blocking finding; an edit to an existing
 test whose phase named no reason for it is a finding — see `## When the task owes no test`.

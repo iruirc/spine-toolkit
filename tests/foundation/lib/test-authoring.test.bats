@@ -136,12 +136,18 @@ section() { # $1 = file, $2 = heading text without "## "
 @test "an expected value is never produced by the code under test" {
   # A value the code under test returned cannot catch that code being wrong; the
   # existing "copied from whatever the code returns today" rule left computing it open.
+  # The rule is one phrase in three places, and it names what stays legal: a literal,
+  # a builder the test owns, and a test marked as characterizing — a round trip or a
+  # differential test against another implementation is not caught by it.
+  for s in 'What a good test is' 'Before you deliver' 'Review'; do
+    grep -qF 'produced by the same code the assertion checks' <<<"$(section "$SKILL" "$s")" \
+      || { echo "## $s does not carry the expected-value rule in its one wording"; return 1; }
+  done
   d="$(section "$SKILL" 'What a good test is')"
-  grep -qF 'never computed by the code under test' <<<"$d" \
-    || { echo "## What a good test is lets the code under test compute the expectation"; return 1; }
-  g="$(section "$SKILL" 'Before you deliver')"
-  grep -qF 'not returned by the code under test' <<<"$g" \
-    || { echo "## Before you deliver does not check where an expected value came from"; return 1; }
+  grep -qF 'a literal or a builder the test owns' <<<"$d" \
+    || { echo "the rule does not say what an expected value may be"; return 1; }
+  grep -qF 'a test marked as characterizing' <<<"$d" \
+    || { echo "a characterization test is caught by the rule"; return 1; }
 }
 
 @test "a test is named by behaviour at least as readily as by method" {
@@ -166,10 +172,12 @@ section() { # $1 = file, $2 = heading text without "## "
   # "may block" alone let a test that cannot fail go out as a Minor, and with
   # REVIEW_FIXES=0 it stayed in the delivered code.
   r="$(section "$SKILL" 'Review')"
-  grep -qF 'a value the code under test computed' <<<"$r" \
-    || { echo "finding 1 does not cover an expectation the code under test produced"; return 1; }
   grep -qF 'always go into `blocking_findings`' <<<"$r" \
     || { echo "## Review lets a test that cannot fail through as non-blocking"; return 1; }
+  # Every reader downstream sorts by severity: a platform reviewer's status and a
+  # re-review both look at Critical and Major only, so a blocking Minor is lost.
+  grep -qF 'at Major or above, never lower' <<<"$r" \
+    || { echo "## Review lets a blocking finding be filed as a Minor"; return 1; }
 }
 
 @test "test quality is no longer sent to the platforms" {
