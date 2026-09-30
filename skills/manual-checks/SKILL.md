@@ -126,7 +126,7 @@ Naming the instrument is not carrying it: an instrument mentioned by filename, w
 
 ## The symbol rule
 
-Neither `**Scene:**` nor either expectation identifies a state by the name of a function, a file, or a variable. Nobody can reach *almost at the minimum-duration constant*; they can reach *compressed until it stops compressing*. A symbol is allowed in parentheses as a gloss, never as the instruction.
+Neither `**Scene:**`, a cell of `**Steps:**`, nor either expectation identifies a state by the name of a function, a file, or a variable. Nobody can reach *almost at the minimum-duration constant*; they can reach *compressed until it stops compressing*. A symbol is allowed in parentheses as a gloss, never as the instruction.
 
 ## Check
 
@@ -145,7 +145,7 @@ Neither `**Scene:**` nor either expectation identifies a state by the name of a 
 
 The axis decides depth, not existence: whether this file appears at all is `manual_checks`. The value arrives in the contract as `manual_checks`; `conventions/task-settings.md` holds the chain it was resolved along. At either value of `scale` it is written when that switch says so — it is the only record of ground nothing verified, and `conventions/task-scale.md ## The floor` keeps what carries a guarantee.
 
-`lite` halves the section ceilings — a case to 20 lines — and drops `## Troubleshooting`, and cuts no required field of a case. A case missing its `**Failure looks like:**` is not shorter, it is unusable. `## Manual acceptance` at `lite` runs to about three lines, one when there is nothing to list — an expected size, not a ceiling: a task with five checks nothing can automate lists five.
+`lite` halves the section ceilings — a case to 20 lines; `## Scope` and `## Charter` keep theirs — and drops `## Troubleshooting`, and cuts no required field of a case. A case missing its `**Failure looks like:**` is not shorter, it is unusable. `## Manual acceptance` at `lite` runs to about three lines, one when there is nothing to list — an expected size, not a ceiling: a task with five checks nothing can automate lists five.
 
 ## Review
 
