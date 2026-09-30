@@ -364,3 +364,13 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     ! grep -qF 'two rules in the `manual-checks` skill' <<<"$r" || { echo "workflow-$p: the two-rule clause is back"; return 1; }
   done
 }
+
+@test "the Validation brief refreshes an existing file and says when it left it alone" {
+  for p in feature bug refactor test quick; do
+    f="$ROOT/workflows/profile-$p.js"
+    grep -qF "refresh it by that skill's ## Refreshing section" "$f" \
+      || { echo "profile-$p.js: Validation never refreshes a file behind HEAD"; return 1; }
+    grep -qF 'return manual_checks_changed false when you leave it as it was' "$f" \
+      || { echo "profile-$p.js: Validation never reports an untouched file, so the walk reruns"; return 1; }
+  done
+}
