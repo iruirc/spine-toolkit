@@ -74,8 +74,23 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
 @test "Method B names the core root in a subagent's prompt" {
   s="$(section "$ROOT/conventions/stage-dispatch.md" 'Standing authorization')"
-  for t in 'absolute path' '`Core root:`' '`Long-running commands:`' '`Search roots:`'; do
+  for t in 'absolute path' '`Core root:`' '`Search roots:`'; do
     grep -qF -- "$t" <<<"$s" || { echo "stage-dispatch lost: $t"; return 1; }
+  done
+}
+
+# Method B copies this line from the convention, so it must be the one Method A sends.
+@test "Method B's long-run line is the one every Method A prompt carries" {
+  want="$(section "$ROOT/conventions/stage-dispatch.md" 'Standing authorization' | awk '/^```/{i++;next} i==1' \
+          | sed -e 's|{core}|/core|' -e 's|{stall}|120|' -e 's|{max}|420|')"
+  [[ "$want" == 'Long-running commands: '* ]] || { echo "stage-dispatch gives no long-run line: $want"; return 1; }
+  agents='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"—","diagnostics":"g","init":"—"}'
+  c="{\"task_id\": \"001\", \"task_dir\": \"/p/Tasks/ACTIVE/001-x\", \"plugin_root\": \"/core\", \"lang\": \"en\", \"agents\": $agents, \"stage_scope\": \"single\", \"long_run\": {\"stall\": 2, \"max\": 7}}"
+  for p in bug feature refactor test quick research review epic; do
+    out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$p.js" "$c" '{}')"
+    n="$(node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8")); const ps = o.calls.filter((c) => c.prompt).map((c) => c.prompt); console.log(ps.length + " " + ps.filter((x) => !x.includes(process.argv[1])).length)' "$want" <<<"$out")"
+    [ "${n% *}" -gt 0 ] || { echo "profile-$p dispatched nothing"; return 1; }
+    [ "${n#* }" -eq 0 ] || { echo "profile-$p: ${n#* } prompts lack: $want"; return 1; }
   done
 }
 
