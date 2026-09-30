@@ -283,7 +283,7 @@ const VALIDATION = {
     ops_checklist_path: { type: 'string' },
     manual_checks_path: { type: 'string' },
     manual_checks: { type: 'array', items: { type: 'string' }, description: 'case titles from ManualChecks.md' },
-    manual_checks_changed: { type: 'boolean', description: 'false when this run left ManualChecks.md as it was' },
+    manual_checks_changed: { type: 'boolean', description: 'false when no case was added, removed or rewritten; moving [COVERS] alone is no change' },
     driver_status: { type: 'string', enum: ['ok', 'none', 'unavailable', 'incompatible'], description: 'the driver state, per conventions/driver-contract.md' },
     summary: { type: 'string' },
     directive_declined: DECLINED,
@@ -800,7 +800,7 @@ if (runs('Validation')) {
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
-For QUICK a build and a full test run are both mandatory, through this platform's own build and test tooling. There is no reproduction scenario to replay: the task had no Reproduce stage. The checks a person makes come from Plan.md ## Manual acceptance: drive a running instance of the app for them where this run can — drive_app is ${DRIVE_APP} — and otherwise put them into ${DIR}/ManualChecks.md and their titles into manual_checks. Which driver condition applied comes back in driver_status, as ${core('conventions/driver-contract.md')} defines it. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the rules that decide whether a case can be executed at all. When the file is already there with a [COVERS] behind HEAD, refresh it by that skill's ## Refreshing section, and return manual_checks_changed false when you leave it as it was.
+For QUICK a build and a full test run are both mandatory, through this platform's own build and test tooling. There is no reproduction scenario to replay: the task had no Reproduce stage. The checks a person makes come from Plan.md ## Manual acceptance: drive a running instance of the app for them where this run can — drive_app is ${DRIVE_APP} — and otherwise put them into ${DIR}/ManualChecks.md and their titles into manual_checks. Which driver condition applied comes back in driver_status, as ${core('conventions/driver-contract.md')} defines it. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure, the required fields of a case, and the rules that decide whether a case can be executed at all. When the file is already there with a [COVERS] behind HEAD, refresh it by that skill's ## Refreshing section, and return manual_checks_changed false when no case was added, removed or rewritten — moving [COVERS] alone is no change.
 
 Change no production code and no tests. Return the same status you wrote on the first line.${CATCH_UP_VALIDATION}${cap('Validation.md')}`,
     ),
