@@ -61,9 +61,10 @@ test stops being evidence.
 - **Arrange → Act → Assert.** Three parts, in that order, and a reader can point at each one. A test
   that interleaves them hides which line is the claim.
 - **The name says what broke.** `methodName_condition_expectedResult` — the unit, the condition it is
-  under, the outcome expected of it. How that name is attached to a test the runner will actually
-  collect differs per framework and costs the whole test silently when it is wrong: that is
-  `### Declaration` in the skill the **testing** row names.
+  under, the outcome expected of it. The unit is a behaviour more often than a method: a name bound to
+  a method breaks on its first rename and still does not say which behaviour failed. How that name is
+  attached to a test the runner will actually collect differs per framework and costs the whole test
+  silently when it is wrong: that is `### Declaration` in the skill the **testing** row names.
 - **One behaviour per test.** Arrange only what this test needs. Assert one thing, in as many calls as
   that one thing takes. A test that asserts five behaviours reports the first failure and hides four.
 - **Isolated.** No test depends on another, on the order they run in, or on state one left behind.
@@ -72,6 +73,8 @@ test stops being evidence.
   forbids, moved one level up.
 - **Written to fail.** A test exists to catch a change in behaviour. One written to go green, or with
   its expectation copied from whatever the code returns today, records the bug instead of catching it.
+  An expected value is written out in the test, never computed by the code under test or a helper it
+  calls: a value that code produced cannot catch that code being wrong.
 
 ## Test doubles
 
@@ -92,18 +95,26 @@ the test to how the code works rather than to what it does. Prefer state: a call
 on every refactor and catches nothing in exchange. The exception is where the call *is* the behaviour
 — a message sent, a payment charged, a file deleted — and then verifying it is the point.
 
+**Order.** Prefer the real collaborator, then a fake, then a stub — the real one wherever the test
+can afford it. A call that only returns data is never verified; a spy or a mock stands only where
+the call is the behaviour.
+
 **Where a double belongs.** On a boundary the test cannot cross: network, filesystem, database, clock,
 randomness, system APIs, the dependency container. Which of those this ecosystem has, and what stands
-in for each, is the platform's to say.
+in for each, is the platform's to say. A double stands in for a type the project owns: a third-party
+API is doubled behind the project's own adapter, never directly.
 
 **Where it never belongs.** The code under test, the helpers it calls, and value transformations.
-A double there leaves a test that passes over a behaviour nobody ran.
+A double there leaves a test that passes over a behaviour nobody ran. A project whose tests already
+double collaborators of their own keeps that style in the files that have it; a new file does not
+carry it where it is absent.
 
 ## Before you deliver
 
 - Every test is idempotent: a hundred runs, alone or inside the suite, give the same result.
 - Arrange, Act and Assert are visible in every test.
 - Doubles stand on boundaries only, never on the behaviour under test.
+- Every expected value is written out, not returned by the code under test.
 - Empty, boundary and error inputs are covered, not the happy path alone.
 - Every test would fail if the behaviour under it broke. If you cannot say how a test fails, it is not
   a test yet.
@@ -121,8 +132,8 @@ of its own — a phase holding only that edit reads as a test phase and stops th
 
 Findings read out of the tests a task added or changed — not out of the suite around them:
 
-1. an assertion that cannot fail: a tautology, a literal compared with itself, or a value the double
-   beneath it was configured to return;
+1. an assertion that cannot fail: a tautology, a literal compared with itself, a value the double
+   beneath it was configured to return, or a value the code under test computed;
 2. a double standing in for the behaviour under test, where the real thing could have been called;
 3. state crossing between tests: a shared mutable fixture, a dependency on order, a hook that does not
    undo what the test wrote;
@@ -133,7 +144,8 @@ Findings read out of the tests a task added or changed — not out of the suite 
 **A finding here may block.** The neighbouring skills end their `## Review` with "none of them
 blocks", because they judge how a plan was written after Validation has already proven the code. This
 section judges the artifact: a test that cannot fail is a defect in what was delivered, and it belongs
-in `blocking_findings`.
+in `blocking_findings`. Findings 1 and 2 always go into `blocking_findings`, whatever severity
+they would otherwise read as; findings 3 to 5 go there when they hide a defect.
 
 Where `need_test` was false, a test the task added is a blocking finding; an edit to an existing
 test whose phase named no reason for it is a finding — see `## When the task owes no test`.

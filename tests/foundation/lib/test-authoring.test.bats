@@ -133,6 +133,45 @@ section() { # $1 = file, $2 = heading text without "## "
   grep -qF '`## When the task owes no test`' <<<"$r" || { echo "## Review does not hold a task that owed no test to it"; return 1; }
 }
 
+@test "an expected value is never produced by the code under test" {
+  # A value the code under test returned cannot catch that code being wrong; the
+  # existing "copied from whatever the code returns today" rule left computing it open.
+  d="$(section "$SKILL" 'What a good test is')"
+  grep -qF 'never computed by the code under test' <<<"$d" \
+    || { echo "## What a good test is lets the code under test compute the expectation"; return 1; }
+  g="$(section "$SKILL" 'Before you deliver')"
+  grep -qF 'not returned by the code under test' <<<"$g" \
+    || { echo "## Before you deliver does not check where an expected value came from"; return 1; }
+}
+
+@test "a test is named by behaviour at least as readily as by method" {
+  d="$(section "$SKILL" 'What a good test is')"
+  grep -qF 'a behaviour more often than a method' <<<"$d" \
+    || { echo "the name rule still reads as method names only"; return 1; }
+}
+
+@test "the doubles are chosen in an order, and only behind a type the project owns" {
+  d="$(section "$SKILL" 'Test doubles')"
+  grep -qF 'the real collaborator, then a fake, then a stub' <<<"$d" \
+    || { echo "## Test doubles names the five but no order between them"; return 1; }
+  grep -qF 'A call that only returns data is never verified' <<<"$d" \
+    || { echo "a query may still be verified"; return 1; }
+  grep -qF 'a type the project owns' <<<"$d" \
+    || { echo "a third-party API may be doubled directly"; return 1; }
+  grep -qF 'keeps that style in the files that have it' <<<"$d" \
+    || { echo "nothing says what a project already mocking its own types keeps"; return 1; }
+}
+
+@test "the first two findings always block, the rest may" {
+  # "may block" alone let a test that cannot fail go out as a Minor, and with
+  # REVIEW_FIXES=0 it stayed in the delivered code.
+  r="$(section "$SKILL" 'Review')"
+  grep -qF 'a value the code under test computed' <<<"$r" \
+    || { echo "finding 1 does not cover an expectation the code under test produced"; return 1; }
+  grep -qF 'always go into `blocking_findings`' <<<"$r" \
+    || { echo "## Review lets a test that cannot fail through as non-blocking"; return 1; }
+}
+
 @test "test quality is no longer sent to the platforms" {
   nb="$(section "$SKILL" "Not this skill's business")"
   [ -n "$nb" ] || { echo "no ## Not this skill's business"; return 1; }
