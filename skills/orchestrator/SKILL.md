@@ -111,6 +111,15 @@ were said for is done. It is the one place they live, so a later dispatch of the
 A stage never reads `Run.json` and never stages it (`conventions/stage-dispatch.md` → Owner's
 directive).
 
+**The task's documents.** Stages commit code, and only REVIEW and RESEARCH commit what they wrote;
+the rest is the orchestrator's, once a return's `last_completed_stage` is `Done` — after `Run.json`
+is deleted and a catch-up's task is back in `DONE/`, so the commit holds the folder as the run leaves
+it, `Walkthrough.md` included. With `X` for `-- . ':(exclude,glob)**/Run.json'`, run
+`git -C <task dir> add -A X`, then `git -C <task dir> commit -m '<message>' X` — one `docs` commit
+by `conventions/commit-messages.md`, holding nothing else the index has; nothing changed, no commit.
+A folder where `git -C <task dir> rev-parse` fails, or `check-ignore -q .` matches, is not committed:
+announce `info_task_docs_uncommitted` (`{path}`). An epic's commit holds its step folders.
+
 ## Routing
 
 The orchestrator does not activate on every user request — light commands bypass it. Order of checks (first match wins):
