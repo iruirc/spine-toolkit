@@ -1,4 +1,5 @@
 interface:
   display_name: "Feature Landscape"
   short_description: "Help with Feature Landscape tasks"
-  default_prompt: "Use $feature-landscape to handle Feature Landscape work."
+policy:
+  allow_implicit_invocation: false

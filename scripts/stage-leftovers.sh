@@ -19,7 +19,7 @@ PS_FILE = os.environ.get("STAGE_LEFTOVERS_PS")
 NOW = float(os.environ.get("STAGE_LEFTOVERS_NOW") or time.time())
 POLL = float(os.environ.get("STAGE_LEFTOVERS_POLL") or 15)
 SELF = int(os.environ.get("STAGE_LEFTOVERS_SELF") or os.getpid())
-SHELL = re.compile(r"^\S*/?(zsh|bash|sh) -c ")
+SHELL = re.compile(r"^\S*/?(zsh|bash|sh) -\w*c ")
 WATCH = re.compile(r"(stage-leftovers\.sh|python\S*\s+-)\s+watch\s")
 REGISTRY = os.environ.get("LONG_RUN_REGISTRY") or os.path.join(
     os.environ.get("TMPDIR") or "/tmp", "spine-long-run.registry")
@@ -36,9 +36,13 @@ def procs():
         text = open(PS_FILE, encoding="utf-8").read()
     else:
         # lstart follows LC_TIME: under ru_RU it is no longer five English words.
-        text = subprocess.run(["ps", "-axww", "-o", "pid=,ppid=,pcpu=,lstart=,command="],
-                              capture_output=True, text=True, errors="replace",
-                              env=dict(os.environ, LC_ALL="C")).stdout
+        ps = subprocess.run(["ps", "-axww", "-o", "pid=,ppid=,pcpu=,lstart=,command="],
+                            capture_output=True, text=True, errors="replace",
+                            env=dict(os.environ, LC_ALL="C"))
+        if ps.returncode != 0 and not ps.stdout.strip():
+            # A sandboxed host (Codex CLI's workspace-write) refuses ps outright.
+            usage("ps is not permitted here: " + (ps.stderr.strip() or "exit %d" % ps.returncode))
+        text = ps.stdout
     table = {}
     for line in text.splitlines():
         f = line.split(None, 8)
@@ -57,10 +61,10 @@ def session_pid(table):
         return int(os.environ["STAGE_LEFTOVERS_SESSION_PID"])
     pid = table[SELF][0] if SELF in table else os.getppid()
     while pid in table and pid > 1:
-        if os.path.basename(table[pid][3].split()[0]) == "claude":
+        if os.path.basename(table[pid][3].split()[0]) in ("claude", "codex"):
             return pid
         pid = table[pid][0]
-    usage("no claude process above this one: run it from the session's Bash tool")
+    usage("no claude or codex process above this one: run it from the session's shell tool")
 
 
 def descendants(table, root):

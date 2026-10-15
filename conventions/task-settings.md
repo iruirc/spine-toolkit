@@ -53,7 +53,8 @@ file; without the flag the resolver answers as `claude-code`, so every caller th
 flag — the opening-block hook, `docs-route.sh`, the workflow scripts — gets the result it always
 got. `raw` and `open --contract` take no flag. An id with no file is a usage error (exit 2) naming
 the missing `runtimes/<id>.json`. The id is given by the caller, which knows the host it runs in —
-the orchestrator passes `--runtime claude-code` in Claude Code; nothing infers a runtime from the
+the orchestrator passes `--runtime claude-code` in Claude Code and `--runtime codex-cli` in Codex CLI
+(its Runtime paragraph); nothing infers a runtime from the
 environment or a process name. A value outside the runtime's list is reported and skipped like any
 other unrecognized value, and the chain goes on.
 

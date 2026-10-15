@@ -88,3 +88,11 @@ teardown() {
   [[ "$session" =~ ^[0-9]+$ ]] || { echo "no session pid in the registry line: $session"; return 1; }
   [ $(( $(date +%s) - when )) -lt 60 ] || { echo "registry time is not now: $when"; return 1; }
 }
+
+@test "start records a codex session as the owner" {
+  # A symlink, not a copy: macOS kills a copied system binary, and ps reports the name invoked.
+  ln -s /bin/bash "$BATS_TEST_TMPDIR/codex"
+  "$BATS_TEST_TMPDIR/codex" -c '"$1" start --log "$2" -- sh -c "echo hi" >/dev/null; echo $$ >"$2.owner"' _ "$LR" "$LOG"
+  read -r pid when session log < <(tail -1 "$LONG_RUN_REGISTRY")
+  [ "$session" = "$(cat "$LOG.owner")" ] || { echo "owner $session, codex was $(cat "$LOG.owner")"; false; }
+}

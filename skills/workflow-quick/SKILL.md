@@ -28,7 +28,7 @@ Caching: resolve `<lang>` once per skill invocation; do not re-read the project 
 
 ## 1. Input Contract
 
-The skill is invoked by `spine-toolkit:orchestrator` via the `Skill` tool with structured `args` in `key=value` form, separated only by newlines. The field structure is documented in `spine-toolkit:orchestrator` (section **Outbound Contract**). If a required field arrives empty, the skill returns `{status: error, reason: status_error_empty_required_field}` (the `reason` value is taken from the locale key in `locales/<lang>.md`).
+The skill is invoked by `spine-toolkit:orchestrator` via the `Skill` tool with structured `args` in `key=value` form, separated only by newlines — or, in a host without it, with the contract as text in the same form (`runtimes/<runtime>.md`). The field structure is documented in `spine-toolkit:orchestrator` (section **Outbound Contract**). If a required field arrives empty, the skill returns `{status: error, reason: status_error_empty_required_field}` (the `reason` value is taken from the locale key in `locales/<lang>.md`).
 
 The fields that directly drive this workflow's behavior:
 - `start_stage`, `end_stage`, `stage_scope` — which stages run, in the order Edit → Validation → Review → Done. `single` runs `start_stage` alone, `forward` runs through `end_stage` (the end of the profile when it is `null`), `all` starts at Edit. An `end_stage` before `start_stage` is a contract error: `{status: error, reason: "end_stage before start_stage"}`.

@@ -1,4 +1,5 @@
 interface:
   display_name: "Refactor Workflow"
   short_description: "Help with Refactor Workflow tasks"
-  default_prompt: "Use $workflow-refactor to handle Refactor Workflow work."
+policy:
+  allow_implicit_invocation: false
