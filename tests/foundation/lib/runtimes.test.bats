@@ -55,7 +55,22 @@ PY
 
 @test "the Codex map names the tools a stage needs" {
   f="$ROOT/runtimes/codex-cli.md"
-  for s in spawn_agent fork_turns '"none"' wait_agent request_user_input_async '--runtime codex-cli' 'agents/<agent>.md'; do
+  for s in spawn_agent fork_turns '"none"' wait_agent 'numbered options' 'answer with its number' 'Do not use `functions.request_user_input_async`' '--runtime codex-cli' 'agents/<agent>.md'; do
     grep -qF -- "$s" "$f" || { echo "missing: $s"; false; }
   done
+}
+
+@test "the Codex map keeps runtime notes out of stage reports" {
+  # A Codex run repeated "Codex, Method B, ps refused" and paraphrased SKILL.md paths after a stage.
+  f="$ROOT/runtimes/codex-cli.md"
+  grep -q '^## What the user sees' "$f"
+  sec="$(awk '/^## What the user sees/{on=1; next} on && /^## /{exit} on' "$f")"
+  grep -qF 'only in the final report' <<<"$sec"
+  grep -qiF 'never paraphrase' <<<"$sec"
+}
+
+@test "the Codex map says a spine question is not a permission request" {
+  # Codex reserves request_user_input for optional questions, never permission requests; a manual-mode
+  # confirmation read as permission falls back to the async tool, which the CLI shows as plain text.
+  grep -qF 'not a permission request' "$ROOT/runtimes/codex-cli.md"
 }
