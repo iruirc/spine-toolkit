@@ -1,7 +1,7 @@
 # Task Settings
 
 `scripts/resolve-settings.sh` is the one reader of a task's settings — the only code that opens
-`Task.md` and `CLAUDE-spine-toolkit.md` to decide what a run does. Every other surface takes the
+`Task.md` and the project config to decide what a run does. Every other surface takes the
 value already resolved: from the Outbound Contract when it is a workflow script or a Method B
 skill dispatched by the orchestrator, or from the script's own `json` / `show` / `raw`
 subcommands when it is a standalone tool such as `docs-route.sh` or `lint-artifact-budget.sh`. A
@@ -9,10 +9,58 @@ consumer that walks `Task.md` or the config itself, instead of reading the value
 a second reader — and the orchestrator-contract test suite treats that as a defect, not a style
 choice.
 
+## Project config
+
+**project config** — `SPINE.md` in the nearest directory at or above the task that holds either
+file, or `CLAUDE-spine-toolkit.md` in that same directory where no `SPINE.md` exists. Never both,
+never merged. `CLAUDE-spine-toolkit.md` is the name every project carried before the toolkit ran in
+more than one runtime; `setup` renames it on request, and a project that keeps it runs exactly as
+before.
+
+The lookup, in `scripts/resolve-settings.sh`:
+
+1. From the task directory upward, the first directory holding `SPINE.md` **or**
+   `CLAUDE-spine-toolkit.md` is the configuration boundary. Nothing above it is read.
+2. In that directory: `SPINE.md` when present, else `CLAUDE-spine-toolkit.md`.
+3. Both present: `SPINE.md`, and one stderr line —
+   `project config: <abs>/SPINE.md selected, <abs>/CLAUDE-spine-toolkit.md ignored`. The two files
+   are not compared: a project that keeps a stale copy beside the real one is told so, not stopped.
+4. Neither, up to the filesystem root: no config, and every field is its default.
+
+So a legacy file in the task's own directory beats a `SPINE.md` above it: the boundary is the
+nearest directory holding either name. The resolver's `json` carries the selected file as
+`project_config`, an absolute path or `null`; a consumer that needs the file itself — not a value
+from it — takes the path from there rather than looking the name up a second time. `raw` reads the
+same file `json` selects.
+
+## Runtime
+
+The runtime is the host the toolkit runs in — Claude Code, or another CLI that loads the same
+skills. What differs between runtimes, as far as settings go, is the vocabulary of `models` and
+`effort` and the model defaults, and that lives in one small file per runtime,
+`runtimes/<id>.json`:
+
+| Field | Meaning |
+|---|---|
+| `id` | the runtime id, equal to the file's name |
+| `models` | the list of values `[MODELS]` may take, or the string `"any"`: any token matching `[A-Za-z0-9][A-Za-z0-9._:/+-]*` passes through as written, for the runtime to check when it spawns |
+| `model_defaults` | the keys whose default is not `session`; every key absent here defaults to `session` |
+| `effort` | the list of values `[EFFORT]` may take; the default is always `session` |
+
+`session` is in every list and means what it always did: pass nothing, run on the session's own
+model or effort. `scripts/resolve-settings.sh json|show|open <task-dir> --runtime <id>` selects the
+file; without the flag the resolver answers as `claude-code`, so every caller that predates the
+flag — the opening-block hook, `docs-route.sh`, the workflow scripts — gets the result it always
+got. `raw` and `open --contract` take no flag. An id with no file is a usage error (exit 2) naming
+the missing `runtimes/<id>.json`. The id is given by the caller, which knows the host it runs in —
+the orchestrator passes `--runtime claude-code` in Claude Code; nothing infers a runtime from the
+environment or a process name. A value outside the runtime's list is reported and skipped like any
+other unrecognized value, and the chain goes on.
+
 ## The chain
 
 ```
-run  →  Task.md  →  the epic's Task.md for a .step/ folder  →  the nearest CLAUDE-spine-toolkit.md at or above the task dir  →  the default
+run  →  Task.md  →  the epic's Task.md for a .step/ folder  →  the project config at or above the task dir  →  the default
 ```
 
 First hit wins. `run` is what the owner said for this run alone — `--set <field>=<value>`, or
@@ -26,7 +74,7 @@ One exception: `--set scale=lite` never lowers a `[SCALE] = [full]` the task's o
 than instead of it:
 
 ```
-run  →  Task.md [WALKTHROUGH]  →  off when scale resolved to lite  →  CLAUDE-spine-toolkit.md [WALKTHROUGH]  →  deep
+run  →  Task.md [WALKTHROUGH]  →  off when scale resolved to lite  →  the project config [WALKTHROUGH]  →  deep
 ```
 
 The task's own `[WALKTHROUGH]` is checked before the `lite` gate and wins outright; the project's
@@ -82,8 +130,8 @@ answers.
 | `docs_freshness` | — | `[DOCS_FRESHNESS]` | `on` `off` | `on` |
 | `device_source` | — | `[DEVICE_SOURCE]` | a command run from the project root, `—` | `—` |
 | `budgets` | — | `[BUDGETS]`, entries `<artifact>: <lines>` | a positive integer | the `CAPS` table |
-| `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | `opus` `sonnet` `haiku` `fable` `session` | `sonnet` for `light` and `validator`, `session` for `walkthrough`, `done` and the other seven roles |
-| `effort` | `[EFFORT]` | `[EFFORT]`, entries `<key>: <value>` | `low` `medium` `high` `xhigh` `max` `session` | `session` |
+| `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | the runtime's `models` list (`runtimes/<id>.json`); `session` always | the runtime's `model_defaults`, `session` elsewhere: in Claude Code `sonnet` for `light` and `validator` |
+| `effort` | `[EFFORT]` | `[EFFORT]`, entries `<key>: <value>` | the runtime's `effort` list (`runtimes/<id>.json`); `session` always | `session` |
 | `long_run` | `[LONG_RUN]` | `[LONG_RUN]`, entries `<key>: <minutes>` | keys `stall` `max`, a whole number of minutes > 0 | `stall: 5, max: 30` |
 
 `driver` walks this same chain but never rides the Outbound Contract: a workflow script must not
@@ -100,7 +148,7 @@ loop is in the orchestrator's Gating.
 **A step inherits the epic, key by key.** A `.step/` folder's own `Task.md` overrides any field it
 names; a field it does not name reaches it from the epic's own resolved value, not from the
 project default directly — the epic is the step's config, one layer closer than
-`CLAUDE-spine-toolkit.md`. `profile-epic.js`'s `stepArgs()` is this rule for the fields a script
+the project config. `profile-epic.js`'s `stepArgs()` is this rule for the fields a script
 forwards; a step's own `resolve-settings.sh` run is the same rule for the fields it reads for
 itself.
 

@@ -29,6 +29,12 @@ assert_contract() {
   assert_contract
 }
 
+@test "hook fires on SPINE.md" {
+  touch "$TMP/SPINE.md"
+  run bash -c "printf '{\"cwd\":\"$TMP\"}' | '$ROOT/hooks/session-start'"
+  assert_contract
+}
+
 @test "hook fires on Tasks/ACTIVE" {
   mkdir -p "$TMP/Tasks/ACTIVE"
   run bash -c "printf '{\"cwd\":\"$TMP\"}' | '$ROOT/hooks/session-start'"

@@ -1,0 +1,6 @@
+{
+  "id": "codex-cli",
+  "models": "any",
+  "model_defaults": {},
+  "effort": ["low", "medium", "high", "xhigh", "session"]
+}

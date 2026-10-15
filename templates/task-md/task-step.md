@@ -6,7 +6,7 @@
 [NEED_REVIEW] = [{{NEED_REVIEW}}]
 [STATUS] = [{{STATUS}}]             # PENDING | IN_PROGRESS | DONE | DEFERRED | BLOCKED | SKIPPED
 
-# Optional (only if overriding project default from CLAUDE-spine-toolkit.md):
+# Optional (only if overriding the project config's default):
 # [WORKFLOW_MODE] = [auto]    # manual | auto
 # [DRIVE_APP] = [off]         # auto | off
 # [DRIVER] = [auto]           # <driver-plugin> | auto | —
@@ -19,8 +19,8 @@
 # [WALKTHROUGH_CHECK] = [off] # auto | on | off
 # [SECURITY] = [on]           # auto | on | off
 # [SCALE] = [full]            # lite | full
-# [MODELS] = [architect: opus]  # <light|walkthrough|done|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <opus|sonnet|haiku|fable|session>, comma-separated
-# [EFFORT] = [reviewer: high]   # <walkthrough|done|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <low|medium|high|xhigh|max|session>, comma-separated
+# [MODELS] = [architect: opus]  # <light|walkthrough|done|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <opus|sonnet|haiku|fable|session in Claude Code; the runtime's own names elsewhere>, comma-separated
+# [EFFORT] = [reviewer: high]   # <walkthrough|done|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <low|medium|high|xhigh|max|session in Claude Code; the runtime's own names elsewhere>, comma-separated
 # [LONG_RUN] = [max: 60]      # <stall|max>: <minutes>, comma-separated
 # [DOCS] = [off]              # on | off
 

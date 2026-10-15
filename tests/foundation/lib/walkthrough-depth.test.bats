@@ -18,7 +18,7 @@ setup() {
 
 @test "the switch names deep as the default and reads on as deep" {
   sw="$(awk '/^## The switch$/{f=1;next} /^## /{f=0} f' "$SKILL")"
-  grep -qF '`[WALKTHROUGH]` in `CLAUDE-spine-toolkit.md` → `deep`' <<<"$sw" \
+  grep -qF "the project config's \`[WALKTHROUGH]\` → \`deep\`" <<<"$sw" \
     || { echo "the chain does not end at deep"; return 1; }
   grep -qF '`on` is the pre-depth value and resolves to `deep`' <<<"$sw" \
     || { echo "the pre-depth value is not resolved, or is named in a second vocabulary"; return 1; }
@@ -130,7 +130,7 @@ NAMES
 }
 
 @test "the config template ships the deep default beside all three values" {
-  T="$ROOT/templates/claude-toolkit-md/en.md"
+  T="$ROOT/templates/spine-md/en.md"
   grep -qE '^\[WALKTHROUGH\] = \[deep\] +# brief \| deep \| off$' "$T" \
     || { echo "the template does not ship deep beside the three values"; return 1; }
 }
@@ -207,13 +207,13 @@ NAMES
   # to a contract pointer in every one of them, so the chain — and its precedence, lite gate
   # before project config — is pinned once, here, instead.
   C="$ROOT/conventions/task-settings.md"
-  grep -qF 'Task.md [WALKTHROUGH]  →  off when scale resolved to lite  →  CLAUDE-spine-toolkit.md [WALKTHROUGH]  →  deep' "$C" \
+  grep -qF 'Task.md [WALKTHROUGH]  →  off when scale resolved to lite  →  the project config [WALKTHROUGH]  →  deep' "$C" \
     || { echo "the chain omits the lite step or orders it wrong"; return 1; }
 }
 
 @test "the walkthrough chain ends at the new default" {
   C="$ROOT/conventions/task-settings.md"
-  grep -qF 'CLAUDE-spine-toolkit.md [WALKTHROUGH]  →  deep' "$C" \
+  grep -qF 'the project config [WALKTHROUGH]  →  deep' "$C" \
     || { echo "task-settings.md still defaults to the pre-depth value"; return 1; }
 }
 
@@ -288,7 +288,7 @@ NAMES
 }
 
 @test "the check's field is offered and documented wherever a setting is" {
-  T="$ROOT/templates/claude-toolkit-md/en.md"
+  T="$ROOT/templates/spine-md/en.md"
   grep -qE '^\[WALKTHROUGH_CHECK\] = \[auto\] +# auto \| on \| off$' "$T" \
     || { echo "the config template does not ship auto beside the three values"; return 1; }
   for f in task-root task-step; do

@@ -69,7 +69,7 @@ offenders_in() {
   # hook injects, and the conventions a brief points an agent at.
   files=("$ROOT"/workflows/profile-*.js "$ROOT"/skills/*/SKILL.md "$ROOT"/skills/*/locales/*.md \
          "$ROOT"/skills/*/agents/*.yaml "$ROOT"/commands/*.md "$ROOT"/conventions/*.md \
-         "$ROOT"/templates/claude-toolkit-md/*.md "$ROOT"/templates/task-md/*.md \
+         "$ROOT"/templates/spine-md/*.md "$ROOT"/templates/task-md/*.md \
          "$ROOT"/templates/claude-md-stub/*.md "$ROOT"/hooks/dispatch-contract.md)
   # Floored at the real count: a loose floor lets a whole class go unscanned.
   [ "${#files[@]}" -ge 94 ] || { echo "scanned ${#files[@]} file(s); a glob went vacuous"; return 1; }

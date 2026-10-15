@@ -1,7 +1,7 @@
 ---
 name: setup
 description: |
-  Configures spine-toolkit in an existing project: picks the platform plugin that serves it, creates CLAUDE-spine-toolkit.md from the template, inserts an @./ import line into CLAUDE.md, creates the Tasks/ structure and offers the documentation registry, and hands the platform half its own blocks. Migrates projects on the legacy single-file CLAUDE.md layout, on the pre-split config name, and on the 1.x block format.
+  Configures spine-toolkit in an existing project: picks the platform plugin that serves it, creates SPINE.md from the template, inserts an @./ import line into CLAUDE.md, creates the Tasks/ structure and offers the documentation registry, and hands the platform half its own blocks. Migrates projects on the legacy single-file CLAUDE.md layout, on the pre-split config name, on the 1.x block format, and renames the pre-multi-runtime CLAUDE-spine-toolkit.md to SPINE.md on request.
   Use when (en): "set up spine-toolkit", "configure spine-toolkit", "install toolkit in project", "add spine-toolkit to project", "init toolkit here", "/setup"
   Use when (ru): "настрой spine-toolkit", "подключи spine-toolkit", "установи toolkit в проект", "добавь spine-toolkit к проекту", "инициализируй toolkit здесь", "/setup"
 ---
@@ -10,8 +10,8 @@ description: |
 
 Bootstraps spine-toolkit in an **already existing** project. Two-file layout:
 
-- `CLAUDE-spine-toolkit.md` — toolkit-owned configuration; its sections are the ones `templates/claude-toolkit-md/en.md` carries. Created and updated by this skill.
-- `CLAUDE.md` — user-owned project instructions. Touched once to insert the `@./CLAUDE-spine-toolkit.md` line; otherwise unchanged.
+- `SPINE.md` — toolkit-owned configuration, the *project config* (`conventions/task-settings.md` → Project config); its sections are the ones `templates/spine-md/en.md` carries. Created and updated by this skill. A project set up before the toolkit ran in more than one runtime carries the same file as `CLAUDE-spine-toolkit.md`; every reader accepts that name, and state G below renames it on request.
+- `CLAUDE.md` — user-owned project instructions. Touched once to insert the `@./SPINE.md` line; otherwise unchanged.
 
 This skill owns the config **format** and every block or field that is core's: `[LANG]`, `[WORKFLOW_MODE]`, `[PROGRESS]`, `## Platform`, `## Agents`, and the file-level scaffolding. It owns none of the stack: `## Stack` and `## Modules` are filled by the platform half (step 5), because which axes exist and which values they take is the platform manifest's `## Axes`, not core's.
 
@@ -43,9 +43,9 @@ a value in the caller's own vocabulary costs one re-asked question, never a wron
 
 ## Language Resolution
 
-Special case for `setup`: `CLAUDE-spine-toolkit.md` does not yet exist on first install (we are creating it). The skill therefore asks for the language as the very first question (q0) using keys `auq_lang_label` and `auq_lang_options`. Until that answer arrives, the q0 prompt is shown bilingually (English label / Russian label). From q0 onward, `<lang>` is the chosen value (`en` or `ru`), and every subsequent AUQ / error / report uses `locales/<lang>.md`. If q0 is skipped (text fallback, harness limitation), default to `en`.
+Special case for `setup`: the project config does not yet exist on first install (we are creating it). The skill therefore asks for the language as the very first question (q0) using keys `auq_lang_label` and `auq_lang_options`. Until that answer arrives, the q0 prompt is shown bilingually (English label / Russian label). From q0 onward, `<lang>` is the chosen value (`en` or `ru`), and every subsequent AUQ / error / report uses `locales/<lang>.md`. If q0 is skipped (text fallback, harness limitation), default to `en`.
 
-The full resolution procedure used elsewhere — read `CLAUDE-spine-toolkit.md`'s `[LANG]` field — applies after `setup` has finished.
+The full resolution procedure used elsewhere — read the project config's `[LANG]` field — applies after `setup` has finished.
 
 ## Agent Tooling
 
@@ -75,31 +75,36 @@ Confirming rather than assuming on the single-platform path is deliberate: the n
 
 ## State Detection
 
-The skill's behavior is determined by the project state, computed from four checks:
+The skill's behavior is determined by the project state, computed from five checks:
 
 1. Does `CLAUDE.md` exist in the project root?
-2. Does `CLAUDE-spine-toolkit.md` exist in the project root — and if it does, does it carry a heading from the first column of the block-to-field mapping below? (That heading is the 1.x block format, the one `scripts/resolve-settings.sh` refuses to read. Scan raw lines exactly as the resolver does, fences included — not the Parser's rule below: a file the resolver refuses must never classify as already configured, or the two readers send the user round a loop.)
+2. Does `SPINE.md` exist in the project root — and if it does, does it carry a heading from the first column of the block-to-field mapping below?
+2b. Does `CLAUDE-spine-toolkit.md` — the pre-multi-runtime name of the same file — exist in the project root, and in which format (the same heading check)? (That heading is the 1.x block format, the one `scripts/resolve-settings.sh` refuses to read. Scan raw lines exactly as the resolver does, fences included — not the Parser's rule below: a file the resolver refuses must never classify as already configured, or the two readers send the user round a loop.)
 3. Does a pre-split `CLAUDE-swift-toolkit.md` exist in the project root?
 4. Does `CLAUDE.md` carry a `Language`, `Stack` or `Mode` heading? (That is the legacy single-file layout, where all three lived in `CLAUDE.md`.)
 
-| State | `CLAUDE.md` | `CLAUDE-spine-toolkit.md` | Pre-split config | Toolkit sections in `CLAUDE.md`? | Action branch |
-|---|---|---|---|---|---|
-| **A · new_install** | absent | absent | absent | — | Ask q0, qM, qP. Create both files. |
-| **B · existing_md** | present | absent | absent | no | Ask q0, qM, qP. Backup CLAUDE.md. Insert `@import` line. Create `CLAUDE-spine-toolkit.md`. |
-| **C · already_configured** | present | present, 2.0 fields | — | no | AUQ `auq_reconfigure_toolkit` on `CLAUDE-spine-toolkit.md` only. Self-heal `CLAUDE.md` if `@import` is missing. |
-| **D · old_format** | present | absent | absent | yes | AUQ `auq_migrate_old_format`. Run the migration algorithm (see below). |
-| **E · renamed_config** | present | absent | present | — | AUQ `auq_migrate_config_name`. Rename the file, reconcile blocks, rewrite the `@import` line. |
-| **F · old_block_format** | present | present, 1.x headings | — | no | Migrate the config's format without asking. Back up, rewrite, report. |
+| State | `CLAUDE.md` | `SPINE.md` | `CLAUDE-spine-toolkit.md` | Pre-split config | Toolkit sections in `CLAUDE.md`? | Action branch |
+|---|---|---|---|---|---|---|
+| **A · new_install** | absent | absent | absent | absent | — | Ask q0, qM, qP. Create both files. |
+| **B · existing_md** | present | absent | absent | absent | no | Ask q0, qM, qP. Backup CLAUDE.md. Insert `@import` line. Create `SPINE.md`. |
+| **C · already_configured** | present | present, 2.0 fields | any | — | no | AUQ `auq_reconfigure_toolkit` on `SPINE.md` only. Self-heal `CLAUDE.md` if `@import` is missing. |
+| **D · old_format** | present | absent | absent | absent | yes | AUQ `auq_migrate_old_format`. Run the migration algorithm (see below). |
+| **E · renamed_config** | present | absent | absent | present | — | AUQ `auq_migrate_config_name`. Rename the file, reconcile blocks, rewrite the `@import` line. |
+| **F · old_block_format** | present | present, 1.x headings | — | — | no | Migrate the config's format without asking. Back up, rewrite, report. |
+| **G · legacy_name** | any | absent | present, 2.0 fields | — | no | AUQ `auq_migrate_spine_name`. Rename to `SPINE.md` and rewrite the `@import` line, or keep the name and report. |
 
-**F is decided before C**: a configured project whose file is 1.x is not already configured, it is a
-project that cannot run. All four checks are file reads, so the state is known before step 0 asks
+A `CLAUDE-spine-toolkit.md` in the 1.x block format with no `SPINE.md` is **F on that file**: the
+format migration rewrites it under the name it had, and the next `/setup` run is G.
+**F is decided before G, and G before C**: a configured project whose file is 1.x is not already configured, it is a
+project that cannot run. All five checks are file reads, so the state is known before step 0 asks
 anything — which is what lets F take the language and the platform from the file instead of asking.
 
 ### Edge sub-states
 
-- `CLAUDE.md` has the `@./CLAUDE-spine-toolkit.md` import line, but `CLAUDE-spine-toolkit.md` is absent: route to **state A** (create the toolkit file). Do not modify `CLAUDE.md`.
-- `CLAUDE-spine-toolkit.md` exists but `CLAUDE.md` is absent: create a stub `CLAUDE.md` from `templates/claude-md-stub/<lang>.md`. Toolkit file untouched.
-- Both `CLAUDE-spine-toolkit.md` and a pre-split `CLAUDE-swift-toolkit.md` exist: state **C**. The new name wins; report the stale file rather than touching it, so nothing the user may still be reading is deleted behind their back.
+- `CLAUDE.md` has the `@./SPINE.md` import line, but `SPINE.md` is absent: route to **state A** (create the toolkit file). Do not modify `CLAUDE.md`. A `@./CLAUDE-spine-toolkit.md` line whose file is absent routes to **state A** as well, with one difference: rewrite that line to `@./SPINE.md` once `SPINE.md` is written, or `CLAUDE.md` keeps importing a file that no longer exists.
+- `SPINE.md` exists but `CLAUDE.md` is absent: create a stub `CLAUDE.md` from `templates/claude-md-stub/<lang>.md`. Toolkit file untouched.
+- Both `SPINE.md` and `CLAUDE-spine-toolkit.md` exist: state **C** on `SPINE.md`. The new name wins; report the stale file rather than touching it, so nothing the user may still be reading is deleted behind their back — the resolver ignores it the same way and says so on stderr.
+- Both `SPINE.md` (or `CLAUDE-spine-toolkit.md`) and a pre-split `CLAUDE-swift-toolkit.md` exist: state **C** (or **G**). The newer name wins; report the stale file rather than touching it.
 
 ## Algorithm
 
@@ -110,17 +115,19 @@ anything — which is what lets F take the language and the platform from the fi
    Q0 is shown bilingually. If skipped, default <lang> = `en`.
    ↓ `lang` in the input → use it, ask nothing.
    ↓ state F → the config's own language value answers it, ask nothing.
+   ↓ state G → the config already carries the language; ask nothing, and write nothing to it.
 
 1. Resolve the platform (see Platform Discovery).
    ↓ `platform` in the input → use it, skip discovery: the caller that named one is the
      platform itself.
    ↓ state F → the config already names the platform; skip discovery.
+   ↓ state G → the config already names the platform; skip discovery.
    ↓ none installed → render `error_no_platform_installed`. Stop.
 
 2. Compute state (see State Detection table).
 
 3. Locate templates:
-   a. `templates/claude-toolkit-md/en.md` — toolkit file template (English-only; the
+   a. `templates/spine-md/en.md` — toolkit file template (English-only; the
       file body is always EN regardless of `<lang>`).
    b. `templates/claude-md-stub/<lang>.md` — minimal CLAUDE.md stub (localized).
    Lookup paths (try in order):
@@ -137,8 +144,8 @@ anything — which is what lets F take the language and the platform from the fi
    STATE A (new_install):
      a. Ask qM (mode) using `auq_mode_label` and qP (progress) using `auq_progress_label` —
         each only if the input did not already answer it (same rule in states B and C).
-     b. Render `templates/claude-toolkit-md/en.md` with the Placeholder Replacements below.
-        Write to <project>/CLAUDE-spine-toolkit.md.
+     b. Render `templates/spine-md/en.md` with the Placeholder Replacements below.
+        Write to <project>/SPINE.md.
      c. **If CLAUDE.md does NOT exist**: render `templates/claude-md-stub/<lang>.md` with
         `{project_name}` derived from the project directory name. Write to <project>/CLAUDE.md.
         **If CLAUDE.md DOES exist** (the broken-state edge sub-state): SKIP this sub-step.
@@ -146,11 +153,11 @@ anything — which is what lets F take the language and the platform from the fi
 
    STATE B (existing_md):
      a. Ask qM, qP.
-     b. Render the toolkit template. Write to <project>/CLAUDE-spine-toolkit.md.
-     c. If the `@./CLAUDE-spine-toolkit.md` line already exists anywhere in the file → skip
+     b. Render the toolkit template. Write to <project>/SPINE.md.
+     c. If the `@./SPINE.md` line already exists anywhere in the file → skip
         c and d: CLAUDE.md is neither written nor backed up. Otherwise backup CLAUDE.md →
         CLAUDE.md.bak (collision suffix: .bak.YYYYMMDD-HHMMSS).
-     d. Insert `@./CLAUDE-spine-toolkit.md` as a new line:
+     d. Insert `@./SPINE.md` as a new line:
         - if the first non-empty line is an H1 (`# ...`), insert immediately after it
           (with one blank line before and after).
         - otherwise, insert at the very top of the file (with one blank line after).
@@ -159,13 +166,14 @@ anything — which is what lets F take the language and the platform from the fi
      a. AUQ using key `auq_reconfigure_toolkit` with options `auq_reconfigure_toolkit_options`
         (Overwrite / Backup-and-overwrite / Cancel).
         - Cancel → stop, no disk changes.
-        - Backup-and-overwrite → rename CLAUDE-spine-toolkit.md → CLAUDE-spine-toolkit.md.bak
+        - Backup-and-overwrite → rename SPINE.md → SPINE.md.bak
           (timestamp on collision). Continue.
         - Overwrite → continue.
      b. Ask qM, qP.
-     c. Render the toolkit template. Write to CLAUDE-spine-toolkit.md (overwrite).
-     d. Self-heal CLAUDE.md: if the `@./CLAUDE-spine-toolkit.md` line is missing, run the
-        insertion logic from State B step (d), with backup.
+     c. Render the toolkit template. Write to SPINE.md (overwrite).
+     d. Self-heal CLAUDE.md: if the `@./SPINE.md` line is missing, run the
+        insertion logic from State B step (d), with backup; a `@./CLAUDE-spine-toolkit.md` line
+        left behind is rewritten to `@./SPINE.md` rather than joined by a second import.
 
    STATE D (old_format):
      a. Run the migration parser on CLAUDE.md. Compute moved/kept/defaulted/warning section sets.
@@ -175,7 +183,7 @@ anything — which is what lets F take the language and the platform from the fi
         - Cancel → stop, no disk changes.
         - Migrate-and-backup → continue.
      d. Backup CLAUDE.md → CLAUDE.md.bak (timestamp on collision).
-     e. Build the new CLAUDE-spine-toolkit.md (toolkit_sections in canonical order; missing
+     e. Build the new SPINE.md (toolkit_sections in canonical order; missing
         sections filled from template defaults) — EXCEPT `## Platform`, which is written with
         the platform resolved in step 1 whether or not the source has a section by that name.
         Neither branch of that carries a plugin name: a legacy config normally lacks the block
@@ -206,13 +214,13 @@ anything — which is what lets F take the language and the platform from the fi
      f. Hand `## Stack` to the platform half (step 5) for reconciliation against its current
         `## Axes` — a platform that has renamed an axis since the config was written is the case
         this exists for.
-     g. Atomic write to CLAUDE-spine-toolkit.md; remove the old file only after the write
+     g. Atomic write to SPINE.md; remove the old file only after the write
         succeeds. Rewrite the `@./CLAUDE-swift-toolkit.md` line in CLAUDE.md to the new name
         (backup first); if the line is absent, insert it per State B step (d).
 
    STATE F (old_block_format):
-     a. Parse the existing CLAUDE-spine-toolkit.md with the section parser (it already splits
-        on `## `).
+     a. Parse the existing config — `SPINE.md`, or `CLAUDE-spine-toolkit.md` where that is the
+        file the project has — with the section parser (it already splits on `## `).
      b. Map each moved block's value(s) onto the fields, per the mapping table below. A block
         the file does not carry contributes nothing; its field is written at the absent-field
         default named under that table — not always the template's line — and listed in
@@ -223,11 +231,33 @@ anything — which is what lets F take the language and the platform from the fi
         heading in neither the canonical list nor the mapping, a near-miss like `Validaton`
         included. The resolver trips only on the ten exact names, so keeping one costs nothing
         while dropping it loses the user's own content. All of them go in {kept_blocks}.
-     d. Back up the file, write the new one atomically, and report with `report_block_migration`.
-        CLAUDE.md is untouched: its import line already names this file.
+     d. Back up the file, write the new one atomically under the name it had — `SPINE.md`, or
+        `CLAUDE-spine-toolkit.md` where that is the file the project has — and report with
+        `report_block_migration`, {config_name} being that name. CLAUDE.md is untouched: its
+        import line already names this file. A legacy name is state G's business on the next run.
      e. Ask nothing, and skip every step that would: step 5's platform half, step 6, step 6b.
         Every value came from the file; what the file did not answer takes the default, which is
         what a 1.x project was already running on.
+
+   STATE G (legacy_name):
+     a. AUQ `auq_migrate_spine_name` with options `auq_migrate_spine_name_options`
+        (Rename / Keep the old name).
+        - Keep the old name → no disk changes; report `report_spine_name_kept`. Every reader
+          keeps accepting the file under that name.
+        - Rename → continue.
+     b. `mv CLAUDE-spine-toolkit.md SPINE.md`. No backup: the rename is reversible by one `mv`,
+        and nothing inside the file changes except the next step.
+     c. Replace the file's first line — its H1 — with the H1 of `templates/spine-md/en.md`
+        (`# SPINE.md — Spine Configuration`). Every other byte stays.
+     d. In CLAUDE.md, replace the `@./CLAUDE-spine-toolkit.md` line with `@./SPINE.md`. No such
+        line: insert `@./SPINE.md` per State B step (d), with backup — unless the file already
+        carries `@./SPINE.md`, in which case leave it alone. A CLAUDE.md that does not exist is
+        created from the stub as in the edge sub-state above, whichever answer was given: with
+        Keep the old name the stub imports `@./CLAUDE-spine-toolkit.md`, the file the project has.
+     e. Report `report_spine_name_migrated`, whose rollback hint is
+        `mv SPINE.md CLAUDE-spine-toolkit.md` plus restoring the import line. Stop. Every value
+        is already in the file, so steps 5, 6 and 6b have nothing to ask; run `/setup` again
+        (state C) to reconfigure.
 
 5. Hand the platform its own blocks:
    The `setup` row of the platform manifest's ## Entrypoints names the skill that owns them.
@@ -274,7 +304,9 @@ anything — which is what lets F take the language and the platform from the fi
      {kept_sections}, {filled_default_sections}, {filled_default_fields}, {warnings},
      {backup_path}, {notes}.
    - State F → key `report_block_migration` with placeholders {moved_fields},
-     {filled_default_fields}, {kept_blocks}, {backup_path}.
+     {filled_default_fields}, {kept_blocks}, {backup_path}, {config_name}.
+   - State G → key `report_spine_name_migrated` after a rename, `report_spine_name_kept` after
+     Keep; neither takes a placeholder.
    {notes} is the platform half's returned notes, one per line, already rendered in <lang>;
    empty when it reconciled nothing. It is the only place those lines surface, so a rewrite
    the platform performed silently would be a rewrite the user never sees.
@@ -297,7 +329,7 @@ Rules:
 
 ### Section classification
 
-Canonical toolkit headings = the `## ` headings of `templates/claude-toolkit-md/en.md`, read from that file in the order it has them. Match case-insensitively and **exactly**, not by prefix.
+Canonical toolkit headings = the `## ` headings of `templates/spine-md/en.md`, read from that file in the order it has them. Match case-insensitively and **exactly**, not by prefix.
 
 Read the list rather than restating it here: a second copy falls behind the day the toolkit adds a section, and a section missing from the copy is silently never migrated into an existing project.
 
@@ -361,15 +393,16 @@ toolkit config, whose H1 and intro come from the toolkit template (see Output as
 - **Toolkit preamble detected** if the H1 (first non-empty `# ...` line) matches any of these canonical strings (exact match, case-sensitive):
   - `# CLAUDE.md — Swift Toolkit` (legacy single-file template — both EN and RU legacy templates used the same H1 string; only the body was localized)
   - `# CLAUDE-swift-toolkit.md — Swift Toolkit Configuration` (pre-split two-file template)
-  - `# CLAUDE-spine-toolkit.md — Toolkit Configuration` (current)
+  - `# CLAUDE-spine-toolkit.md — Toolkit Configuration` (pre-multi-runtime two-file template)
+  - `# SPINE.md — Spine Configuration` (current)
   → Discard the preamble, replace it with the rendered `templates/claude-md-stub/<lang>.md`.
-- **Otherwise**: preserve the preamble as-is. Insert `@./CLAUDE-spine-toolkit.md` after the H1 (or at the very top if no H1) before the first user section.
+- **Otherwise**: preserve the preamble as-is. Insert `@./SPINE.md` after the H1 (or at the very top if no H1) before the first user section.
 
 ### Output assembly
 
-`CLAUDE-spine-toolkit.md`:
+`SPINE.md`:
 ```
-<H1 + intro from templates/claude-toolkit-md/en.md>
+<H1 + intro from templates/spine-md/en.md>
 
 <toolkit_sections in canonical order>
 ```
@@ -400,7 +433,7 @@ migration report rather than rewriting task folders.
 ```
 <preamble: stub or preserved>
 
-@./CLAUDE-spine-toolkit.md
+@./SPINE.md
 
 <user_sections in original order>
 ```
@@ -409,10 +442,10 @@ Empty `user_sections` → the file ends at the `@import` line (with a trailing n
 
 ### Safeguards
 
-1. **Backup before a write**: the source file → `<name>.bak` (or `.bak.YYYYMMDD-HHMMSS` on collision) **before** any disk write to it. A file setup does not write gets no backup.
+1. **Backup before a write**: the source file → `<name>.bak` (or `.bak.YYYYMMDD-HHMMSS` on collision) **before** any disk write to it. A file setup does not write gets no backup. State G's H1 rewrite is the one exception: the rename it follows is undone by one `mv`, and the hint says so.
 2. **Atomic writes**: write to `*.new`, then atomic rename.
-3. **Idempotency**: if the toolkit file exists AND CLAUDE.md has the `@import` line, state detection routes to C, not D or E — and to F rather than C while that file is still in the 1.x block format.
-4. **Rollback hint** in the report: `mv {backup_path} CLAUDE.md && rm CLAUDE-spine-toolkit.md`. State F rewrote one file, so its hint is `mv {backup_path} CLAUDE-spine-toolkit.md`.
+3. **Idempotency**: if the toolkit file exists AND CLAUDE.md has the `@import` line, state detection routes to C, not D or E — to G while the file still carries the legacy name, and to F rather than either while it is still in the 1.x block format.
+4. **Rollback hint** in the report: `mv {backup_path} CLAUDE.md && rm SPINE.md`. State F rewrote one file under its own name, so its hint is `mv {backup_path} {config_name}`. State G's is `mv SPINE.md CLAUDE-spine-toolkit.md` and the import line back.
 5. **Line endings**: normalize to LF on write.
 
 ## Core Questions
@@ -426,7 +459,7 @@ question belongs to the platform half.
 
 ## Placeholder Replacements
 
-In `templates/claude-toolkit-md/en.md` (the toolkit file is EN-only):
+In `templates/spine-md/en.md` (the toolkit file is EN-only):
 
 | Placeholder | Source | Substituted with |
 |---|---|---|
@@ -453,7 +486,7 @@ In `templates/claude-md-stub/<lang>.md`:
 - **No platform plugin installed** → `error_no_platform_installed`. Stop. No disk changes.
 - **Templates not found** → `error_template_not_found`. Stop.
 - **AUQ unavailable** → text fallback with numbered options.
-- **User cancels** (Cancel on the AUQ in state C, D or E) → exit, no disk changes.
+- **User cancels** (Cancel on the AUQ in state C, D or E; Keep the old name in state G) → exit, no disk changes.
 - **Tasks/ already exists** → no overwrite; report `tasks_status_already_existed`.
 - **The registry already exists** → no overwrite; report `docs_map_status_already_existed`.
 

@@ -1,6 +1,6 @@
 ---
 name: security-lens
-description: "Use at the investigating stage of a FEATURE, BUG or REFACTOR task — or before Plan when its scale is lite — to decide whether the task touches the security perimeter and to run the security lens when it does, and at Review to check a skipped lens against the diff. Whether the lens runs follows from what the task touches, never from its size. Governed by `[SECURITY]` in Task.md and CLAUDE-spine-toolkit.md."
+description: "Use at the investigating stage of a FEATURE, BUG or REFACTOR task — or before Plan when its scale is lite — to decide whether the task touches the security perimeter and to run the security lens when it does, and at Review to check a skipped lens against the diff. Whether the lens runs follows from what the task touches, never from its size. Governed by `[SECURITY]` in Task.md and the project config."
 ---
 
 # Security Lens

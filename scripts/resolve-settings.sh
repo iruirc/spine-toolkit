@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Resolves every setting a task runs with: one chain, one reader of CLAUDE-spine-toolkit.md.
+# Resolves every setting a task runs with: one chain, one reader of the project config
+# (SPINE.md, or CLAUDE-spine-toolkit.md where a project has not migrated).
 # The fields, their values and their defaults: conventions/task-settings.md.
 #
-# Usage: scripts/resolve-settings.sh json <task-dir> [--set <field>[.<key>]=<value>]...
+# Usage: scripts/resolve-settings.sh json <task-dir> [--runtime <id>] [--set <field>[.<key>]=<value>]...
 #                                                  # every field as one JSON object, plus plugin_root,
 #                                                  # the core root it runs from, and roots, the folders
-#                                                  # a stage may search
+#                                                  # a stage may search, project_config, the file
+#                                                  # the settings came from, and runtime, the id
+#                                                  # whose runtimes/<id>.json gave the model and
+#                                                  # effort vocabulary (default claude-code)
 #        scripts/resolve-settings.sh show <task-dir> [--all] [--set ...]
 #                                                  # Task.md lines, with sources
 #                                                  # --all: every field, defaults included
@@ -20,16 +24,14 @@ set -euo pipefail
 #        scripts/resolve-settings.sh raw  <dir> <block>        # the value lines of one config block
 # Exit:  0, or 2 on a usage error. One stderr line per entry it could not take at face value.
 #
-# Key by key: --set, this run's own word -> Task.md [FIELD] -> for a .step/ folder, the epic's Task.md above it -> the nearest
-# CLAUDE-spine-toolkit.md -> the defaults below. walkthrough has one more step: off when the
+# Key by key: --set, this run's own word -> Task.md [FIELD] -> for a .step/ folder, the epic's Task.md above it -> the project
+# config in the nearest directory holding SPINE.md or CLAUDE-spine-toolkit.md -> the defaults below. walkthrough has one more step: off when the
 # resolved scale is lite, which beats the project and loses to the task's own [WALKTHROUGH].
 # walkthrough_check then follows it: auto is on at deep and off at brief, and off where no file is written.
 ROLES="architect developer tester reviewer refactorer validator security diagnostics"
-MODELS="opus sonnet haiku fable session"
 # A `platform` left by 1.11.0 reads as if its line were absent, not as `session`,
 # so the validator keeps its `sonnet` default.
 UNSET_MODELS="platform"
-EFFORTS="low medium high xhigh max session"
 # The per-artifact line ceilings. workflows/profile-*.js carries the same table as its prelude
 # CAP map, and tests/foundation/lib/artifact-budget.test.bats fails when the two disagree.
 CAPS="Reproduce.md:120 Plan.md:200 Validation.md:100 Review.md:120 Done.md:80 Task.md:100"
@@ -52,25 +54,31 @@ fi
 # Not a setting: where this installation lives, which a Method A script cannot find for itself.
 export SPINE_CORE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
-python3 - "$ROLES" "$MODELS" "$EFFORTS" "$UNSET_MODELS" "$CAPS" "$@" <<'PY'
+python3 - "$ROLES" "$UNSET_MODELS" "$CAPS" "$@" <<'PY'
 import glob, json, os, re, subprocess, sys
 
-ROLES, MODEL_VALUES, EFFORT_VALUES, UNSET_MODELS = (s.split() for s in sys.argv[1:5])
+ROLES, UNSET_MODELS = (s.split() for s in sys.argv[1:3])
 
 # The value kind of a map whose values are whole minutes rather than words.
 MINUTES = 'minutes'
+# The value kind of a map whose values are any token the runtime will check for itself
+# (a runtime file's `"models": "any"`).
+ANY = 'any'
+TOKEN = re.compile(r'[A-Za-z0-9][A-Za-z0-9._:/+-]*')
 
 
 # The value one map entry contributes, or None when the entry is not one of the map's values.
 def map_value(values, raw):
     if values == MINUTES:
         return int(raw) if re.fullmatch(r'[1-9][0-9]*', raw) else None
+    if values == ANY:
+        return raw if TOKEN.fullmatch(raw) else None
     return raw if raw in values else None
 
 
-CAPS = dict((n, int(v)) for n, v in (p.split(':') for p in sys.argv[5].split()))
-CMD, TARGET = sys.argv[6], sys.argv[7]
-BLOCK = sys.argv[8] if CMD == 'raw' else None
+CAPS = dict((n, int(v)) for n, v in (p.split(':') for p in sys.argv[3].split()))
+CMD, TARGET = sys.argv[4], sys.argv[5]
+BLOCK = sys.argv[6] if CMD == 'raw' else None
 
 
 def usage_error(why):
@@ -112,9 +120,9 @@ def read_contract(path):
 # nothing else may name one.
 CONTRACT = None
 if CMD == 'open' and TARGET == '--contract':
-    CONTRACT = read_contract(sys.argv[8])
+    CONTRACT = read_contract(sys.argv[6])
     if CONTRACT is None:
-        usage_error('open: %s is not an Outbound Contract' % sys.argv[8])
+        usage_error('open: %s is not an Outbound Contract' % sys.argv[6])
     TARGET = str(CONTRACT.get('task_dir') or '')
     if not os.path.isdir(TARGET):
         usage_error("open: the contract's task_dir '%s' is not a directory" % TARGET)
@@ -124,11 +132,19 @@ OPEN = {}
 # This run's own word on a field (conventions/task-settings.md → The chain): a scalar, or one key
 # of a map, in the order given; a later --set of the same field or key wins.
 RUN_SET = []
-rest = [] if CMD == 'raw' else sys.argv[9:] if CONTRACT is not None else sys.argv[8:]
+# The runtime whose runtimes/<id>.json gives the model and effort vocabulary and the model
+# defaults (conventions/task-settings.md → Runtime). The caller names the host it runs in;
+# nothing here infers one. Absent, the Claude Code vocabulary applies, as it always did.
+RUNTIME, RUNTIME_SEEN = 'claude-code', False
+rest = sys.argv[7:] if CMD == 'raw' or CONTRACT is not None else sys.argv[6:]
 while rest:
     arg = rest.pop(0)
     if arg == '--all' and CMD == 'show':
         SHOW_ALL = True
+    elif arg == '--runtime' and CMD in ('json', 'show', 'open') and CONTRACT is None and rest:
+        if RUNTIME_SEEN:
+            usage_error('--runtime: given twice')
+        RUNTIME, RUNTIME_SEEN = rest.pop(0), True
     elif arg == '--set' and CONTRACT is None and rest and re.fullmatch(r'[a-z_]+(\.[A-Za-z]+)?=\S(.*\S)?', rest[0]):
         RUN_SET.append(rest.pop(0).split('=', 1))
     elif CMD == 'open' and arg in ('--method', '--why', '--range', '--progress', '--run-file', '--profile') and rest \
@@ -143,6 +159,36 @@ if CONTRACT is not None:
                                                    ('why', 'method_reason')) if CONTRACT.get(f))
     settings = CONTRACT.get('run_settings')
     RUN_SET += [[k, str(v)] for k, v in (settings.items() if isinstance(settings, dict) else [])]
+
+
+def load_runtime(runtime_id):
+    """runtimes/<id>.json: the id, the models list (or "any"), the model_defaults map and the
+    effort list. A missing or unreadable file is a usage error naming it."""
+    if not re.fullmatch(r'[a-z0-9-]+', runtime_id):
+        usage_error('--runtime %s: not a runtime id' % runtime_id)
+    path = os.path.join(os.environ['SPINE_CORE_ROOT'], 'runtimes', runtime_id + '.json')
+    if not os.path.isfile(path):
+        usage_error('--runtime %s: no runtimes/%s.json' % (runtime_id, runtime_id))
+    keys = ['light', 'walkthrough', 'done'] + ROLES
+    try:
+        with open(path, encoding='utf-8') as fh:
+            rt = json.load(fh)
+        models, effort, defaults = rt['models'], rt['effort'], rt['model_defaults']
+        if models != ANY and not (isinstance(models, list) and 'session' in models):
+            raise ValueError('models must be a list holding session, or "any"')
+        if not (isinstance(effort, list) and 'session' in effort):
+            raise ValueError('effort must be a list holding session')
+        if not isinstance(defaults, dict) or set(defaults) - set(keys):
+            raise ValueError('model_defaults keys must be tuning keys')
+        if any(not isinstance(v, str) or (models != ANY and v not in models) or not TOKEN.fullmatch(v)
+               for v in defaults.values()):
+            raise ValueError('model_defaults values must be values of models')
+        return models, effort, defaults
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        usage_error('runtimes/%s.json: not a runtime file (%s)' % (runtime_id, error))
+
+
+MODEL_VALUES, EFFORT_VALUES, MODEL_DEFAULTS = load_runtime(RUNTIME)
 
 # field, config/Task.md field name, values (None = open), default
 # A SCALARS values slot for a whole number >= 0, taken as an int.
@@ -175,8 +221,9 @@ PROJECT_ONLY = {'lang', 'progress', 'settings_report', 'docs_map', 'docs_strictn
 # A map's field is one bracketed, comma-separated list, in the config exactly as in a Task.md.
 MAPS = (
     ('models', 'MODELS', ['light', 'walkthrough', 'done'] + ROLES, MODEL_VALUES, UNSET_MODELS,
-     dict({r: 'session' for r in ROLES}, light='sonnet', walkthrough='session', done='session',
-          validator='sonnet')),
+     # Roles first, then light, walkthrough, done: show and the opening block print in this order.
+     dict(dict({r: 'session' for r in ROLES}, light='session', walkthrough='session', done='session'),
+          **MODEL_DEFAULTS)),
     ('effort', 'EFFORT', ['walkthrough', 'done'] + ROLES, EFFORT_VALUES, [],
      dict({r: 'session' for r in ROLES}, walkthrough='session', done='session')),
     ('long_run', 'LONG_RUN', ['stall', 'max'], MINUTES, [], {'stall': 5, 'max': 30}),
@@ -222,15 +269,19 @@ def accept(name, values, raw, label):
 
 
 def config_path(start):
-    """The nearest CLAUDE-spine-toolkit.md at or above start."""
+    """The project config (conventions/task-settings.md → Project config): in the nearest
+    directory at or above start holding either file, SPINE.md, else CLAUDE-spine-toolkit.md.
+    Returns (selected, ignored): ignored is the legacy file left unread beside a SPINE.md."""
     d = os.path.abspath(start)
     while True:
-        cfg = os.path.join(d, 'CLAUDE-spine-toolkit.md')
-        if os.path.isfile(cfg):
-            return cfg
+        canonical = os.path.join(d, 'SPINE.md')
+        legacy = os.path.join(d, 'CLAUDE-spine-toolkit.md')
+        has_canonical, has_legacy = os.path.isfile(canonical), os.path.isfile(legacy)
+        if has_canonical or has_legacy:
+            return (canonical if has_canonical else legacy), (legacy if has_canonical and has_legacy else None)
         parent = os.path.dirname(d)
         if parent == d:
-            return None
+            return None, None
         d = parent
 
 
@@ -343,7 +394,9 @@ def task_files():
     return out
 
 
-CFG = config_path(TARGET)
+CFG, IGNORED_CFG = config_path(TARGET)
+if IGNORED_CFG:
+    print('project config: %s selected, %s ignored' % (CFG, IGNORED_CFG), file=sys.stderr)
 refuse_old_format(CFG)
 
 if CMD == 'raw':
@@ -449,7 +502,9 @@ for name, field, keys, values, unset, map_defaults in MAPS:
             k, raw = (m.group(1).lower(), m.group(2).lower()) if m else (None, None)
             if k in keys and raw in unset:
                 continue
-            v = map_value(values, raw) if k in keys else None
+            # An open vocabulary keeps the token as written — the runtime reads it, not this script —
+            # except session, which is this script's own word in every runtime.
+            v = map_value(values, m.group(2) if values == ANY and raw != 'session' else raw) if k in keys else None
             if v is None:
                 warn(label, entry)
                 continue
@@ -513,7 +568,7 @@ def search_roots():
 
 if CMD == 'json':
     print(json.dumps(dict(resolved, sources=sources, plugin_root=os.environ['SPINE_CORE_ROOT'],
-                          roots=search_roots()),
+                          roots=search_roots(), project_config=CFG, runtime=RUNTIME),
                      ensure_ascii=False, sort_keys=True))
     sys.exit(0)
 
@@ -634,7 +689,7 @@ def task_label(path):
 
 
 # from: the chain without this run's word, so a value the run did not change never shows.
-plain = subprocess.run([os.path.join(CORE, 'scripts', 'resolve-settings.sh'), 'json', TARGET],
+plain = subprocess.run([os.path.join(CORE, 'scripts', 'resolve-settings.sh'), 'json', TARGET, '--runtime', RUNTIME],
                        capture_output=True, text=True)
 if plain.returncode:
     refuse('json without --set failed: %s' % plain.stderr.strip())

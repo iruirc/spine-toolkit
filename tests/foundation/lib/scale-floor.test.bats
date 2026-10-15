@@ -42,7 +42,7 @@ setup() {
 }
 
 @test "the template ships lite" {
-  tpl="$ROOT/templates/claude-toolkit-md/en.md"
+  tpl="$ROOT/templates/spine-md/en.md"
   v="$(sed -n 's/^\[SCALE\] = \[\([a-z]*\)\].*/\1/p' "$tpl")"
   [ "$v" = "lite" ] || { echo "[SCALE] ships '$v', expected lite"; return 1; }
 }

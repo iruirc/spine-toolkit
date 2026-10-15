@@ -1,13 +1,13 @@
 # lang — en
 
 ## error_no_toolkit_file
-No `CLAUDE-spine-toolkit.md` found in the current directory. Run `/setup` first.
+No project config (`SPINE.md`, or the older `CLAUDE-spine-toolkit.md`) found in the current directory. Run `/setup` first.
 
 ## error_unsupported_language
 Unsupported language: `{lang}`. Supported: `en`, `ru`.
 
 ## error_config_predates_2_0
-`CLAUDE-spine-toolkit.md` has no `## Project settings` section: it predates 2.0. Run `/setup` to migrate it, then `/lang` again.
+The project config has no `## Project settings` section: it predates 2.0. Run `/setup` to migrate it, then `/lang` again.
 
 ## report_current_language
 Current language: `{current}`.

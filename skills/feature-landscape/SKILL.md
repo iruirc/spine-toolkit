@@ -29,7 +29,7 @@ Before writing code, draw the territory. The landscape is an entity graph plus a
 ## Inputs
 
 - `Research.md ## Requirements` (from `feature-requirements`) — Primary + Secondary + open questions
-- Project stack from `CLAUDE-spine-toolkit.md` — picks which of a topic's skills are authoritative
+- Project stack from the project config — picks which of a topic's skills are authoritative
 - Existing code (if refactor) — identify what graph nodes already exist
 
 ## Steps

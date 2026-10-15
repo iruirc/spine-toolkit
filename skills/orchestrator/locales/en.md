@@ -7,7 +7,7 @@ Specify task number, e.g. `run 026` / `/spine-toolkit:task-run 026`.
 Task `{task_id}` not found in `Tasks/`.
 
 ## error_no_project_config
-This project has no `CLAUDE-spine-toolkit.md`, so nothing says which platform serves it — and without a platform there is no agent to dispatch a stage to. Run `/setup` to attach the toolkit to this project (it also migrates a config left over from an earlier toolkit version), or the platform plugin's project-init entry point if the project itself does not exist yet. Then run the task again.
+This project has no `SPINE.md`, so nothing says which platform serves it — and without a platform there is no agent to dispatch a stage to. Run `/setup` to attach the toolkit to this project (it also migrates a config left over from an earlier toolkit version), or the platform plugin's project-init entry point if the project itself does not exist yet. Then run the task again.
 
 ## error_no_platform_manifest
 No platform manifest found. The project config names platform "{plugin}", but its manifest skill did not load. Install the platform plugin or fix ## Platform in the config.
@@ -197,7 +197,7 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 `{step}`: `{anchor}` in its `Task.md` is missing, empty or a bare dash. Sending it back to the architect to fill the anchor, or to write `— <reason>` where it does not apply.
 
 ## warn_budget_unrecognised
-`{line}` in `[BUDGETS]` of `CLAUDE-spine-toolkit.md` names no artifact the budget lint knows, or its ceiling is not a positive whole number, so the default stays. The artifacts are `Task.md`, `Reproduce.md`, `Plan.md`, `Validation.md`, `Review.md` and `Done.md`.
+`{line}` in `[BUDGETS]` of the project config names no artifact the budget lint knows, or its ceiling is not a positive whole number, so the default stays. The artifacts are `Task.md`, `Reproduce.md`, `Plan.md`, `Validation.md`, `Review.md` and `Done.md`.
 
 ## lang_mismatch
 `{artifact}` → `{section}`: the prose is not in the project language (`{lang}`). Sending the file back to its author to rewrite that prose in `{lang}`, structure untouched.
@@ -248,10 +248,10 @@ Keep waiting
 Stop the stage
 
 ## warn_walkthrough_pre_depth
-`on` is the pre-depth value, so it is read as `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. A project's `on` still ends at `off` when this task's `scale` is `lite`, the gate sitting below the task's own field and above the project's. To keep the older shape, write `brief` in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`.
+`on` is the pre-depth value, so it is read as `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. A project's `on` still ends at `off` when this task's `scale` is `lite`, the gate sitting below the task's own field and above the project's. To keep the older shape, write `brief` in `[WALKTHROUGH]`, in `Task.md` or in the project config.
 
 ## warn_walkthrough_unrecognised
-`{value}` is not one of the three walkthrough depths, so it was skipped and the rest of the chain decides: `off` when this task's `scale` is `lite`, otherwise the project's `[WALKTHROUGH]` where it names one, and `deep` where nothing does. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]`, in `Task.md` or in `CLAUDE-spine-toolkit.md`. The settings above name the depth this run actually resolved to.
+`{value}` is not one of the three walkthrough depths, so it was skipped and the rest of the chain decides: `off` when this task's `scale` is `lite`, otherwise the project's `[WALKTHROUGH]` where it names one, and `deep` where nothing does. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]`, in `Task.md` or in the project config. The settings above name the depth this run actually resolved to.
 
 ## warn_tuning_unrecognised
 `{entry}` in {source} is not a key and value this run can use, so it was skipped and the next setting down applies. Model keys are `light`, `walkthrough`, `done` and the eight roles, with `opus`, `sonnet`, `haiku`, `fable` or `session`; effort keys are `walkthrough`, `done` and the eight roles, with `low`, `medium`, `high`, `xhigh`, `max` or `session`.
@@ -263,14 +263,14 @@ The effort set for {roles} does not apply on this run: the profile runs through 
 Driver `{driver}` is the driver resolved for this run, but its manifest does not resolve — the
 plugin is not installed. The stage that drives the app — Validation, or a RESEARCH experiment —
 will hand its UI checks to you instead. Install the plugin, or write `[DRIVER] = [—]` in
-`CLAUDE-spine-toolkit.md` to say so deliberately.
+the project config to say so deliberately.
 
 ## warn_driver_server_missing
 Driver `{driver}` is installed, but this session has no tool under any of the prefixes it
 declares ({namespaces}) — its MCP server is not connected, or it is registered under a
 different name. The stage that drives the app — Validation, or a RESEARCH experiment — will
 hand its UI checks to you instead. Start the server, register it under one of those names, or
-write `[DRIVER] = [—]` in `CLAUDE-spine-toolkit.md` to say so deliberately.
+write `[DRIVER] = [—]` in the project config to say so deliberately.
 
 ## auq_catch_up_question
 The task was finished, and commits have landed since its Done:

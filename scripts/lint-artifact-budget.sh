@@ -14,7 +14,7 @@ set -euo pipefail
 # measures nothing: the orchestrator ships that line as the contract's budgets field.
 #
 # Scale and the per-artifact ceilings both come from scripts/resolve-settings.sh, the one reader
-# of Task.md and CLAUDE-spine-toolkit.md.
+# of Task.md and the project config.
 # REVIEW and RESEARCH are never measured: neither has an implementing stage, and the artifact
 # their run produces IS the deliverable. EPIC is never measured either, for a different reason:
 # its own Plan.md and Done.md are not gated by this ceiling (workflow-epic/SKILL.md). Its

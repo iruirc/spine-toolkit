@@ -1,0 +1,6 @@
+{
+  "id": "claude-code",
+  "models": ["opus", "sonnet", "haiku", "fable", "session"],
+  "model_defaults": {"light": "sonnet", "validator": "sonnet"},
+  "effort": ["low", "medium", "high", "xhigh", "max", "session"]
+}

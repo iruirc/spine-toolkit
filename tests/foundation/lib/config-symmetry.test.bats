@@ -5,7 +5,7 @@
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  TPL="$ROOT/templates/claude-toolkit-md/en.md"
+  TPL="$ROOT/templates/spine-md/en.md"
 }
 
 fields_of_block() {

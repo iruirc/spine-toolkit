@@ -7,7 +7,7 @@ set -euo pipefail
 # Usage: scripts/lint-artifact-lang.sh <task-dir> [<task-dir> ...]
 # Exit:  0 nothing written in the wrong language, 1 something is, 2 usage or an unresolvable config.
 #
-# The language comes from scripts/resolve-settings.sh, the one reader of CLAUDE-spine-toolkit.md.
+# The language comes from scripts/resolve-settings.sh, the one reader of the project config.
 
 [ "$#" -ge 1 ] || { echo "usage: $0 <task-dir> [<task-dir> ...]" >&2; exit 2; }
 

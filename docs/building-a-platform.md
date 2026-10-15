@@ -33,7 +33,7 @@ repository it is working in.
 | The nine **role** names | The **agents** behind them |
 | The `ecosystem` axis name | Every other stack axis and every value |
 | Eleven topic names its methodology skills ask for | The skills that answer them |
-| The config file `CLAUDE-spine-toolkit.md` and its core blocks | The `## Stack` and `## Modules` blocks |
+| The project config file `SPINE.md` and its core blocks | The `## Stack` and `## Modules` blocks |
 
 Core's stage briefs are written to stay tool-agnostic on purpose — "a build and a full test run are
 mandatory", never the name of a build tool. `tests/foundation/lib/dispatch-vocabulary.test.bats`
@@ -46,7 +46,7 @@ orchestrator, or an agent brief. That guard is what makes a second platform poss
 sequenceDiagram
     participant U as User
     participant O as spine-toolkit:orchestrator
-    participant C as CLAUDE-spine-toolkit.md
+    participant C as SPINE.md
     participant M as your-platform:manifest
     participant A as your agent
 
@@ -123,7 +123,7 @@ description: |
 
 You are a Kotlin architect…
 
-**First**: read `CLAUDE-spine-toolkit.md` in the project root.
+**First**: read the project config — `SPINE.md` in the project root, or the pre-multi-runtime name where the project has not migrated.
 
 ## Invocation Context
 
@@ -137,7 +137,7 @@ in whichever language they think in. The body stays English.
 
 Three things every role agent needs:
 
-1. **Read the project config first.** `CLAUDE-spine-toolkit.md` carries the resolved stack, the
+1. **Read the project config first.** `SPINE.md` carries the resolved stack, the
    architecture, the conventions. An agent that skips it invents its own.
 2. **Know it is being dispatched into a stage** and that its output becomes a named artifact
    (`Research.md`, `Plan.md`, `Validation.md`, `Review.md`, `Done.md`, `Walkthrough.md`). What a
@@ -458,7 +458,7 @@ marketplace, or say in your README that `spine-toolkit` is installed first.
 
 ```bash
 cd /some/kotlin/project
-# /setup            → asks which platform serves this project, writes CLAUDE-spine-toolkit.md
+# /setup            → asks which platform serves this project, writes SPINE.md
 # /task-new         → creates Tasks/ACTIVE/001-…/Task.md
 # /task-run 001     → the orchestrator resolves your manifest and dispatches your agents
 # /agent-status     → which agents ran, what they cost
@@ -550,7 +550,7 @@ after the config is already on disk, where it is indistinguishable from the legi
 
 ## 7. What a project can override
 
-Your manifest is the default, not the last word. `CLAUDE-spine-toolkit.md` in a project may carry an
+Your manifest is the default, not the last word. The project config (`SPINE.md`) may carry an
 `## Agents` block using the same row grammar as `## Roles`. It is a **per-role replacement**, not a
 merge: for a role it names, your rows for that role — bare and axis-qualified alike — are not
 consulted at all. A block that names no role overrides nothing, which is the state to expect.

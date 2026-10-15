@@ -14,14 +14,14 @@ Read-only overview of task progress in `Tasks/`. Shows the current stage, phase 
 
 Before producing any user-facing string:
 
-1. Read `CLAUDE-spine-toolkit.md` from the project root.
+1. Read the project config from the project root (core's `conventions/task-settings.md` → Project config).
 2. Find the `[LANG]` field.
 3. Take the field's value, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
 
-Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine-toolkit.md per string.
+Caching: resolve `<lang>` once per skill invocation; do not re-read the project config per string.
 
 ## Triggers
 
@@ -87,5 +87,5 @@ User-facing card and table layouts are defined as locale keys (see `locales/<lan
 
 - Does NOT modify files — only reads `Task.md` / `Plan.md` / `Done.md` / `Research.md`.
 - Does NOT start workflows and does not call workflow-* or orchestrator — informational only.
-- Does NOT resolve stack / mode (that is the orchestrator's job); shows only what is physically recorded in the task files and/or `CLAUDE-spine-toolkit.md`.
+- Does NOT resolve stack / mode (that is the orchestrator's job); shows only what is physically recorded in the task files and/or the project config.
 - Does NOT create backups and does not touch `_archive/`.

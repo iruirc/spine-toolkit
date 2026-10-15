@@ -26,8 +26,8 @@ Then, in a project:
 /setup
 ```
 
-`setup` writes `CLAUDE-spine-toolkit.md` in the project root, inserts an
-`@./CLAUDE-spine-toolkit.md` import into your `CLAUDE.md`, and offers to create `Tasks/` and the
+`setup` writes `SPINE.md` in the project root, inserts an
+`@./SPINE.md` import into your `CLAUDE.md`, and offers to create `Tasks/` and the
 `DocsMap.md` registry — it asks before creating either, and never touches an existing one. It
 asks which platform plugin serves this project — the candidates are the installed plugins that
 expose a `manifest` skill, and with one installed it asks you to confirm that one — and writes
@@ -115,8 +115,10 @@ copies to be restored to match core.
 
 ## Project configuration
 
-`CLAUDE-spine-toolkit.md` is toolkit-owned; `setup` writes it and `/lang` updates one field of
-it. Your own project instructions stay in `CLAUDE.md`, which the toolkit only ever touches to insert
+`SPINE.md` is toolkit-owned; `setup` writes it and `/lang` updates one field of
+it. A project set up before 2.29 carries the same file as `CLAUDE-spine-toolkit.md`; it is read
+exactly as before, and `/setup` offers to rename it to `SPINE.md` — answer yes, and the import line
+in `CLAUDE.md` is rewritten with it. Your own project instructions stay in `CLAUDE.md`, which the toolkit only ever touches to insert
 the import line. The blocks and fields the toolkit reads:
 
 `## Project settings` and `## Task defaults` — every setting a run resolves, one
@@ -129,7 +131,7 @@ override it. Then `## Platform`, `## Agents` (per-role overrides of the manifest
 The template writes three more — `## Persona`, `## Rules` and `## Orchestration`. Those are for the
 agents reading the file as context, not blocks the toolkit parses.
 
-The template is `templates/claude-toolkit-md/en.md`.
+The template is `templates/spine-md/en.md`.
 
 ## Internationalization
 

@@ -49,7 +49,7 @@ section() {
 @test "the scale field documents the whole resolution chain" {
   para="$(awk '/^`scale` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`scale\` paragraph in the Outbound Contract"; return 1; }
-  for token in '[SCALE]' '`CLAUDE-spine-toolkit.md` `[SCALE]` → `full`' '`full`'; do
+  for token in '[SCALE]' 'the project config'"'"'s `[SCALE]` → `full`' '`full`'; do
     case "$para" in
       *"$token"*) ;;
       *) echo "the scale chain does not name $token"; return 1 ;;
@@ -98,7 +98,7 @@ section() {
 
 @test "the pre-flight takes the driver from the resolver, not by parsing the config itself" {
   # The other half of the guard above: the contract must not name the driver, and the
-  # pre-flight must not walk Task.md / CLAUDE-spine-toolkit.md on its own to find it —
+  # pre-flight must not walk Task.md / the project config on its own to find it —
   # both would duplicate what Resolution step 3's resolve-settings.sh call already read.
   SK="$ROOT/skills/orchestrator/SKILL.md"
   preflight="$(awk '/Driver pre-flight\./{r=1} /^## State Detection$/{r=0} r' "$SK")"
@@ -106,8 +106,8 @@ section() {
     || { echo "the pre-flight does not say it reads the resolver's driver field"; return 1; }
   ! grep -qF 'Task.md [DRIVER]' <<<"$preflight" \
     || { echo "the pre-flight still walks Task.md [DRIVER] itself"; return 1; }
-  ! grep -qF 'CLAUDE-spine-toolkit.md [DRIVER]' <<<"$preflight" \
-    || { echo "the pre-flight still reads CLAUDE-spine-toolkit.md itself"; return 1; }
+  ! grep -qE "(CLAUDE-spine-toolkit\.md|SPINE\.md|project config'?s?) \\[DRIVER\\]" <<<"$preflight" \
+    || { echo "the pre-flight still reads the project config itself"; return 1; }
 }
 
 @test "both driver warning keys exist in both locales with parity" {
@@ -148,7 +148,7 @@ section() {
 @test "the walkthrough field documents the whole resolution chain" {
   para="$(awk '/^`walkthrough` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`walkthrough\` paragraph in the Outbound Contract"; return 1; }
-  for token in '[WALKTHROUGH]' 'CLAUDE-spine-toolkit.md' '`deep`' '`brief`' '`off`'; do
+  for token in '[WALKTHROUGH]' 'the project config' '`deep`' '`brief`' '`off`'; do
     grep -qF "$token" <<<"$para" \
       || { echo "the walkthrough paragraph never mentions $token"; return 1; }
   done
@@ -156,7 +156,7 @@ section() {
   # paragraph, so each link is asserted in place rather than by presence.
   grep -qF '`off` when `scale` is `lite`' <<<"$para" \
     || { echo "the paragraph's own chain omits the lite step"; return 1; }
-  grep -qF '`CLAUDE-spine-toolkit.md` `[WALKTHROUGH]` → `deep`' <<<"$para" \
+  grep -qF "the project config's \`[WALKTHROUGH]\` → \`deep\`" <<<"$para" \
     || { echo "the paragraph's chain does not end at the deep default"; return 1; }
   grep -qF 'Always filled' <<<"$para" \
     || { echo "the paragraph never says the field can be read unconditionally"; return 1; }
@@ -174,7 +174,7 @@ section() {
 }
 
 @test "scale still moves the walkthrough default, and to deep" {
-  grep -qF '`off` when `scale` is `lite` → `CLAUDE-spine-toolkit.md [WALKTHROUGH]` → `deep`' "$SKILL" \
+  grep -qF "\`off\` when \`scale\` is \`lite\` → the project config's \`[WALKTHROUGH]\` → \`deep\`" "$SKILL" \
     || { echo "the scale-to-walkthrough chain still ends at the old default"; return 1; }
 }
 
@@ -324,13 +324,13 @@ section() {
 @test "models and effort are resolved by the script, not by reading the config" {
   para="$(awk '/^`models` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`models\` paragraph in the Outbound Contract"; return 1; }
-  for token in 'resolve-settings.sh' '→ `CLAUDE-spine-toolkit.md` `[MODELS]` →' '[MODELS]' '.step/' 'warn_tuning_unrecognised' 'Always filled' 'real JSON' 'Model and effort' \
+  for token in 'resolve-settings.sh' "→ the project config's \`[MODELS]\` →" '[MODELS]' '.step/' 'warn_tuning_unrecognised' 'Always filled' 'real JSON' 'Model and effort' \
               '`sonnet` for `light` and `validator`, `session` for every other role'; do
     grep -qF "$token" <<<"$para" || { echo "the models paragraph does not name $token"; return 1; }
   done
   para="$(awk '/^`effort` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`effort\` paragraph in the Outbound Contract"; return 1; }
-  for token in 'resolve-settings.sh' '`CLAUDE-spine-toolkit.md` `[EFFORT]` → `session`' '[EFFORT]' 'Always filled' '**Dispatch**'; do
+  for token in 'resolve-settings.sh' "the project config's \`[EFFORT]\` → \`session\`" '[EFFORT]' 'Always filled' '**Dispatch**'; do
     grep -qF "$token" <<<"$para" || { echo "the effort paragraph does not name $token"; return 1; }
   done
 }

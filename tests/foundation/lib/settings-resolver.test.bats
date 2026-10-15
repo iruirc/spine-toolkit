@@ -198,7 +198,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
 @test "show names a field only when the value chosen differs from the built-in default" {
   # The shipped template writes every field down explicitly, so a column keyed on "somebody
   # chose it" prints nineteen lines in a project that has changed nothing.
-  cp "$ROOT/templates/claude-toolkit-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
+  cp "$ROOT/templates/spine-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
   out="$("$RESOLVE" show "$TASK" 2>"$ERR")"
   [ ! -s "$ERR" ] || { echo "the template's guidance was read as entries:"; cat "$ERR"; return 1; }
   # scale is the one field the template ships away from the built-in default, and walkthrough
@@ -417,7 +417,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
 }
 
 @test "the config's last entry for a repeated key wins, not the first" {
-  cp "$ROOT/templates/claude-toolkit-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
+  cp "$ROOT/templates/spine-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
   awk '/^\[MODELS\]/{sub(/architect: session/, "architect: session, architect: opus")} {print}' \
     "$PROJ/CLAUDE-spine-toolkit.md" >"$PROJ/CLAUDE-spine-toolkit.md.new"
   mv "$PROJ/CLAUDE-spine-toolkit.md.new" "$PROJ/CLAUDE-spine-toolkit.md"
@@ -430,7 +430,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   # The template is what a new project starts from, so what it ships is what a project that
   # changed nothing runs on. `scale` is the one deliberate exception: the template writes
   # `lite` where an absent field resolves to `full`, and `walkthrough` follows it down.
-  cp "$ROOT/templates/claude-toolkit-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
+  cp "$ROOT/templates/spine-md/en.md" "$PROJ/CLAUDE-spine-toolkit.md"
   out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
   [ ! -s "$ERR" ] || { echo "the template's guidance was read as entries:"; cat "$ERR"; return 1; }
   while read -r name want; do

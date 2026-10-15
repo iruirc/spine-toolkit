@@ -13,7 +13,7 @@ Platform plugin `{plugin}` is the only one installed. Use it for this project?
 Yes | Cancel
 
 ## error_template_not_found
-CLAUDE-spine-toolkit.md template not found. Check the spine-toolkit plugin root's `templates/` or the active host's installed plugin/cache templates.
+SPINE.md template not found. Check the spine-toolkit plugin root's `templates/` or the active host's installed plugin/cache templates.
 
 ## auq_create_tasks_structure
 Create the `Tasks/` structure for managing tasks? [Yes / No]
@@ -34,27 +34,41 @@ Workflow mode
 How much a profile run narrates itself
 
 ## auq_reconfigure_toolkit
-spine-toolkit is already configured (`CLAUDE-spine-toolkit.md` exists). What should I do?
+spine-toolkit is already configured (`SPINE.md` exists). What should I do?
 
 ## auq_reconfigure_toolkit_options
 Overwrite | Backup-and-overwrite | Cancel
 
 ## auq_migrate_old_format
-Detected the old single-file format (`CLAUDE.md` contains toolkit sections). I will migrate to the two-file layout: move toolkit sections to `CLAUDE-spine-toolkit.md`, keep your sections in `CLAUDE.md`, insert the import line, and back up the original to `CLAUDE.md.bak`. Proceed?
+Detected the old single-file format (`CLAUDE.md` contains toolkit sections). I will migrate to the two-file layout: move toolkit sections to `SPINE.md`, keep your sections in `CLAUDE.md`, insert the import line, and back up the original to `CLAUDE.md.bak`. Proceed?
 
 ## auq_migrate_old_format_options
 Migrate-and-backup | Cancel
 
 ## auq_migrate_config_name
-Found a pre-split config `CLAUDE-swift-toolkit.md`. I will rename it to `CLAUDE-spine-toolkit.md`, add the `## Platform` block naming `{plugin}`, reconcile `## Stack` against that platform's current axes, repoint the import line in `CLAUDE.md`, and back up the original. Everything the file already answers is kept, not re-asked. Proceed?
+Found a pre-split config `CLAUDE-swift-toolkit.md`. I will rename it to `SPINE.md`, add the `## Platform` block naming `{plugin}`, reconcile `## Stack` against that platform's current axes, repoint the import line in `CLAUDE.md`, and back up the original. Everything the file already answers is kept, not re-asked. Proceed?
 
 ## auq_migrate_config_name_options
 Migrate-and-backup | Cancel
 
+## auq_migrate_spine_name
+Your project carries its toolkit config under the old name `CLAUDE-spine-toolkit.md`. Rename it to `SPINE.md`? Nothing inside changes except the title line, and the import line in `CLAUDE.md` is updated to match. Keeping the old name is fine too: every reader accepts both.
+
+## auq_migrate_spine_name_options
+Rename | Keep the old name
+
+## report_spine_name_migrated
+✅ Renamed `CLAUDE-spine-toolkit.md` → `SPINE.md`; `CLAUDE.md` now imports `@./SPINE.md`.
+
+To roll back: `mv SPINE.md CLAUDE-spine-toolkit.md` and put the import line in `CLAUDE.md` back to `@./CLAUDE-spine-toolkit.md`.
+
+## report_spine_name_kept
+Kept `CLAUDE-spine-toolkit.md`; the toolkit keeps reading it as before. Run `/setup` again whenever you want it renamed to `SPINE.md`.
+
 ## setup_done
 ✅ spine-toolkit configured in this project.
 
-`CLAUDE-spine-toolkit.md` written:
+`SPINE.md` written:
   - Platform: {platform}
   - Stack: {stack}
   - Mode: {mode}
@@ -72,7 +86,7 @@ Next steps:
 ## report_migration_success
 ✅ Migrated to the two-file layout.
 
-Moved to `CLAUDE-spine-toolkit.md`: {moved_sections}
+Moved to `SPINE.md`: {moved_sections}
 Kept in `CLAUDE.md`: {kept_sections}
 Filled with defaults: {filled_default_sections}
 Fields left at their default: {filled_default_fields}
@@ -80,17 +94,17 @@ Warnings: {warnings}
 Backup: {backup_path}
 {notes}
 
-To roll back: `mv {backup_path} CLAUDE.md && rm CLAUDE-spine-toolkit.md`
+To roll back: `mv {backup_path} CLAUDE.md && rm SPINE.md`
 
 ## report_block_migration
-✅ `CLAUDE-spine-toolkit.md` is now in the 2.0 field format. Nothing was asked: every value came from the file itself.
+✅ `{config_name}` is now in the 2.0 field format. Nothing was asked: every value came from the file itself.
 
 Moved into fields: {moved_fields}
 Fields left at their default: {filled_default_fields}
 Kept unchanged: {kept_blocks}
 Backup: {backup_path}
 
-To roll back: `mv {backup_path} CLAUDE-spine-toolkit.md`
+To roll back: `mv {backup_path} {config_name}`
 
 ## stack_status_deferred
 not set — this platform ships no setup skill; the orchestrator will ask per axis on the first task that needs one

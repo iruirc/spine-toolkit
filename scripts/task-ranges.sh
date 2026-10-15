@@ -58,7 +58,7 @@ def inside(path, folder):
 # resolve-settings.sh found no config above the task dir: HOME_ARG arrived empty.
 HOME = os.path.realpath(HOME_ARG) if HOME_ARG else None
 if not HOME:
-    die('no CLAUDE-spine-toolkit.md at or above %s' % TASK)
+    die('no project config (SPINE.md) at or above %s' % TASK)
 TASKS = next((d for d in ancestors(TASK) if os.path.basename(d) == 'Tasks'), TASK)
 
 
