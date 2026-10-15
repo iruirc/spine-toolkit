@@ -12,6 +12,7 @@ Bootstraps spine-toolkit in an **already existing** project. Two-file layout:
 
 - `SPINE.md` — toolkit-owned configuration, the *project config* (`conventions/task-settings.md` → Project config); its sections are the ones `templates/spine-md/en.md` carries. Created and updated by this skill. A project set up before the toolkit ran in more than one runtime carries the same file as `CLAUDE-spine-toolkit.md`; every reader accepts that name, and state G below renames it on request.
 - `CLAUDE.md` — user-owned project instructions. Touched once to insert the `@./SPINE.md` line; otherwise unchanged.
+- `AGENTS.md` — touched only when this skill runs in Codex CLI, which reads `AGENTS.md` and no `@`-import: one marked block pointing at the project config (see **AGENTS.md (Codex CLI)**).
 
 This skill owns the config **format** and every block or field that is core's: `[LANG]`, `[WORKFLOW_MODE]`, `[PROGRESS]`, `## Platform`, `## Agents`, and the file-level scaffolding. It owns none of the stack: `## Stack` and `## Modules` are filled by the platform half (step 5), because which axes exist and which values they take is the platform manifest's `## Axes`, not core's.
 
@@ -48,6 +49,8 @@ Special case for `setup`: the project config does not yet exist on first install
 The full resolution procedure used elsewhere — read the project config's `[LANG]` field — applies after `setup` has finished.
 
 ## Agent Tooling
+
+**Runtime.** This skill names Claude Code tools. `<runtime>` is the host you run in: `claude-code` in Claude Code, `codex-cli` in Codex CLI. Outside Claude Code, read `<core root>/runtimes/<runtime>.md` before anything else: it maps each tool named here — the structured question, loading `<platform>:manifest` and the platform's setup skill — to the host's own.
 
 Use `conventions/agent-tooling.md` for host-neutral interaction and file-access
 terms.
@@ -242,7 +245,8 @@ anything — which is what lets F take the language and the platform from the fi
    STATE G (legacy_name):
      a. AUQ `auq_migrate_spine_name` with options `auq_migrate_spine_name_options`
         (Rename / Keep the old name).
-        - Keep the old name → no disk changes; report `report_spine_name_kept`. Every reader
+        - Keep the old name → no change to the config or CLAUDE.md; run step 6c, then report
+          `report_spine_name_kept`. Every reader
           keeps accepting the file under that name.
         - Rename → continue.
      b. `mv CLAUDE-spine-toolkit.md SPINE.md`. No backup: the rename is reversible by one `mv`,
@@ -254,7 +258,7 @@ anything — which is what lets F take the language and the platform from the fi
         carries `@./SPINE.md`, in which case leave it alone. A CLAUDE.md that does not exist is
         created from the stub as in the edge sub-state above, whichever answer was given: with
         Keep the old name the stub imports `@./CLAUDE-spine-toolkit.md`, the file the project has.
-     e. Report `report_spine_name_migrated`, whose rollback hint is
+     e. Run step 6c (**AGENTS.md (Codex CLI)**). Report `report_spine_name_migrated`, whose rollback hint is
         `mv SPINE.md CLAUDE-spine-toolkit.md` plus restoring the import line. Stop. Every value
         is already in the file, so steps 5, 6 and 6b have nothing to ask; run `/setup` again
         (state C) to reconfigure.
@@ -297,6 +301,9 @@ anything — which is what lets F take the language and the platform from the fi
    Declaring what a project's documentation is stays the project's own work: the template ships
    two examples to delete, not a guess at this project's components.
 
+6c. AGENTS.md, in Codex CLI only — see **AGENTS.md (Codex CLI)** below. Runs in every state,
+   state F included: it asks nothing.
+
 7. Render the report:
    - States A/B/C/E → key `setup_done` with placeholders {platform}, {stack}, {mode},
      {progress}, {lang}, {tasks_status}, {docs_map_status}, {notes}.
@@ -307,6 +314,7 @@ anything — which is what lets F take the language and the platform from the fi
      {filled_default_fields}, {kept_blocks}, {backup_path}, {config_name}.
    - State G → key `report_spine_name_migrated` after a rename, `report_spine_name_kept` after
      Keep; neither takes a placeholder.
+   Then, when step 6c changed or found `AGENTS.md`, the line it names, on a line of its own.
    {notes} is the platform half's returned notes, one per line, already rendered in <lang>;
    empty when it reconciled nothing. It is the only place those lines surface, so a rewrite
    the platform performed silently would be a rewrite the user never sees.
@@ -314,6 +322,33 @@ anything — which is what lets F take the language and the platform from the fi
 
 One report, rendered here: the platform half is a delegate, not a second entry point, so its
 returned axis lines fill `{stack}` rather than printing a report of their own.
+
+## AGENTS.md (Codex CLI)
+
+Codex CLI reads `AGENTS.md`, not `CLAUDE.md`, and expands no `@./` import, so the project config
+reaches it through a sentence. Which runtime you are in is this skill's Runtime paragraph
+(**Agent Tooling**).
+
+- In Claude Code: nothing — `AGENTS.md` is neither read nor written.
+- In Codex CLI (`codex-cli`), after the state's branch wrote or kept the config:
+  - `AGENTS.md` absent → create it from `templates/agents-md-stub/<lang>.md`; report
+    `report_agents_md_created`.
+  - present without the line `<!-- spine: project config -->` → back it up to `AGENTS.md.bak`
+    (`.bak.YYYYMMDD-HHMMSS` on collision), then append the stub's block — the marker and the
+    sentence, without the stub's H1 — after one blank line at the end; report
+    `report_agents_md_appended` with {backup_path}.
+  - present with that line, and the sentence under it names the config file the project has →
+    leave it untouched, no backup; report `report_agents_md_kept`.
+  - present with that line, but the sentence under it names a different config file (an earlier
+    run kept `CLAUDE-spine-toolkit.md`, this one renamed it) → back it up as above, replace that
+    file name in the sentence under the marker and nothing else; report
+    `report_agents_md_updated` with {backup_path}.
+- The block names the config file the project has after this run: `SPINE.md`, or
+  `CLAUDE-spine-toolkit.md` when state G kept the old name — then write that name in place of
+  `SPINE.md` in the block.
+
+The template resolves like every other (`conventions/agent-tooling.md` → Plugin Roots). Nothing else
+of `CLAUDE.md` is copied into `AGENTS.md`, and nothing is written under `.codex/`.
 
 ## Migration Algorithm (states D, E and F)
 
@@ -486,7 +521,8 @@ In `templates/claude-md-stub/<lang>.md`:
 - **No platform plugin installed** → `error_no_platform_installed`. Stop. No disk changes.
 - **Templates not found** → `error_template_not_found`. Stop.
 - **AUQ unavailable** → text fallback with numbered options.
-- **User cancels** (Cancel on the AUQ in state C, D or E; Keep the old name in state G) → exit, no disk changes.
+- **User cancels** (Cancel on the AUQ in state C, D or E) → exit, no disk changes. Keep the old name in
+  state G is not a cancel: the config and CLAUDE.md stay as they are, and step 6c still runs.
 - **Tasks/ already exists** → no overwrite; report `tasks_status_already_existed`.
 - **The registry already exists** → no overwrite; report `docs_map_status_already_existed`.
 

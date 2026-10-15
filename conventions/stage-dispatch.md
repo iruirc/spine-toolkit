@@ -3,7 +3,7 @@
 A `workflow-*` stage that names a role names its owner. The agent that role resolves to is an
 execution contract, not a hint: the stage runs inside that agent, dispatched with the host's
 subagent mechanism (`subagent_type=<the agent the orchestrator resolved for this stage's role>` in
-Claude Code). Stage work performed in the main context loses the two things the stage has an agent
+Claude Code; in another host, per `runtimes/<runtime>.md`). Stage work performed in the main context loses the two things the stage has an agent
 for — an isolated context and an independent look.
 
 The same contract holds when the profile runs as a workflow script (`workflows/profile-*.js`): the
@@ -150,8 +150,9 @@ Neither falls to the agent's frontmatter, because a platform agent declares no m
 (`conventions/platform-contract.md` → `## Roles`).
 
 Method A passes both through the prelude's `tuning(role, kind)`. Method B passes the model with the
-dispatch and cannot pass effort: the host's dispatch takes no such parameter, so every stage runs at
-the session's effort and the orchestrator says so once. Under Method B the walkthrough, its check and
+dispatch and, in Claude Code, cannot pass effort: the host's dispatch takes no such parameter, so every
+stage runs at the session's effort and the orchestrator says so once. In another host, what the
+dispatch carries is in `runtimes/<runtime>.md`. Under Method B the walkthrough, its check and
 its revision, and the security triage, are the calls outside a stage that still get an agent, and
 the `mechanical` ones and Done run in the main context.
 Work in the main context — the orchestrator, a

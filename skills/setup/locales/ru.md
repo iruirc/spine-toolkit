@@ -129,3 +129,15 @@ DocsMap.md: {docs_map_status}
 
 ## docs_map_status_skipped
 пропущен
+
+## report_agents_md_created
+Создан `AGENTS.md`: через него Codex читает конфиг проекта.
+
+## report_agents_md_appended
+В конец `AGENTS.md` добавлен блок про конфиг проекта (бэкап: `{backup_path}`).
+
+## report_agents_md_kept
+`AGENTS.md` уже указывает Codex на конфиг проекта; оставлен как есть.
+
+## report_agents_md_updated
+`AGENTS.md` теперь называет переименованный конфиг проекта (бэкап: `{backup_path}`).

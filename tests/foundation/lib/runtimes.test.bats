@@ -45,3 +45,17 @@ PY
   [ "$(python3 -c 'import json; print(json.load(open("'"$ROOT"'/runtimes/codex-cli.json"))["models"])')" = "any" ]
   [ "$(python3 -c 'import json; print(json.load(open("'"$ROOT"'/runtimes/codex-cli.json"))["model_defaults"])')" = "{}" ]
 }
+
+@test "every runtime but claude-code has a markdown map" {
+  for f in "$ROOT"/runtimes/*.json; do
+    id="$(basename "$f" .json)"
+    [ "$id" = claude-code ] || [ -f "$ROOT/runtimes/$id.md" ] || { echo "no runtimes/$id.md"; false; }
+  done
+}
+
+@test "the Codex map names the tools a stage needs" {
+  f="$ROOT/runtimes/codex-cli.md"
+  for s in spawn_agent fork_turns '"none"' wait_agent request_user_input_async '--runtime codex-cli' 'agents/<agent>.md'; do
+    grep -qF -- "$s" "$f" || { echo "missing: $s"; false; }
+  done
+}

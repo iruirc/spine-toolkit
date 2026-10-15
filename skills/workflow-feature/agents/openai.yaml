@@ -1,4 +1,5 @@
 interface:
   display_name: "Feature Workflow"
   short_description: "Help with Feature Workflow tasks"
-  default_prompt: "Use $workflow-feature to handle Feature Workflow work."
+policy:
+  allow_implicit_invocation: false

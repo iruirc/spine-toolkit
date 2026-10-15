@@ -231,3 +231,46 @@ transcript() {
   run "$SL" watch --dir "$T/wf" --stall 300 --idle 99999 --since $((STAGE_LEFTOVERS_NOW - 400))
   [ "$status" -eq 4 ] || { echo "$output"; return 1; }
 }
+
+# --- The session above the script: Claude Code or Codex CLI (runtimes/codex-cli.md → Scripts) ---
+
+@test "the session is found above the script under codex" {
+  unset STAGE_LEFTOVERS_SESSION_PID
+  { row 300 1 09:00:00 'codex'; row 400 300 09:00:01 '/bin/zsh -lc x'; row 500 400 09:00:02 bash; } >"$T/ps"
+  STAGE_LEFTOVERS_SELF=500 run "$SL" snap --out "$T/snap"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "the session is still found under claude" {
+  unset STAGE_LEFTOVERS_SESSION_PID
+  { row 300 1 09:00:00 'claude'; row 400 300 09:00:01 '/bin/zsh -c x'; row 500 400 09:00:02 bash; } >"$T/ps"
+  STAGE_LEFTOVERS_SELF=500 run "$SL" snap --out "$T/snap"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "a process merely named like codex is not the session" {
+  unset STAGE_LEFTOVERS_SESSION_PID
+  { row 400 1 09:00:01 'codex-helper'; row 500 400 09:00:02 bash; } >"$T/ps"
+  STAGE_LEFTOVERS_SELF=500 run "$SL" snap --out "$T/snap"
+  [ "$status" -eq 2 ]
+  grep -qF 'no claude or codex process above this one' <<<"$output"
+}
+
+@test "a sandbox that refuses ps is named, not mistaken for a missing session" {
+  unset STAGE_LEFTOVERS_SESSION_PID STAGE_LEFTOVERS_PS
+  mkdir -p "$T/bin"
+  printf '#!/bin/sh\necho "ps: Operation not permitted" >&2\nexit 1\n' >"$T/bin/ps"; chmod +x "$T/bin/ps"
+  PATH="$T/bin:$PATH" run "$SL" snap --out "$T/snap"
+  [ "$status" -eq 2 ]
+  grep -qF 'ps is not permitted here' <<<"$output"
+}
+
+@test "a build left under a codex shell is shown: Codex runs commands as zsh -lc" {
+  row 300 1 09:00:00 codex >"$T/ps"
+  STAGE_LEFTOVERS_SESSION_PID=300 snap
+  { row 310 300 14:00:00 '/bin/zsh -lc ./build.sh'
+    row 311 310 14:00:01 'xcodebuild test -scheme App'; } >>"$T/ps"
+  STAGE_LEFTOVERS_SESSION_PID=300 run "$SL" diff "$T/snap"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+  [[ "$output" == "process pid=311 "* ]] || { echo "$output"; return 1; }
+}

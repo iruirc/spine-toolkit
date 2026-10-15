@@ -20,8 +20,9 @@ core_grep() {
   [ -z "$offenders" ] || { echo "legacy config name outside the whitelist:"; echo "$offenders"; return 1; }
 }
 
-@test "the orchestrator resolves settings for the claude-code runtime" {
-  grep -qE 'resolve-settings\.sh"? json .*--runtime claude-code' "$ROOT/skills/orchestrator/SKILL.md"
+@test "the orchestrator resolves settings for the runtime it names, claude-code in Claude Code" {
+  grep -qE 'resolve-settings\.sh"? json .*--runtime <runtime>' "$ROOT/skills/orchestrator/SKILL.md"
+  grep -qF '`claude-code` in Claude Code' "$ROOT/skills/orchestrator/SKILL.md"
 }
 
 @test "orchestrator messages point an unmigrated project at its own config, not at SPINE.md" {

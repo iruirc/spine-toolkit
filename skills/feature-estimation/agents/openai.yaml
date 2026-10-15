@@ -1,4 +1,5 @@
 interface:
   display_name: "Feature Estimation"
   short_description: "Scenario estimates with confidence and delivery calendar"
-  default_prompt: "Use $feature-estimation to estimate app feature work with scoped risk deltas, confidence/maturity labels, and delivery-calendar conversion."
+policy:
+  allow_implicit_invocation: false

@@ -1,4 +1,5 @@
 interface:
   display_name: "Bug Workflow"
   short_description: "Help with Bug Workflow tasks"
-  default_prompt: "Use $workflow-bug to handle Bug Workflow work."
+policy:
+  allow_implicit_invocation: false

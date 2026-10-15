@@ -1,0 +1,5 @@
+interface:
+  display_name: "Test Authoring"
+  short_description: "Driven by the spine-toolkit orchestrator"
+policy:
+  allow_implicit_invocation: false

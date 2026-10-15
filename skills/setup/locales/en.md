@@ -129,3 +129,15 @@ already existed, left untouched
 
 ## docs_map_status_skipped
 skipped
+
+## report_agents_md_created
+Created `AGENTS.md`: Codex reads the project config through it.
+
+## report_agents_md_appended
+Added the project config block to the end of `AGENTS.md` (backup: `{backup_path}`).
+
+## report_agents_md_kept
+`AGENTS.md` already points Codex at the project config; left as it was.
+
+## report_agents_md_updated
+`AGENTS.md` now names the renamed project config (backup: `{backup_path}`).

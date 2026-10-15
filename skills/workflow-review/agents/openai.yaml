@@ -1,4 +1,5 @@
 interface:
   display_name: "Review Workflow"
   short_description: "Help with Review Workflow tasks"
-  default_prompt: "Use $workflow-review to handle Review Workflow work."
+policy:
+  allow_implicit_invocation: false

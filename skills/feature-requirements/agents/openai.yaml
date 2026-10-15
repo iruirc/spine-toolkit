@@ -1,4 +1,5 @@
 interface:
   display_name: "Feature Requirements"
   short_description: "Help with Feature Requirements tasks"
-  default_prompt: "Use $feature-requirements to handle Feature Requirements work."
+policy:
+  allow_implicit_invocation: false

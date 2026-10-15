@@ -19,14 +19,16 @@ one or more bounded questions with options.
 ## Subagent Dispatch
 
 `subagent dispatch` means the active host's mechanism for running a unit of work in a separate
-agent context — the Task tool with `subagent_type=<plugin>:<agent>` in Claude Code.
+agent context — the Task tool with `subagent_type=<plugin>:<agent>` in Claude Code; in another host,
+per `runtimes/<runtime>.md` (the orchestrator's Runtime paragraph names `<runtime>`).
 
 - Every `workflow-*` stage that names a role is dispatched this way, to the agent that role
   resolved to. The contract, including what to do when the host offers no such mechanism, is
   `conventions/stage-dispatch.md`.
 - The model and effort a dispatch runs with come from
   `conventions/stage-dispatch.md` → Model and effort. In Claude Code the model travels as the
-  dispatch's `model` parameter; the dispatch has no effort parameter.
+  dispatch's `model` parameter; the dispatch has no effort parameter. In another host, per
+  `runtimes/<runtime>.md`.
 - Some hosts carry a standing instruction not to spawn subagents unasked. A spine-toolkit command
   is the user asking; that skill's own text says so.
 

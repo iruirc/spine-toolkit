@@ -12,6 +12,8 @@ Single entry point for routing tasks from `Tasks/<STATUS>/<task_id>-*/` into the
 
 The skill itself does not perform the work of stages — it only resolves parameters, validates the command, confirms with the user (in `manual` mode), and dispatches control to the profile workflow.
 
+**Runtime.** This skill and the skills it loads name Claude Code tools. `<runtime>` is the host you run in: `claude-code` in Claude Code, `codex-cli` in Codex CLI. Outside Claude Code, read `<core root>/runtimes/<runtime>.md` before anything else: it maps each tool named here to the host's own.
+
 ## Language Resolution
 
 Before producing any user-facing string:
@@ -207,8 +209,8 @@ Algorithm:
    ↓ profile = workflow-<TASK_TYPE.lower()>
 
 3. Resolve the settings — one call, every field:
-     bash "<core root>/scripts/resolve-settings.sh" json <task dir> --runtime claude-code [--set <field>=<value> ...]
-   • `--runtime` names the host this skill runs in — `claude-code` in Claude Code — and selects
+     bash "<core root>/scripts/resolve-settings.sh" json <task dir> --runtime <runtime> [--set <field>=<value> ...]
+   • `--runtime` names the host this skill runs in — `<runtime>` per the Runtime paragraph above — and selects
      the model and effort vocabulary in `runtimes/<id>.json` (`conventions/task-settings.md` →
      Runtime). It is stated, never inferred from the environment.
    • one --set per run_settings entry, from the request or from Run.json (The run's own words)
@@ -322,7 +324,7 @@ Algorithm:
 
 5.7. Resolve agents (per-role) — the map every stage dispatches through:
    • platform := first non-empty line of ## Platform in the project config
-   • invoke `<platform>:manifest`, read its ## Roles table
+   • load `<platform>:manifest` (the `Skill` tool in Claude Code; elsewhere per `runtimes/<runtime>.md`), read its ## Roles table
      ↓ if ## Platform is absent or empty, or the manifest skill does not load →
        error using key `error_no_platform_manifest` and stop
        (`{plugin}` := the ## Platform name, or `—` when the section is absent or empty)
@@ -681,7 +683,7 @@ On a non-empty `handback` the orchestrator runs that stage itself in the main co
 
 `status: error` with `reason: no-args` means the contract never reached the script. Do not run the stage by hand and do not slide over to Method B as if nothing happened — say what happened, then re-dispatch with the contract filled. `reason: no-plugin-root` is the same stop for one field: re-dispatch with `plugin_root` as `resolve-settings.sh json` printed it.
 
-**Method B — invoke.** This call shows the opening block too, through the same hook: a skill's first stage is as silent from outside as a workflow. Then invoke the `Skill` tool with the name from the table and `args` in Outbound Contract format.
+**Method B — invoke.** This call shows the opening block too, through the same hook: a skill's first stage is as silent from outside as a workflow. Then load the skill with the name from the table — the `Skill` tool with `args` in Outbound Contract format in Claude Code; elsewhere per `runtimes/<runtime>.md`, the contract in the same format.
 
 ## Progress reporting
 
