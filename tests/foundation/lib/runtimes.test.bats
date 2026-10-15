@@ -69,6 +69,17 @@ PY
   grep -qiF 'never paraphrase' <<<"$sec"
 }
 
+@test "the Codex map asks through the request_user_input menu when Default mode allows it" {
+  # Interactive Codex 0.162.1 draws a menu for request_user_input once default_mode_request_user_input is on;
+  # its description then names Default mode, and without the feature a call fails with "unavailable in".
+  f="$ROOT/runtimes/codex-cli.md"
+  row="$(grep -F '`AskUserQuestion`' "$f")"
+  for s in '`functions.request_user_input`' 'Default mode' 'unavailable in' 'more than three options'; do
+    grep -qF -- "$s" <<<"$row" || { echo "missing: $s"; false; }
+  done
+  ! grep -qF 'does not offer it' <<<"$row"
+}
+
 @test "the Codex map says a spine question is not a permission request" {
   # Codex reserves request_user_input for optional questions, never permission requests; a manual-mode
   # confirmation read as permission falls back to the async tool, which the CLI shows as plain text.
