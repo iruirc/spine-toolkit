@@ -205,7 +205,7 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
 }
 
 @test "the template's own [BUDGETS] line is not a budget" {
-  grep -F '[BUDGETS]' "$ROOT/templates/claude-toolkit-md/en.md" >>"$PROJ/CLAUDE-spine-toolkit.md"
+  grep -F '[BUDGETS]' "$ROOT/templates/spine-md/en.md" >>"$PROJ/CLAUDE-spine-toolkit.md"
   lines "$TASK/Plan.md" 199
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }

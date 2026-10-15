@@ -21,7 +21,7 @@ check of its own in place of the ratchet (`skills/workflow-quick/SKILL.md`).
 ## Resolution
 
 ```
-Task.md [SCALE]  →  the epic's Task.md [SCALE] for a .step/ folder  →  CLAUDE-spine-toolkit.md [SCALE]  →  full
+Task.md [SCALE]  →  the epic's Task.md [SCALE] for a .step/ folder  →  the project config [SCALE]  →  full
 ```
 
 First hit wins. A missing field is the default, not an error. The orchestrator resolves this once

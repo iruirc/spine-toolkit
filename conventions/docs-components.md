@@ -1,7 +1,7 @@
 # Documentation Components
 
 A **component** is a named unit of documentation a project declares once and refers to by name
-ever after. The declaration lives in `DocsMap.md`; the levers are `CLAUDE-spine-toolkit.md`'s
+ever after. The declaration lives in `DocsMap.md`; the levers are the project config's (`SPINE.md`)
 `[DOCS]`, `[DOCS_MAP]`, `[DOCS_STRICTNESS]` and `[DOCS_FRESHNESS]`; the matching is
 `scripts/docs-route.sh`.
 

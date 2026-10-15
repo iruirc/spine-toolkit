@@ -14,14 +14,14 @@ Creates a numbered task folder + Task.md scaffold and fills it with the user's f
 
 Before producing any user-facing string:
 
-1. Read `CLAUDE-spine-toolkit.md` from the project root.
+1. Read the project config from the project root (core's `conventions/task-settings.md` → Project config).
 2. Find the `[LANG]` field.
 3. Take the field's value, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
 
-Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine-toolkit.md per string.
+Caching: resolve `<lang>` once per skill invocation; do not re-read the project config per string.
 
 ## Triggers
 
@@ -109,7 +109,7 @@ For reference, the templates contain these placeholders:
    - Stack traces / crashlogs → `## 6. [StackTrace]` (only if present)
    The prose follows the user's natural language. The headings themselves are not touched.
    Apply the `task-documents` skill, its section on a root task's `Task.md`: keep the owner's words in the what-and-why layer, give an example only where the owner gave one, and write what the owner left open as an open question.
-9. **Optional override lines** — append via Edit immediately after the `[NEED_REVIEW]` line, one per line, only where the user explicitly asked for something other than the project default. Each one overrides the field of the same name in `CLAUDE-spine-toolkit.md`. Otherwise leave the template as is (the commented-out lines stay as documentation).
+9. **Optional override lines** — append via Edit immediately after the `[NEED_REVIEW]` line, one per line, only where the user explicitly asked for something other than the project default. Each one overrides the field of the same name in the project config. Otherwise leave the template as is (the commented-out lines stay as documentation).
    - `[WORKFLOW_MODE] = [<manual|auto>]`.
    - `[DRIVE_APP] = [<auto|off>]` — write `off` when the user says the UI check of this particular task has to be done by hand.
    - `[DRIVER] = [<plugin>|auto|—]` — write it only when this

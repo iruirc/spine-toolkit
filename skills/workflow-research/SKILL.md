@@ -19,14 +19,14 @@ The profile workflow for tasks with `[TASK_TYPE] = RESEARCH`. Pure investigation
 
 Before producing any user-facing string:
 
-1. Read `CLAUDE-spine-toolkit.md` from the project root.
+1. Read the project config from the project root (core's `conventions/task-settings.md` → Project config).
 2. Find the `[LANG]` field.
 3. Take the field's value, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
 
-Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine-toolkit.md per string.
+Caching: resolve `<lang>` once per skill invocation; do not re-read the project config per string.
 
 ## 1. Input Contract
 
@@ -53,7 +53,7 @@ RESEARCH-profile specifics:
 - `research_agent` — **RESEARCH-specific optional field** (added in the orchestrator's Outbound Contract for this profile only). Values are BARE role names: `architect` (default) | `diagnostics` | `security`. Workflow-research resolves the role through the contract's `agents` map at dispatch time, mirroring how `[TASK_TYPE]` carries `FEATURE` rather than `spine-toolkit:workflow-feature`. If unset or empty → fall back to `architect`. If set to any other value → return `{status: error, reason: invalid_research_agent}` before dispatching a subagent.
 - `research_experiment` — **RESEARCH-specific field**, `on` or `off`, always filled for this profile. `on` is the task owner's permission for the Research stage to answer by an experiment (§2c); `off` is the profile exactly as it was. Absent reads as `off` — an orchestrator from before the field. Any other value → return `{status: error, reason: invalid_research_experiment}` before dispatching a subagent.
 
-**Stack envelope.** `stack_axes_envelope: { may: [], never: all }` — same as REVIEW and EPIC. The project `## Stack` from `CLAUDE-spine-toolkit.md` is read raw as ambient context; no per-axis chain, no AUQ.
+**Stack envelope.** `stack_axes_envelope: { may: [], never: all }` — same as REVIEW and EPIC. The project `## Stack` from the project config is read raw as ambient context; no per-axis chain, no AUQ.
 
 **Execution range.** Stages run in the order Research → Review → Done, starting at `start_stage` and continuing through `end_stage` inclusive. If `end_stage=null` — through the end of the profile. If `end_stage` precedes `start_stage` in order, that is a contract error: return `{status: error, reason: "end_stage before start_stage"}`. If `need_review=false` and the natural flow reaches Review — skip it and go straight to Done.
 
@@ -120,7 +120,7 @@ the ordinary case here, not the exception.
   still open across all phases; report them, do not enforce them.
 
 All of it is skipped by a stage that changes no files, by a task whose `Task.md` carries `[DOCS] =
-[off]`, by a project whose `CLAUDE-spine-toolkit.md` carries the same, and by a project that declares
+[off]`, by a project whose config carries the same, and by a project that declares
 no components at all — neither in the map named by `[DOCS_MAP]`, `DocsMap.md` by default —
 nor in any package it holds, so a project that declares nothing is served by silence.
 Review reads `Docs.md` the way it reads

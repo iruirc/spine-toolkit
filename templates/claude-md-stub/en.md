@@ -1,6 +1,6 @@
 # {project_name}
 
-@./CLAUDE-spine-toolkit.md
+@./SPINE.md
 
 <!--
 This is your project-level Claude instructions file.

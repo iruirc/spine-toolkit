@@ -51,7 +51,9 @@ run = subprocess.run(['bash', os.path.join(os.environ['SPINE_CORE_ROOT'], 'scrip
                      env=dict(os.environ, CLAUDE_CODE_SESSION_ID=str(hook.get('session_id') or
                                                                   os.environ.get('CLAUDE_CODE_SESSION_ID', ''))))
 if run.returncode:
-    why = (run.stderr.strip().splitlines() or ['exit %d' % run.returncode])[0]
+    # The selected-config notice is information, not the error; the error is the line after it.
+    lines = [l for l in run.stderr.strip().splitlines() if not l.startswith('project config: ')]
+    why = (lines or ['exit %d' % run.returncode])[0]
     message = 'spine-toolkit: the opening block did not come out: %s' % why
 elif run.stdout.strip():
     message = run.stdout.rstrip('\n')

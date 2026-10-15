@@ -16,14 +16,14 @@ The skill itself does not perform the work of stages — it only resolves parame
 
 Before producing any user-facing string:
 
-1. Read `CLAUDE-spine-toolkit.md` from the project root.
+1. Read the project config from the project root (core's `conventions/task-settings.md` → Project config).
 2. Find the `[LANG]` field.
 3. Take the field's value, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
 
-Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine-toolkit.md per string.
+Caching: resolve `<lang>` once per skill invocation; do not re-read the project config per string.
 
 ## Agent Tooling
 
@@ -128,7 +128,7 @@ The orchestrator does not activate on every user request — light commands bypa
 2. **Task management** — "create task" / "new task" / "ft" / "create sub-task for N" → skill `task-new`. "Move task" / "to DONE" / "step N of epic M to <STATUS>" → skill `task-move`. Orchestrator does not run.
 3. **Micro-edit** — "fix" / "rename" / "change" + ≤2 files with no interface changes → execute directly with a quick build check. Orchestrator does not run.
 4. **Otherwise** — this is task work. The orchestrator runs:
-   - Is there a `CLAUDE-spine-toolkit.md`? No → answer with key `error_no_project_config` and stop. This precedes `task-new` and every question of the Resolution Algorithm on purpose: with no config there is no `## Platform`, so no manifest and no `agents` map, and nothing this branch resolves could be dispatched — scaffolding a task and asking about stack axes first would spend the user's answers on a dispatch that cannot happen. `error_no_platform_manifest` at step 5.7 is the neighbouring case, a config that exists but names no usable platform.
+   - Is there a project config (`SPINE.md`, or the pre-multi-runtime name)? No → answer with key `error_no_project_config` and stop. This precedes `task-new` and every question of the Resolution Algorithm on purpose: with no config there is no `## Platform`, so no manifest and no `agents` map, and nothing this branch resolves could be dispatched — scaffolding a task and asking about stack axes first would spend the user's answers on a dispatch that cannot happen. `error_no_platform_manifest` at step 5.7 is the neighbouring case, a config that exists but names no usable platform.
    - Is there a `Task.md` for `task_id`? Yes → read `[TASK_TYPE]`, `[WORKFLOW_MODE]` (if present), `## 4. [Stack]` (if present), `[STATUS]` (for steps).
    - No → run `task-new`, then continue.
    - Determine the profile from `[TASK_TYPE]` (see Dispatch).
@@ -207,7 +207,10 @@ Algorithm:
    ↓ profile = workflow-<TASK_TYPE.lower()>
 
 3. Resolve the settings — one call, every field:
-     bash "<core root>/scripts/resolve-settings.sh" json <task dir> [--set <field>=<value> ...]
+     bash "<core root>/scripts/resolve-settings.sh" json <task dir> --runtime claude-code [--set <field>=<value> ...]
+   • `--runtime` names the host this skill runs in — `claude-code` in Claude Code — and selects
+     the model and effort vocabulary in `runtimes/<id>.json` (`conventions/task-settings.md` →
+     Runtime). It is stated, never inferred from the environment.
    • one --set per run_settings entry, from the request or from Run.json (The run's own words)
    • mode_override (NL: "automatically" / "step-by-step") wins over the `mode` field
    • progress_override (NL: "quietly" / "with live indication") wins over the `progress` field
@@ -228,7 +231,7 @@ Algorithm:
    4.1 envelope := workflow-<profile> frontmatter `stack_axes_envelope`
                    (absent → {may: all, never: []})
    4.2 if envelope.never == all:                       # review, epic
-          stack := raw read of CLAUDE-spine-toolkit.md ## Stack  # ambient info-only
+          stack := raw read of the project config's ## Stack  # ambient info-only
           # NO chain, NO AUQ, NO stack-detect; skip to step 5
           # 4.2 is load-bearing: stack-detect returns {} here, not the ambient text
    4.3 scope := task file scope
@@ -318,12 +321,12 @@ Algorithm:
    ↓ exit 2 from either call is a stop, as for resolve-settings.sh: report its stderr, dispatch nothing
 
 5.7. Resolve agents (per-role) — the map every stage dispatches through:
-   • platform := first non-empty line of ## Platform in CLAUDE-spine-toolkit.md
+   • platform := first non-empty line of ## Platform in the project config
    • invoke `<platform>:manifest`, read its ## Roles table
      ↓ if ## Platform is absent or empty, or the manifest skill does not load →
        error using key `error_no_platform_manifest` and stop
        (`{plugin}` := the ## Platform name, or `—` when the section is absent or empty)
-   • rows(role) := the ## Agents rows of CLAUDE-spine-toolkit.md for the roles that block names,
+   • rows(role) := the ## Agents rows of the project config for the roles that block names,
                    the manifest's ## Roles rows for every other role     # the config overrides per role
      # a ## Agents row is a line whose left-hand side is one of the nine role words, bare or
      # axis-qualified. The block's shipped body is explanatory prose with angle-bracket
@@ -365,7 +368,7 @@ files — the orchestrator owns the per-axis AUQ (locale keys
 `Task.md → ## 4. [Stack]` cache write, and concatenated serialization. Which
 axes exist, which values they take and which repo signals imply them are the
 manifest's `## Axes` and `## Heuristics` — core names no axis but `ecosystem`;
-projects override the global `## Stack` via `CLAUDE-spine-toolkit.md → ## Modules`.
+projects override the global `## Stack` via the project config's `## Modules`.
 The effective precedence is task-local `## 4. [Stack]` → module override →
 global `## Stack` → import scan. When
 `envelope.never == all` (review/epic), the project `## Stack` is read raw and
@@ -404,7 +407,7 @@ platform plugin updates. Three details the step's precedence list leans on:
   and not "framework". They all fail in the same direction, pinning an axis wrongly rather than
   leaving it unresolved, and
   telling them apart needs phrase-level analysis that would fail the same way more often.
-- **The `## Agents` override** in `CLAUDE-spine-toolkit.md` takes the same row grammar as the
+- **The `## Agents` override** in the project config takes the same row grammar as the
   manifest's `## Roles`. It is a per-role replacement, not a merge: for a role it names, the
   manifest's rows for that role — bare and axis-qualified alike — are not consulted at all. The
   block ships in every config and normally holds no row: a block whose only content is its own
@@ -510,11 +513,11 @@ Semantics of `stage_scope`:
 
 `task_dir` — the resolved task folder, `Tasks/<STATUS>/<task_id>-*/`, without a trailing slash. The orchestrator already holds this path (it archives into it), and passing it explicitly is what keeps two agents from disagreeing about which folder they are working in. Required: a Method A script has no filesystem access and cannot glob for it, and refuses to start without it.
 
-`lang` — the `<lang>` resolved by the Language Resolution section (`ru` | `en`; default `en`). Always filled. The subagent uses it for artifact **prose** and its final report; artifact **structure** stays EN regardless (see `conventions/i18n.md` → "Artifact authoring rule"). Passing it explicitly means workflow-* / subagents never re-read `CLAUDE-spine-toolkit.md` for output language.
+`lang` — the `<lang>` resolved by the Language Resolution section (`ru` | `en`; default `en`). Always filled. The subagent uses it for artifact **prose** and its final report; artifact **structure** stays EN regardless (see `conventions/i18n.md` → "Artifact authoring rule"). Passing it explicitly means workflow-* / subagents never re-read the project config for output language.
 
 `agents` — the role-to-agent map resolved in step 5.7. Always filled, always all nine roles, always in vocabulary order (`architect`, `developer`, `tester`, `reviewer`, `refactorer`, `validator`, `security`, `diagnostics`, `init`). Method B encodes it as the single line above; Method A passes the same object as real JSON, so a script reads `A.agents.architect` and gets `"fixture-platform:fixture-architect"` for the reference platform above. Keys are bare role names: the manifest's `role[axis=value]` form is resolved away in step 5.7 and never reaches the contract. A role the platform declared absent arrives as the em dash `—` in both encodings — a value a consumer checks for before dispatching, not a missing key, and the reason this field is never partial and never omitted. This is what lets a stage name its owner by role: which agent that role means is a property of the platform, not of the profile.
 
-`walkthrough` — whether the run writes `Walkthrough.md`, and at what depth. Always filled, for every profile, so a consumer reads one shape rather than testing for the field first. Resolved `Task.md` `[WALKTHROUGH]` → `off` when `scale` is `lite` (the `scale` field below owns that step) → `CLAUDE-spine-toolkit.md` `[WALKTHROUGH]` → `deep`; a missing field is the default, not an error. Three values: `deep` writes what changed, a glossary, the commit order and a section per commit; `brief` writes what changed, a summary, the divergences and a one-bullet-per-commit log; `off` writes nothing. `on` is the pre-depth value and resolves to `deep` at the link that carries it, ahead of the rest of the chain. It declared whether, never how deep, so there is no prior depth to preserve — `on` used to produce what `brief` now produces, so a chain that still carries it writes more than it did, and the run announces that once with key `warn_walkthrough_pre_depth`. It reaches a config `/setup` migrated with the value untouched, or a `Task.md` written before the depths existed; a config nobody migrated never gets that far, because the resolver refuses the old format outright. Any other value is reported and skipped, and the chain carries on past it: a typo in the task's own field lands on the project's `[WALKTHROUGH]` where it names one, and only a chain that names no usable value anywhere lands on `deep`. The run announces the skipped value once with key `warn_walkthrough_unrecognised` (placeholder `{value}`), which says what was skipped and not what was written; a silent fallback would hide a typo in a project's config for as long as nobody compared two walkthroughs. It travels in the contract because the script itself gates on it — a Method A run has no filesystem access and cannot read the value for itself. Always `off` for `profile=review` and `profile=research`, where the profile has no implementing stage and no diff of its own; if the task file sets it anyway, say once that it was not executed and why, rather than dropping it silently.
+`walkthrough` — whether the run writes `Walkthrough.md`, and at what depth. Always filled, for every profile, so a consumer reads one shape rather than testing for the field first. Resolved `Task.md` `[WALKTHROUGH]` → `off` when `scale` is `lite` (the `scale` field below owns that step) → the project config's `[WALKTHROUGH]` → `deep`; a missing field is the default, not an error. Three values: `deep` writes what changed, a glossary, the commit order and a section per commit; `brief` writes what changed, a summary, the divergences and a one-bullet-per-commit log; `off` writes nothing. `on` is the pre-depth value and resolves to `deep` at the link that carries it, ahead of the rest of the chain. It declared whether, never how deep, so there is no prior depth to preserve — `on` used to produce what `brief` now produces, so a chain that still carries it writes more than it did, and the run announces that once with key `warn_walkthrough_pre_depth`. It reaches a config `/setup` migrated with the value untouched, or a `Task.md` written before the depths existed; a config nobody migrated never gets that far, because the resolver refuses the old format outright. Any other value is reported and skipped, and the chain carries on past it: a typo in the task's own field lands on the project's `[WALKTHROUGH]` where it names one, and only a chain that names no usable value anywhere lands on `deep`. The run announces the skipped value once with key `warn_walkthrough_unrecognised` (placeholder `{value}`), which says what was skipped and not what was written; a silent fallback would hide a typo in a project's config for as long as nobody compared two walkthroughs. It travels in the contract because the script itself gates on it — a Method A run has no filesystem access and cannot read the value for itself. Always `off` for `profile=review` and `profile=research`, where the profile has no implementing stage and no diff of its own; if the task file sets it anyway, say once that it was not executed and why, rather than dropping it silently.
 
 `walkthrough_check` — whether a reader with none of the writer's context reads `Walkthrough.md` after each write that changed it, and the writer revises once from what that reader could not follow. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and how `auto` becomes a value. Always filled, for every profile, and only ever `on` or `off`: `auto` never reaches the contract, and wherever `walkthrough` is `off` this is `off` too. The protocol is `task-walkthrough` → `## Check`. It travels in the contract for the reason `walkthrough` does — a Method A script gates on it and has no filesystem to read it from.
 
@@ -523,7 +526,7 @@ Semantics of `stage_scope`:
 `docs` — whether this run has any documentation to route. Resolved by asking `<core root>/scripts/docs-route.sh state <project root> --task-dir <task dir>`, which walks the same chain the mechanism itself walks, in order: the lever resolves like every other field — the task's own `[DOCS]` decides alone when it is present, in either direction; for a `.step/` folder the epic's `[DOCS]` reaches it next; failing both, the project's `[DOCS]` decides (`conventions/task-settings.md`); and only if the run is on at all does the answer depend on whether anything is declared, in the project's registry or in one at any external package root. A registry that exists but does not parse answers `on`, deliberately — the run then meets the error by name instead of skipping a registry someone meant to be read. It travels in the contract for the reason `walkthrough` does — a Method A run has no filesystem access and cannot read the value for itself. The script is the single authority on the answer; do not re-derive it by reading the config, because the check spans the project's registry and one at every external package root.
 
 `scale` — how deep this task's pipeline goes. Resolved `Task.md` `[SCALE]` →
-`CLAUDE-spine-toolkit.md` `[SCALE]` → `full`; a missing field is the default, not an error.
+the project config's `[SCALE]` → `full`; a missing field is the default, not an error.
 Always filled, for every profile: `review` and `research` accept it and ignore it, having no
 implementing stage to make cheaper, and it is never omitted, so a consumer reads one shape rather
 than testing for the field first. It travels in the contract for the reason `walkthrough` does — a
@@ -532,7 +535,7 @@ three levers one value moves, and what the floor is at both: `conventions/task-s
 
 `scale` also moves the default under `walkthrough`, and loses to that field's own switch
 (`conventions/task-scale.md` → Explicit beats the axis): the chain reads `Task.md [WALKTHROUGH]` →
-`off` when `scale` is `lite` → `CLAUDE-spine-toolkit.md [WALKTHROUGH]` → `deep`.
+`off` when `scale` is `lite` → the project config's `[WALKTHROUGH]` → `deep`.
 
 **Receiving a raise.** A stage may return `scale_escalation: {to: "full", reason: "<what it
 found>"}` — the ratchet of `conventions/task-scale.md`, which owns the two points it may fire at
@@ -569,13 +572,13 @@ size belongs to the task, not to one dispatch.
 
 `budgets` — the line ceiling of every artifact core measures. Resolved by running `<core root>/scripts/lint-artifact-budget.sh --budgets <task dir>`, which reads the script's defaults and the project's `[BUDGETS]` over them; the brace map it prints is this field. Always filled, for every profile, so a consumer reads one shape rather than testing for the field first. Method B takes that line as it is; Method A passes the same object as real JSON with integer values, so a script reads `A.budgets['Task.md']` and gets `100` by default. It travels in the contract for the reason `walkthrough` does — a Method A script names a ceiling in a brief and has no filesystem to read it from. The script is the one reader of `[BUDGETS]`: do not re-derive the map from the config. Each line the script reports on stderr as not recognized is announced once with key `warn_budget_unrecognised` (placeholder `{line}`); it forwards only the resolver lines about the ceilings it asked for, which is what makes every line it prints a budget line. Which artifact is measured at which scale is not this field's business: `conventions/task-scale.md`.
 
-`models` — the model each dispatch runs on: a key for each of the eight roles the profiles dispatch, `light` for the calls whose work the script's own prompt defines, `walkthrough` for writing `Walkthrough.md`, and `done` for writing `Done.md`. Resolved by running `<core root>/scripts/resolve-settings.sh json <task dir>`, whose `models` field walks, key by key, `Task.md` `[MODELS]` → for a `.step/` folder, the epic's `Task.md` `[MODELS]` → `CLAUDE-spine-toolkit.md` `[MODELS]` → `sonnet` for `light` and `validator`, `session` for every other role and for `walkthrough` and `done`; that field is this field. Always filled, for every profile, `light`, `walkthrough` and `done` first and then the roles in vocabulary order without `init`, which no profile dispatches. Method B takes that map as it is; Method A passes the same object as real JSON, so a script reads `A.models.light` and gets `"sonnet"` by default. It travels in the contract for the reason `walkthrough` does — a Method A script sets each dispatch's model and has no filesystem to read it from. The script is the one reader of `[MODELS]`, in the config and in a task file alike: do not re-derive the map from the config. How a dispatch turns the map into a model is `conventions/stage-dispatch.md` → Model and effort. Each entry the script reports on stderr as not recognized is announced once with key `warn_tuning_unrecognised`, its placeholders filled from that line: `{source}` is the text before `: '`, `{entry}` the text between the quotes. This call is the one place a tuning warning is announced — no other script forwards one.
+`models` — the model each dispatch runs on: a key for each of the eight roles the profiles dispatch, `light` for the calls whose work the script's own prompt defines, `walkthrough` for writing `Walkthrough.md`, and `done` for writing `Done.md`. Resolved by running `<core root>/scripts/resolve-settings.sh json <task dir>`, whose `models` field walks, key by key, `Task.md` `[MODELS]` → for a `.step/` folder, the epic's `Task.md` `[MODELS]` → the project config's `[MODELS]` → the runtime's `model_defaults` (`runtimes/<id>.json`), which in Claude Code are `sonnet` for `light` and `validator`, `session` for every other role and for `walkthrough` and `done`; that field is this field. Always filled, for every profile, `light`, `walkthrough` and `done` first and then the roles in vocabulary order without `init`, which no profile dispatches. Method B takes that map as it is; Method A passes the same object as real JSON, so a script reads `A.models.light` and gets `"sonnet"` by default. It travels in the contract for the reason `walkthrough` does — a Method A script sets each dispatch's model and has no filesystem to read it from. The script is the one reader of `[MODELS]`, in the config and in a task file alike: do not re-derive the map from the config. How a dispatch turns the map into a model is `conventions/stage-dispatch.md` → Model and effort. Each entry the script reports on stderr as not recognized is announced once with key `warn_tuning_unrecognised`, its placeholders filled from that line: `{source}` is the text before `: '`, `{entry}` the text between the quotes. This call is the one place a tuning warning is announced — no other script forwards one.
 
-`effort` — the reasoning effort each dispatch runs at, a key for each of the same eight roles, `walkthrough` and `done`. Resolved by the same run of `resolve-settings.sh json`, over `Task.md` `[EFFORT]` → the epic's for a `.step/` folder → `CLAUDE-spine-toolkit.md` `[EFFORT]` → `session`; that field is this field. Always filled, for every profile, `walkthrough` and `done` first and then the roles in vocabulary order. Method B takes that map as it is; Method A passes the same object as real JSON. It travels in the contract, has one reader, and has what it cannot use announced exactly as `models` does. Only Method A can pass it per dispatch; what a Method B run says instead is in **Dispatch**.
+`effort` — the reasoning effort each dispatch runs at, a key for each of the same eight roles, `walkthrough` and `done`. Resolved by the same run of `resolve-settings.sh json`, over `Task.md` `[EFFORT]` → the epic's for a `.step/` folder → the project config's `[EFFORT]` → `session`; that field is this field. Always filled, for every profile, `walkthrough` and `done` first and then the roles in vocabulary order. Method B takes that map as it is; Method A passes the same object as real JSON. It travels in the contract, has one reader, and has what it cannot use announced exactly as `models` does. Only Method A can pass it per dispatch; what a Method B run says instead is in **Dispatch**.
 
 `long_run` — how long a command a stage agent runs may stay silent (`stall`) and may run at all (`max`), in minutes. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. The script hands both to every agent as the `--stall` and `--max` of `scripts/long-run.sh`, in seconds; Method A passes the object as real JSON, and Method B puts the same values, in seconds, in its dispatch prompt (`conventions/stage-dispatch.md`). When `stall` is not below `max`, the resolver's stderr line — `long_run: stall <n> is not below max <m>, the budget fires first` — is announced to the user as is; the values still apply as written.
 
-`roots` — the folders a stage agent may search for a file, the core root aside: the project root, then every folder `## Paths` in `CLAUDE-spine-toolkit.md` names under `External packages` or `Roots`, absolute. Printed by the same run of `resolve-settings.sh json`; always filled, for every profile. Method A passes the list as real JSON, Method B names it in its dispatch prompt (`conventions/stage-dispatch.md`); either way it becomes the brief's `Search roots:` line, which `conventions/agent-tooling.md` → Finding files turns into a rule. Absent, the brief names only the project root and the core root and the run goes on: unlike a missing `plugin_root`, a shorter list narrows the search without breaking it.
+`roots` — the folders a stage agent may search for a file, the core root aside: the project root, then every folder `## Paths` in the project config names under `External packages` or `Roots`, absolute. Printed by the same run of `resolve-settings.sh json`; always filled, for every profile. Method A passes the list as real JSON, Method B names it in its dispatch prompt (`conventions/stage-dispatch.md`); either way it becomes the brief's `Search roots:` line, which `conventions/agent-tooling.md` → Finding files turns into a rule. Absent, the brief names only the project root and the core root and the run goes on: unlike a missing `plugin_root`, a shorter list narrows the search without breaking it.
 
 `review_ranges` — what Review reads, per repository of the task, and what a `catch-up` validates: the JSON `task-ranges.sh ranges` printed in Resolution step 5.6, as described in `conventions/task-ranges.md`. `{}` when the range holds neither Review nor a catch-up, and for RESEARCH, REVIEW and EPIC. Method A passes the object as real JSON; Method B names each range in the Review stage's prompt (`conventions/stage-dispatch.md`).
 
@@ -1041,10 +1044,10 @@ The workflow-* subagent receives:
    final report in `lang`; artifact **structure** (headings, field labels,
    status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring
    rule". Passing `lang` explicitly means the subagent never re-reads
-   `CLAUDE-spine-toolkit.md` to decide output language. Name it in words —
+   the project config to decide output language. Name it in words —
    `English`, `Russian` — at the start of the prompt and again as its last
    line: a code on one line of a long English prompt is the line an agent loses.
 6. Agents: the `agents` map from the Outbound Contract — the role-to-agent
    binding each stage dispatches through.
 
-**The stack does not need to be re-sent in full text:** the skill does not read `CLAUDE-spine-toolkit.md` — stack, mode, and paths come from the context the active agent host typically loads at session start (when `CLAUDE.md` is present at the project root and imports `CLAUDE-spine-toolkit.md` via `@./`). The orchestrator parses this already-loaded context to resolve priorities.
+**The stack does not need to be re-sent in full text:** the skill does not read the project config — stack, mode, and paths come from the context the active agent host typically loads at session start (when `CLAUDE.md` is present at the project root and imports the project config via its `@./` line). The orchestrator parses this already-loaded context to resolve priorities.

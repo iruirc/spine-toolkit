@@ -16,7 +16,7 @@ section() { # $1 = file, $2 = heading text without "## "
 @test "the skill exists and resolves under its own name" {
   [ -f "$SKILL" ] || { echo "no skills/security-lens/SKILL.md"; return 1; }
   grep -qxF 'name: security-lens' "$SKILL" || { echo "frontmatter name is not security-lens"; return 1; }
-  grep -qF 'Governed by `[SECURITY]` in Task.md and CLAUDE-spine-toolkit.md.' "$SKILL" \
+  grep -qF 'Governed by `[SECURITY]` in Task.md and the project config.' "$SKILL" \
     || { echo "the description does not name the field that governs it"; return 1; }
 }
 

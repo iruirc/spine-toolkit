@@ -1,6 +1,6 @@
 ---
 name: manual-checks
-description: "Use at Plan to enumerate what a task's automation will not be able to check, and at Validation to turn that list into `ManualChecks.md` — the hand-run script a person executes after the run: a state they can reach, steps they can follow, and a verdict they can settle. Governed by `[MANUAL_CHECKS]` and `[MANUAL_CHECKS_CHECK]` in Task.md and CLAUDE-spine-toolkit.md."
+description: "Use at Plan to enumerate what a task's automation will not be able to check, and at Validation to turn that list into `ManualChecks.md` — the hand-run script a person executes after the run: a state they can reach, steps they can follow, and a verdict they can settle. Governed by `[MANUAL_CHECKS]` and `[MANUAL_CHECKS_CHECK]` in Task.md and the project config."
 ---
 
 # Manual Checks

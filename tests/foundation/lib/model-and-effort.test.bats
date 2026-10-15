@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+bats_require_minimum_version 1.5.0
 # A subagent's model and effort come from one rule (conventions/stage-dispatch.md → Model and effort)
 # and one resolver (scripts/resolve-settings.sh). These tests hold every surface that restates a piece
 # of the rule to it: a surface that drifts is how a project's choice stops reaching a dispatch.
@@ -6,7 +7,7 @@
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   RULE="$ROOT/conventions/stage-dispatch.md"
-  TPL="$ROOT/templates/claude-toolkit-md/en.md"
+  TPL="$ROOT/templates/spine-md/en.md"
 }
 
 section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
@@ -94,8 +95,10 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
 @test "both task templates offer the MODELS and EFFORT overrides with the resolver's keys and values" {
   var() { sed -n "s/^$1=\"\(.*\)\"$/\1/p" "$ROOT/scripts/resolve-settings.sh" | tr ' ' '|'; }
-  models="# [MODELS] = [architect: opus]  # <light|walkthrough|done|$(var ROLES)>: <$(var MODELS)>, comma-separated"
-  effort="# [EFFORT] = [reviewer: high]   # <walkthrough|done|$(var ROLES)>: <$(var EFFORTS)>, comma-separated"
+  # The vocabulary a template quotes is the Claude runtime's, named as such: other runtimes have their own.
+  rt() { python3 -c 'import json,sys; print("|".join(json.load(open(sys.argv[1]))[sys.argv[2]]))' "$ROOT/runtimes/claude-code.json" "$1"; }
+  models="# [MODELS] = [architect: opus]  # <light|walkthrough|done|$(var ROLES)>: <$(rt models) in Claude Code; the runtime's own names elsewhere>, comma-separated"
+  effort="# [EFFORT] = [reviewer: high]   # <walkthrough|done|$(var ROLES)>: <$(rt effort) in Claude Code; the runtime's own names elsewhere>, comma-separated"
   for t in task-root task-step; do
     grep -qxF "$models" "$ROOT/templates/task-md/$t.md" || { echo "$t.md: [MODELS] is not '$models'"; return 1; }
     grep -qxF "$effort" "$ROOT/templates/task-md/$t.md" || { echo "$t.md: [EFFORT] is not '$effort'"; return 1; }
@@ -126,11 +129,13 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 }
 
 @test "the epic's copy of the vocabulary is the resolver's" {
-  verdict="$(python3 - "$ROOT/scripts/resolve-settings.sh" "$ROOT/workflows/profile-epic.js" <<'PY'
-import re, sys
+  verdict="$(python3 - "$ROOT/scripts/resolve-settings.sh" "$ROOT/workflows/profile-epic.js" "$ROOT/runtimes/claude-code.json" <<'PY'
+import json, re, sys
 sh = open(sys.argv[1], encoding='utf-8').read()
 js = open(sys.argv[2], encoding='utf-8').read()
-var = lambda name: re.search(r'^%s="([^"]*)"' % name, sh, re.M).group(1).split()
+rt = json.load(open(sys.argv[3], encoding='utf-8'))
+# ROLES and UNSET_MODELS stay in the resolver; the model and effort vocabulary belongs to the Claude runtime file.
+var = lambda name: rt['models'] if name == 'MODELS' else rt['effort'] if name == 'EFFORTS' else re.search(r'^%s="([^"]*)"' % name, sh, re.M).group(1).split()
 keys = re.search(r'^const TUNING_KEYS = \{ models: \[([^\]]*)\], effort: \[([^\]]*)\] \}$', js, re.M)
 values = re.search(r'^const TUNING_VALUES = \{ models: \[([^\]]*)\], effort: \[([^\]]*)\] \}$', js, re.M)
 unset = re.search(r'^const TUNING_UNSET = \{ models: \[([^\]]*)\], effort: \[([^\]]*)\] \}$', js, re.M)
@@ -185,4 +190,105 @@ PY
   grep -qF 'leave `model` and `effort` out' "$ROOT/docs/building-a-platform.md" || { echo "the guide does not say to leave them out"; return 1; }
   ! grep -qF '`sonnet` or `haiku`' <<<"$roles" || { echo "## Roles still allows a lighter model"; return 1; }
   ! grep -qF 'when a lighter model is allowed' "$ROOT/docs/building-a-platform.md" || { echo "the guide still allows a lighter model"; return 1; }
+}
+
+# --- The runtime axis: runtimes/<id>.json and --runtime (conventions/task-settings.md → Runtime) ---
+
+rt_task() {
+  local p="$1"; local t="$p/Tasks/ACTIVE/001-x"
+  mkdir -p "$t"; cp "$ROOT/templates/task-md/task-root.md" "$t/Task.md"
+  printf '%s' "$t"
+}
+json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(sys.argv[1], {"d": d}))' "$1"; }
+
+@test "without --runtime the resolver answers as claude-code" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  cp "$TPL" "$p/SPINE.md"
+  plain="$("$ROOT/scripts/resolve-settings.sh" json "$t" 2>/dev/null)"
+  flagged="$("$ROOT/scripts/resolve-settings.sh" json "$t" --runtime claude-code 2>/dev/null)"
+  [ "$plain" = "$flagged" ]
+  [ "$(json_field 'd["runtime"]' <<<"$plain")" = "claude-code" ]
+}
+
+@test "codex-cli takes any model token and defaults every key to session" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODELS] = [reviewer: gpt-6.1-sol]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$(json_field 'd["models"]["reviewer"]' <<<"$output")" = "gpt-6.1-sol" ]
+  [ "$(json_field 'd["models"]["light"]' <<<"$output")" = "session" ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+  [ "$(json_field 'd["runtime"]' <<<"$output")" = "codex-cli" ]
+}
+
+@test "codex-cli accepts a run-level model token" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli --set models.reviewer=gpt-6.1-sol
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["reviewer"]' <<<"$output")" = "gpt-6.1-sol" ]
+  [ "$(json_field 'd["sources"]["models.reviewer"]' <<<"$output")" = "run" ]
+}
+
+@test "codex-cli has no max effort and warns past it" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[EFFORT] = [reviewer: max]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["effort"]["reviewer"]' <<<"$output")" = "session" ]
+  grep -q "'reviewer: max' not recognized, skipped" <<<"$stderr"
+}
+
+@test "claude-code still rejects a foreign model name" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODELS] = [reviewer: gpt-6.1-sol]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["reviewer"]' <<<"$output")" = "session" ]
+  grep -q "'reviewer: gpt-6.1-sol' not recognized, skipped" <<<"$stderr"
+}
+
+@test "an unknown runtime, a repeated flag and raw --runtime exit 2" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime nope
+  [ "$status" -eq 2 ]
+  grep -q -- '--runtime nope: no runtimes/nope.json' <<<"$stderr"
+  run "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime claude-code --runtime codex-cli
+  [ "$status" -eq 2 ]
+  run "$ROOT/scripts/resolve-settings.sh" raw "$t" Platform --runtime codex-cli
+  [ "$status" -eq 2 ]
+}
+
+@test "show passes --runtime through to its plain json run" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  run "$ROOT/scripts/resolve-settings.sh" show "$t" --runtime codex-cli --set models.reviewer=gpt-6.1-sol
+  [ "$status" -eq 0 ]
+  grep -q 'gpt-6.1-sol' <<<"$output"
+}
+
+@test "show keeps the 2.28.0 key order: roles first, then light, walkthrough, done" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODELS] = [reviewer: opus, light: haiku]\n' >> "$t/Task.md"
+  run "$ROOT/scripts/resolve-settings.sh" show "$t"
+  [ "$status" -eq 0 ]
+  grep -qF '[MODELS] = [reviewer: opus, light: haiku]' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "an open vocabulary still folds session to lowercase" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODELS] = [reviewer: Session, light: GPT-X]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["reviewer"]' <<<"$output")" = "session" ]
+  [ "$(json_field 'd["models"]["light"]' <<<"$output")" = "GPT-X" ]
+}
+
+@test "a runtime file with the wrong shape is refused by name" {
+  mkdir -p "$BATS_TEST_TMPDIR/core/runtimes" "$BATS_TEST_TMPDIR/core/scripts"
+  cp "$ROOT/scripts/resolve-settings.sh" "$BATS_TEST_TMPDIR/core/scripts/"
+  printf '{"id": "bad", "models": "opus", "model_defaults": {"Light": "opus"}, "effort": ["session"]}\n' > "$BATS_TEST_TMPDIR/core/runtimes/bad.json"
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  run --separate-stderr "$BATS_TEST_TMPDIR/core/scripts/resolve-settings.sh" json "$t" --runtime bad
+  [ "$status" -eq 2 ]
+  grep -q 'runtimes/bad.json' <<<"$stderr"
 }

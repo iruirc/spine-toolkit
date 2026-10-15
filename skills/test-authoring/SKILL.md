@@ -31,7 +31,7 @@ Ask in this order and stop at the first answer:
    wins over anything the stack says. Which surfaces those are is the platform's list, and it lives
    with the syntax (below).
 3. **A new file** → the value the project gives the test-framework axis for that module: the
-   `## Modules` line of `CLAUDE-spine-toolkit.md` where one names the module, else `## Stack`.
+   `## Modules` line of the project config where one names the module, else `## Stack`.
 4. **Nothing resolved** → the framework of the tests nearest the code under test.
    Never introduce a second framework into a target on your own initiative. Where there are no
    tests to follow, choose, and say in your report which framework you chose and why, so review
@@ -44,7 +44,7 @@ better is a proposal for the user, not a file you write.
 
 This skill names no framework, and neither does anything else in core. To turn the chosen value into
 code: invoke `<platform>:manifest` — `<platform>` is the first non-empty line of the `## Platform`
-block of `CLAUDE-spine-toolkit.md` — and read the manifest `## Topics` row for **testing**, the way
+block of the project config — and read the manifest `## Topics` row for **testing**, the way
 `conventions/platform-contract.md` describes. The skill that row names carries one section per value
 of the axis: how a test is declared so the runner collects it, how it asserts, its lifecycle hooks,
 parameterization, asynchronous tests, how a failure reads in the runner's output, and what a project

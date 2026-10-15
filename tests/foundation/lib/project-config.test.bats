@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+bats_require_minimum_version 1.5.0
 # The project config is core's format: `setup` writes it, the orchestrator and
 # stack-detect read it. A block missing from the template is a block no project
 # ever has, so every consumer of it silently takes its absent branch — which is
@@ -13,7 +14,7 @@
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  TPL="$ROOT/templates/claude-toolkit-md/en.md"
+  TPL="$ROOT/templates/spine-md/en.md"
 }
 
 # The three scans below ask what files core HAS, and that is the index plus
@@ -226,4 +227,84 @@ catalog_words() {
     grep -qF '# [FIX_ROUNDS] = [0]         # a whole number, 0 turns the auto loop off' "$ROOT/templates/task-md/$t.md" \
       || { echo "no [FIX_ROUNDS] in $t.md"; return 1; }
   done
+}
+
+# --- Project config lookup: SPINE.md, or the legacy name where a project has not migrated ---
+
+# A task folder under <root>, with a Task.md from the template; prints the task dir.
+mk_task() {
+  local t="$1/Tasks/ACTIVE/001-x"
+  mkdir -p "$t"
+  cp "$ROOT/templates/task-md/task-root.md" "$t/Task.md"
+  printf '%s' "$t"
+}
+
+@test "SPINE.md alone is the project config" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(mk_task "$p")"
+  printf '[LANG] = [ru]\n' > "$p/SPINE.md"
+  run "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 0 ]
+  grep -q '"lang": "ru"' <<<"$output"
+  grep -q "\"project_config\": \"$p/SPINE.md\"" <<<"$output"
+}
+
+@test "the legacy name alone is still read" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(mk_task "$p")"
+  printf '[LANG] = [ru]\n' > "$p/CLAUDE-spine-toolkit.md"
+  run "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 0 ]
+  grep -q '"lang": "ru"' <<<"$output"
+  grep -q "\"project_config\": \"$p/CLAUDE-spine-toolkit.md\"" <<<"$output"
+}
+
+@test "both present: SPINE.md wins and stderr names the ignored file" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(mk_task "$p")"
+  printf '[LANG] = [ru]\n' > "$p/SPINE.md"
+  printf '[LANG] = [en]\n' > "$p/CLAUDE-spine-toolkit.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 0 ]
+  grep -q '"lang": "ru"' <<<"$output"
+  [ "$stderr" = "project config: $p/SPINE.md selected, $p/CLAUDE-spine-toolkit.md ignored" ]
+}
+
+@test "a nearer legacy file beats a farther SPINE.md" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(mk_task "$p")"
+  printf '[LANG] = [ru]\n' > "$p/SPINE.md"
+  printf '[LANG] = [en]\n' > "$p/Tasks/CLAUDE-spine-toolkit.md"
+  run "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 0 ]
+  grep -q '"lang": "en"' <<<"$output"
+  grep -q "\"project_config\": \"$p/Tasks/CLAUDE-spine-toolkit.md\"" <<<"$output"
+}
+
+@test "no config at all: project_config is null" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(mk_task "$p")"
+  run "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 0 ]
+  grep -q '"project_config": null' <<<"$output"
+}
+
+@test "raw reads the file json selected" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(mk_task "$p")"
+  printf '## Platform\n\nfixture-platform\n' > "$p/SPINE.md"
+  printf '## Platform\n\nother-platform\n' > "$p/CLAUDE-spine-toolkit.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" raw "$t" Platform
+  [ "$status" -eq 0 ]
+  [ "$output" = "fixture-platform" ]
+}
+
+@test "SPINE.md in the 1.x block format is refused like the legacy name" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(mk_task "$p")"
+  printf '## Language\n\nen\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 2 ]
+  grep -q "SPINE.md: the ## Language format is 2.0-incompatible" <<<"$stderr"
+}
+
+@test "the template's first line names SPINE.md and the config templates never name the legacy file" {
+  [ "$(head -1 "$TPL")" = "# SPINE.md — Spine Configuration" ]
+  ! grep -q 'CLAUDE-spine-toolkit' "$TPL"
+  grep -q '^@./SPINE.md$' "$ROOT/templates/claude-md-stub/en.md"
+  grep -q '^@./SPINE.md$' "$ROOT/templates/claude-md-stub/ru.md"
+  ! grep -rq 'CLAUDE-spine-toolkit' "$ROOT/templates/claude-md-stub"
 }

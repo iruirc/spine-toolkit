@@ -1,6 +1,6 @@
 ---
 name: docs-route
-description: "Use at Plan, at the end of every implementing phase, and at Done to decide whether a change altered what a declared documentation component asserts, and to record the answer in the task's `Docs.md`. Governed by `[DOCS]` in Task.md and CLAUDE-spine-toolkit.md; the registry format is `conventions/docs-components.md`."
+description: "Use at Plan, at the end of every implementing phase, and at Done to decide whether a change altered what a declared documentation component asserts, and to record the answer in the task's `Docs.md`. Governed by `[DOCS]` in Task.md and the project config; the registry format is `conventions/docs-components.md`."
 ---
 
 # Docs Route

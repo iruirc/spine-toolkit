@@ -29,7 +29,7 @@ en
   `docs-components.md` and the rest
 - `docs/` — `building-a-platform.md`, `building-a-driver.md`, the how-tos for platform and driver
   authors
-- `templates/` — `task-md`, `claude-md-stub`, `claude-toolkit-md`, `docs-map`
+- `templates/` — `task-md`, `claude-md-stub`, `spine-md`, `docs-map`
 - `scripts/` — lints plus the test and telemetry runners
 - `hooks/` — plugin hooks; the only channel that reaches existing user projects on plugin update
 - `tests/foundation/` — bats suites; `tests/workflows/` — probes

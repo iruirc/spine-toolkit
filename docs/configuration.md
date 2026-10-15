@@ -1,9 +1,12 @@
 # Configuration
 
-`CLAUDE-spine-toolkit.md` in the project root is the toolkit's own configuration. `spine-toolkit:setup`
+`SPINE.md` in the project root is the toolkit's own configuration — the *project config*; a project
+set up before the toolkit ran in more than one runtime still carries it as `CLAUDE-spine-toolkit.md`,
+which is read the same way until `/setup` renames it
+([`../conventions/task-settings.md`](../conventions/task-settings.md) → Project config). `spine-toolkit:setup`
 creates and updates it and `/lang` rewrites one field of it; your own project instructions stay in
 `CLAUDE.md`, which the toolkit only ever touches to insert the import line. The template it is
-rendered from is [`../templates/claude-toolkit-md/en.md`](../templates/claude-toolkit-md/en.md).
+rendered from is [`../templates/spine-md/en.md`](../templates/spine-md/en.md).
 
 Every setting a run resolves is one `[FIELD] = [value]` line — the same grammar a task's `Task.md`
 uses for its own fields, and a line commented out with `#` is documentation, never a value. This
@@ -14,7 +17,7 @@ page is one section per field, in the order the template writes them.
 A run resolves each field by walking one chain, first hit wins:
 
 ```
-Task.md  →  the epic's Task.md for a .step/ folder  →  the nearest CLAUDE-spine-toolkit.md  →  the default
+Task.md  →  the epic's Task.md for a .step/ folder  →  the project config  →  the default
 ```
 
 A missing field is the default, not an error: nothing stops because a setting was left unwritten. An
@@ -324,8 +327,9 @@ it.
 ### [MODELS]
 
 **Values:** `<key>: <value>` entries, comma-separated; keys `light`, `walkthrough`, `done` and the
-eight role names, values `opus` `sonnet` `haiku` `fable` `session` · **Default:** `sonnet` for `light`
-and `validator`, `session` for `walkthrough`, `done` and the other seven roles · **Task override:**
+eight role names, values the runtime's `models` list in `runtimes/<id>.json` (Claude Code: `opus` `sonnet`
+`haiku` `fable` `session`) · **Default:** the runtime's `model_defaults`, `session` elsewhere (Claude Code:
+`sonnet` for `light` and `validator`, `session` for `walkthrough`, `done` and the other seven roles) · **Task override:**
 `[MODELS] = [<key>: <value>, …]` ·
 **Defined by:** [`../conventions/stage-dispatch.md`](../conventions/stage-dispatch.md) → Model and
 effort
@@ -349,7 +353,8 @@ the session's model. An epic's keys reach its steps.
 ### [EFFORT]
 
 **Values:** `<key>: <value>` entries, comma-separated; keys `walkthrough`, `done` and the eight role
-names, values `low` `medium` `high` `xhigh` `max` `session` · **Default:** `session` · **Task override:**
+names, values the runtime's `effort` list in `runtimes/<id>.json` (Claude Code: `low` `medium` `high` `xhigh`
+`max` `session`) · **Default:** `session` · **Task override:**
 `[EFFORT] = [<key>: <value>, …]` · **Defined by:**
 [`../conventions/stage-dispatch.md`](../conventions/stage-dispatch.md) → Model and effort
 

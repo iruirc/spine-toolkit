@@ -17,14 +17,14 @@ The profile workflow for tasks with `[TASK_TYPE] = TEST` — used when writing t
 
 Before producing any user-facing string:
 
-1. Read `CLAUDE-spine-toolkit.md` from the project root.
+1. Read the project config from the project root (core's `conventions/task-settings.md` → Project config).
 2. Find the `[LANG]` field.
 3. Take the field's value, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
 
-Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-spine-toolkit.md per string.
+Caching: resolve `<lang>` once per skill invocation; do not re-read the project config per string.
 
 ## 1. Input Contract
 
@@ -161,7 +161,7 @@ the ordinary case here, not the exception.
   still open across all phases; report them, do not enforce them.
 
 All of it is skipped by a stage that changes no files, by a task whose `Task.md` carries `[DOCS] =
-[off]`, by a project whose `CLAUDE-spine-toolkit.md` carries the same, and by a project that declares
+[off]`, by a project whose config carries the same, and by a project that declares
 no components at all — neither in the map named by `[DOCS_MAP]`, `DocsMap.md` by default —
 nor in any package it holds, so a project that declares nothing is served by silence.
 Review reads `Docs.md` the way it reads

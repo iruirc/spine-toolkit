@@ -61,3 +61,67 @@ mapping_rows() {
       || { echo "$l.md lacks report_block_migration"; return 1; }
   done
 }
+
+# --- The legacy config name: state G renames CLAUDE-spine-toolkit.md to SPINE.md on request ---
+
+@test "the setup skill declares state G for the legacy config name" {
+  grep -q '^| \*\*G · legacy_name\*\*' "$SKILL" || { echo "no state G row"; return 1; }
+  grep -qF 'auq_migrate_spine_name' "$SKILL" || { echo "state G asks nothing"; return 1; }
+}
+
+@test "state G's question, options and both reports exist in both locales" {
+  for k in auq_migrate_spine_name auq_migrate_spine_name_options report_spine_name_migrated report_spine_name_kept; do
+    for l in en ru; do
+      grep -qxF "## $k" "$ROOT/skills/setup/locales/$l.md" || { echo "$l lacks $k"; return 1; }
+    done
+  done
+}
+
+@test "every state that writes the config writes SPINE.md" {
+  ! grep -qF 'Write to <project>/CLAUDE-spine-toolkit.md' "$SKILL" || { echo "a state still writes the legacy name"; return 1; }
+  grep -qF 'Write to <project>/SPINE.md' "$SKILL" || { echo "no state writes SPINE.md"; return 1; }
+  ! grep -qF 'Insert `@./CLAUDE-spine-toolkit.md`' "$SKILL" || { echo "a state still inserts the legacy import"; return 1; }
+}
+
+@test "an import line without its file routes to state A and leaves CLAUDE.md alone" {
+  grep -qF '`@./SPINE.md` import line, but `SPINE.md` is absent: route to **state A**' "$SKILL"
+}
+
+@test "the rollback hint for state G is one mv and the import line" {
+  grep -qF 'mv SPINE.md CLAUDE-spine-toolkit.md' "$SKILL"
+}
+
+@test "the setup locales no longer name the legacy file except in state G's own texts" {
+  for l in en ru; do
+    offenders="$(awk '/^## /{k=$2} /CLAUDE-spine-toolkit/ && k !~ /spine_name/ {print k}' "$ROOT/skills/setup/locales/$l.md" | sort -u)"
+    [ -z "$offenders" ] || { echo "$l: legacy name under $offenders"; return 1; }
+  done
+}
+
+@test "state G asks nothing before its own question and stops after its report" {
+  grep -qF 'state G → the config already carries the language' "$SKILL" || { echo "step 0 still asks state G the language"; return 1; }
+  grep -qF 'state G → the config already names the platform' "$SKILL" || { echo "step 1 still runs discovery for state G"; return 1; }
+  g="$(awk '/^   STATE G \(legacy_name\):/{f=1;next} f&&/^   STATE |^5\. /{exit} f' "$SKILL")"
+  grep -qF 'Stop.' <<<"$g" || { echo "state G does not stop after its report"; return 1; }
+  ! grep -qF 'step 6b still run' <<<"$g" || { echo "state G still runs the platform half"; return 1; }
+  grep -qF 'carries `@./SPINE.md`, in which case leave it alone' <<<"$g" || { echo "state G may insert a second import"; return 1; }
+  grep -qF 'Keep the old name' <<<"$g" && grep -qF 'stub' <<<"$g" || { echo "Keep with no CLAUDE.md does not create the stub"; return 1; }
+}
+
+@test "a legacy import line whose file is absent is rewritten when state A writes SPINE.md" {
+  grep -qF 'rewrite that line to `@./SPINE.md` once `SPINE.md` is written' "$SKILL"
+}
+
+@test "state F keeps the source file name and leaves the rename to state G" {
+  f="$(awk '/^   STATE F \(old_block_format\):/{f=1;next} f&&/^   STATE /{exit} f' "$SKILL")"
+  grep -qF 'under the name it had' <<<"$f" || { echo "F does not say it keeps the source name"; return 1; }
+  ! grep -qF 'removed' <<<"$f" || { echo "F still removes the legacy file"; return 1; }
+  grep -qF '{config_name}' "$SKILL" || { echo "the F report has no {config_name} placeholder"; return 1; }
+  for l in en ru; do grep -qF 'mv {backup_path} {config_name}' "$ROOT/skills/setup/locales/$l.md" || { echo "$l rollback hint is hard-coded"; return 1; }; done
+}
+
+@test "the state table, safeguards and report table all know state G" {
+  grep -qF 'All five checks are file reads' "$SKILL"
+  grep -qF 'routes to C, not D or E — to G while the file still carries the legacy name' "$SKILL"
+  grep -qF 'State G → key `report_spine_name_migrated`' "$SKILL"
+}

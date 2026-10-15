@@ -7,7 +7,7 @@ declared in a single skill — `<plugin>/skills/manifest/SKILL.md`, invoked as
 `<plugin>:manifest`. Nothing else in the plugin is part of the contract.
 
 A project says which platform serves it in one place: the `## Platform` block of its
-`CLAUDE-spine-toolkit.md` holds the plugin's name, and that name is the whole selection mechanism.
+project config (`SPINE.md`, core's `conventions/task-settings.md` → Project config) holds the plugin's name, and that name is the whole selection mechanism.
 Nothing is inferred from the repository and nothing is auto-discovered while a task runs.
 
 A working example is `tests/fixtures/fixture-platform/` — the fixture core's own tests bind
@@ -208,7 +208,7 @@ which value a given file is written in and then reads that section for its synta
 **What a consumer does with it.** Core's methodology skills name topics in bold and resolve them
 here rather than naming a skill — an enumeration of which ones belongs in no file but their own,
 since that is the sentence this paragraph replaced. To resolve a topic: invoke `<platform>:manifest`,
-`<platform>` being the first non-empty line of the `## Platform` block of `CLAUDE-spine-toolkit.md`,
+`<platform>` being the first non-empty line of the `## Platform` block of the project config,
 and read the row whose left-hand side matches the topic. A row that is `—`, and a topic with no row
 at all, mean the same thing — this platform covers that topic with no skill of its own. Both are a
 declared absence, handled like the em dash in `## Roles`: the consumer proceeds on its own
@@ -255,7 +255,7 @@ default = <driver plugin name>
 ```
 
 The driver plugin this platform recommends. Core resolves the chain `Task.md [DRIVER]` →
-`CLAUDE-spine-toolkit.md [DRIVER]` → this row → `—`, so what is written here is the
+the project config's `[DRIVER]` → this row → `—`, so what is written here is the
 value a project gets when it never chose one. That is what the row is for: a platform that used to
 drive an app unconditionally names the driver it used, and its installed projects keep behaving as
 they did.

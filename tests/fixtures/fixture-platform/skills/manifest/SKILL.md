@@ -18,7 +18,7 @@ use it as a template for a real platform's manifest, not as a stub to satisfy a 
 
 Optional, and the only block a platform may omit entirely. `default` names the driver plugin this
 platform recommends for driving a running app during Validation; a project overrides it with
-`[DRIVER]` in its `CLAUDE-spine-toolkit.md`, and a task with the same field in its `Task.md`. Its
+`[DRIVER]` in its project config (`SPINE.md`), and a task with the same field in its `Task.md`. Its
 purpose is continuity: a project that never set the field keeps the behaviour it had before drivers
 existed.
 
