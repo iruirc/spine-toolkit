@@ -319,3 +319,16 @@ browser"
     return 1
   }
 }
+
+@test "the contract describes the server a driver ships" {
+  grep -q '^## The server$' "$DOC"
+  grep -qF '.mcp.json' "$DOC"
+  grep -qF 'exact version' "$DOC"
+  grep -qF 'plugin_<plugin>_<key>' "$DOC"
+  grep -qF 'both servers run' "$DOC"
+  ! grep -q '/Volumes/' "$DOC"
+}
+
+@test "the conformance section names the .mcp.json checks" {
+  sed -n '/^## Conformance$/,$p' "$DOC" | grep -qF '.mcp.json'
+}

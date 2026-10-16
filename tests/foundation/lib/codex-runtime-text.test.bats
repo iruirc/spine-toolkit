@@ -119,3 +119,9 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
 @test "the orchestrator says only REVIEW moves a task folder" {
   grep -qF 'Only the REVIEW profile moves a task folder' "$ROOT/skills/orchestrator/SKILL.md"
 }
+
+@test "the Codex map sanitizes a driver prefix" {
+  M="$ROOT/runtimes/codex-cli.md"
+  grep -qF 'mcp__agent_device__' "$M"
+  grep -qF '[A-Za-z0-9_]' "$M"
+}
