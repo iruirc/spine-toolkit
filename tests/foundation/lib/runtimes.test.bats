@@ -80,7 +80,7 @@ PY
   # its description then names Default mode, and without the feature a call fails with "unavailable in".
   f="$ROOT/runtimes/codex-cli.md"
   row="$(grep -F '`AskUserQuestion`' "$f")"
-  for s in '`functions.request_user_input`' 'Default mode' 'unavailable in' 'more than three options'; do
+  for s in '`functions.request_user_input`' 'Default mode' 'unavailable in' 'every option the locale key has' 'Only these cases'; do
     grep -qF -- "$s" <<<"$row" || { echo "missing: $s"; false; }
   done
   ! grep -qF 'does not offer it' <<<"$row"
@@ -90,4 +90,20 @@ PY
   # Codex reserves request_user_input for optional questions, never permission requests; a manual-mode
   # confirmation read as permission falls back to the async tool, which the CLI shows as plain text.
   grep -qF 'not a permission request' "$ROOT/runtimes/codex-cli.md"
+}
+
+@test "the Codex map asks a question in the locale key's full words" {
+  # Acceptance of milestone 3: setup's menu question lost the restart, the "under development"
+  # warning and the way back — Codex shortened the locale text and added a SKILL.md path.
+  row="$(grep -F '`AskUserQuestion`' "$ROOT/runtimes/codex-cli.md")"
+  grep -qF "the locale key's text in full" <<<"$row" || { echo "no full-text rule"; false; }
+  grep -qF 'never shortened or paraphrased' <<<"$row" || { echo "no paraphrase ban"; false; }
+}
+
+@test "the Codex map does not send a four-option question to text" {
+  # Codex's "2-3 choices" is advice in the tool description, not a check (request_user_input_spec.rs);
+  # the menu draws four. The rule sent every stage prompt to numbered text.
+  row="$(grep -F '`AskUserQuestion`' "$ROOT/runtimes/codex-cli.md")"
+  ! grep -qF 'more than three options' <<<"$row"
+  ! grep -qF 'two or three options' <<<"$row"
 }
