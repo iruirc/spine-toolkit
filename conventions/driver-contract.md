@@ -95,8 +95,8 @@ the server, the same way in either runtime.
   machine is wrong on every other.
 - **The user's own build of the server.** In Codex a server with the same key in the user's
   configuration replaces the plugin's. In Claude Code it does not — both servers run, and the tools
-  appear twice; there, the user's build goes into a copy of the plugin whose `.mcp.json` points at
-  it. Nothing the driver ships names a local build.
+  appear twice, unless the two have the same command and arguments, when Claude Code suppresses the
+  plugin's. There, the user's build goes into a copy of the plugin whose `.mcp.json` points at it. Nothing the driver ships names a local build.
 
 ## `## Targets`
 
