@@ -71,6 +71,7 @@ for name, present in (("Driver", any(l.strip() == "## Driver" for l in lines)),
         bad(f"missing block: {name}")
 
 ns_rows = [l for l in driver if re.match(r"^namespace\s*=", l)]
+names = []
 if len(ns_rows) != 1:
     bad(f"expected exactly one 'namespace =' row in ## Driver, found {len(ns_rows)}")
 else:
@@ -175,6 +176,35 @@ if isinstance(data, dict):
             bad("plugin.json declares no object-form dependency on spine-toolkit")
         elif not core[0].get("version"):
             bad("the spine-toolkit dependency carries no version range")
+
+# .mcp.json: the server a driver ships (multi-llm milestone 4). Each key is how the server is
+# reached in Codex and in a client's own config, plugin_<plugin>_<key> is how Claude Code names a
+# plugin's server — both belong in namespace, or the resolver never finds the tools. The package
+# npx runs carries an exact version: the manifest's capabilities were checked against one.
+mcp_path = os.path.join(plugin, ".mcp.json")
+if os.path.isfile(mcp_path):
+    try:
+        mcp = json.load(open(mcp_path, encoding="utf-8"))
+    except Exception as e:
+        bad(f"cannot read {mcp_path}: {e}")
+        mcp = None
+    servers = mcp.get("mcpServers", mcp) if isinstance(mcp, dict) else None
+    if mcp is not None and not isinstance(servers, dict):
+        bad(".mcp.json: expected an object of servers")
+        servers = None
+    plugin_name = data.get("name") if isinstance(data, dict) else None
+    exact = re.compile(r"^(@[^/@\s]+/)?[^/@\s]+@\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$")
+    for key, srv in (servers or {}).items():
+        if key not in names:
+            bad(f".mcp.json server '{key}' is not in namespace")
+        if plugin_name:
+            form = f"plugin_{plugin_name}_{key}"
+            if form not in names:
+                bad(f".mcp.json server '{key}': namespace lacks its Claude Code plugin form '{form}'")
+        if isinstance(srv, dict) and srv.get("command") == "npx":
+            pkg = next((a for a in srv.get("args", []) if isinstance(a, str) and not a.startswith("-")), None)
+            if pkg is None or not exact.match(pkg):
+                bad(f".mcp.json server '{key}': '{pkg}' does not pin an exact version")
 
 for v in violations:
     print(v)
