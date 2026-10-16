@@ -332,3 +332,7 @@ browser"
 @test "the conformance section names the .mcp.json checks" {
   sed -n '/^## Conformance$/,$p' "$DOC" | grep -qF '.mcp.json'
 }
+
+@test "the contract says when Claude Code suppresses a plugin's server" {
+  grep -qF 'same command and arguments' "$DOC"
+}
