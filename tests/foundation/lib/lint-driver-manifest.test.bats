@@ -163,3 +163,94 @@ PY
   [ "$status" -eq 1 ]
   [[ "$output" == *"name"* ]]
 }
+
+# A driver may ship its MCP server as .mcp.json (multi-llm milestone 4). Its keys must be
+# reachable through namespace: the key itself (Codex, a client config) and its Claude Code
+# plugin form plugin_<plugin>_<key>; and the published package it runs carries an exact version.
+
+mcp() { # mcp <key> <package-spec> [bare]
+  if [ "${3:-}" = bare ]; then
+    printf '{"%s": {"command": "npx", "args": ["-y", "%s"]}}\n' "$1" "$2" > "$TMP/d/.mcp.json"
+  else
+    printf '{"mcpServers": {"%s": {"command": "npx", "args": ["-y", "%s"]}}}\n' "$1" "$2" > "$TMP/d/.mcp.json"
+  fi
+}
+add_plugin_form() {
+  sed -i.bak 's/^namespace = neutral, neutral-devices$/namespace = neutral, plugin_fixture-driver_neutral, neutral-devices/' "$M" && rm -f "$M.bak"
+}
+
+@test "passes when .mcp.json keys and their plugin form are in namespace" {
+  mcp neutral pkg@1.2.3; add_plugin_form
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 0 ]
+}
+
+@test "passes on a scoped package with a prerelease version" {
+  mcp neutral @scope/pkg@1.2.3-rc.1; add_plugin_form
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when a .mcp.json key is not in namespace" {
+  mcp other pkg@1.2.3; add_plugin_form
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"'other' is not in namespace"* ]]
+}
+
+@test "fails when the plugin form of a key is not in namespace" {
+  mcp neutral pkg@1.2.3
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"plugin_fixture-driver_neutral"* ]]
+}
+
+@test "reads a bare server map" {
+  mcp other pkg@1.2.3 bare; add_plugin_form
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"'other'"* ]]
+}
+
+@test "fails on a caret range" {
+  mcp neutral 'pkg@^1.2.3'; add_plugin_form
+  run "$LINT" "$TMP/d"; [ "$status" -eq 1 ]; [[ "$output" == *"exact version"* ]]
+}
+
+@test "fails on a tilde range" {
+  mcp neutral 'pkg@~1.2.3'; add_plugin_form
+  run "$LINT" "$TMP/d"; [ "$status" -eq 1 ]; [[ "$output" == *"exact version"* ]]
+}
+
+@test "fails on a major-only version" {
+  mcp neutral pkg@1; add_plugin_form
+  run "$LINT" "$TMP/d"; [ "$status" -eq 1 ]; [[ "$output" == *"exact version"* ]]
+}
+
+@test "fails on latest" {
+  mcp neutral pkg@latest; add_plugin_form
+  run "$LINT" "$TMP/d"; [ "$status" -eq 1 ]; [[ "$output" == *"exact version"* ]]
+}
+
+@test "fails on a bare package name" {
+  mcp neutral pkg; add_plugin_form
+  run "$LINT" "$TMP/d"; [ "$status" -eq 1 ]; [[ "$output" == *"exact version"* ]]
+}
+
+@test "fails on a bare scoped package name" {
+  mcp neutral @scope/pkg; add_plugin_form
+  run "$LINT" "$TMP/d"; [ "$status" -eq 1 ]; [[ "$output" == *"exact version"* ]]
+}
+
+@test "does not check the version of a command other than npx" {
+  printf '{"mcpServers": {"neutral": {"command": "neutral-server", "args": ["mcp"]}}}\n' > "$TMP/d/.mcp.json"; add_plugin_form
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails on unreadable .mcp.json" {
+  printf '{' > "$TMP/d/.mcp.json"
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *".mcp.json"* ]]
+}
