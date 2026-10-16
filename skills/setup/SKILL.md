@@ -13,6 +13,7 @@ Bootstraps spine-toolkit in an **already existing** project. Two-file layout:
 - `SPINE.md` — toolkit-owned configuration, the *project config* (`conventions/task-settings.md` → Project config); its sections are the ones `templates/spine-md/en.md` carries. Created and updated by this skill. A project set up before the toolkit ran in more than one runtime carries the same file as `CLAUDE-spine-toolkit.md`; every reader accepts that name, and state G below renames it on request.
 - `CLAUDE.md` — user-owned project instructions. Touched once to insert the `@./SPINE.md` line; otherwise unchanged.
 - `AGENTS.md` — touched only when this skill runs in Codex CLI, which reads `AGENTS.md` and no `@`-import: one marked block pointing at the project config (see **AGENTS.md (Codex CLI)**).
+- `.codex/rules/spine.rules` and the user's Codex `config.toml` — touched only in Codex CLI, each after the user agrees to it (see **Codex permissions (Codex CLI)**).
 
 This skill owns the config **format** and every block or field that is core's: `[LANG]`, `[WORKFLOW_MODE]`, `[PROGRESS]`, `## Platform`, `## Agents`, and the file-level scaffolding. It owns none of the stack: `## Stack` and `## Modules` are filled by the platform half (step 5), because which axes exist and which values they take is the platform manifest's `## Axes`, not core's.
 
@@ -168,7 +169,7 @@ anything — which is what lets F take the language and the platform from the fi
    STATE C (already_configured):
      a. AUQ using key `auq_reconfigure_toolkit` with options `auq_reconfigure_toolkit_options`
         (Overwrite / Backup-and-overwrite / Cancel).
-        - Cancel → stop, no disk changes.
+        - Cancel → no change to the config or CLAUDE.md; run step 6c and step 6d, then stop.
         - Backup-and-overwrite → rename SPINE.md → SPINE.md.bak
           (timestamp on collision). Continue.
         - Overwrite → continue.
@@ -245,7 +246,7 @@ anything — which is what lets F take the language and the platform from the fi
    STATE G (legacy_name):
      a. AUQ `auq_migrate_spine_name` with options `auq_migrate_spine_name_options`
         (Rename / Keep the old name).
-        - Keep the old name → no change to the config or CLAUDE.md; run step 6c, then report
+        - Keep the old name → no change to the config or CLAUDE.md; run step 6c and step 6d, then report
           `report_spine_name_kept`. Every reader
           keeps accepting the file under that name.
         - Rename → continue.
@@ -258,7 +259,7 @@ anything — which is what lets F take the language and the platform from the fi
         carries `@./SPINE.md`, in which case leave it alone. A CLAUDE.md that does not exist is
         created from the stub as in the edge sub-state above, whichever answer was given: with
         Keep the old name the stub imports `@./CLAUDE-spine-toolkit.md`, the file the project has.
-     e. Run step 6c (**AGENTS.md (Codex CLI)**). Report `report_spine_name_migrated`, whose rollback hint is
+     e. Run step 6c (**AGENTS.md (Codex CLI)**) and step 6d (**Codex permissions (Codex CLI)**). Report `report_spine_name_migrated`, whose rollback hint is
         `mv SPINE.md CLAUDE-spine-toolkit.md` plus restoring the import line. Stop. Every value
         is already in the file, so steps 5, 6 and 6b have nothing to ask; run `/setup` again
         (state C) to reconfigure.
@@ -304,6 +305,10 @@ anything — which is what lets F take the language and the platform from the fi
 6c. AGENTS.md, in Codex CLI only — see **AGENTS.md (Codex CLI)** below. Runs in every state,
    state F included: it asks nothing.
 
+6d. Codex permissions, in Codex CLI only — see **Codex permissions (Codex CLI)** below. Runs after
+   6c in every state but state F, which asks nothing: there it is left for the next run of `/setup`.
+   Each of its two questions is asked only when its setting is not there yet.
+
 7. Render the report:
    - States A/B/C/E → key `setup_done` with placeholders {platform}, {stack}, {mode},
      {progress}, {lang}, {tasks_status}, {docs_map_status}, {notes}.
@@ -314,7 +319,8 @@ anything — which is what lets F take the language and the platform from the fi
      {filled_default_fields}, {kept_blocks}, {backup_path}, {config_name}.
    - State G → key `report_spine_name_migrated` after a rename, `report_spine_name_kept` after
      Keep; neither takes a placeholder.
-   Then, when step 6c changed or found `AGENTS.md`, the line it names, on a line of its own.
+   Then, when step 6c changed or found `AGENTS.md`, the line it names, on a line of its own;
+   then each line step 6d names, on a line of its own.
    {notes} is the platform half's returned notes, one per line, already rendered in <lang>;
    empty when it reconciled nothing. It is the only place those lines surface, so a rewrite
    the platform performed silently would be a rewrite the user never sees.
@@ -348,7 +354,36 @@ reaches it through a sentence. Which runtime you are in is this skill's Runtime 
   `SPINE.md` in the block.
 
 The template resolves like every other (`conventions/agent-tooling.md` → Plugin Roots). Nothing else
-of `CLAUDE.md` is copied into `AGENTS.md`, and nothing is written under `.codex/`.
+of `CLAUDE.md` is copied into `AGENTS.md`; `.codex/` belongs to **Codex permissions (Codex CLI)**.
+
+## Codex permissions (Codex CLI)
+
+In Codex CLI's `workspace-write` sandbox the project's `.git` is read-only, so every commit a stage
+makes stops to ask, and Spine's questions come as numbered text. Two settings change that; each is
+the user's to give, so each is a question. Which runtime you are in is this skill's Runtime
+paragraph (**Agent Tooling**).
+
+- In Claude Code: nothing — neither file is read or written.
+- **Git rule.** `.codex/rules/spine.rules` exists in the project root → no question, no report
+  line. Absent → AUQ `auq_codex_git_rule` with options `auq_codex_git_rule_options`.
+  - First option → create `.codex/rules/` and copy `templates/codex-rules/spine.rules` into it
+    unchanged. Codex's sandbox keeps `.codex/` protected like `.git`, so Codex asks the user to
+    approve the write. Report `report_codex_git_rule_written`: Codex reads rules when a session
+    starts, so the rule applies after a restart.
+  - Second option → write nothing; report `report_codex_git_rule_declined`.
+  This skill does not commit the file: whether `.codex/` goes into the repository is the user's call.
+- **Question menu.** `{config_path}` is `${CODEX_HOME:-~/.codex}/config.toml`, written out as the
+  real path. When it already has `default_mode_request_user_input = true` → no question, no report
+  line (the line counts only under `[features]`). Otherwise AUQ `auq_codex_menu` with options `auq_codex_menu_options`.
+  - First option → add `default_mode_request_user_input = true` under `[features]`: append a
+    `[features]` table when the file has none, create the file when it does not exist, replace a
+    `false` value in place, change nothing else. The file is outside the project, so Codex asks the user to approve the write. Report
+    `report_codex_menu_enabled`. The menu appears only after a restart — exit Codex, run
+    `codex app-server daemon restart`, start Codex again — so the questions left in this run stay
+    numbered text.
+  - Second option → write nothing; report `report_codex_menu_declined`.
+
+The template resolves like every other (`conventions/agent-tooling.md` → Plugin Roots).
 
 ## Migration Algorithm (states D, E and F)
 
@@ -521,8 +556,10 @@ In `templates/claude-md-stub/<lang>.md`:
 - **No platform plugin installed** → `error_no_platform_installed`. Stop. No disk changes.
 - **Templates not found** → `error_template_not_found`. Stop.
 - **AUQ unavailable** → text fallback with numbered options.
-- **User cancels** (Cancel on the AUQ in state C, D or E) → exit, no disk changes. Keep the old name in
-  state G is not a cancel: the config and CLAUDE.md stay as they are, and step 6c still runs.
+- **User cancels** (Cancel on the AUQ in state D or E) → exit, no disk changes.
+  Cancel on the AUQ in state C runs step 6c and step 6d and changes nothing else: in Claude Code
+  that is no change at all. Keep the old name in
+  state G is not a cancel: the config and CLAUDE.md stay as they are, and steps 6c and 6d still run.
 - **Tasks/ already exists** → no overwrite; report `tasks_status_already_existed`.
 - **The registry already exists** → no overwrite; report `docs_map_status_already_existed`.
 

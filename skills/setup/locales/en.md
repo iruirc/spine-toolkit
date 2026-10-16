@@ -141,3 +141,27 @@ Added the project config block to the end of `AGENTS.md` (backup: `{backup_path}
 
 ## report_agents_md_updated
 `AGENTS.md` now names the renamed project config (backup: `{backup_path}`).
+
+## auq_codex_git_rule
+Codex keeps this project's `.git` read-only in its sandbox, so every commit Spine makes after a finished phase would stop to ask you. Allow `git add` and `git commit` without asking? This writes `.codex/rules/spine.rules` in the project: those two commands then run without a question and outside the sandbox, and so do the project's git hooks. To undo, delete the file.
+
+## auq_codex_git_rule_options
+Allow | Don't allow — confirm every commit
+
+## auq_codex_menu
+Spine's questions in Codex come as text now: you answer with a number. Codex can show them as a menu you pick from with the arrow keys, as in Claude Code. Turn it on? This adds `default_mode_request_user_input = true` under `[features]` in `{config_path}`. It applies to every Codex session, not only this project, and Codex shows a warning that the feature is "under development". It takes effect after a restart: exit Codex, run `codex app-server daemon restart`, and start Codex again. To turn it off, delete the line.
+
+## auq_codex_menu_options
+Turn on | Don't turn on — questions stay as text
+
+## report_codex_git_rule_written
+Wrote `.codex/rules/spine.rules`: after a restart of Codex — exit it, run `codex app-server daemon restart`, start it again — commits run without asking.
+
+## report_codex_git_rule_declined
+No commit rule: Codex will ask before each commit.
+
+## report_codex_menu_enabled
+Question menu turned on in `{config_path}`: exit Codex, run `codex app-server daemon restart`, and start Codex again.
+
+## report_codex_menu_declined
+Question menu left off: questions come as numbered text.
