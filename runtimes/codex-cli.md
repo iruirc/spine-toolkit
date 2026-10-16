@@ -7,7 +7,8 @@ does not change: the same stages, the same artifacts, the same contract — only
 carries each step.
 
 `<runtime>` is `codex-cli`. Settings resolve with `--runtime codex-cli`, which selects
-`runtimes/codex-cli.json`: any model name is accepted, and every role defaults to `session`.
+`runtimes/codex-cli.json`: a model name is passed to Codex as written, except the Claude Code names
+`opus`, `sonnet`, `haiku`, `fable`, which read as `session`; every role defaults to `session`.
 
 ## Tools
 

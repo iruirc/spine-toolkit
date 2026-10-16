@@ -292,3 +292,44 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   [ "$status" -eq 2 ]
   grep -q 'runtimes/bad.json' <<<"$stderr"
 }
+
+@test "codex-cli reads a Claude model as session and says so" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODELS] = [validator: sonnet, tester: opus, reviewer: gpt-6-luna]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+  [ "$(json_field 'd["models"]["tester"]' <<<"$output")" = "session" ]
+  [ "$(json_field 'd["models"]["reviewer"]' <<<"$output")" = "gpt-6-luna" ]
+  [ "$(json_field 'd["sources"]["models.validator"]' <<<"$output")" = "project" ]
+  grep -qF "'validator: sonnet' is not a codex-cli model, read as session" <<<"$stderr"
+  grep -qF "'tester: opus' is not a codex-cli model, read as session" <<<"$stderr"
+}
+
+@test "a nearer Claude model still decides the key under codex-cli" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODELS] = [validator: gpt-6-luna]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli --set models.validator=sonnet
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+  [ "$(json_field 'd["sources"]["models.validator"]' <<<"$output")" = "run" ]
+}
+
+@test "claude-code keeps sonnet as written" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODELS] = [validator: sonnet, tester: opus]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "sonnet" ]
+  [ "$(json_field 'd["models"]["tester"]' <<<"$output")" = "opus" ]
+}
+
+@test "only the source that decides a key reports a Claude model" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODELS] = [validator: sonnet]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli --set models.validator=gpt-6-luna
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "gpt-6-luna" ]
+  ! grep -qF 'read as session' <<<"$stderr" || { echo "$stderr"; false; }
+}

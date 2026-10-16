@@ -36,3 +36,16 @@ setup() {
   grep -qF 'elsewhere per `runtimes/<runtime>.md`' "$ORCH"
   ! grep -qE 'Then invoke the `Skill` tool with the name from the table' "$ORCH"
 }
+
+@test "the Codex map says Claude model names read as session" {
+  grep -qF '`opus`, `sonnet`, `haiku`, `fable`' "$ROOT/runtimes/codex-cli.md"
+  ! grep -qF 'any model name is accepted, and' "$ROOT/runtimes/codex-cli.md"
+}
+
+@test "the orchestrator announces a Claude model read as session" {
+  ORCH="$ROOT/skills/orchestrator/SKILL.md"
+  grep -F 'model, read as session' "$ORCH" | grep -qF 'warn_model_read_as_session'
+  for l in en ru; do
+    grep -qx '## warn_model_read_as_session' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "no key in $l"; false; }
+  done
+}

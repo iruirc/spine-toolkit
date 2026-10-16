@@ -256,6 +256,9 @@ Method B ({skill}): {why}
 ## warn_tuning_unrecognised
 `{entry}` в {source} — не ключ и значение, которые этот прогон умеет применить, поэтому запись пропущена и действует следующая настройка. Ключи моделей — `light`, `walkthrough`, `done` и восемь ролей, со значениями `opus`, `sonnet`, `haiku`, `fable` или `session`; ключи effort — `walkthrough`, `done` и восемь ролей, со значениями `low`, `medium`, `high`, `xhigh`, `max` или `session`.
 
+## warn_model_read_as_session
+`{entry}` в {source} называет модель Claude Code, которой в этом runtime нет, поэтому эта роль работает на модели сессии.
+
 ## warn_effort_method_b
 Effort, заданный для {roles}, в этом прогоне не действует: профиль идёт через свой скилл, а вызов агента из скилла не передаёт effort, поэтому все стадии работают на effort этой сессии. Выбор моделей по-прежнему действует.
 
