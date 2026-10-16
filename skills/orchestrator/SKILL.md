@@ -671,6 +671,10 @@ report possible in `auto`, where a single return covers the whole range. Method 
 return it and are not expected to: there the orchestrator drives each stage itself and already
 has every field.
 
+Only the REVIEW profile moves a task folder, through its own auto-move. Every other profile, and the
+orchestrator itself, leaves the folder where the run found it, `Done` included: moving it is the
+owner's `task-move`.
+
 EPIC returns more: `branch`, `completed_steps`, `skipped_steps`, `failed_steps`, and `pending_steps`. A non-empty `pending_steps` is not a failure — it is the epic handing back the steps it could not run itself, in order. Dispatch each one as an ordinary task, with this run's `run_settings` and `user_directive` (**The run's own words**), then re-dispatch the epic at `start_stage=Done`.
 
 RESEARCH with `research_experiment=on` also returns `experiment` whenever its Research stage ran — `status`, `branches`, `restored` and, when something went wrong, `reason`, as `skills/workflow-research/SKILL.md` § 2c defines them — and so does its Method B skill. `restored: false` comes back with `stop`: open the report with the checkout still on the experiment branch, before anything else. A `status` other than `done` comes back with `ask_user` before the next stage, in `auto` as well: ask whether to go on (to Review, or to Done when `need_review=false`), redo Research, or stop. In `manual` this question replaces `stage_done_prompt` for that stage.

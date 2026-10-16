@@ -115,3 +115,7 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   row="$(grep -F 'invoke / load a skill' "$ROOT/runtimes/codex-cli.md")"
   grep -qF '<driver>:manifest' <<<"$row" || { echo "no driver manifest in the load row"; false; }
 }
+
+@test "the orchestrator says only REVIEW moves a task folder" {
+  grep -qF 'Only the REVIEW profile moves a task folder' "$ROOT/skills/orchestrator/SKILL.md"
+}
