@@ -141,3 +141,27 @@ DocsMap.md: {docs_map_status}
 
 ## report_agents_md_updated
 `AGENTS.md` теперь называет переименованный конфиг проекта (бэкап: `{backup_path}`).
+
+## auq_codex_git_rule
+В песочнице Codex папка `.git` этого проекта доступна только на чтение, поэтому каждый коммит, который Spine делает после готовой фазы, будет спрашивать у тебя подтверждение. Разрешить `git add` и `git commit` без вопроса? В проекте появится файл `.codex/rules/spine.rules`: эти две команды пойдут без вопроса и вне песочницы, git-хуки проекта тоже. Чтобы отменить, удали файл.
+
+## auq_codex_git_rule_options
+Разрешить | Не разрешать — подтверждать каждый коммит
+
+## auq_codex_menu
+Сейчас вопросы Spine в Codex приходят текстом: ты отвечаешь цифрой. Codex умеет показывать их в виде меню, где вариант выбирается стрелками, как в Claude Code. Включить? В `{config_path}` в раздел `[features]` добавится строка `default_mode_request_user_input = true`. Она действует во всех сессиях Codex, а не только в этом проекте, и Codex покажет предупреждение, что функция «under development». Заработает после перезапуска: выйди из Codex, выполни `codex app-server daemon restart` и запусти Codex снова. Чтобы выключить, удали строку.
+
+## auq_codex_menu_options
+Включить | Не включать — вопросы останутся текстом
+
+## report_codex_git_rule_written
+Записан `.codex/rules/spine.rules`: после перезапуска Codex (выйди из него, выполни `codex app-server daemon restart`, запусти снова) коммиты идут без вопроса.
+
+## report_codex_git_rule_declined
+Правила для коммитов нет: Codex будет спрашивать перед каждым коммитом.
+
+## report_codex_menu_enabled
+Меню вопросов включено в `{config_path}`: выйди из Codex, выполни `codex app-server daemon restart` и запусти Codex снова.
+
+## report_codex_menu_declined
+Меню вопросов не включено: вопросы приходят нумерованным текстом.

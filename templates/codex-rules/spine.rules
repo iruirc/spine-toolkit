@@ -1,0 +1,12 @@
+# Written by spine-toolkit's setup for Codex CLI.
+# Codex keeps this project's .git read-only in its sandbox, so every commit Spine makes after a
+# finished phase would stop to ask. This rule lets `git add` and `git commit`, run from the
+# repository's folder, go without a question and outside the sandbox — the project's git hooks
+# included. To undo, delete this file.
+prefix_rule(
+    pattern=["git", ["add", "commit"]],
+    decision="allow",
+    justification="Spine commits each finished phase; the sandbox keeps .git read-only.",
+    match=[["git", "commit", "-m", "feat: x"], ["git", "add", "Sources/A.swift"]],
+    not_match=[["git", "push"], ["git", "reset", "--hard"]],
+)
