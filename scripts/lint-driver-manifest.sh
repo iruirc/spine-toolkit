@@ -201,6 +201,11 @@ if os.path.isfile(mcp_path):
             form = f"plugin_{plugin_name}_{key}"
             if form not in names:
                 bad(f".mcp.json server '{key}': namespace lacks its Claude Code plugin form '{form}'")
+        env = srv.get("env") if isinstance(srv, dict) else None
+        for var, val in (env or {}).items() if isinstance(env, dict) else ():
+            if isinstance(val, str) and "${" in val:
+                bad(f".mcp.json server '{key}': env {var} is a ${{…}} reference, which Codex passes literally; "
+                    f"pass the variable by name in env_vars instead")
         if isinstance(srv, dict) and srv.get("command") == "npx":
             pkg = next((a for a in srv.get("args", []) if isinstance(a, str) and not a.startswith("-")), None)
             if pkg is None or not exact.match(pkg):
