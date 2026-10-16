@@ -730,6 +730,7 @@ says which field, the text after the quotes which key:
 | `not recognized, skipped` | `[WALKTHROUGH]` | `warn_walkthrough_unrecognised` (`{value}`) |
 | `not recognized, skipped` | `[BUDGETS]` | `warn_budget_unrecognised` (`{line}`) |
 | `not recognized, skipped` | `[MODELS]` or `[EFFORT]` | `warn_tuning_unrecognised` (`{source}`, `{entry}`) |
+| `is not a <runtime> model, read as session` | `[MODELS]` | `warn_model_read_as_session` (`{source}`, `{entry}`) |
 | `does not lower … [SCALE] = [full], kept` | `--set scale` | `warn_run_scale_kept` |
 | `not recognized, skipped`, or no quotes and `not a field a run can set, skipped` | `--set <field>` | `warn_run_setting_refused` (`{line}`) |
 

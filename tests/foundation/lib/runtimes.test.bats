@@ -46,6 +46,12 @@ PY
   [ "$(python3 -c 'import json; print(json.load(open("'"$ROOT"'/runtimes/codex-cli.json"))["model_defaults"])')" = "{}" ]
 }
 
+# A SPINE.md written for Claude Code names Claude models; Codex refuses them at spawn_agent.
+@test "codex-cli reads the Claude model names as session, claude-code has no such list" {
+  [ "$(python3 -c 'import json; print(json.load(open("'"$ROOT"'/runtimes/codex-cli.json"))["as_session"])')" = "['opus', 'sonnet', 'haiku', 'fable']" ]
+  [ "$(python3 -c 'import json; print("as_session" in json.load(open("'"$ROOT"'/runtimes/claude-code.json")))')" = "False" ]
+}
+
 @test "every runtime but claude-code has a markdown map" {
   for f in "$ROOT"/runtimes/*.json; do
     id="$(basename "$f" .json)"

@@ -162,8 +162,9 @@ if CONTRACT is not None:
 
 
 def load_runtime(runtime_id):
-    """runtimes/<id>.json: the id, the models list (or "any"), the model_defaults map and the
-    effort list. A missing or unreadable file is a usage error naming it."""
+    """runtimes/<id>.json: the id, the models list (or "any"), the model_defaults map, the
+    effort list and the as_session list — model names another runtime uses, read here as session
+    so one project config serves both. A missing or unreadable file is a usage error naming it."""
     if not re.fullmatch(r'[a-z0-9-]+', runtime_id):
         usage_error('--runtime %s: not a runtime id' % runtime_id)
     path = os.path.join(os.environ['SPINE_CORE_ROOT'], 'runtimes', runtime_id + '.json')
@@ -183,12 +184,16 @@ def load_runtime(runtime_id):
         if any(not isinstance(v, str) or (models != ANY and v not in models) or not TOKEN.fullmatch(v)
                for v in defaults.values()):
             raise ValueError('model_defaults values must be values of models')
-        return models, effort, defaults
+        as_session = rt.get('as_session', [])
+        if not isinstance(as_session, list) or any(not isinstance(v, str) or not TOKEN.fullmatch(v)
+                                                   for v in as_session):
+            raise ValueError('as_session must be a list of model names')
+        return models, effort, defaults, [v.lower() for v in as_session]
     except (OSError, ValueError, KeyError, TypeError) as error:
         usage_error('runtimes/%s.json: not a runtime file (%s)' % (runtime_id, error))
 
 
-MODEL_VALUES, EFFORT_VALUES, MODEL_DEFAULTS = load_runtime(RUNTIME)
+MODEL_VALUES, EFFORT_VALUES, MODEL_DEFAULTS, AS_SESSION = load_runtime(RUNTIME)
 
 # field, config/Task.md field name, values (None = open), default
 # A SCALARS values slot for a whole number >= 0, taken as an int.
@@ -496,11 +501,15 @@ for name, field, keys, values, unset, map_defaults in MAPS:
     found.append((('%s [%s]' % (CFG, field)), 'project', config_entries(field)))
     key_source = {}
     for label, source, entries in found:
-        seen = {}
+        seen, as_session_entries = {}, {}
         for entry in entries:
             m = re.fullmatch(r'([A-Za-z]+)\s*:\s*(\S+)', entry)
             k, raw = (m.group(1).lower(), m.group(2).lower()) if m else (None, None)
             if k in keys and raw in unset:
+                continue
+            if name == 'models' and k in keys and raw in AS_SESSION:
+                seen[k] = 'session'
+                as_session_entries[k] = entry
                 continue
             # An open vocabulary keeps the token as written — the runtime reads it, not this script —
             # except session, which is this script's own word in every runtime.
@@ -511,6 +520,10 @@ for name, field, keys, values, unset, map_defaults in MAPS:
             seen[k] = v
         for k, v in seen.items():
             if k not in decided:
+                # Said only by the source that decides the key: a farther one changed nothing.
+                if k in as_session_entries:
+                    print("%s: '%s' is not a %s model, read as session"
+                          % (label, as_session_entries[k], RUNTIME), file=sys.stderr)
                 out[k], decided = v, decided | {k}
                 key_source[k] = source
                 sources.setdefault('%s.%s' % (name, k), source)

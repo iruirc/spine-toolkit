@@ -2,5 +2,6 @@
   "id": "codex-cli",
   "models": "any",
   "model_defaults": {},
-  "effort": ["low", "medium", "high", "xhigh", "session"]
+  "effort": ["low", "medium", "high", "xhigh", "session"],
+  "as_session": ["opus", "sonnet", "haiku", "fable"]
 }

@@ -256,6 +256,9 @@ Stop the stage
 ## warn_tuning_unrecognised
 `{entry}` in {source} is not a key and value this run can use, so it was skipped and the next setting down applies. Model keys are `light`, `walkthrough`, `done` and the eight roles, with `opus`, `sonnet`, `haiku`, `fable` or `session`; effort keys are `walkthrough`, `done` and the eight roles, with `low`, `medium`, `high`, `xhigh`, `max` or `session`.
 
+## warn_model_read_as_session
+`{entry}` in {source} names a Claude Code model, which this runtime does not have, so that role runs on the session's model.
+
 ## warn_effort_method_b
 The effort set for {roles} does not apply on this run: the profile runs through its skill, and a dispatch from a skill cannot carry an effort, so every stage runs at this session's effort. The model choices still apply.
 
