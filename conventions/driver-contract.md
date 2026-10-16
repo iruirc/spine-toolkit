@@ -62,6 +62,42 @@ A user who invented a name outside your list gets the `unavailable` state and a 
 prefix that was tried, which is enough to fix it in one edit. That is the rare case, and it is why
 this is a list rather than a key the user must set in every project.
 
+## The server
+
+A driver may ship the MCP server it describes, as `.mcp.json` at the plugin root. Claude Code and
+Codex CLI both read that file when the plugin is installed, so installing the driver is installing
+the server, the same way in either runtime.
+
+```json
+{
+  "mcpServers": {
+    "mine": {
+      "command": "npx",
+      "args": ["-y", "my-package@1.4.2"],
+      "default_tools_approval_mode": "approve",
+      "startup_timeout_sec": 120
+    }
+  }
+}
+```
+
+- **A published package at an exact version.** `npx -y <package>@<x.y.z>` — never a range, a tag or
+  a bare name. The capabilities blocks were checked against one version of the server; a new version
+  is a change to the driver, released after the manifest has been checked against it again.
+- **The key is the first prefix in `namespace`**, and its Claude Code plugin form
+  `plugin_<plugin>_<key>` is in the list too: Claude Code prefixes a plugin's server tools that way,
+  characters kept as they are; Codex uses the bare key.
+- **Fields one runtime does not know are ignored by it.** Codex reads `default_tools_approval_mode`
+  (`approve`: no question before each call — a validator makes dozens), `env_vars` (variables passed
+  through from the user's environment) and `startup_timeout_sec` (the first `npx` downloads the
+  package); Claude Code reads `env` with `${VAR:-default}`. A variable the server needs is passed
+  through by name in both — `env_vars` and `env` — never written as a value: a path on the author's
+  machine is wrong on every other.
+- **The user's own build of the server.** In Codex a server with the same key in the user's
+  configuration replaces the plugin's. In Claude Code it does not — both servers run, and the tools
+  appear twice; there, the user's build goes into a copy of the plugin whose `.mcp.json` points at
+  it. Nothing the driver ships names a local build.
+
 ## `## Targets`
 
 One surface per line, bare — no right-hand side. Every name must be from the surface vocabulary
@@ -261,4 +297,6 @@ checks that the required blocks are present, that one `namespace` row lists well
 every `## Targets` row is a bare surface from core's vocabulary declared once and a row carrying `=`
 is rejected as the retired grammar, that every target has a capabilities block and every
 capabilities block a target, that every capability is in the vocabulary and named once, and that
-`plugin.json` has a name and an object-form dependency on core.
+`plugin.json` has a name and an object-form dependency on core. When the plugin ships `.mcp.json`,
+it also checks that every server key and its plugin form `plugin_<plugin>_<key>` are in `namespace`, and that
+the package `npx` runs carries an exact version.

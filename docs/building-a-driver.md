@@ -67,6 +67,16 @@ A user who invented a name outside your list gets a message naming every prefix 
 That is a one-edit fix for them and no work for you — which is why this is a list rather than a
 setting every project has to carry.
 
+### Shipping the server
+
+If your server is published as a package, ship it with the driver: `.mcp.json` at the plugin root,
+`npx -y <package>@<x.y.z>` with an exact version, the key first in `namespace` and its Claude Code
+form `plugin_<your-plugin>_<key>` in the list too. Both runtimes read the file on install, so nobody
+registers the server by hand. Bump the version only after checking your capabilities against the
+new one. Never name a build on your own machine in it; a user who runs their own build points a copy
+of the plugin at it in Claude Code, or registers the same key in their configuration in Codex. The
+rules and the fields each runtime reads are in `conventions/driver-contract.md`, "The server".
+
 ## 5. `## Targets` — which surfaces you drive
 
 ```
@@ -130,7 +140,8 @@ No call signatures — that is the one rule of this file.
 Clean output is `driver manifest OK: my-driver`. The lint checks the required blocks, one `namespace`
 row of well-formed names, `## Targets` rows that are bare surfaces from core's vocabulary (a row
 carrying `=` is the retired grammar and is rejected), targets and capability blocks covering each
-other exactly, capabilities inside the vocabulary and named once, and the dependency form.
+other exactly, capabilities inside the vocabulary and named once, and the dependency form — and, when
+you ship `.mcp.json`, that its keys and their plugin forms are in `namespace` and its package version is exact.
 
 Copy the lint into your own repo and run it in CI: plugins share no code, so update both or neither,
 and record the source in a header comment the way platform authors do.

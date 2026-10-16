@@ -59,6 +59,9 @@ language. The user approves it in their window; the request names your agent's t
 - A refused escalation is the user's decision, not a failure: the step is not run, it goes to
   `ManualChecks.md`, and the stage report says why.
 - MCP tools (XcodeBuildMCP, a driver) need no escalation: their servers run outside the sandbox.
+- A driver's tools are named `mcp__<prefix>__<tool>` with every character of the prefix outside
+  `[A-Za-z0-9_]` replaced by `_`: look `agent-device` up as `mcp__agent_device__*`, `mcp-devices` as
+  `mcp__mcp_devices__*`.
 
 ## Git
 
