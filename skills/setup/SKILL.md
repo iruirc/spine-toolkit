@@ -50,7 +50,7 @@ The full resolution procedure used elsewhere — read the project config's `[LAN
 
 ## Agent Tooling
 
-**Runtime.** This skill names Claude Code tools. `<runtime>` is the host you run in: `claude-code` in Claude Code, `codex-cli` in Codex CLI. Outside Claude Code, read `<core root>/runtimes/<runtime>.md` before anything else: it maps each tool named here — the structured question, loading `<platform>:manifest` and the platform's setup skill — to the host's own.
+**Runtime.** This skill names Claude Code tools. `<runtime>` is the host you run in: `claude-code` in Claude Code, `codex-cli` in Codex CLI. Outside Claude Code, read `<core root>/runtimes/<runtime>.md` before anything else: it maps each tool named here — the structured question, finding the installed platforms, loading `<platform>:manifest` and the platform's setup skill — to the host's own.
 
 Use `conventions/agent-tooling.md` for host-neutral interaction and file-access
 terms.
