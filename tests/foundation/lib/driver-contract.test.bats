@@ -336,3 +336,8 @@ browser"
 @test "the contract says when Claude Code suppresses a plugin's server" {
   grep -qF 'same command and arguments' "$DOC"
 }
+
+@test "the contract passes variables by name through env_vars only" {
+  ! grep -qF 'env` with `${VAR:-default}' "$DOC"
+  grep -qF 'never in `env`' "$DOC"
+}

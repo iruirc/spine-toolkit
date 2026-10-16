@@ -90,9 +90,11 @@ the server, the same way in either runtime.
 - **Fields one runtime does not know are ignored by it.** Codex reads `default_tools_approval_mode`
   (`approve`: no question before each call — a validator makes dozens), `env_vars` (variables passed
   through from the user's environment) and `startup_timeout_sec` (the first `npx` downloads the
-  package); Claude Code reads `env` with `${VAR:-default}`. A variable the server needs is passed
-  through by name in both — `env_vars` and `env` — never written as a value: a path on the author's
-  machine is wrong on every other.
+  package). A variable the server needs from the user's environment goes by name into `env_vars`,
+  never in `env`: Claude Code hands its own environment to the server anyway, while Codex starts it
+  from a short default list plus `env_vars` and passes an `env` value such as `${VAR:-}` through
+  literally, over the real one. Never written as a value either: a path on the author's machine is
+  wrong on every other.
 - **The user's own build of the server.** In Codex a server with the same key in the user's
   configuration replaces the plugin's. In Claude Code it does not — both servers run, and the tools
   appear twice, unless the two have the same command and arguments, when Claude Code suppresses the

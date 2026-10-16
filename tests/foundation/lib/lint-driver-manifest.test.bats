@@ -254,3 +254,10 @@ add_plugin_form() {
   [ "$status" -eq 1 ]
   [[ "$output" == *".mcp.json"* ]]
 }
+
+@test "fails on a \${…} reference in env (Codex passes it literally)" {
+  printf '{"mcpServers": {"neutral": {"command": "npx", "args": ["-y", "pkg@1.2.3"], "env": {"X": "${X:-}"}, "env_vars": ["X"]}}}\n' > "$TMP/d/.mcp.json"; add_plugin_form
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"env_vars"* ]]
+}
