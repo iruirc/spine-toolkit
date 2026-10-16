@@ -82,4 +82,5 @@ unique file; to name your logs, put them in one directory from `mktemp -d` — n
 such as `/tmp/v<task>.log`, which another clone running the same task writes too. Give each `wait` call a tool timeout
 above its `--for`, or pass a `--for` your tool's limit allows. `start` also records the job
 for the orchestrator, which shows the user every job still running after the stage: `stop` what
-you started.
+you started. `stop` exits 2 and says so when the host refuses the signal — a sandbox looking at a
+command started outside it; run it again where the command was started (`runtimes/<runtime>.md`).

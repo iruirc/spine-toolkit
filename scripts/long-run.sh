@@ -6,6 +6,7 @@
 #        scripts/long-run.sh wait <log> [--for s] [--stall s] [--max s]
 #        scripts/long-run.sh stop <log>
 # Exit (wait): 0 done ok, 1 done failed, 3 running, 4 stalled, 5 timeout. 2: usage, any subcommand.
+# Exit (stop): 2 also when the host refuses the signal (a sandbox; the command runs outside it).
 set -uo pipefail
 
 POLL="${LONG_RUN_POLL:-10}"
@@ -14,6 +15,9 @@ GRACE="${LONG_RUN_GRACE:-10}"
 usage() { echo "usage: $0 start [--log <path>] -- <cmd…> | wait <log> [--for s] [--stall s] [--max s] | stop <log>" >&2; exit 2; }
 mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"; }
 lines_of() { wc -l <"$1" | tr -d ' '; }
+# A process the host will not let this one signal (a sandbox looking at a command started outside
+# it) is alive: only "no such process" means it is gone.
+alive() { local err; err="$(LC_ALL=C kill -0 "$1" 2>&1)" || [[ "$err" == *'not permitted'* ]]; }
 report() { echo "status=$1"; echo "--- tail $2"; tail -n 40 "$2" | cut -c1-500; }
 
 cmd_start() {
@@ -70,7 +74,7 @@ cmd_wait() {
       report "done exit=$code" "$log"
       [ "$code" = 0 ] && exit 0 || exit 1
     fi
-    if ! kill -0 "$pid" 2>/dev/null; then
+    if ! alive "$pid"; then
       [ -f "$log.exit" ] && continue
       report "done exit=lost" "$log"; exit 1
     fi
@@ -87,13 +91,19 @@ cmd_stop() {
   [ $# -eq 1 ] && [ -f "$1.pid" ] || usage
   local log="$1" pid i=0
   pid="$(cat "$log.pid")"
+  # `kill -- -1` signals every process of the user: a pid file never names a group that wide.
+  [[ "$pid" =~ ^[0-9]+$ ]] && [ "$pid" -gt 1 ] || usage
   # A finished command's pgid may already be reused by an unrelated process; signal it only
   # while the command is still the one that holds it.
   if [ -f "$log.exit" ]; then
     echo "stopped pid=$pid"
     return
   fi
-  kill -TERM -- "-$pid" 2>/dev/null
+  local err
+  if ! err="$(LC_ALL=C kill -TERM -- "-$pid" 2>&1)" && [[ "$err" == *'not permitted'* ]]; then
+    echo 'stop is not permitted here: rerun outside the sandbox'
+    exit 2
+  fi
   while kill -0 -- "-$pid" 2>/dev/null && [ "$i" -lt "$GRACE" ]; do sleep 1; i=$((i + 1)); done
   kill -KILL -- "-$pid" 2>/dev/null
   [ -f "$log.exit" ] || echo stopped >"$log.exit"

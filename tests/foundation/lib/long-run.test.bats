@@ -10,7 +10,21 @@ setup() {
 }
 
 teardown() {
+  # A log written by hand points at a process this test does not own (pid 1 among them, and
+  # `kill -- -1` signals every process of the user): never signal it.
+  [ -f "$LOG.foreign" ] && return 0
   [ -f "$LOG.pid" ] && kill -KILL -- "-$(cat "$LOG.pid")" 2>/dev/null || true
+}
+
+# A long-run log for a process this test did not start, as a sandboxed host sees one started
+# outside the sandbox: the signal is refused, not missing.
+foreign_log() {
+  : >"$LOG"; echo "$1" >"$LOG.pid"; date +%s >"$LOG.start"; : >"$LOG.foreign"
+}
+
+# A process group of another user, whose leader is not pid 1, or nothing.
+foreign_group() {
+  ps -A -o pid=,pgid=,user= | awk '$3=="root" && $1==$2 && $1>1 {print $1; exit}'
 }
 
 @test "a command that succeeds is done with exit 0" {
@@ -67,7 +81,8 @@ teardown() {
   s="$(awk '$0=="## Long-running commands"{f=1;next} f&&/^## /{exit} f' "$ROOT/conventions/agent-tooling.md")"
   [ -n "$s" ] || { echo "no ## Long-running commands"; return 1; }
   for f in 'scripts/long-run.sh start' 'never in the foreground' 'Do not silence its output' \
-           'other than `running`' 'then `stop`' 'not as failed' '`--stall` and `--max` exactly as your brief gives them'; do
+           'other than `running`' 'then `stop`' 'not as failed' '`--stall` and `--max` exactly as your brief gives them' \
+           '`stop` exits 2 and says so when the host refuses the signal'; do
     grep -qF -- "$f" <<<"$s" || { echo "the section lost: $f"; return 1; }
   done
 }
@@ -95,4 +110,47 @@ teardown() {
   "$BATS_TEST_TMPDIR/codex" -c '"$1" start --log "$2" -- sh -c "echo hi" >/dev/null; echo $$ >"$2.owner"' _ "$LR" "$LOG"
   read -r pid when session log < <(tail -1 "$LONG_RUN_REGISTRY")
   [ "$session" = "$(cat "$LOG.owner")" ] || { echo "owner $session, codex was $(cat "$LOG.owner")"; false; }
+}
+
+# Codex runs a build outside its sandbox and the wait inside it: kill -0 is refused there, and a
+# refusal read as "no such process" reported a running build as lost.
+@test "wait takes a process it may not signal as alive" {
+  [ "$(id -u)" -ne 0 ] || skip "root may signal pid 1"
+  foreign_log 1
+  run "$LR" wait "$LOG" --for 2 --stall 60
+  [ "$status" -eq 3 ] && [[ "${lines[0]}" == "status=running"* ]] || { echo "$output"; return 1; }
+  echo 0 >"$LOG.exit"
+  run "$LR" wait "$LOG" --for 2
+  [ "$status" -eq 0 ] && [ "${lines[0]}" = "status=done exit=0" ] || { echo "$output"; return 1; }
+}
+
+@test "wait still reports a vanished process as lost" {
+  sh -c 'exit 0' & gone=$!; wait "$gone"
+  foreign_log "$gone"
+  run "$LR" wait "$LOG" --for 2
+  [ "$status" -eq 1 ] && [ "${lines[0]}" = "status=done exit=lost" ] || { echo "$output"; return 1; }
+}
+
+@test "stop refuses a pid of 1" {
+  # `kill -- -1` signals every process of the user, and a run of this test against a script
+  # without the guard once did. The script runs with kill shadowed: an exported function
+  # outranks the builtin in the child bash, so a regressed guard is recorded, never sent.
+  foreign_log 1
+  kill() { echo "kill $*" >>"$BATS_TEST_TMPDIR/kills"; }
+  export -f kill
+  run "$LR" stop "$LOG"
+  unset -f kill
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  [ ! -s "$BATS_TEST_TMPDIR/kills" ] || { echo "stop reached kill: $(cat "$BATS_TEST_TMPDIR/kills")"; return 1; }
+  [ ! -f "$LOG.exit" ] || { echo "stop wrote an exit file"; return 1; }
+}
+
+@test "stop says so when it may not signal the group" {
+  [ "$(id -u)" -ne 0 ] || skip "root may signal any group"
+  g="$(foreign_group)"; [ -n "$g" ] || skip "no process group of another user"
+  foreign_log "$g"
+  run "$LR" stop "$LOG"
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  [ "$output" = "stop is not permitted here: rerun outside the sandbox" ] || { echo "$output"; return 1; }
+  [ ! -f "$LOG.exit" ] || { echo "stop wrote an exit file"; return 1; }
 }
