@@ -81,7 +81,7 @@ foreign_group() {
   s="$(awk '$0=="## Long-running commands"{f=1;next} f&&/^## /{exit} f' "$ROOT/conventions/agent-tooling.md")"
   [ -n "$s" ] || { echo "no ## Long-running commands"; return 1; }
   for f in 'scripts/long-run.sh start' 'never in the foreground' 'Do not silence its output' \
-           'other than `running`' 'then `stop`' 'not as failed' '`--stall` and `--max` exactly as your brief gives them' \
+           'other than `running`' 'then `stop`' 'not as failed' 'Pass `--stall` and `--max` to `wait`, exactly as your brief gives them' \
            '`stop` exits 2 and says so when the host refuses the signal'; do
     grep -qF -- "$f" <<<"$s" || { echo "the section lost: $f"; return 1; }
   done

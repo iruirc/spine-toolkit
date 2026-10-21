@@ -12,7 +12,7 @@ setup() {
              'const core = (p) => `${CORE}/${p}`' \
              'const LONG_RUN = { stall: 5, max: 30, ...(A.long_run || {}) }' \
              'Core root: ${CORE} — every conventions/… or scripts/… path named in this brief or in your agent definition is relative to it.' \
-             "Long-running commands: follow \${core('conventions/agent-tooling.md')} → Long-running commands, with --stall \${60 * LONG_RUN.stall} --max \${60 * LONG_RUN.max}." \
+             "Long-running commands: follow \${core('conventions/agent-tooling.md')} → Long-running commands, with wait --stall \${60 * LONG_RUN.stall} --max \${60 * LONG_RUN.max} (start takes neither)." \
              "const ROOTS = Array.isArray(A.roots) ? A.roots.filter((r) => typeof r === 'string' && r.startsWith('/')) : []" \
              "Search roots: \${ROOTS.length ? ROOTS.join(', ') : 'the project root'} and the core root — follow \${core('conventions/agent-tooling.md')} → Finding files: never search from / or ~, and a file in none of them is reported missing, not searched for further."; do
       grep -qF -- "$s" "$f" || { echo "$(basename "$f"): missing: $s"; return 1; }
@@ -105,4 +105,9 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   for t in 'External packages' 'Roots' 'core root' 'base directory' '`/`' '`~`' 'stop'; do
     grep -qF -- "$t" <<<"$s" || { echo "Finding files lost: $t"; return 1; }
   done
+}
+
+@test "long-run budgets go to wait, never to start" {
+  grep -qF 'with wait --stall {stall} --max {max} (start takes neither).' "$ROOT/conventions/stage-dispatch.md"
+  grep -qF 'Pass `--stall` and `--max` to `wait`' "$ROOT/conventions/agent-tooling.md"
 }
