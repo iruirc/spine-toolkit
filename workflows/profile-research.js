@@ -148,7 +148,7 @@ const brief = (stage, body) => `Task folder: ${DIR}
 Task id: ${A.task_id} — profile ${PROFILE}, stage ${stage}.
 Stack: ${STACK}
 Core root: ${CORE} — every conventions/… or scripts/… path named in this brief or in your agent definition is relative to it.
-Long-running commands: follow ${core('conventions/agent-tooling.md')} → Long-running commands, with --stall ${60 * LONG_RUN.stall} --max ${60 * LONG_RUN.max}.
+Long-running commands: follow ${core('conventions/agent-tooling.md')} → Long-running commands, with wait --stall ${60 * LONG_RUN.stall} --max ${60 * LONG_RUN.max} (start takes neither).
 Search roots: ${ROOTS.length ? ROOTS.join(', ') : 'the project root'} and the core root — follow ${core('conventions/agent-tooling.md')} → Finding files: never search from / or ~, and a file in none of them is reported missing, not searched for further.
 ${TESTS_NOTE}Output language: ${LANG_NAME} — every sentence of prose in the artifacts you write and in your own summary is ${LANG_NAME}; headings, field labels, status words, code, identifiers, paths, commit subjects and quoted logs and messages stay English. See ${core('conventions/i18n.md')}.
 
