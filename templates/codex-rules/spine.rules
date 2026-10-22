@@ -1,12 +1,30 @@
-# Written by spine-toolkit's setup for Codex CLI.
-# Codex keeps this project's .git read-only in its sandbox, so every commit Spine makes after a
-# finished phase would stop to ask. This rule lets `git add` and `git commit`, run from the
-# repository's folder, go without a question and outside the sandbox — the project's git hooks
-# included. To undo, delete this file.
+# Written by spine-toolkit's setup for Codex CLI, and replaced by it when a new version of Spine
+# changes this file. To undo, delete it: Codex then asks before each of these commands again.
+#
+# Codex keeps the project's .git read-only in its sandbox, refuses the simulator and devices to
+# what runs in it, and refuses `ps`. These rules let the commands Spine's stages run for that go
+# without a question and outside the sandbox: commits after a finished phase (the project's git
+# hooks included), builds and test runs started through long-run.sh, and the leftovers check.
+# A rule matches a script by its file name, so it covers every installed version of Spine — and
+# any file named long-run.sh or stage-leftovers.sh, wherever it lies.
 prefix_rule(
     pattern=["git", ["add", "commit"]],
     decision="allow",
     justification="Spine commits each finished phase; the sandbox keeps .git read-only.",
     match=[["git", "commit", "-m", "feat: x"], ["git", "add", "Sources/A.swift"]],
     not_match=[["git", "push"], ["git", "reset", "--hard"]],
+)
+prefix_rule(
+    pattern=["long-run.sh"],
+    decision="allow",
+    justification="Spine starts, waits on and stops builds and test runs that need the simulator or a device.",
+    match=[["long-run.sh", "start", "--", "make", "test"], ["long-run.sh", "wait", "/tmp/x.log"]],
+    not_match=[["make", "test"]],
+)
+prefix_rule(
+    pattern=["stage-leftovers.sh"],
+    decision="allow",
+    justification="Spine checks what a stage left running; the sandbox refuses ps.",
+    match=[["stage-leftovers.sh", "snap", "--out", "/tmp/s"], ["stage-leftovers.sh", "diff", "/tmp/s"]],
+    not_match=[["ps", "-ax"]],
 )

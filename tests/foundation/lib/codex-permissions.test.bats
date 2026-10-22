@@ -10,13 +10,36 @@ setup() {
   SECTION="$(awk '/^## Codex permissions \(Codex CLI\)/{on=1; print; next} on && /^## /{exit} on' "$SK")"
 }
 
+# Codex matches a rule by the program's file name too when the first word is a path
+# (execpolicy/src/policy.rs; always on in a session), so one rule covers every installed version.
+decision() { codex execpolicy check --resolve-host-executables --rules "$TPL" "$@"; }
+
 @test "the rule template lets git add and commit through and nothing else" {
   command -v codex >/dev/null || skip "codex is not installed"
   grep -qF 'pattern=["git", ["add", "commit"]]' "$TPL"
-  run codex execpolicy check --rules "$TPL" git commit -m x
+  run decision git commit -m x
   [[ "$output" == *'"decision":"allow"'* ]] || { echo "$output"; false; }
-  run codex execpolicy check --rules "$TPL" git push
+  run decision git push
   [[ "$output" == *'"matchedRules":[]'* ]] || { echo "$output"; false; }
+}
+
+@test "the rule template lets Spine's scripts out of the sandbox at any installed version" {
+  command -v codex >/dev/null || skip "codex is not installed"
+  for cmd in "/c/plugins/cache/m/core/2.30.0/scripts/long-run.sh start -- make test" \
+             "/c/scripts/long-run.sh wait /tmp/x.log --stall 60 --max 120" \
+             "/c/scripts/long-run.sh stop /tmp/x.log" \
+             "/c/scripts/stage-leftovers.sh snap --out /tmp/s" "/c/scripts/stage-leftovers.sh diff /tmp/s"; do
+    run decision $cmd
+    [[ "$output" == *'"decision":"allow"'* ]] || { echo "$cmd: $output"; false; }
+  done
+  run decision /c/scripts/codex-permissions.sh apply 'menu off'
+  [[ "$output" == *'"matchedRules":[]'* ]] || { echo "codex-permissions.sh must ask: $output"; false; }
+}
+
+@test "the rule template says who writes it and the risk it takes" {
+  for s in 'setup' 'any file named' 'delete'; do
+    grep -qiF -- "$s" "$TPL" || { echo "header lacks: $s"; false; }
+  done
 }
 
 @test "setup writes Codex permissions only in Codex CLI, after AGENTS.md" {
