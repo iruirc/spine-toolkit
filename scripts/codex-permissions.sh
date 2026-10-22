@@ -4,15 +4,16 @@
 #
 # Usage: scripts/codex-permissions.sh check --project <dir> [--platform-root <dir>] [--config-home <dir>]
 #        scripts/codex-permissions.sh apply --project <dir> [--platform-root <dir>] [--config-home <dir>] <item>…
-# check prints one item per line — rules <file> missing|outdated, menu off — and exits 0 when it
-# printed none, 1 when it did. apply takes those lines as items and writes only them. 2: usage, either.
+# check prints one item per line — rules <file> missing|outdated, menu off, mcp <server> prompts,
+# root <path> missing|stale — and exits 0 when it printed none, 1 when it did. apply takes those
+# lines as items and writes only them. 2: usage, either.
 # --config-home defaults to ${CODEX_HOME:-~/.codex}.
 set -uo pipefail
 
-[ $# -ge 1 ] || { sed -n '5,9p' "$0" >&2; exit 2; }
+[ $# -ge 1 ] || { sed -n '5,10p' "$0" >&2; exit 2; }
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 exec python3 - "$HERE" "$@" <<'PY'
-import argparse, glob, os, re, sys
+import argparse, glob, json, os, re, sys
 
 HERE = sys.argv[1]
 CORE_RULES = os.path.join(HERE, "..", "templates", "codex-rules", "spine.rules")
@@ -160,21 +161,25 @@ class Toml:
         t = self.tables.get(table)
         return bool(t) and key in t[2]
 
-    def set_line(self, table, key, line):
-        # Replace key's lines with one line, or add it after the table's last key; a new table goes at the end.
+    def set_lines(self, table, key, lines):
+        # Replace key's lines, or add them after the table's last key; a new table goes at the end.
         t = self.tables.get(table)
         if t and key in t[2]:
             s, e = t[2][key]
-            self.lines[s:e + 1] = [line]
+            self.lines[s:e + 1] = lines
         elif t:
             last = max([e for _, e in t[2].values()] + [t[0]])
-            self.lines.insert(last + 1, line)
+            self.lines[last + 1:last + 1] = lines
         else:
             while self.lines and not self.lines[-1].strip():
                 self.lines.pop()
             if self.lines:
                 self.lines.append("")
-            self.lines += ["[" + ".".join(table) + "]", line]
+            self.lines += ["[" + ".".join(table) + "]"] + lines
+        self.parse()
+
+    def insert_after_header(self, table, line):
+        self.lines.insert(self.tables[table][0] + 1, line)
         self.parse()
 
     def save(self):
@@ -201,45 +206,161 @@ def read(path):
         return None
 
 
+def platform_servers(platform_root):
+    # The commands of the MCP servers the platform's stages call, from runtimes/codex-cli/mcp.json.
+    path = os.path.join(platform_root or "", "runtimes", "codex-cli", "mcp.json")
+    if not platform_root or not os.path.isfile(path):
+        return []
+    try:
+        return [str(n) for n in json.load(open(path, encoding="utf-8"))["servers"]]
+    except (ValueError, KeyError, TypeError, OSError):
+        usage("cannot read " + path)
+
+
+def package_name(arg):
+    # npx's package argument without its version: xcodebuildmcp@1.2.3 → xcodebuildmcp, @s/p@1 → @s/p.
+    scope, rest = ("@", arg[1:]) if arg.startswith("@") else ("", arg)
+    return scope + rest.split("@")[0]
+
+
+def wanted_roots(project):
+    # Each `- External packages: <glob>` line of the project config, cut before its first glob part.
+    for name in ("SPINE.md", "CLAUDE-spine-toolkit.md"):
+        path = os.path.join(project, name)
+        if os.path.isfile(path):
+            break
+    else:
+        return []
+    out = []
+    for line in open(path, encoding="utf-8"):
+        m = re.match(r"^- External packages:\s*(.+?)\s*$", line)
+        if not m:
+            continue
+        parts = []
+        for part in m.group(1).lstrip("/").split("/"):
+            if re.search(r"[*?\[]", part):
+                break
+            parts.append(part)
+        root = os.path.normpath(os.path.join(project, *parts))
+        if root not in out:
+            out.append(root)
+    return out
+
+
+ROOTS = ("sandbox_workspace_write",)
+
+
+def listed_roots(conf):
+    # writable_roots as (the user's, Spine's): an element on a line ending in `# spine` is Spine's.
+    t = conf.tables.get(ROOTS)
+    if not t or "writable_roots" not in t[2]:
+        return [], []
+    s, e = t[2]["writable_roots"]
+    user, own = [], []
+    for i in range(s, e + 1):
+        line = conf.lines[i]
+        found = [p for k, p in scan(KEY.match(line).group(2) if i == s else line) if k == "str"]
+        (own if re.search(r"#\s*spine\s*$", line) else user).extend(found)
+    return user, own
+
+
+class State:
+    """What check reports and apply writes, read once from the files."""
+
+    def __init__(self, a):
+        self.a = a
+        self.rules = rule_sources(a.platform_root)
+        self.user = Toml(os.path.join(a.config_home, "config.toml"))
+        self.conf = Toml(os.path.join(a.project, ".codex", "config.toml"))
+        names = platform_servers(a.platform_root)
+        self.servers = {}  # server key → its table path, for every server the platform lists
+        for path in self.user.tables:
+            if len(path) != 2 or path[0] != "mcp_servers":
+                continue
+            cmd, args = self.user.get(path, "command"), self.user.get(path, "args")
+            if not isinstance(cmd, str):
+                continue
+            base = os.path.basename(cmd)
+            if base in names or (base == "npx" and any(
+                    isinstance(x, str) and not x.startswith("-") and package_name(x) in names
+                    for x in (args if isinstance(args, list) else []))):
+                self.servers[path[1]] = path
+        self.wanted = wanted_roots(a.project)
+        self.listed, self.own = listed_roots(self.conf)
+
+    def items(self):
+        out = []
+        for name, src in self.rules:
+            want, have = read(src), read(os.path.join(self.a.project, ".codex", "rules", name))
+            if want is None:
+                usage("cannot read " + src)
+            if have is None:
+                out.append("rules %s missing" % name)
+            elif have != want:
+                out.append("rules %s outdated" % name)
+        if self.user.get(("features",), "default_mode_request_user_input") is not True:
+            out.append("menu off")
+        out += ["mcp %s prompts" % k for k, path in self.servers.items()
+                if not self.user.has(path, "default_tools_approval_mode")]
+        out += ["root %s missing" % r for r in self.wanted if r not in self.listed + self.own]
+        out += ["root %s stale" % r for r in self.own if r not in self.wanted]
+        return out
+
+    def known(self, item):
+        m = re.match(r"^rules (\S+) (missing|outdated)$", item)
+        if m:
+            return m.group(1) in dict(self.rules)
+        m = re.match(r"^mcp (.+) prompts$", item)
+        if m:
+            return m.group(1) in self.servers
+        m = re.match(r"^root (.+) (missing|stale)$", item)
+        if m:
+            return m.group(1) in (self.wanted if m.group(2) == "missing" else self.own)
+        return item == "menu off"
+
+
 def check(a):
-    items = []
-    for name, src in rule_sources(a.platform_root):
-        want, have = read(src), read(os.path.join(a.project, ".codex", "rules", name))
-        if want is None:
-            usage("cannot read " + src)
-        if have is None:
-            items.append("rules %s missing" % name)
-        elif have != want:
-            items.append("rules %s outdated" % name)
-    user = Toml(os.path.join(a.config_home, "config.toml"))
-    if user.get(("features",), "default_mode_request_user_input") is not True:
-        items.append("menu off")
-    return items
-
-
-def known(item, sources):
-    m = re.match(r"^rules (\S+) (missing|outdated)$", item)
-    return (m and m.group(1) in sources) or item == "menu off"
+    return State(a).items()
 
 
 def apply(a, wanted):
     # Every item is checked before the first write; an item already in place is written again as is.
-    sources = dict(rule_sources(a.platform_root))
+    st = State(a)
     for item in wanted:
-        if not known(item, sources):
+        if not st.known(item):
             usage("unknown item: " + item)
+    sources, own, roots_changed = dict(st.rules), list(st.own), False
     for item in wanted:
-        if item.startswith("rules "):
-            name = item.split()[1]
+        kind, rest = item.split(" ", 1)
+        if kind == "rules":
+            name = rest.split()[0]
             dest = os.path.join(a.project, ".codex", "rules", name)
             os.makedirs(os.path.dirname(dest), exist_ok=True)
             with open(dest, "wb") as f:
                 f.write(read(sources[name]))
-        elif item == "menu off":
-            user = Toml(os.path.join(a.config_home, "config.toml"))
-            if user.get(("features",), "default_mode_request_user_input") is not True:
-                user.set_line(("features",), "default_mode_request_user_input", "default_mode_request_user_input = true")
-                user.save()
+        elif kind == "menu":
+            if st.user.get(("features",), "default_mode_request_user_input") is not True:
+                st.user.set_lines(("features",), "default_mode_request_user_input",
+                                  ["default_mode_request_user_input = true"])
+                st.user.save()
+        elif kind == "mcp":
+            path = st.servers[rest[:-len(" prompts")]]
+            if not st.user.has(path, "default_tools_approval_mode"):
+                st.user.insert_after_header(path, 'default_tools_approval_mode = "approve"')
+                st.user.save()
+        else:
+            root, what = rest.rsplit(" ", 1)
+            if what == "missing" and root not in own + st.listed:
+                own.append(root)
+            elif what == "stale" and root in own:
+                own.remove(root)
+            roots_changed = True
+    if roots_changed:
+        q = lambda r: json.dumps(r, ensure_ascii=False)
+        body = ["  %s," % q(r) for r in st.listed] + ["  %s, # spine" % q(r) for r in own]
+        st.conf.set_lines(ROOTS, "writable_roots",
+                          ["writable_roots = ["] + body + ["]"] if body else ["writable_roots = []"])
+        st.conf.save()
 
 
 def main():
