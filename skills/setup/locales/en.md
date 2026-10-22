@@ -142,26 +142,47 @@ Added the project config block to the end of `AGENTS.md` (backup: `{backup_path}
 ## report_agents_md_updated
 `AGENTS.md` now names the renamed project config (backup: `{backup_path}`).
 
-## auq_codex_git_rule
-Codex keeps this project's `.git` read-only in its sandbox, so every commit Spine makes after a finished phase would stop to ask you. Allow `git add` and `git commit` without asking? This writes `.codex/rules/spine.rules` in the project: those two commands then run without a question and outside the sandbox, and so do the project's git hooks. To undo, delete the file.
+## auq_codex_permissions
+In Codex, Spine would stop to ask you before many of its own steps. It can set Codex up so they run without asking:
 
-## auq_codex_git_rule_options
-Allow | Don't allow — confirm every commit
+{items}
 
-## auq_codex_menu
-Spine's questions in Codex come as text now: you answer with a number. Codex can show them as a menu you pick from with the arrow keys, as in Claude Code. Turn it on? This adds `default_mode_request_user_input = true` under `[features]` in `{config_path}`. It applies to every Codex session, not only this project, and Codex shows a warning that the feature is "under development". It takes effect after a restart: exit Codex, run `codex app-server daemon restart`, and start Codex again. To turn it off, delete the line.
+Apply? Codex asks you once to approve writing these files. It all takes effect after a restart: exit Codex, run `codex app-server daemon restart`, and start Codex again. To undo a setting, delete the file or the line it names.
 
-## auq_codex_menu_options
-Turn on | Don't turn on — questions stay as text
+## auq_codex_permissions_options
+Apply all | Choose one by one | Change nothing — keep confirming each step
 
-## report_codex_git_rule_written
-Wrote `.codex/rules/spine.rules`: after a restart of Codex — exit it, run `codex app-server daemon restart`, start it again — commits run without asking.
+## auq_codex_permission_item
+{item}
 
-## report_codex_git_rule_declined
-No commit rule: Codex will ask before each commit.
+Write this setting?
 
-## report_codex_menu_enabled
-Question menu turned on in `{config_path}`: exit Codex, run `codex app-server daemon restart`, and start Codex again.
+## auq_codex_permission_item_options
+Write | Skip
 
-## report_codex_menu_declined
-Question menu left off: questions come as numbered text.
+## codex_item_rules_core
+- `.codex/rules/spine.rules` in the project: commits after a finished phase, builds and test runs Spine starts, and its leftovers check run without a question and outside the sandbox — the project's git hooks too.
+
+## codex_item_rules_platform
+- `.codex/rules/{file}` in the project: the platform's build, test and simulator commands run without a question and outside the sandbox, the project's build scripts with them.
+
+## codex_item_menu
+- The question menu: Spine's questions come as a menu you pick from with the arrow keys instead of numbered text. Adds `default_mode_request_user_input = true` under `[features]` in `{config_path}`; it applies to every Codex session, and Codex warns the feature is "under development".
+
+## codex_item_mcp
+- The MCP server `{server}`: Codex stops asking before each of its calls — a validation makes dozens. Adds `default_tools_approval_mode = "approve"` to its section in `{config_path}`.
+
+## codex_item_root_missing
+- `{path}`: the external packages the project config lists; Spine's stages may write there without a question. Goes into `writable_roots` of the project's `.codex/config.toml`.
+
+## codex_item_root_stale
+- `{path}`: no longer in the project config; removed from `writable_roots` of the project's `.codex/config.toml`.
+
+## report_codex_permissions_written
+Codex settings written. They take effect after a restart: exit Codex, run `codex app-server daemon restart`, and start Codex again.
+
+## report_codex_permissions_declined
+Codex settings left as they were: Codex will keep asking before those steps.
+
+## report_codex_permissions_error
+Could not check Spine's Codex settings: {error}
