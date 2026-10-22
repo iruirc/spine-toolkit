@@ -142,26 +142,47 @@ DocsMap.md: {docs_map_status}
 ## report_agents_md_updated
 `AGENTS.md` теперь называет переименованный конфиг проекта (бэкап: `{backup_path}`).
 
-## auq_codex_git_rule
-В песочнице Codex папка `.git` этого проекта доступна только на чтение, поэтому каждый коммит, который Spine делает после готовой фазы, будет спрашивать у тебя подтверждение. Разрешить `git add` и `git commit` без вопроса? В проекте появится файл `.codex/rules/spine.rules`: эти две команды пойдут без вопроса и вне песочницы, git-хуки проекта тоже. Чтобы отменить, удали файл.
+## auq_codex_permissions
+В Codex Spine будет спрашивать подтверждение перед многими своими шагами. Он может настроить Codex так, чтобы они шли без вопросов:
 
-## auq_codex_git_rule_options
-Разрешить | Не разрешать — подтверждать каждый коммит
+{items}
 
-## auq_codex_menu
-Сейчас вопросы Spine в Codex приходят текстом: ты отвечаешь цифрой. Codex умеет показывать их в виде меню, где вариант выбирается стрелками, как в Claude Code. Включить? В `{config_path}` в раздел `[features]` добавится строка `default_mode_request_user_input = true`. Она действует во всех сессиях Codex, а не только в этом проекте, и Codex покажет предупреждение, что функция «under development». Заработает после перезапуска: выйди из Codex, выполни `codex app-server daemon restart` и запусти Codex снова. Чтобы выключить, удали строку.
+Применить? Codex один раз попросит подтвердить запись этих файлов. Всё заработает после перезапуска: выйди из Codex, выполни `codex app-server daemon restart` и запусти Codex снова. Чтобы отменить настройку, удали названный файл или строку.
 
-## auq_codex_menu_options
-Включить | Не включать — вопросы останутся текстом
+## auq_codex_permissions_options
+Применить всё | Выбрать по одному | Ничего не менять — подтверждать каждый шаг
 
-## report_codex_git_rule_written
-Записан `.codex/rules/spine.rules`: после перезапуска Codex (выйди из него, выполни `codex app-server daemon restart`, запусти снова) коммиты идут без вопроса.
+## auq_codex_permission_item
+{item}
 
-## report_codex_git_rule_declined
-Правила для коммитов нет: Codex будет спрашивать перед каждым коммитом.
+Записать эту настройку?
 
-## report_codex_menu_enabled
-Меню вопросов включено в `{config_path}`: выйди из Codex, выполни `codex app-server daemon restart` и запусти Codex снова.
+## auq_codex_permission_item_options
+Записать | Пропустить
 
-## report_codex_menu_declined
-Меню вопросов не включено: вопросы приходят нумерованным текстом.
+## codex_item_rules_core
+- `.codex/rules/spine.rules` в проекте: коммиты после готовой фазы, сборки и тестовые прогоны, которые запускает Spine, и его проверка остатков пойдут без вопроса и вне песочницы — git-хуки проекта тоже.
+
+## codex_item_rules_platform
+- `.codex/rules/{file}` в проекте: команды сборки, тестов и симулятора платформы пойдут без вопроса и вне песочницы, а с ними и сборочные скрипты проекта.
+
+## codex_item_menu
+- Меню вопросов: вопросы Spine придут меню, где вариант выбирается стрелками, а не нумерованным текстом. В `{config_path}` в раздел `[features]` добавится `default_mode_request_user_input = true`; действует во всех сессиях Codex, и Codex предупредит, что функция «under development».
+
+## codex_item_mcp
+- MCP-сервер `{server}`: Codex перестанет спрашивать перед каждым его вызовом — валидация делает их десятки. В его раздел в `{config_path}` добавится `default_tools_approval_mode = "approve"`.
+
+## codex_item_root_missing
+- `{path}`: внешние пакеты из конфига проекта; стадии Spine смогут писать туда без вопроса. Путь добавится в `writable_roots` файла `.codex/config.toml` проекта.
+
+## codex_item_root_stale
+- `{path}`: больше нет в конфиге проекта; путь уберётся из `writable_roots` файла `.codex/config.toml` проекта.
+
+## report_codex_permissions_written
+Настройки Codex записаны. Заработают после перезапуска: выйди из Codex, выполни `codex app-server daemon restart` и запусти Codex снова.
+
+## report_codex_permissions_declined
+Настройки Codex не изменены: Codex продолжит спрашивать перед этими шагами.
+
+## report_codex_permissions_error
+Не удалось проверить настройки Spine для Codex: {error}

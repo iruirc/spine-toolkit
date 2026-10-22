@@ -13,7 +13,7 @@ Bootstraps spine-toolkit in an **already existing** project. Two-file layout:
 - `SPINE.md` — toolkit-owned configuration, the *project config* (`conventions/task-settings.md` → Project config); its sections are the ones `templates/spine-md/en.md` carries. Created and updated by this skill. A project set up before the toolkit ran in more than one runtime carries the same file as `CLAUDE-spine-toolkit.md`; every reader accepts that name, and state G below renames it on request.
 - `CLAUDE.md` — user-owned project instructions. Touched once to insert the `@./SPINE.md` line; otherwise unchanged.
 - `AGENTS.md` — touched only when this skill runs in Codex CLI, which reads `AGENTS.md` and no `@`-import: one marked block pointing at the project config (see **AGENTS.md (Codex CLI)**).
-- `.codex/rules/spine.rules` and the user's Codex `config.toml` — touched only in Codex CLI, each after the user agrees to it (see **Codex permissions (Codex CLI)**).
+- `.codex/rules/spine*.rules`, the project's `.codex/config.toml` and the user's Codex `config.toml` — touched only in Codex CLI, after the user agrees to it (see **Codex permissions (Codex CLI)**).
 
 This skill owns the config **format** and every block or field that is core's: `[LANG]`, `[WORKFLOW_MODE]`, `[PROGRESS]`, `## Platform`, `## Agents`, and the file-level scaffolding. It owns none of the stack: `## Stack` and `## Modules` are filled by the platform half (step 5), because which axes exist and which values they take is the platform manifest's `## Axes`, not core's.
 
@@ -307,7 +307,7 @@ anything — which is what lets F take the language and the platform from the fi
 
 6d. Codex permissions, in Codex CLI only — see **Codex permissions (Codex CLI)** below. Runs after
    6c in every state but state F, which asks nothing: there it is left for the next run of `/setup`.
-   Each of its two questions is asked only when its setting is not there yet.
+   It asks only when a setting is missing or stale.
 
 7. Render the report:
    - States A/B/C/E → key `setup_done` with placeholders {platform}, {stack}, {mode},
@@ -358,32 +358,46 @@ of `CLAUDE.md` is copied into `AGENTS.md`; `.codex/` belongs to **Codex permissi
 
 ## Codex permissions (Codex CLI)
 
-In Codex CLI's `workspace-write` sandbox the project's `.git` is read-only, so every commit a stage
-makes stops to ask, and Spine's questions come as numbered text. Two settings change that; each is
-the user's to give, so each is a question. Which runtime you are in is this skill's Runtime
+In Codex CLI's `workspace-write` sandbox the project's `.git` is read-only, the simulator, devices
+and `ps` are refused, writes outside the project ask, and Spine's questions come as numbered text.
+So every commit, build, test run, leftovers check, call of the platform's MCP server and write to an
+external package would stop to ask. Spine's Codex settings take that away; they widen what runs
+without the user, so they are the user's to give. Which runtime you are in is this skill's Runtime
 paragraph (**Agent Tooling**).
 
-- In Claude Code: nothing — neither file is read or written.
-- **Git rule.** `.codex/rules/spine.rules` exists in the project root → no question, no report
-  line. Absent → AUQ `auq_codex_git_rule` with options `auq_codex_git_rule_options`.
-  - First option → create `.codex/rules/` and copy `templates/codex-rules/spine.rules` into it
-    unchanged. Codex's sandbox keeps `.codex/` protected like `.git`, so Codex asks the user to
-    approve the write. Report `report_codex_git_rule_written`: Codex reads rules when a session
-    starts, so the rule applies after a restart.
-  - Second option → write nothing; report `report_codex_git_rule_declined`.
-  This skill does not commit the file: whether `.codex/` goes into the repository is the user's call.
-- **Question menu.** `{config_path}` is `${CODEX_HOME:-~/.codex}/config.toml`, written out as the
-  real path. When it already has `default_mode_request_user_input = true` → no question, no report
-  line (the line counts only under `[features]`). Otherwise AUQ `auq_codex_menu` with options `auq_codex_menu_options`.
-  - First option → add `default_mode_request_user_input = true` under `[features]`: append a
-    `[features]` table when the file has none, create the file when it does not exist, replace a
-    `false` value in place, change nothing else. The file is outside the project, so Codex asks the user to approve the write. Report
-    `report_codex_menu_enabled`. The menu appears only after a restart — exit Codex, run
-    `codex app-server daemon restart`, start Codex again — so the questions left in this run stay
-    numbered text.
-  - Second option → write nothing; report `report_codex_menu_declined`.
+- In Claude Code: nothing — no file is read or written.
+- In Codex CLI, run `<core root>/scripts/codex-permissions.sh check --project <project root>
+  --platform-root <platform root> --config-home <config home>` inside the sandbox. `<platform root>`
+  is the root of the platform the project config names, found by content (`conventions/agent-tooling.md`
+  → Plugin Roots); with no platform, leave the flag out. `<config home>` is `${CODEX_HOME:-~/.codex}`,
+  written out as the real path; `{config_path}` below is its `config.toml`.
+  - Exit 0 → every setting is in place: no question, no report line.
+  - Exit 2 → report `report_codex_permissions_error` with {error} = what it printed, and carry on.
+  - Exit 1 → it printed one item per line. AUQ `auq_codex_permissions` with options
+    `auq_codex_permissions_options`; {items} is one line per item, each in the key its kind maps to:
 
-The template resolves like every other (`conventions/agent-tooling.md` → Plugin Roots).
+    | item | key | placeholders |
+    |---|---|---|
+    | `rules spine.rules missing` / `outdated` | `codex_item_rules_core` | — |
+    | `rules spine-<name>.rules missing` / `outdated` | `codex_item_rules_platform` | {file} = `spine-<name>.rules` |
+    | `menu off` | `codex_item_menu` | {config_path} |
+    | `mcp <server> prompts` | `codex_item_mcp` | {server}, {config_path} |
+    | `root <path> missing` | `codex_item_root_missing` | {path} |
+    | `root <path> stale` | `codex_item_root_stale` | {path} |
+
+    - First option (apply all) → `codex-permissions.sh apply` with the same flags and every item
+      `check` printed, each as one quoted argument, run with `sandbox_permissions: "require_escalated"`:
+      `.codex/` is protected like `.git`, and `{config_path}` lies outside the project, so Codex asks
+      the user once — one approval for every file. Report `report_codex_permissions_written`.
+    - Second option (one by one) → for each item, AUQ `auq_codex_permission_item` with {item} = its
+      line from the table and options `auq_codex_permission_item_options`; then one `apply`, escalated
+      as above, with the items the user chose to write. None chosen → as the third option.
+    - Third option → write nothing; report `report_codex_permissions_declined`.
+
+Codex reads rules and its config when a session starts, so what was written applies after a
+restart — the report says how. This skill does not commit `.codex/`: whether it goes into the
+repository is the user's call. The orchestrator runs the same `check` when a task starts and points
+the user back here when it prints anything.
 
 ## Migration Algorithm (states D, E and F)
 
