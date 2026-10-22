@@ -14,6 +14,8 @@ The skill itself does not perform the work of stages — it only resolves parame
 
 **Runtime.** This skill and the skills it loads name Claude Code tools. `<runtime>` is the host you run in: `claude-code` in Claude Code, `codex-cli` in Codex CLI. Outside Claude Code, read `<core root>/runtimes/<runtime>.md` before anything else: it maps each tool named here to the host's own.
 
+**Codex settings.** In `codex-cli` only, once per run, after the Stack is resolved: run `<core root>/scripts/codex-permissions.sh check --project <project root> --platform-root <platform root> --config-home ${CODEX_HOME:-~/.codex}` inside the sandbox (leave `--platform-root` out when the project has no platform). Exit 1 → report `codex_permissions_outdated` once, in one line; exit 0 and exit 2 say nothing. Either way the run carries on: without Spine's rules a command only asks, as it would have. In Claude Code nothing runs.
+
 ## Language Resolution
 
 Before producing any user-facing string:
