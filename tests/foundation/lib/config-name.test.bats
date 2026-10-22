@@ -16,7 +16,7 @@ core_grep() {
 
 @test "the legacy config name survives only where migration or lookup needs it" {
   hits="$(core_grep -l 'CLAUDE-spine-toolkit')"
-  offenders="$(grep -vE '^(skills/setup/|commands/setup\.md|skills/lang/|commands/lang\.md|conventions/task-settings\.md|conventions/i18n\.md|README\.md|docs/configuration\.md|scripts/resolve-settings\.sh|hooks/session-start|tests/)' <<<"$hits" || true)"
+  offenders="$(grep -vE '^(skills/setup/|commands/setup\.md|skills/lang/|commands/lang\.md|conventions/task-settings\.md|conventions/i18n\.md|README\.md|docs/configuration\.md|scripts/resolve-settings\.sh|scripts/codex-permissions\.sh|hooks/session-start|tests/)' <<<"$hits" || true)"
   [ -z "$offenders" ] || { echo "legacy config name outside the whitelist:"; echo "$offenders"; return 1; }
 }
 
