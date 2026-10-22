@@ -112,3 +112,13 @@ decision() { codex execpolicy check --resolve-host-executables --rules "$TPL" "$
   awk '/STATE C \(already_configured\)/{on=1} on && /^ *b\. Ask qM/{exit} on' "$SK" | grep -F -- '- Cancel →' | grep -qF 'step 6c and step 6d'
   grep -F 'Cancel on the AUQ in state C' "$SK" | grep -qF 'step 6c and step 6d'
 }
+
+# Final review of milestone 5: `long-run.sh start -- <command>` runs that command outside the
+# sandbox whatever it is, and the user grants it with one answer — the wording has to say so.
+@test "the rule header and the question say the rule runs any command outside the sandbox" {
+  grep -qF 'whatever it is' "$TPL" || { echo "header does not say it"; false; }
+  for l in en ru; do
+    awk '/^## codex_item_rules_core$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/setup/locales/$l.md" \
+      | grep -qF 'long-run.sh start -- <' || { echo "$l codex_item_rules_core does not say it"; false; }
+  done
+}

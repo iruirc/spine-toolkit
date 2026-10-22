@@ -5,8 +5,9 @@
 # what runs in it, and refuses `ps`. These rules let the commands Spine's stages run for that go
 # without a question and outside the sandbox: commits after a finished phase (the project's git
 # hooks included), builds and test runs started through long-run.sh, and the leftovers check.
-# A rule matches a script by its file name, so it covers every installed version of Spine — and
-# any file named long-run.sh or stage-leftovers.sh, wherever it lies.
+# `long-run.sh start -- <command>` runs that command outside the sandbox, whatever it is.
+# A rule matches a script by its file name, so it covers every installed version of Spine —
+# and any file named long-run.sh or stage-leftovers.sh, wherever it lies.
 prefix_rule(
     pattern=["git", ["add", "commit"]],
     decision="allow",

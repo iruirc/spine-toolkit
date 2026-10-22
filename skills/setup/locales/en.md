@@ -161,7 +161,7 @@ Write this setting?
 Write | Skip
 
 ## codex_item_rules_core
-- `.codex/rules/spine.rules` in the project: commits after a finished phase, builds and test runs Spine starts, and its leftovers check run without a question and outside the sandbox — the project's git hooks too.
+- `.codex/rules/spine.rules` in the project: commits after a finished phase, builds and test runs Spine starts, and its leftovers check run without a question and outside the sandbox — the project's git hooks too. `long-run.sh start -- <command>` runs any command that way, whatever it is.
 
 ## codex_item_rules_platform
 - `.codex/rules/{file}` in the project: the platform's build, test and simulator commands run without a question and outside the sandbox, the project's build scripts with them.

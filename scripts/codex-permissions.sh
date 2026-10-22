@@ -34,6 +34,7 @@ class Parser(argparse.ArgumentParser):
 
 HEADER = re.compile(r'^\s*\[\[?\s*([^\[\]]+?)\s*\]\]?\s*(#.*)?$')
 KEY = re.compile(r'^\s*("(?:[^"\\]|\\.)*"|\'[^\']*\'|[A-Za-z0-9_-]+)\s*=\s*(.*)$')
+DOTTED = re.compile(r'^\s*((?:"[^"]*"|\'[^\']*\'|[A-Za-z0-9_-]+)(?:\s*\.\s*(?:"[^"]*"|\'[^\']*\'|[A-Za-z0-9_-]+))+)\s*=')
 
 
 def split_key(text):
@@ -130,6 +131,7 @@ class Toml:
 
     def parse(self):
         self.tables = {(): [0, len(self.lines), {}]}  # path -> [header line or 0, end, {key: (start, end)}]
+        self.dotted = set()  # the full path of every table a dotted key defines, `a.b.c = 1` → (a, b)
         cur, i = (), 0
         while i < len(self.lines):
             line = self.lines[i]
@@ -140,6 +142,11 @@ class Toml:
                 self.tables.setdefault(cur, [i, len(self.lines), {}])
                 i += 1
                 continue
+            d = DOTTED.match(line)
+            if d:
+                parts = cur + split_key(d.group(1))
+                for n in range(len(cur) + 1, len(parts)):
+                    self.dotted.add(parts[:n])
             k = KEY.match(line)
             if k:
                 start, d = i, depth(k.group(2))
@@ -329,6 +336,12 @@ def apply(a, wanted):
     for item in wanted:
         if not st.known(item):
             usage("unknown item: " + item)
+    # A table a dotted key already defines cannot get a header of its own: TOML rejects the file.
+    for item in wanted:
+        conf, table = ((st.user, ("features",)) if item == "menu off" else
+                       (st.conf, ROOTS) if item.startswith("root ") else (None, None))
+        if conf is not None and table in conf.dotted:
+            usage("%s defines [%s] with a dotted key; set it there by hand" % (conf.path, ".".join(table)))
     sources, own, roots_changed = dict(st.rules), list(st.own), False
     for item in wanted:
         kind, rest = item.split(" ", 1)
@@ -371,7 +384,8 @@ def main():
     p.add_argument("--config-home", default=os.environ.get("CODEX_HOME") or os.path.expanduser("~/.codex"))
     p.add_argument("items", nargs="*")
     a = p.parse_intermixed_args(sys.argv[2:])
-    a.project = os.path.abspath(a.project)
+    a.project = os.path.abspath(os.path.expanduser(a.project))
+    a.config_home = os.path.expanduser(a.config_home)
     if a.command == "check":
         if a.items:
             usage("check takes no items")
@@ -384,5 +398,8 @@ def main():
     apply(a, a.items)
 
 
-main()
+try:
+    main()
+except (OSError, UnicodeDecodeError, ValueError) as e:
+    usage(str(e))
 PY
