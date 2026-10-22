@@ -110,12 +110,13 @@ manual
 directory it resolves to is a checkout the project builds against; a checkout carrying its own
 `DocsMap.md` contributes its components to this project's registry, declared once at the
 package and read by every project that holds it. Paths inside a package's registry are written
-relative to that package's root.
+relative to that package's root. In Codex CLI, setup also lets the sandbox write there: the folder
+before the glob goes into `writable_roots` of the project's `.codex/config.toml`.
 
 `Roots` may repeat too and names a folder outside the build that the project may read — an assets
 repository, shared fixtures. It is absolute, or relative to the project root. Together with the
 project root and every external package it is where a stage agent may search for a file, and
-nowhere else.)
+nowhere else. It stays read-only in Codex CLI.)
 
 ## Orchestration
 

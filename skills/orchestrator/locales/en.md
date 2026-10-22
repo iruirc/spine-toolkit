@@ -358,3 +358,6 @@ The task's `Task.md` already says `[SCALE] = [full]`, so "lite for this run" is 
 
 ## warn_run_file_tracked
 `{path}` is tracked by git, so it is not your word for this run but a file anyone could have written: it is ignored. Say the settings and the directive again if you meant them.
+
+## codex_permissions_outdated
+Spine's Codex settings are missing or out of date, so Codex will ask before some steps. To set them up, run `$spine-toolkit:setup`.

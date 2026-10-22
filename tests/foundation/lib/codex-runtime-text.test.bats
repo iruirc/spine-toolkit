@@ -44,11 +44,49 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
 @test "the Codex map says which build steps leave the sandbox" {
   sec="$(codex_section '## Builds and the simulator')"
   [ -n "$sec" ] || { echo "no ## Builds and the simulator"; false; }
-  for s in 'require_escalated' 'long-run.sh start' 'xcodebuild' 'xcrun simctl' 'ManualChecks.md' 'no escalation'; do
+  for s in 'require_escalated' 'long-run.sh start' 'ManualChecks.md' 'no escalation'; do
     grep -qF -- "$s" <<<"$sec" || { echo "missing: $s"; false; }
   done
-  grep -F 'long-run.sh wait' <<<"$sec" | grep -qF 'inside the sandbox' || { echo "wait is not placed inside"; false; }
-  grep -F 'long-run.sh stop' <<<"$sec" | grep -qF 'outside' || { echo "stop is not placed outside"; false; }
+}
+
+# Milestone 5: Codex matches a rule by the program's file name (execpolicy/src/policy.rs), and an
+# allow rule runs the command outside the sandbox without a question — but only when the first
+# word is the program: a shell wrapper with variables or redirections is matched whole and misses.
+@test "the Codex map calls Spine's scripts and the platform's build tools by rule, escalating only on refusal" {
+  sec="$(codex_section '## Builds and the simulator')"
+  for s in '.codex/rules/' 'long-run.sh' 'stage-leftovers.sh' 'without escalation' 'first word' 'bash -lc' '`cd … &&`' 'asks or refuses'; do
+    grep -qF -- "$s" <<<"$sec" || { echo "missing: $s"; false; }
+  done
+  grep -F 'long-run.sh wait' <<<"$sec" | grep -qF 'not permitted' || { echo "wait inside the sandbox is no longer explained"; false; }
+}
+
+@test "the Codex map keeps the leftovers skip only for a run without the rules" {
+  sec="$(codex_section '## Known limits')"
+  grep -F 'ps is not permitted here' <<<"$sec" | grep -qF 'rule' || { echo "skip is not tied to the missing rule"; false; }
+}
+
+@test "outside the Codex map no brief tells a stage to escalate" {
+  hits="$(grep -rlF 'require_escalated' "$ROOT/conventions" "$ROOT/skills" "$ROOT/workflows" | grep -v '/skills/setup/' || true)"
+  [ -z "$hits" ] || { echo "$hits"; false; }
+}
+
+@test "the orchestrator checks Spine's Codex settings at the start of a task in Codex only" {
+  ORCH="$ROOT/skills/orchestrator/SKILL.md"
+  para="$(grep -F 'codex-permissions.sh check' "$ORCH")"
+  [ -n "$para" ] || { echo "no check in the orchestrator"; false; }
+  for s in 'codex-cli' 'codex_permissions_outdated' 'carries on'; do
+    grep -qF -- "$s" <<<"$para" || { echo "missing: $s"; false; }
+  done
+  for l in en ru; do
+    grep -qx '## codex_permissions_outdated' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "no key in $l"; false; }
+  done
+  grep -qF 'codex-permissions.sh check' "$ROOT/runtimes/codex-cli.md" || { echo "the map does not name the check"; false; }
+}
+
+@test "the SPINE.md template says External packages are writable in Codex and Roots are not" {
+  T="$ROOT/templates/spine-md/en.md"
+  awk '/^`External packages` may repeat/{on=1} on && /^$/{exit} on' "$T" | grep -qF 'writable_roots' || { echo "External packages paragraph lacks writable_roots"; false; }
+  awk '/^`Roots` may repeat/{on=1} on && /^$/{exit} on' "$T" | grep -qF 'read-only in Codex CLI' || { echo "Roots paragraph lacks read-only"; false; }
 }
 
 @test "the Codex map says how commits pass the read-only .git" {

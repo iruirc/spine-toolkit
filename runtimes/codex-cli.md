@@ -1,6 +1,6 @@
 # Runtime: Codex CLI
 
-This file maps the Claude Code tools spine-toolkit's skills name to Codex CLI (checked on 0.162.1).
+This file maps the Claude Code tools spine-toolkit's skills name to Codex CLI (checked on 0.163.0).
 The orchestrator and setup send you here from their Runtime paragraphs; every skill they load names the same
 tools, so read this file once, before anything else, and apply it to all of them. The methodology
 does not change: the same stages, the same artifacts, the same contract — only the tool that
@@ -22,7 +22,7 @@ carries each step.
 | `Workflow` (Method A) | Absent. The orchestrator's choice already falls to Method B; `method_reason` is that the host has no `Workflow` tool. |
 | the opening block (a `PreToolUse` hook) | No hook runs. The orchestrator's final report names the run: runtime `codex-cli`, Method B and why, once (see **What the user sees**). |
 | `TaskStop`, the `watch` step, `agent-metrics.sh` | Do not apply: they belong to Method A or read Claude Code transcripts. |
-| `scripts/long-run.sh` for a build or test that needs the simulator or a device | `start` with escalation, `wait` inside the sandbox, `stop` outside it — see **Builds and the simulator**. |
+| `scripts/long-run.sh` for a build or test that needs the simulator or a device, `scripts/stage-leftovers.sh` | By the project's rules, without escalation; with escalation only when Codex asks or refuses — see **Builds and the simulator**. |
 | `git add` / `git commit` of the project's code | See **Git**. |
 
 `<core root>` and `<platform root>` are found by content (`conventions/agent-tooling.md` → Plugin
@@ -35,7 +35,7 @@ The user reads the same reports as in Claude Code, and nothing about the plumbin
 
 - A stage report says what the stage found or changed, its artifact and its checks — nothing else.
 - Runtime `codex-cli`, Method B, and a leftovers check skipped because `ps` is refused are named
-  only in the final report, once each.
+  only in the final report, once each; stale Codex settings, in one line when the task starts.
 - A question is the question and its options. Never paraphrase this file, a `SKILL.md`, a locale
   key or a path to a skill to the user, and never explain how the question is being asked.
 
@@ -47,21 +47,38 @@ request for every stage of the task (`conventions/stage-dispatch.md` → Standin
 
 ## Builds and the simulator
 
-Codex's `workspace-write` sandbox cannot reach the simulator or a device: CoreSimulator is refused
-over XPC. A command that needs one — `xcodebuild build` or `test`, `xcrun simctl`, and
-`long-run.sh start` with such a command; on another platform, whatever the sandbox refuses the same
-way — runs with `sandbox_permissions: "require_escalated"` and a one-line reason in the project's
-language. The user approves it in their window; the request names your agent's thread.
-- `long-run.sh wait` runs inside the sandbox: a command started outside it reads as running, and
-  the exit file says when it is done.
-- `long-run.sh stop` runs outside the sandbox. Exit 2 with `stop is not permitted here` means it ran
-  inside: run it again with escalation.
+Codex's `workspace-write` sandbox cannot reach the simulator or a device — CoreSimulator is refused
+over XPC — and refuses `ps`. When `setup` wrote Spine's rules into `.codex/rules/` (`spine.rules`
+and the platform's `spine-<name>.rules`), Codex runs these without a question and outside the
+sandbox: `long-run.sh` and `stage-leftovers.sh`, every subcommand (`long-run.sh start -- <build>`
+included), and the build and simulator commands the platform's rules name. Call them without escalation, and so that the rule can match:
+- the first word is the program — the full path of the script, or the tool's name — followed by its
+  arguments; the working directory is the call's parameter;
+- no `bash -lc`, no `cd … &&`, no variables, redirections or `$(…)`: Codex then matches the whole
+  shell line, and the rule misses.
+
+When Codex asks or refuses inside the sandbox anyway, the rules are not there or the command did
+not match: run the same command with `sandbox_permissions: "require_escalated"` and a one-line reason
+in the project's language. The user approves it in their window; the request names your agent's
+thread. A command that needs the simulator or a device and has no rule at all — on another
+platform, whatever the sandbox refuses the same way — goes the same way.
+- `long-run.sh wait` inside the sandbox, where `kill -0` is not permitted, reads a command started
+  outside it as running; the exit file says when it is done.
+- `long-run.sh stop` run inside the sandbox exits 2 with `stop is not permitted here`: run it again
+  outside it.
 - A refused escalation is the user's decision, not a failure: the step is not run, it goes to
   `ManualChecks.md`, and the stage report says why.
 - MCP tools (XcodeBuildMCP, a driver) need no escalation: their servers run outside the sandbox.
 - A driver's tools are named `mcp__<prefix>__<tool>` with every character of the prefix outside
   `[A-Za-z0-9_]` replaced by `_`: look `agent-device` up as `mcp__agent_device__*`, `mcp-devices` as
   `mcp__mcp_devices__*`.
+
+## Spine's Codex settings
+
+When a task starts, the orchestrator runs `codex-permissions.sh check` (see its **Runtime**
+paragraph); lines on its output mean the rules, the question menu, the approval of the platform's
+MCP server or the project's writable roots are missing or stale. Say so in one line and carry on:
+`setup` writes them, after the user agrees.
 
 ## Git
 
@@ -77,12 +94,14 @@ escalation. A task's documents under `Tasks/`, a repository of its own, commit i
 
 `stage-leftovers.sh` and `long-run.sh` take the nearest `codex` process above them as the session.
 They read the process table with `ps`, which Codex's `workspace-write` sandbox refuses
-(`Operation not permitted`). For `long-run.sh` in a build, see **Builds and the simulator**.
+(`Operation not permitted`); by Spine's rules they run outside it — see **Builds and the simulator**.
 
 ## Known limits
 
-- **Stage leftovers in a sandbox.** When `stage-leftovers.sh snap` exits 2 with `ps is not permitted here`,
-  leftovers cannot be measured in this run: skip `snap` and `diff` for the rest of it and say so once
-  in the final report. Run without the sandbox, they work as in Claude Code.
+- **Stage leftovers without the rules.** Called by Spine's rule, `stage-leftovers.sh` runs outside
+  the sandbox and works as in Claude Code.
+  `snap` exiting 2 with `ps is not permitted here` means the rule is missing or did not match:
+  leftovers cannot be measured in this run — skip `snap` and `diff` for the rest of it and say so
+  once in the final report.
 - **Concurrency.** Codex runs at most four agents at once, the main one included. Spine dispatches
   stages one at a time, so this binds only a panel that fans out; dispatch such a panel in batches.
