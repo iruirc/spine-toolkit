@@ -116,3 +116,131 @@ rules_in_place() {
   run "$CP" check
   [ "$status" -eq 2 ]
 }
+
+# --- the platform's MCP server ---------------------------------------------------------------------
+
+# Only the MCP and root lines of check, the rule files and the menu being in place.
+chk_rest() { rules_in_place; [ -f "$CH/config.toml" ] || menu_on; chk; }
+
+@test "a server is found by its command's file name" {
+  menu_on; printf '\n[mcp_servers.mobilebuildmcp]\ncommand = "/opt/x/mobilebuildmcp"\nargs = ["mcp"]\n' >>"$CH/config.toml"
+  chk_rest
+  [ "$status" -eq 1 ]
+  [ "$output" = 'mcp mobilebuildmcp prompts' ] || { echo "$output"; false; }
+}
+
+@test "a server is found by the npx package" {
+  menu_on; printf '\n[mcp_servers."XcodeBuildMCP"]\ncommand = "npx"\nargs = ["-y", "xcodebuildmcp@1.2.3", "mcp"]\n' >>"$CH/config.toml"
+  chk_rest
+  [ "$output" = 'mcp XcodeBuildMCP prompts' ] || { echo "$output"; false; }
+}
+
+@test "any approval mode the user set is left alone" {
+  menu_on; printf '\n[mcp_servers.mobilebuildmcp]\ncommand = "mobilebuildmcp"\ndefault_tools_approval_mode = "prompt"\n' >>"$CH/config.toml"
+  chk_rest
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "a server the platform does not list is not named" {
+  menu_on; printf '\n[mcp_servers.other]\ncommand = "other"\n' >>"$CH/config.toml"
+  chk_rest
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "apply puts approve under the server's own header, not a subtable" {
+  menu_on
+  printf '\n[mcp_servers.mobilebuildmcp]\ncommand = "mobilebuildmcp"\n\n[mcp_servers.mobilebuildmcp.env]\nA = "1"\n\n[tui]\nx = 1\n' >>"$CH/config.toml"
+  rules_in_place
+  app 'mcp mobilebuildmcp prompts'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(cat "$CH/config.toml")" = $'[features]\ndefault_mode_request_user_input = true\n\n[mcp_servers.mobilebuildmcp]\ndefault_tools_approval_mode = "approve"\ncommand = "mobilebuildmcp"\n\n[mcp_servers.mobilebuildmcp.env]\nA = "1"\n\n[tui]\nx = 1' ] \
+    || { cat "$CH/config.toml"; false; }
+  chk; [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "apply finds a quoted server header" {
+  menu_on; printf '\n[mcp_servers."XcodeBuildMCP"]\ncommand = "npx"\nargs = ["xcodebuildmcp@1.2.3"]\n' >>"$CH/config.toml"
+  rules_in_place
+  app 'mcp XcodeBuildMCP prompts'
+  grep -A1 -F '[mcp_servers."XcodeBuildMCP"]' "$CH/config.toml" | grep -qx 'default_tools_approval_mode = "approve"'
+}
+
+@test "apply refuses a server check does not name" {
+  menu_on
+  app 'mcp nosuch prompts'
+  [ "$status" -eq 2 ]
+}
+
+# --- writable roots ------------------------------------------------------------------------------
+
+spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}"; }
+
+@test "External packages become writable roots, the folder before the glob" {
+  spine_md '- External packages: /../pkgs/*'
+  chk_rest
+  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs missing" ] || { echo "$output"; false; }
+}
+
+@test "each External packages line is its own root" {
+  spine_md $'- External packages: /../pkgs/*\n- External packages: /vendor/Kit'
+  chk_rest
+  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs missing"$'\n'"root $PROJ/vendor/Kit missing" ] || { echo "$output"; false; }
+}
+
+@test "the template's example line is not a path" {
+  spine_md '(optional: "- Sources: /Sources", "- External packages: /Packages/*", "- Roots: ../design-assets"'
+  chk_rest
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "Roots stay read-only" {
+  spine_md '- Roots: ../design-assets'
+  chk_rest
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "CLAUDE-spine-toolkit.md is read when SPINE.md is absent" {
+  spine_md '- External packages: /../pkgs/*' CLAUDE-spine-toolkit.md
+  chk_rest
+  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs missing" ] || { echo "$output"; false; }
+}
+
+@test "no .codex folder: apply creates config.toml with the root" {
+  spine_md '- External packages: /../pkgs/*'
+  root="$(cd "$PROJ/.." && pwd)/pkgs"
+  app "root $root missing"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(cat "$PROJ/.codex/config.toml")" = $'[sandbox_workspace_write]\nwritable_roots = [\n  "'"$root"$'", # spine\n]' ] \
+    || { cat "$PROJ/.codex/config.toml"; false; }
+}
+
+@test "apply writes writable_roots as a multi-line array and keeps the user's own" {
+  spine_md '- External packages: /../pkgs/*'
+  root="$(cd "$PROJ/.." && pwd)/pkgs"
+  mkdir -p "$PROJ/.codex"
+  printf 'model = "m"\n\n[sandbox_workspace_write]\nnetwork_access = true\nwritable_roots = ["/u/own"]\n' >"$PROJ/.codex/config.toml"
+  app "root $root missing"
+  [ "$(cat "$PROJ/.codex/config.toml")" = $'model = "m"\n\n[sandbox_workspace_write]\nnetwork_access = true\nwritable_roots = [\n  "/u/own",\n  "'"$root"$'", # spine\n]' ] \
+    || { cat "$PROJ/.codex/config.toml"; false; }
+  chk_rest; [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "a marked root no longer in SPINE.md is stale and apply removes only it" {
+  spine_md '- Sources: /Sources'
+  mkdir -p "$PROJ/.codex"
+  printf '[sandbox_workspace_write]\nwritable_roots = [\n  "/u/own",\n  "/old/pkgs", # spine\n]\n' >"$PROJ/.codex/config.toml"
+  chk_rest
+  [ "$output" = 'root /old/pkgs stale' ] || { echo "$output"; false; }
+  app 'root /old/pkgs stale'
+  [ "$(cat "$PROJ/.codex/config.toml")" = $'[sandbox_workspace_write]\nwritable_roots = [\n  "/u/own",\n]' ] \
+    || { cat "$PROJ/.codex/config.toml"; false; }
+}
+
+@test "a root the user listed is never named" {
+  spine_md '- External packages: /../pkgs/*'
+  root="$(cd "$PROJ/.." && pwd)/pkgs"
+  mkdir -p "$PROJ/.codex"
+  printf '[sandbox_workspace_write]\nwritable_roots = ["/u/own", "%s"]\n' "$root" >"$PROJ/.codex/config.toml"
+  chk_rest
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
