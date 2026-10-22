@@ -261,3 +261,13 @@ add_plugin_form() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"env_vars"* ]]
 }
+
+# The resolver reads the first prefix in namespace as the server key (conventions/driver-contract.md,
+# "The key is the first prefix in namespace"); a key listed later is found by nothing that reads it.
+@test "fails when the first namespace prefix is not a .mcp.json key" {
+  mcp neutral pkg@1.2.3
+  sed -i.bak 's/^namespace = neutral, neutral-devices$/namespace = plugin_fixture-driver_neutral, neutral, neutral-devices/' "$M" && rm -f "$M.bak"
+  run "$LINT" "$TMP/d"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"namespace must start with a .mcp.json server key"* ]] || { echo "$output"; false; }
+}

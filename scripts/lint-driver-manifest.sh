@@ -210,6 +210,9 @@ if os.path.isfile(mcp_path):
             pkg = next((a for a in srv.get("args", []) if isinstance(a, str) and not a.startswith("-")), None)
             if pkg is None or not exact.match(pkg):
                 bad(f".mcp.json server '{key}': '{pkg}' does not pin an exact version")
+    # The resolver takes the first prefix as the server key (conventions/driver-contract.md).
+    if servers and names and names[0] not in servers:
+        bad(f"namespace must start with a .mcp.json server key, not '{names[0]}'")
 
 for v in violations:
     print(v)
