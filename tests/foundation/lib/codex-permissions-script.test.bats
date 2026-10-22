@@ -244,3 +244,49 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
   chk_rest
   [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
+
+# --- final review of milestone 5 -----------------------------------------------------------------
+
+# An unreadable or non-UTF-8 config is an error, not "items found": setup would ask with an empty
+# list and the orchestrator would nag at every task start about something setup cannot fix.
+@test "a config.toml that cannot be read is exit 2 with the reason, not exit 1" {
+  printf 'model = "\xff"\n' >"$CH/config.toml"
+  chk
+  [ "$status" -eq 2 ] || { echo "status $status: $output"; false; }
+  [[ "$output" == codex-permissions:* ]] || { echo "$output"; false; }
+  [[ "$output" != *Traceback* ]] || { echo "$output"; false; }
+}
+
+@test "a project config that cannot be read is exit 2" {
+  printf '## Paths\n- External packages: /\xff/*\n' >"$PROJ/SPINE.md"
+  rules_in_place; menu_on
+  chk
+  [ "$status" -eq 2 ] || { echo "status $status: $output"; false; }
+}
+
+# A model may pass the path quoted, so the shell never expands the tilde.
+@test "a --config-home with a literal tilde is read from the home folder" {
+  rules_in_place
+  mkdir -p "$BATS_TEST_TMPDIR/home/.codex"
+  printf '[features]\ndefault_mode_request_user_input = true\n' >"$BATS_TEST_TMPDIR/home/.codex/config.toml"
+  HOME="$BATS_TEST_TMPDIR/home" run "$CP" check --project "$PROJ" --platform-root "$PLAT" --config-home '~/.codex'
+  [ "$status" -eq 0 ] || { echo "status $status: $output"; false; }
+}
+
+# features.x = … at the top level defines the table already: a [features] header after it makes
+# config.toml invalid, and Codex then refuses the whole file.
+@test "a top-level dotted key for a table apply would write is exit 2, and nothing is written" {
+  printf 'model = "x"\nfeatures.other = true\n' >"$CH/config.toml"
+  before="$(shasum "$CH/config.toml")"
+  app 'menu off'
+  [ "$status" -eq 2 ] || { echo "status $status: $output"; false; }
+  [[ "$output" == *features* ]] || { echo "$output"; false; }
+  [ "$(shasum "$CH/config.toml")" = "$before" ]
+}
+
+@test "a dotted key inside the [features] table does not block the menu" {
+  printf '[features]\nx.y = true\n' >"$CH/config.toml"
+  app 'menu off'
+  [ "$status" -eq 0 ] || { echo "status $status: $output"; false; }
+  grep -qx 'default_mode_request_user_input = true' "$CH/config.toml"
+}
