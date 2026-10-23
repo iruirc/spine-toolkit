@@ -110,8 +110,9 @@ On that cause a workflow script can do neither — no main context to run in, no
 so it ends the range at that stage and hands it back for the orchestrator to run and announce
 (`skills/orchestrator/SKILL.md` → Dispatch).
 
-A panel stage (two or three agents on one stage) may run its agents in parallel or sequentially — that choice
-is the orchestrator's and needs no announcement.
+A panel stage (two or three agents on one stage) runs in the order its profile gives —
+a panel's order is its profile's: BUG's Diagnose in `skills/workflow-bug/SKILL.md`, TEST's Analyze in
+`skills/workflow-test/SKILL.md`. It needs no announcement.
 
 ## Model and effort
 
