@@ -486,8 +486,9 @@ Core dispatches by role; which agent that means is yours. This is where each one
 | `diagnostics` | BUG Reproduce, Diagnose (panel) · RESEARCH Research, when `research_agent=diagnostics` |
 | `init` | Never dispatched by a workflow. Core's routing points the user at it for "create a project", and the platform usually also exposes it as its own command (`/swift-init`). |
 
-A **panel** stage runs two or three agents on one stage; whether they go in parallel or in sequence is the
-orchestrator's choice and needs no announcement.
+A **panel** stage runs two or three agents on one stage, in the order its profile gives (BUG's Diagnose:
+the lenses in parallel, then an `architect` synthesis; TEST's Analyze: `architect`, then `tester` —
+`conventions/stage-dispatch.md`); it needs no announcement.
 
 With `research_experiment=on` the RESEARCH Research role — `architect` unless `research_agent`
 names another — also builds the project, runs it and drives it the way your validator does. The

@@ -10,8 +10,8 @@ setup() {
 }
 
 @test "no panel leaves its order to the orchestrator" {
-  for f in skills/workflow-bug/SKILL.md skills/workflow-test/SKILL.md conventions/stage-dispatch.md; do
-    ! grep -qE 'as the orchestrator decides|that choice is the orchestrator' "$ROOT/$f" || { echo "$f"; false; }
+  for f in skills/workflow-bug/SKILL.md skills/workflow-test/SKILL.md conventions/stage-dispatch.md docs/building-a-platform.md; do
+    ! grep -qE "as the orchestrator decides|that choice is the orchestrator|in parallel or in sequence is the" "$ROOT/$f" || { echo "$f"; false; }
   done
 }
 
@@ -25,8 +25,7 @@ setup() {
 
 @test "BUG Diagnose: an empty lens and an absent security lens" {
   d="$(grep -m1 '^- \*\*Diagnose\*\*' "$BUG")"
-  grep -qF 'One lens returning nothing' <<<"$d" || { echo "one empty"; return 1; }
-  grep -qF 'every lens returning nothing' <<<"$d" || { echo "all empty"; return 1; }
+  grep -qF 'lenses returning nothing: the synthesis works from the other' <<<"$d" || { echo "one empty"; return 1; }
   grep -qF 'records the verdict line that stands in for them' <<<"$d" || { echo "absent lens"; return 1; }
 }
 
@@ -42,4 +41,12 @@ setup() {
 
 @test "stage-dispatch: the profile sets a panel's order" {
   grep -qF "a panel's order is its profile's" "$ROOT/conventions/stage-dispatch.md"
+}
+
+# Final review: Method A errors only when both the diagnostics and the architect lens are empty;
+# an empty security lens becomes its verdict line, like one that did not run.
+@test "BUG Diagnose: emptiness counts the diagnostics and architect lenses, security has its verdict line" {
+  d="$(grep -m1 '^- \*\*Diagnose\*\*' "$BUG")"
+  grep -qF 'both the `[diagnostics]` and the `[architect]` lens returning nothing' <<<"$d" || { echo "both empty"; return 1; }
+  grep -qF 'did not run or returned nothing' <<<"$d" || { echo "security empty"; return 1; }
 }
