@@ -163,3 +163,40 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   grep -qF 'mcp__agent_device__' "$M"
   grep -qF '[A-Za-z0-9_]' "$M"
 }
+
+# Milestone 6: panels, step ids and the epic's dispatch in Codex.
+
+@test "the map names each panel agent and the synthesis" {
+  MAP="$ROOT/runtimes/codex-cli.md"
+  grep -qF '`task_name: "<stage>_<lens>_<task id>"`' "$MAP" || { echo "no lens task_name"; return 1; }
+  grep -qF '`diagnose_diagnostics_540`' "$MAP" || { echo "no example"; return 1; }
+  grep -qF '`"<stage>_synthesis_<task id>"`' "$MAP" || { echo "no synthesis task_name"; return 1; }
+}
+
+@test "the map waits on every parallel panel agent" {
+  grep -qF 'spawn every lens first, then `collaboration.wait_agent` on each' "$ROOT/runtimes/codex-cli.md"
+}
+
+@test "the map turns a step id into a task_name" {
+  MAP="$ROOT/runtimes/codex-cli.md"
+  grep -qF 'every character outside `[a-z0-9_]` becomes `_`' "$MAP" || { echo "no rule"; return 1; }
+  grep -qF '`research_540_1_step`' "$MAP" || { echo "no example"; return 1; }
+}
+
+@test "the map says an epic always pulls in Codex" {
+  grep -qF 'An EPIC always returns its steps as `pending_steps`' "$ROOT/runtimes/codex-cli.md"
+}
+
+@test "workflow-epic forces pull under codex-cli, whatever the args say" {
+  E="$ROOT/skills/workflow-epic/SKILL.md"
+  grep -qF '**Four things force pull' "$E" || { echo "not four"; return 1; }
+  ! grep -qF 'Three things force pull' "$E" || { echo "still three"; return 1; }
+  grep -qF 'And the runtime `codex-cli`' "$E" || { echo "no codex condition"; return 1; }
+  grep -A4 '^  \*\*Mode selection' "$E" | grep -qF 'the four forced-pull conditions' || { echo "mode selection"; return 1; }
+  grep -A4 '^  \*\*Mode selection' "$E" | grep 'epic_dispatch_mode=push' | grep -qF 'except under the four conditions above' \
+    || { echo "push in args still wins"; return 1; }
+}
+
+@test "Concurrency: three lenses and the main agent fit" {
+  grep -A3 '^- \*\*Concurrency' "$ROOT/runtimes/codex-cli.md" | tr -s ' \n' ' ' | grep -qF 'three lenses and the main agent are four'
+}

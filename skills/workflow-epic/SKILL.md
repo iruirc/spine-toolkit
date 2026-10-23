@@ -107,12 +107,12 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   - **Pull (fallback):** workflow-epic **does NOT run the step**. Instead it walks every `.step/` folder, builds an ordered list of `[{step_id, task_id, profile, mode, …}]`, and returns it to the orchestrator via the `Output Contract` in the `pending_steps` field. The orchestrator then sequentially dispatches each step itself as ordinary tasks.
 
-  **Three things force pull, whatever `epic_dispatch_mode` says.** `manual` mode, because the orchestrator asks the user between steps and a running workflow cannot ask. And a step whose own `[TASK_TYPE]` is `EPIC` under Method A, because the runtime allows exactly one level of nested workflow and a nested epic would need a second. And, under either method, a `RESEARCH` step whose `Task.md` carries `[RESEARCH_EXPERIMENT] = [on]`, because only the orchestrator announces an experiment, runs its driver pre-flight and stops on its gates (`skills/workflow-research/SKILL.md` § 2c). In each case the epic stops at the step it cannot run and returns that step **and every step after it** as `pending_steps` — the walk is ordered, so resuming past a gap would run a step against a state that never existed.
+  **Four things force pull, whatever `epic_dispatch_mode` says.** `manual` mode, because the orchestrator asks the user between steps and a running workflow cannot ask. And a step whose own `[TASK_TYPE]` is `EPIC` under Method A, because the runtime allows exactly one level of nested workflow and a nested epic would need a second. And, under either method, a `RESEARCH` step whose `Task.md` carries `[RESEARCH_EXPERIMENT] = [on]`, because only the orchestrator announces an experiment, runs its driver pre-flight and stops on its gates (`skills/workflow-research/SKILL.md` § 2c). And the runtime `codex-cli`: Codex has no `Skill` tool, so the epic cannot run a step through a nested orchestrator (`runtimes/codex-cli.md`) — there the walk returns from the first executable step. In each case the epic stops at the step it cannot run and returns that step **and every step after it** as `pending_steps` — the walk is ordered, so resuming past a gap would run a step against a state that never existed.
 
   **Mode selection:**
-  - If `epic_dispatch_mode=push` was passed in args — use push.
+  - If `epic_dispatch_mode=push` was passed in args — use push, except under the four conditions above.
   - If `epic_dispatch_mode=pull` — use pull (skip actually running the steps; populate `pending_steps`).
-  - If the field is absent — default to `push`, subject to the three forced-pull conditions above.
+  - If the field is absent — default to `push`, subject to the four forced-pull conditions above.
 
   The documented happy path is push. Pull is the fallback, and in `manual` mode it is the only model.
 
