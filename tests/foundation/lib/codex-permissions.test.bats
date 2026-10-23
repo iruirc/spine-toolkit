@@ -109,7 +109,7 @@ decision() { codex execpolicy check --resolve-host-executables --rules "$TPL" "$
 # A project set up before reaches state C; its Cancel keeps the config, and must not keep the
 # Codex questions from a user who only came for them.
 @test "Cancel in state C keeps the config and still runs steps 6c and 6d" {
-  awk '/STATE C \(already_configured\)/{on=1} on && /^ *b\. Ask qM/{exit} on' "$SK" | grep -F -- '- Cancel →' | grep -qF 'step 6c and step 6d'
+  awk '/STATE C \(already_configured\)/{on=1} on && /^   STATE D /{exit} on' "$SK" | grep -F -- '- Cancel →' | grep -qF 'step 6c and step 6d'
   grep -F 'Cancel on the AUQ in state C' "$SK" | grep -qF 'step 6c and step 6d'
 }
 

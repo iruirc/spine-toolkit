@@ -55,3 +55,15 @@ line_of() { grep -nF -- "$2" <<<"$1" | head -1 | cut -d: -f1; }
   grep -qF 'F is decided before G, and G before C' "$SKILL"
   grep -qF 'lets F, G and C take the language and the platform from the file' "$SKILL"
 }
+
+# Final review: a rename before the questions left a project with SPINE.md.bak only when
+# Platform Discovery stopped or the user walked away.
+@test "Backup-and-overwrite renames SPINE.md only after the questions" {
+  b="$(state_c_branch)"
+  bak="$(line_of "$b" 'SPINE.md.bak')"; plat="$(line_of "$b" 'Platform Discovery')"; mode="$(line_of "$b" 'qM')"
+  [ -n "$bak" ] && [ "$bak" -gt "$plat" ] && [ "$bak" -gt "$mode" ] || { echo "rename at $bak, discovery at $plat, qM at $mode"; return 1; }
+}
+
+@test "a value step 0 or step 1 already asked is not asked again after Overwrite" {
+  state_c_branch | tr -s ' \n' ' ' | grep -qF 'nor step 0 or step 1 asked it in this run'
+}

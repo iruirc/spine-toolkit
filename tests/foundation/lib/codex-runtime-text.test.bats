@@ -200,3 +200,7 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
 @test "Concurrency: three lenses and the main agent fit" {
   grep -A3 '^- \*\*Concurrency' "$ROOT/runtimes/codex-cli.md" | tr -s ' \n' ' ' | grep -qF 'three lenses and the main agent are four'
 }
+
+@test "the map names TEST Analyze's tester too" {
+  grep -qF '`analyze_tester_541`' "$ROOT/runtimes/codex-cli.md"
+}

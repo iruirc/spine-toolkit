@@ -176,14 +176,15 @@ anything — which is what lets F, G and C take the language and the platform fr
         (Overwrite / Backup-and-overwrite / Cancel).
         - Cancel → no change to the config or CLAUDE.md; run step 6c and step 6d with the
           language and platform from the config, then stop.
-        - Backup-and-overwrite → rename SPINE.md → SPINE.md.bak
-          (timestamp on collision). Continue.
-        - Overwrite → continue.
+        - Backup-and-overwrite or Overwrite → continue.
      b. Ask the language (q0, as in step 0) and resolve the platform (Platform Discovery) —
-        each only if the input did not already answer it. A reconfiguration rewrites the
-        config from the template, so both are asked again.
+        each only if neither the input nor step 0 or step 1 asked it in this run. A
+        reconfiguration rewrites the config from the template, so both are asked again. A stop
+        here — no platform installed, a Cancel on the platform question — leaves every file
+        as it was.
      c. Ask qM, qP.
-     d. Render the toolkit template. Write to SPINE.md (overwrite).
+     d. Backup-and-overwrite → rename SPINE.md → SPINE.md.bak (timestamp on collision). Then
+        render the toolkit template and write it to SPINE.md (overwrite).
      e. Self-heal CLAUDE.md: if the `@./SPINE.md` line is missing, run the
         insertion logic from State B step (d), with backup; a `@./CLAUDE-spine-toolkit.md` line
         left behind is rewritten to `@./SPINE.md` rather than joined by a second import.
