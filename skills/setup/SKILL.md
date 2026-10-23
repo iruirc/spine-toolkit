@@ -91,7 +91,7 @@ The skill's behavior is determined by the project state, computed from five chec
 |---|---|---|---|---|---|---|
 | **A · new_install** | absent | absent | absent | absent | — | Ask q0, qM, qP. Create both files. |
 | **B · existing_md** | present | absent | absent | absent | no | Ask q0, qM, qP. Backup CLAUDE.md. Insert `@import` line. Create `SPINE.md`. |
-| **C · already_configured** | present | present, 2.0 fields | any | — | no | AUQ `auq_reconfigure_toolkit` on `SPINE.md` only. Self-heal `CLAUDE.md` if `@import` is missing. |
+| **C · already_configured** | present | present, 2.0 fields | any | — | no | AUQ `auq_reconfigure_toolkit` first, in the config's language; q0 and the platform only after Overwrite. Self-heal `CLAUDE.md` if `@import` is missing. |
 | **D · old_format** | present | absent | absent | absent | yes | AUQ `auq_migrate_old_format`. Run the migration algorithm (see below). |
 | **E · renamed_config** | present | absent | absent | present | — | AUQ `auq_migrate_config_name`. Rename the file, reconcile blocks, rewrite the `@import` line. |
 | **F · old_block_format** | present | present, 1.x headings | — | — | no | Migrate the config's format without asking. Back up, rewrite, report. |
@@ -101,7 +101,7 @@ A `CLAUDE-spine-toolkit.md` in the 1.x block format with no `SPINE.md` is **F on
 format migration rewrites it under the name it had, and the next `/setup` run is G.
 **F is decided before G, and G before C**: a configured project whose file is 1.x is not already configured, it is a
 project that cannot run. All five checks are file reads, so the state is known before step 0 asks
-anything — which is what lets F take the language and the platform from the file instead of asking.
+anything — which is what lets F, G and C take the language and the platform from the file instead of asking.
 
 ### Edge sub-states
 
@@ -120,12 +120,17 @@ anything — which is what lets F take the language and the platform from the fi
    ↓ `lang` in the input → use it, ask nothing.
    ↓ state F → the config's own language value answers it, ask nothing.
    ↓ state G → the config already carries the language; ask nothing, and write nothing to it.
+   ↓ state C → the config's `[LANG]` answers it, ask nothing; a config with no `[LANG]` line
+     is asked as usual. Step 4's state C branch asks again after Overwrite.
 
 1. Resolve the platform (see Platform Discovery).
    ↓ `platform` in the input → use it, skip discovery: the caller that named one is the
      platform itself.
    ↓ state F → the config already names the platform; skip discovery.
    ↓ state G → the config already names the platform; skip discovery.
+   ↓ state C → the config's `## Platform` names it; skip discovery. A block still holding
+     `<platform-plugin>` is discovered as usual. Step 4's state C branch discovers again
+     after Overwrite.
    ↓ none installed → render `error_no_platform_installed`. Stop.
 
 2. Compute state (see State Detection table).
@@ -169,13 +174,17 @@ anything — which is what lets F take the language and the platform from the fi
    STATE C (already_configured):
      a. AUQ using key `auq_reconfigure_toolkit` with options `auq_reconfigure_toolkit_options`
         (Overwrite / Backup-and-overwrite / Cancel).
-        - Cancel → no change to the config or CLAUDE.md; run step 6c and step 6d, then stop.
+        - Cancel → no change to the config or CLAUDE.md; run step 6c and step 6d with the
+          language and platform from the config, then stop.
         - Backup-and-overwrite → rename SPINE.md → SPINE.md.bak
           (timestamp on collision). Continue.
         - Overwrite → continue.
-     b. Ask qM, qP.
-     c. Render the toolkit template. Write to SPINE.md (overwrite).
-     d. Self-heal CLAUDE.md: if the `@./SPINE.md` line is missing, run the
+     b. Ask the language (q0, as in step 0) and resolve the platform (Platform Discovery) —
+        each only if the input did not already answer it. A reconfiguration rewrites the
+        config from the template, so both are asked again.
+     c. Ask qM, qP.
+     d. Render the toolkit template. Write to SPINE.md (overwrite).
+     e. Self-heal CLAUDE.md: if the `@./SPINE.md` line is missing, run the
         insertion logic from State B step (d), with backup; a `@./CLAUDE-spine-toolkit.md` line
         left behind is rewritten to `@./SPINE.md` rather than joined by a second import.
 
