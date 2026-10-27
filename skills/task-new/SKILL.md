@@ -163,7 +163,7 @@ For reference, the templates contain these placeholders:
     - `## 5. [Logs]`
     - `## 6. [StackTrace]`
 
-    For step tasks also verify `[STATUS] = `, `### Expected behaviour`, `### Questions for Research` and `### Acceptance`.
+    For step tasks also verify `[STATUS] = `, `### Expected behaviour`, `### Questions for Research` and `### Acceptance`. The last three anchors above — `## 4. [Stack]`, `## 5. [Logs]`, `## 6. [StackTrace]` — are not in the step template and are not checked for a step: it has `## 4. [Stack]` only when step 8 of the step process added it.
 
     If ANY anchor is missing — that means the model translated / adapted / localized the template against instruction. Fix it via Edit:
     - Find whatever non-canonical variant is present in `Task.md` for the missing anchor.
@@ -189,7 +189,7 @@ For reference, the templates contain these placeholders:
       `~/.claude/plugins/cache/spine-toolkit/spine-toolkit/<version>/templates/task-md/task-step.md`
       or the marketplace checkout under `~/.claude/plugins/marketplaces/spine-toolkit/`
 7. **Read the template, substitute placeholders, write the result** to `parent/<name>.step/Task.md` — exactly the same Read+substitute+Write pass as for root tasks, plus the `{{STATUS}}` placeholder. Touch ONLY `{{...}}` tokens.
-8. **Fill section bodies** via the file-edit mechanism, like for root tasks. Step tasks do NOT have their own STATUS-subfolder — they inherit their parent's folder. Apply the `task-documents` skill, its section on a step's `Task.md`: what the step delivers goes directly under `## 3. [Task]`, above the anchors; the expected behaviour, the questions for Research and the acceptance go under their three anchors, and an anchor that does not apply carries `— <reason>`.
+8. **Fill section bodies** via the file-edit mechanism, like for root tasks. Step tasks do NOT have their own STATUS-subfolder — they inherit their parent's folder. Apply the `task-documents` skill, its section on a step's `Task.md`: what the step delivers goes directly under `## 3. [Task]`, above the anchors; the expected behaviour, the questions for Research and the acceptance go under their three anchors, and an anchor that does not apply carries `— <reason>`. Fill the template's own headings in place — never append a second copy of a heading. A step whose stack differs from the epic's gets `## 4. [Stack]` at the end of the file with only the axes that differ; a step that inherits the epic's has no such section.
 9. **Verify structural anchors** exactly as step 10 of the root-task process does, including its line for step tasks, then **report** the created path.
 
 ## Rules
