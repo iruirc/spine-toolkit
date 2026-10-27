@@ -122,6 +122,16 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   ! grep -qF 'any model name is accepted, and' "$ROOT/runtimes/codex-cli.md"
 }
 
+# Acceptance of milestone 6: the shared config's Claude models warned at every task in Codex, and the
+# user could not act on it without breaking the config for Claude Code.
+@test "a Claude model from the project config is named once by setup, not at every task" {
+  grep -F 'warn_model_read_as_session' "$ORCH" | grep -qF 'say nothing at task launch' || { echo "launch still warns"; false; }
+  grep -qF 'report_models_read_as_session' "$ROOT/skills/setup/SKILL.md" || { echo "setup does not name it"; false; }
+  for l in en ru; do
+    grep -qx '## report_models_read_as_session' "$ROOT/skills/setup/locales/$l.md" || { echo "$l lacks the key"; false; }
+  done
+}
+
 @test "the orchestrator announces a Claude model read as session" {
   ORCH="$ROOT/skills/orchestrator/SKILL.md"
   grep -F 'model, read as session' "$ORCH" | grep -qF 'warn_model_read_as_session'

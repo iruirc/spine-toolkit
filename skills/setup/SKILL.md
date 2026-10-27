@@ -404,6 +404,12 @@ paragraph (**Agent Tooling**).
       as above, with the items the user chose to write. None chosen → as the third option.
     - Third option → write nothing; report `report_codex_permissions_declined`.
 
+In Codex CLI, whatever the menu's answer, also read the project config's `[MODELS]`: the entries
+whose value is in `as_session` of `<core root>/runtimes/codex-cli.json` are Claude Code models that
+Codex runs on the session's model. When there are any, report `report_models_read_as_session` once,
+{entries} = those entries as written, comma-separated. This is the one place it is said: a task
+launch stays silent about the project config's models.
+
 Codex reads rules and its config when a session starts, so what was written applies after a
 restart — the report says how. This skill does not commit `.codex/`: whether it goes into the
 repository is the user's call. The orchestrator runs the same `check` when a task starts and points
