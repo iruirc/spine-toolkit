@@ -56,7 +56,15 @@ included), and the build and simulator commands the platform's rules name. Call 
 - the first word is the program — the full path of the script, or the tool's name — followed by its
   arguments; the working directory is the call's parameter;
 - no `bash -lc`, no `cd … &&`, no variables, redirections or `$(…)`: Codex then matches the whole
-  shell line, and the rule misses.
+  shell line, and the rule misses;
+- never inside a script or another program — an interpreter's `-c '…'` that runs the tool, a script file,
+  `sh -c`, a shell loop: Codex sees only the wrapper, and the rule misses. Call each simulator or
+  device command directly, one command per call; a loop too long for that runs as
+  `long-run.sh start -- <interpreter> <script>`, which the rule matches.
+
+A compiler run outside a build needs no rule and no escalation: point its module or object cache at
+a writable root (`/tmp`), because the sandbox refuses the default one under the home folder. The
+platform's agents name the flag.
 
 When Codex asks or refuses inside the sandbox anyway, the rules are not there or the command did
 not match: run the same command with `sandbox_permissions: "require_escalated"` and a one-line reason

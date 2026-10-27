@@ -60,6 +60,15 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   grep -F 'long-run.sh wait' <<<"$sec" | grep -qF 'not permitted' || { echo "wait inside the sandbox is no longer explained"; false; }
 }
 
+# Acceptance of milestone 6 (544): Fix and Validation wrapped simctl in a script, the rule saw only
+# the interpreter and every call asked; a compiler check (548) wrote its cache under the home folder.
+@test "the Codex map forbids wrapping a ruled command and moves a compiler cache to a writable root" {
+  sec="$(codex_section '## Builds and the simulator')"
+  grep -F 'never inside a script' <<<"$sec" | grep -qF 'another program' || { echo "no wrapper rule"; false; }
+  grep -qF 'long-run.sh start -- <interpreter> <script>' <<<"$sec" || { echo "no long-run way for a loop"; false; }
+  grep -F 'compiler run outside a build' <<<"$sec" | grep -qF 'no escalation' || { echo "no compiler cache rule"; false; }
+}
+
 @test "the Codex map keeps the leftovers skip only for a run without the rules" {
   sec="$(codex_section '## Known limits')"
   grep -F 'ps is not permitted here' <<<"$sec" | grep -qF 'rule' || { echo "skip is not tied to the missing rule"; false; }
