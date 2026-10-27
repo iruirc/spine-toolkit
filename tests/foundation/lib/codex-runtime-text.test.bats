@@ -151,6 +151,17 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   done
 }
 
+# Acceptance of milestone 6 (544, 545, setup): the model wrote its own options at a FAILED
+# validation, reordered setup's menu as text and swapped Skip for an alternative of its own.
+@test "the Codex map keeps a question's options exactly as the locale has them" {
+  row="$(grep -F '`AskUserQuestion`' "$ROOT/runtimes/codex-cli.md")"
+  for s in "exactly the locale's" 'never add, drop, rename, merge or reorder' 'alternative of your own' \
+           '`stage_done_prompt`' 'numbered from 1 in the same order'; do
+    grep -qF -- "$s" <<<"$row" || { echo "missing: $s"; false; }
+  done
+  ! grep -qF 'the recommended one first' <<<"$row" || { echo "the fallback still reorders"; false; }
+}
+
 @test "the Codex map never takes over a stage that waits for the user" {
   row="$(grep -F 'collaboration.spawn_agent' "$ROOT/runtimes/codex-cli.md" | head -1)"
   for s in 'waiting for the user' 'never interrupt' 'never run its commands yourself'; do
