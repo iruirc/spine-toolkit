@@ -187,3 +187,15 @@ INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:
       || { echo "a brief still retells: $phrase"; return 1; }
   done
 }
+
+# Acceptance of milestone 6 (EPIC 548): the step template's Stack, Logs and StackTrace headings stayed
+# empty in every step written from a plan, and a second copy of headings was appended below them.
+@test "a step's Task.md carries no empty Stack, Logs or StackTrace and fills its headings in place" {
+  t="$ROOT/templates/task-md/task-step.md"
+  for h in '## 4. [Stack]' '## 5. [Logs]' '## 6. [StackTrace]'; do
+    ! grep -qxF "$h" "$t" || { echo "the step template still has $h"; return 1; }
+  done
+  step="$(awk '/^## Process — step task/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/task-new/SKILL.md")"
+  grep -qF 'never append a second copy of a heading' <<<"$step" || { echo "no in-place rule"; return 1; }
+  grep -qF 'only the axes that differ' <<<"$step" || { echo "no rule for a step's own Stack"; return 1; }
+}

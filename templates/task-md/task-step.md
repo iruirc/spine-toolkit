@@ -35,9 +35,3 @@
 ### Questions for Research
 
 ### Acceptance
-
-## 4. [Stack]
-
-## 5. [Logs]
-
-## 6. [StackTrace]
