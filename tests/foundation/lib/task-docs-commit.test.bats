@@ -29,3 +29,12 @@ S_OF() { awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
       || { echo "$l lacks info_task_docs_uncommitted"; return 1; }
   done
 }
+
+# Acceptance of milestone 6 (545, 548): Tasks/ was a repository of its own, the project's .gitignore
+# listed it, and the run concluded from the project root that the folder was ignored — nothing committed.
+@test "the ignore check runs in the task folder, and a tasks repository of its own is committed" {
+  w="$(S_OF "The run's own words")"
+  for f in 'never from the project root' 'a repository of its own' 'No stage decides the folder is ignored'; do
+    grep -qF -- "$f" <<<"$w" || { echo "the rule lost: $f"; return 1; }
+  done
+}

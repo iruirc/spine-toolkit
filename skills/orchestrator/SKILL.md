@@ -123,6 +123,10 @@ it, `Walkthrough.md` included. With `X` for `-- . ':(exclude,glob)**/Run.json'`,
 by `conventions/commit-messages.md`, holding nothing else the index has; nothing changed, no commit.
 A folder where `git -C <task dir> rev-parse` fails, or `check-ignore -q .` matches, is not committed:
 announce `info_task_docs_uncommitted` (`{path}`). An epic's commit holds its step folders.
+Both checks run with `-C <task dir>`, never from the project root: when the tasks folder is
+a repository of its own, the project's `.gitignore` listing it does not reach that repository and is
+no reason to skip — the commit goes there. No stage decides the folder is ignored; `Done.md` does not
+say so, and this commit runs whatever it says.
 
 ## Routing
 
