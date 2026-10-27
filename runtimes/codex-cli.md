@@ -97,7 +97,8 @@ In the sandbox the project's `.git` is read-only. When `setup` wrote `.codex/rul
 the rule matches. Codex matches plain words only, so set the call's working directory to the
 repository instead of `cd … &&`, and pass the message as `-m '<subject>' -m '<body>'` in single
 quotes — no `$(…)`, no heredoc. Without the rule, or when the command is refused, run the same command with
-escalation. A task's documents under `Tasks/`, a repository of its own, commit inside the sandbox.
+escalation. A tasks folder that is a repository of its own (`Tasks/` with its own `.git`) is writable: its
+documents commit there, inside the sandbox, even when the project's `.gitignore` lists `Tasks/`.
 
 ## Scripts
 
