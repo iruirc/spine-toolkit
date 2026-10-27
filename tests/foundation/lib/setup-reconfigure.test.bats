@@ -67,3 +67,12 @@ line_of() { grep -nF -- "$2" <<<"$1" | head -1 | cut -d: -f1; }
 @test "a value step 0 or step 1 already asked is not asked again after Overwrite" {
   state_c_branch | tr -s ' \n' ' ' | grep -qF 'nor step 0 or step 1 asked it in this run'
 }
+
+# Acceptance of milestone 6: the menu's cursor stood on Overwrite, so Enter alone rewrote SPINE.md.
+@test "the reconfigure menu offers Cancel first and Overwrite last" {
+  for l in en ru; do
+    opts="$(awk '/^## auq_reconfigure_toolkit_options$/{getline; print; exit}' "$ROOT/skills/setup/locales/$l.md")"
+    [ "$opts" = "Cancel | Backup-and-overwrite | Overwrite" ] || { echo "$l: $opts"; false; }
+  done
+  grep -qF '(Cancel / Backup-and-overwrite / Overwrite)' "$ROOT/skills/setup/SKILL.md"
+}

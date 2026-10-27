@@ -173,7 +173,9 @@ anything — which is what lets F, G and C take the language and the platform fr
 
    STATE C (already_configured):
      a. AUQ using key `auq_reconfigure_toolkit` with options `auq_reconfigure_toolkit_options`
-        (Overwrite / Backup-and-overwrite / Cancel).
+        (Cancel / Backup-and-overwrite / Overwrite). Cancel comes first: the first option is
+        the menu's default, so Enter alone never rewrites the config, and a rerun for the
+        Codex settings below needs nothing else.
         - Cancel → no change to the config or CLAUDE.md; run step 6c and step 6d with the
           language and platform from the config, then stop.
         - Backup-and-overwrite or Overwrite → continue.
