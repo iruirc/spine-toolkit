@@ -184,5 +184,8 @@ Codex settings written. They take effect after a restart: exit Codex, run `codex
 ## report_codex_permissions_declined
 Codex settings left as they were: Codex will keep asking before those steps.
 
+## report_models_read_as_session
+In Codex the config's {entries} run on the session's model: those are Claude Code models, and the config is shared with Claude Code, so leave them as they are. Tasks will not mention this again.
+
 ## report_codex_permissions_error
 Could not check Spine's Codex settings: {error}

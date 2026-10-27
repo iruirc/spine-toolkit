@@ -184,5 +184,8 @@ DocsMap.md: {docs_map_status}
 ## report_codex_permissions_declined
 Настройки Codex не изменены: Codex продолжит спрашивать перед этими шагами.
 
+## report_models_read_as_session
+В Codex {entries} из конфига работают на модели сессии: это модели Claude Code, а конфиг общий с Claude Code, поэтому оставь их как есть. При запуске задач это больше не повторяется.
+
 ## report_codex_permissions_error
 Не удалось проверить настройки Spine для Codex: {error}
