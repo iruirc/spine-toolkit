@@ -37,7 +37,7 @@ How much a profile run narrates itself
 spine-toolkit is already configured (`SPINE.md` exists). What should I do?
 
 ## auq_reconfigure_toolkit_options
-Overwrite | Backup-and-overwrite | Cancel
+Cancel | Backup-and-overwrite | Overwrite
 
 ## auq_migrate_old_format
 Detected the old single-file format (`CLAUDE.md` contains toolkit sections). I will migrate to the two-file layout: move toolkit sections to `SPINE.md`, keep your sections in `CLAUDE.md`, insert the import line, and back up the original to `CLAUDE.md.bak`. Proceed?

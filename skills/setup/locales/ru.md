@@ -37,7 +37,7 @@ en | ru
 spine-toolkit уже настроен в проекте (`SPINE.md` существует). Что сделать?
 
 ## auq_reconfigure_toolkit_options
-Overwrite | Backup-and-overwrite | Cancel
+Cancel | Backup-and-overwrite | Overwrite
 
 ## auq_migrate_old_format
 Обнаружен старый однофайловый формат (`CLAUDE.md` содержит toolkit-секции). Я перенесу его в двухфайловую раскладку: toolkit-секции уедут в `SPINE.md`, твои секции останутся в `CLAUDE.md`, добавится import-строка, оригинал сохранится в `CLAUDE.md.bak`. Продолжить?
