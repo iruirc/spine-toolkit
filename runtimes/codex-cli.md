@@ -80,7 +80,10 @@ platform, whatever the sandbox refuses the same way — goes the same way.
 - MCP tools (XcodeBuildMCP, a driver) need no escalation: their servers run outside the sandbox.
 - A driver's tools are named `mcp__<prefix>__<tool>` with every character of the prefix outside
   `[A-Za-z0-9_]` replaced by `_`: look `agent-device` up as `mcp__agent_device__*`, `mcp-devices` as
-  `mcp__mcp_devices__*`.
+  `mcp__mcp_devices__*`. MCP tools are not among the tools listed to you; they are in `ALL_TOOLS` of
+  the `exec` tool. Look each prefix up by name — `ALL_TOOLS.filter(t => t.name.startsWith("mcp__<prefix>__"))`
+  — never by words in descriptions: a server whose descriptions lack the word is missed, and the
+  driver is reported absent while its tools are there.
 
 ## Spine's Codex settings
 

@@ -194,6 +194,14 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   grep -qF '[A-Za-z0-9_]' "$M"
 }
 
+# Milestone 7: the orchestrator filtered ALL_TOOLS by words in descriptions, missed every mcp__mobile__ tool and
+# warned that the driver had no tools.
+@test "the Codex map says where a driver's tools are and to look them up by prefix" {
+  M="$ROOT/runtimes/codex-cli.md"
+  grep -qF 'ALL_TOOLS' "$M"
+  grep -qF 'startsWith("mcp__' "$M"
+}
+
 # Milestone 6: panels, step ids and the epic's dispatch in Codex.
 
 @test "the map names each panel agent and the synthesis" {
