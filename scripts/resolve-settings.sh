@@ -184,16 +184,21 @@ def load_runtime(runtime_id):
         if any(not isinstance(v, str) or (models != ANY and v not in models) or not TOKEN.fullmatch(v)
                for v in defaults.values()):
             raise ValueError('model_defaults values must be values of models')
+        # A name ending in * reads every model that starts with it: claude-* covers claude-sonnet-4-6.
         as_session = rt.get('as_session', [])
-        if not isinstance(as_session, list) or any(not isinstance(v, str) or not TOKEN.fullmatch(v)
+        if not isinstance(as_session, list) or any(not isinstance(v, str) or not TOKEN.fullmatch(v[:-1] if v.endswith('*') else v)
                                                    for v in as_session):
-            raise ValueError('as_session must be a list of model names')
+            raise ValueError('as_session must be a list of model names, each may end in *')
         return models, effort, defaults, [v.lower() for v in as_session]
     except (OSError, ValueError, KeyError, TypeError) as error:
         usage_error('runtimes/%s.json: not a runtime file (%s)' % (runtime_id, error))
 
 
 MODEL_VALUES, EFFORT_VALUES, MODEL_DEFAULTS, AS_SESSION = load_runtime(RUNTIME)
+
+
+def read_as_session(model):
+    return any(model.startswith(v[:-1]) if v.endswith('*') else model == v for v in AS_SESSION)
 
 # field, config/Task.md field name, values (None = open), default
 # A SCALARS values slot for a whole number >= 0, taken as an int.
@@ -507,7 +512,7 @@ for name, field, keys, values, unset, map_defaults in MAPS:
             k, raw = (m.group(1).lower(), m.group(2).lower()) if m else (None, None)
             if k in keys and raw in unset:
                 continue
-            if name == 'models' and k in keys and raw in AS_SESSION:
+            if name == 'models' and k in keys and read_as_session(raw):
                 seen[k] = 'session'
                 as_session_entries[k] = entry
                 continue

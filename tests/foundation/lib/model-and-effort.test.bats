@@ -306,6 +306,16 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   grep -qF "'tester: opus' is not a codex-cli model, read as session" <<<"$stderr"
 }
 
+@test "codex-cli reads a full Claude model id as session" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODELS] = [validator: claude-sonnet-4-6, reviewer: gpt-6-luna]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+  [ "$(json_field 'd["models"]["reviewer"]' <<<"$output")" = "gpt-6-luna" ]
+  grep -qF "'validator: claude-sonnet-4-6' is not a codex-cli model, read as session" <<<"$stderr"
+}
+
 @test "a nearer Claude model still decides the key under codex-cli" {
   p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
   printf '[MODELS] = [validator: gpt-6-luna]\n' > "$p/SPINE.md"

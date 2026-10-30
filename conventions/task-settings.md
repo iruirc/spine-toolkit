@@ -46,6 +46,7 @@ skills. What differs between runtimes, as far as settings go, is the vocabulary 
 | `models` | the list of values `[MODELS]` may take, or the string `"any"`: any token matching `[A-Za-z0-9][A-Za-z0-9._:/+-]*` passes through as written, for the runtime to check when it spawns |
 | `model_defaults` | the keys whose default is not `session`; every key absent here defaults to `session` |
 | `effort` | the list of values `[EFFORT]` may take; the default is always `session` |
+| `as_session` | optional: model names another runtime uses, read here as `session` so one project config serves both — a name ending in `*` covers every value that starts with it (`claude-*`); the resolver says so on stderr, `'<entry>' is not a <id> model, read as session` |
 
 `session` is in every list and means what it always did: pass nothing, run on the session's own
 model or effort. `scripts/resolve-settings.sh json|show|open <task-dir> --runtime <id>` selects the
