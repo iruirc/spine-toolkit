@@ -22,7 +22,7 @@ never reads the host's plugin cache from disk (host internals, not a public cont
 `plugin.json`'s `metadata` field is not an alternative: the host preserves it but does not hand it
 back.
 
-The body is **data**: five required H2 tables, an optional sixth, and no procedure. It says so in
+The body is **data**: five required H2 tables, two optional blocks (`## Driver`, `## Build traces`), and no procedure. It says so in
 its own first lines, so the agent that invokes it reads the tables instead of executing them. Prose
 between tables is for humans; only the rows are parsed.
 
@@ -247,8 +247,7 @@ reserved magic string inside another table.
 
 ## `## Driver`
 
-Optional — the only block of the six a platform may leave out entirely, and a manifest with five
-tables is complete. One row:
+Optional, and a manifest with five tables is complete. One row:
 
 ```
 default = <driver plugin name>
@@ -285,6 +284,22 @@ A platform whose projects produce no drivable surface — a server, a command-li
 What the named driver can actually do — which of your surfaces it reaches, and with which
 capabilities — is not declared here and never is. That belongs to the driver's own manifest,
 described in `conventions/driver-contract.md`.
+
+## `## Build traces`
+
+Optional, like `## Driver`. One row:
+
+```
+dirs = <dir>[, <dir>…]
+```
+
+Folders the platform's build tools write into the project on every run, which the project's
+`.gitignore` may not list yet — Kotlin 2's `.kotlin/` is the case it exists for. Each is a path
+relative to a root, with no `..` and no leading `/`. The orchestrator's leftovers check
+(`skills/orchestrator/SKILL.md` → Stage leftovers) leaves each one out at any depth of every root,
+so a build does not ask the user about its own traces after every stage. A folder whose content
+the user could lose — sources, fixtures, a lockfile — never goes here. The lint does not read the
+block: a mistake in it shows a trace the check would have hidden, never hides a real change.
 
 ## Depending on core
 

@@ -101,8 +101,8 @@ declared by the platform plugin, in a single skill the orchestrator **invokes**:
 ```
 
 That skill is data, not instructions: five H2 tables (`## Roles`, `## Axes`, `## Heuristics`,
-`## Topics`, `## Entrypoints`), an optional sixth (`## Driver`, the driver plugin this platform
-recommends), and no procedure. Invoking a skill is the only channel between the two plugins — core
+`## Topics`, `## Entrypoints`), two optional blocks (`## Driver`, the driver plugin this platform
+recommends; `## Build traces`, folders its build writes that are not leftovers), and no procedure. Invoking a skill is the only channel between the two plugins — core
 never reads the host's plugin cache from disk.
 
 Three things to read, in this order:

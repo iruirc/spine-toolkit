@@ -22,7 +22,7 @@ an ecosystem arrives by **invoking one skill**:
 <your-plugin>/skills/manifest/SKILL.md   →   invoked as   <your-plugin>:manifest
 ```
 
-That skill is data: five required H2 tables, an optional sixth, and no procedure. Core never opens
+That skill is data: five required H2 tables, two optional blocks, and no procedure. Core never opens
 the host's plugin cache, never reads your `plugin.json`, and never infers anything from the
 repository it is working in.
 
@@ -334,7 +334,7 @@ backticked name is reserved for your own skills. `scripts/lint-core-refs.sh` che
 
 ### Step 9 — `## Driver`, if you recommend one
 
-Optional, and the only block you may leave out entirely: a manifest with five tables is complete.
+Optional: a manifest with five tables is complete.
 One row.
 
 ```
@@ -372,6 +372,11 @@ A platform whose projects produce no drivable surface at all declares no `## Dri
 What that driver can actually do — its targets, its capabilities — is never declared here; that is
 the driver's own manifest. See `conventions/driver-contract.md`, and `docs/building-a-driver.md` if
 you are writing the driver too.
+
+If your build tools write a folder into the project on every run that older projects do not
+ignore — Kotlin 2's `.kotlin/` — name it in an optional `## Build traces` block, `dirs = .kotlin`,
+and the leftovers check after each stage leaves it out (`conventions/platform-contract.md` →
+`## Build traces`).
 
 ### Step 10 — check it
 
