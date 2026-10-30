@@ -211,6 +211,26 @@ transcript() {
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }
 
+# Milestone 7: every Kotlin build left .kotlin/sessions/*.salive, in a project whose .gitignore
+# predates Kotlin 2, and the check asked about it after every stage.
+@test "a platform's build traces are left out at the root and at any depth below it" {
+  before; repo
+  snap --root "$T/repo" --exclude "$T/repo/.kotlin" --exclude "$T/repo/*/.kotlin"
+  mkdir -p .kotlin/sessions app/.kotlin/sessions lib/core/.kotlin/errors
+  : >.kotlin/sessions/a.salive; : >app/.kotlin/sessions/b.salive; : >lib/core/.kotlin/errors/c.log
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  : >notkotlin.txt
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 1 ] && [[ "$output" == *notkotlin.txt* ]] || { echo "$output"; return 1; }
+}
+
+@test "the orchestrator passes the platform's build traces to snap, and the contract defines them" {
+  grep -qF "\`dirs\` row of the platform manifest's \`## Build traces\`" "$ROOT/skills/orchestrator/SKILL.md"
+  grep -qF -- "--exclude '<root>/*/<dir>'" "$ROOT/skills/orchestrator/SKILL.md"
+  grep -qx '## `## Build traces`' "$ROOT/conventions/platform-contract.md"
+}
+
 @test "ps is read the same under a non-English LC_TIME" {
   loc="$(locale -a 2>/dev/null | grep -m1 -i '^ru_RU' || true)"
   [ -n "$loc" ] || skip "no ru_RU locale on this machine"

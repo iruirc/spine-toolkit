@@ -977,7 +977,10 @@ rather than trust the report. Before every dispatch, Method A or B, run
 `<core root>/scripts/stage-leftovers.sh snap --out "${TMPDIR:-/tmp}/spine-stage-leftovers/<task_id>.snap"`
 with `--root` for every entry of the contract's `roots` and `--exclude` with `<task_dir>` whose
 status directory is replaced by `*`, quoted (`'…/Tasks/*/<task folder>'`), so the task's own files
-stay out under whichever status directory the stage moves the folder to. After the stage
+stay out under whichever status directory the stage moves the folder to. For every folder `<dir>`
+the `dirs` row of the platform manifest's `## Build traces` names, if it has one, add
+`--exclude '<root>/<dir>'` and `--exclude '<root>/*/<dir>'` for each root: the build's own traces
+are not leftovers (`conventions/platform-contract.md` → `## Build traces`). After the stage
 returns — at the artifact budget's boundaries, and also after `status: error`, after
 `status: interrupted` and after a `TaskStop` of your own, before `stage_error_prompt` — run
 `stage-leftovers.sh diff` on that file. Exit 0 says nothing.

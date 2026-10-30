@@ -97,3 +97,11 @@ ships no setup skill, and the em dash is the point: spine-toolkit writes the con
 leaves `## Stack` unset, and the orchestrator asks per axis on the first task that needs one.
 
 setup = —
+
+## Build traces
+
+Optional, like `## Driver`. Folders the platform's build writes into the project on every run; the
+orchestrator's leftovers check leaves each one out at any depth of every root. The fixture's
+build writes a cache folder.
+
+dirs = .fixture-cache
