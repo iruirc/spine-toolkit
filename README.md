@@ -44,6 +44,26 @@ same name to catch them;
 `/task-run`, `/task-continue`, `/task-redo` and `/task-restart` are commands with no matching skill,
 and bare they resolve to nothing — verified in both an interactive and a headless session.
 
+### Codex CLI
+
+```bash
+codex plugin marketplace add iruirc/claude-marketplace
+codex plugin add spine-toolkit@iruirc
+codex plugin add spine-platform-swift@iruirc     # or spine-platform-kotlin@iruirc
+codex plugin add spine-driver-mobile@iruirc      # optional: Validation drives the running app
+```
+
+Start a new Codex session in the project, then run `$spine-toolkit:setup`. Besides `SPINE.md`, it
+offers Codex's own settings: rules in `.codex/rules/` that let builds, tests, the simulator or
+emulator and `git commit` run without a question and outside the sandbox, and the question menu.
+Restart Codex the way its report says. Tasks then run as `$spine-toolkit:orchestrator run 001`, and
+`$spine-toolkit:task-new <description>` creates one.
+
+What differs from Claude Code: each stage runs as a Codex subagent, one at a time (Codex has no
+`Workflow` tool, so a run is always Method B), and an EPIC dispatches its steps one by one.
+`/agent-status` reads Claude Code transcripts and has nothing to show in Codex. The stages,
+artifacts and questions are the same.
+
 ## How a task runs
 
 A task lives in `Tasks/<STATUS>/<id>-<slug>/`. Its `Task.md` names a `[TASK_TYPE]`, which selects one
