@@ -39,6 +39,10 @@ The user reads the same reports as in Claude Code, and nothing about the plumbin
   only in the final report, once each; stale Codex settings, in one line when the task starts.
 - A question is the question and its options. Never paraphrase this file, a `SKILL.md`, a locale
   key or a path to a skill to the user, and never explain how the question is being asked.
+- A locale text that names a command for the user to type — `/setup`, `/task-new <description>`,
+  `/task-status`, `/lang <code>` — is written for Claude Code. In Codex write the skill instead:
+  `$spine-toolkit:setup`, `$spine-toolkit:task-new <description>`, `$spine-toolkit:task-status`,
+  `$spine-toolkit:lang <code>`. That is the one change you make to a locale text.
 
 ## Standing authorization
 
