@@ -126,7 +126,11 @@ class Toml:
 
     def __init__(self, path):
         self.path = path
-        self.lines = open(path, encoding="utf-8").read().splitlines() if os.path.isfile(path) else []
+        # newline="" keeps CRLF visible, so save writes the file back with the user's line endings.
+        text = open(path, encoding="utf-8", newline="").read() if os.path.isfile(path) else ""
+        self.nl = "\r\n" if "\r\n" in text else "\n"
+        self.last_nl = text.endswith("\n") or not text
+        self.lines = text.splitlines()
         self.parse()
 
     def parse(self):
@@ -191,8 +195,8 @@ class Toml:
 
     def save(self):
         os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
-        with open(self.path, "w", encoding="utf-8") as f:
-            f.write("\n".join(self.lines) + ("\n" if self.lines else ""))
+        with open(self.path, "w", encoding="utf-8", newline="") as f:
+            f.write(self.nl.join(self.lines) + (self.nl if self.lines and self.last_nl else ""))
 
 
 # --- the items -------------------------------------------------------------------------------------
@@ -342,7 +346,15 @@ def apply(a, wanted):
                        (st.conf, ROOTS) if item.startswith("root ") else (None, None))
         if conf is not None and table in conf.dotted:
             usage("%s defines [%s] with a dotted key; set it there by hand" % (conf.path, ".".join(table)))
-    sources, own, roots_changed = dict(st.rules), list(st.own), False
+    # Every template is read before the first write: a rules file is never opened for one it cannot fill.
+    templates = {}
+    for item in wanted:
+        if item.startswith("rules "):
+            name = item.split()[1]
+            templates[name] = read(dict(st.rules)[name])
+            if templates[name] is None:
+                usage("cannot read " + dict(st.rules)[name])
+    own, roots_changed = list(st.own), False
     for item in wanted:
         kind, rest = item.split(" ", 1)
         if kind == "rules":
@@ -350,7 +362,7 @@ def apply(a, wanted):
             dest = os.path.join(a.project, ".codex", "rules", name)
             os.makedirs(os.path.dirname(dest), exist_ok=True)
             with open(dest, "wb") as f:
-                f.write(read(sources[name]))
+                f.write(templates[name])
         elif kind == "menu":
             if st.user.get(("features",), "default_mode_request_user_input") is not True:
                 st.user.set_lines(("features",), "default_mode_request_user_input",
