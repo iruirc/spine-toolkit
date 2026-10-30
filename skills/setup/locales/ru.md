@@ -187,5 +187,8 @@ DocsMap.md: {docs_map_status}
 ## report_models_read_as_session
 В Codex {entries} из конфига работают на модели сессии: это модели Claude Code, а конфиг общий с Claude Code, поэтому оставь их как есть. При запуске задач это больше не повторяется.
 
+## warn_config_platform_not_installed
+В конфиге проекта указана платформа `{platform}`, но она здесь не установлена. Её агенты, правила и проверки в этот запуск не входят: установи её и запусти `/setup` снова или выбери Overwrite, чтобы выбрать другую.
+
 ## report_codex_permissions_error
 Не удалось проверить настройки Spine для Codex: {error}

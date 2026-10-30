@@ -130,7 +130,9 @@ anything — which is what lets F, G and C take the language and the platform fr
    ↓ state G → the config already names the platform; skip discovery.
    ↓ state C → the config's `## Platform` names it; skip discovery. A block still holding
      `<platform-plugin>` is discovered as usual. Step 4's state C branch discovers again
-     after Overwrite.
+     after Overwrite. A named platform whose root is not found (`conventions/agent-tooling.md` →
+     Plugin Roots) is not installed: report `warn_config_platform_not_installed` once, and every
+     later step that takes the platform runs as with none — step 6d without `--platform-root`.
    ↓ none installed → render `error_no_platform_installed`. Stop.
 
 2. Compute state (see State Detection table).
