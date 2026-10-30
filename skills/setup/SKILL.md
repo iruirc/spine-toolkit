@@ -407,7 +407,8 @@ paragraph (**Agent Tooling**).
     - Third option → write nothing; report `report_codex_permissions_declined`.
 
 In Codex CLI, whatever the menu's answer, also read the project config's `[MODELS]`: the entries
-whose value is in `as_session` of `<core root>/runtimes/codex-cli.json` are Claude Code models that
+whose value is in `as_session` of `<core root>/runtimes/codex-cli.json` — a name there ending in `*`
+covers every value that starts with it — are Claude Code models that
 Codex runs on the session's model. When there are any, report `report_models_read_as_session` once,
 {entries} = those entries as written, comma-separated. This is the one place it is said: a task
 launch stays silent about the project config's models.

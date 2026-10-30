@@ -3,5 +3,5 @@
   "models": "any",
   "model_defaults": {},
   "effort": ["low", "medium", "high", "xhigh", "session"],
-  "as_session": ["opus", "sonnet", "haiku", "fable"]
+  "as_session": ["opus", "sonnet", "haiku", "fable", "claude-*"]
 }

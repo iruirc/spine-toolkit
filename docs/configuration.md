@@ -329,7 +329,8 @@ it.
 **Values:** `<key>: <value>` entries, comma-separated; keys `light`, `walkthrough`, `done` and the
 eight role names, values the runtime's `models` list in `runtimes/<id>.json` (Claude Code: `opus` `sonnet`
 `haiku` `fable` `session`) · **Default:** the runtime's `model_defaults`, `session` elsewhere (Claude Code:
-`sonnet` for `light` and `validator`, `session` for `walkthrough`, `done` and the other seven roles) · **Task override:**
+`sonnet` for `light` and `validator`, `session` for `walkthrough`, `done` and the other seven roles; Codex CLI:
+any name, with the Claude Code names and `claude-*` read as `session`) · **Task override:**
 `[MODELS] = [<key>: <value>, …]` ·
 **Defined by:** [`../conventions/stage-dispatch.md`](../conventions/stage-dispatch.md) → Model and
 effort

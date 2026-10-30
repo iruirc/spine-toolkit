@@ -8,7 +8,8 @@ carries each step.
 
 `<runtime>` is `codex-cli`. Settings resolve with `--runtime codex-cli`, which selects
 `runtimes/codex-cli.json`: a model name is passed to Codex as written, except the Claude Code names
-`opus`, `sonnet`, `haiku`, `fable`, which read as `session`; every role defaults to `session`.
+`opus`, `sonnet`, `haiku`, `fable` and any full Claude id (`claude-sonnet-4-6`), which read as
+`session`; every role defaults to `session`.
 
 ## Tools
 
