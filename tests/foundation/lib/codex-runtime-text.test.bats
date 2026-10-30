@@ -249,3 +249,10 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
 @test "agent resolution reads a fan-out axis from the config even when the task's files did not need it" {
   grep -qF 'even when the task'"'"'s files did not make it needed' "$ROOT/skills/orchestrator/SKILL.md"
 }
+
+# Milestone 7: setup's report in Codex told the user to run `/task-new` — Claude Code's syntax.
+@test "the Codex map turns a slash command a locale names into the skill the user types in Codex" {
+  M="$ROOT/runtimes/codex-cli.md"
+  grep -qF '$spine-toolkit:task-new' "$M"
+  grep -qF 'the one change' "$M"
+}
