@@ -290,3 +290,24 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
   [ "$status" -eq 0 ] || { echo "status $status: $output"; false; }
   grep -qx 'default_mode_request_user_input = true' "$CH/config.toml"
 }
+
+@test "apply keeps a CRLF config.toml CRLF and adds no final newline it did not have" {
+  rules_in_place
+  printf '[features]\r\nother = 1\r\n\r\n[x]\r\ny = 2' >"$CH/config.toml"
+  app 'menu off'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(cat "$CH/config.toml")" = $'[features]\r\nother = 1\r\ndefault_mode_request_user_input = true\r\n\r\n[x]\r\ny = 2' ] \
+    || { od -c "$CH/config.toml"; false; }
+}
+
+@test "a template apply cannot read leaves the project's rules file as it was" {
+  rules_in_place; menu_on
+  echo '# edited' >>"$PROJ/.codex/rules/spine-swift.rules"
+  before="$(cat "$PROJ/.codex/rules/spine-swift.rules")"
+  chmod 000 "$PLAT/runtimes/codex-cli/rules/swift.rules"
+  app 'rules spine-swift.rules outdated'
+  chmod 644 "$PLAT/runtimes/codex-cli/rules/swift.rules"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"cannot read"* ]] || { echo "$output"; false; }
+  [ "$(cat "$PROJ/.codex/rules/spine-swift.rules")" = "$before" ]
+}
