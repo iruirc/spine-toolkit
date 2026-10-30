@@ -342,6 +342,12 @@ Algorithm:
    • for each of the nine core roles, looking ONLY at rows(role):
          an axis-qualified row `role[axis=value]` whose `value` equals this project's resolved
          value for `axis`                                      (first in file order if several)
+         # that value is stack-detect's for `axis` when it resolved it; otherwise the chain of
+         # stack-detect step 4 read for this axis alone — `## 4. [Stack]` of Task.md, the matching
+         # `## Modules` entry, `## Stack` of the project config —
+         # even when the task's files did not make it needed. A UI task touches no file that flags
+         # the axis a role fans out on, and its agent is still the project's. No hit → the axis did
+         # not resolve; ask nothing here.
          > the bare `role =` row
          > `—`                                                             (declared absent)
    • agents := {role: chosen value} — all nine roles, in vocabulary order:

@@ -242,3 +242,10 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
 @test "the map names TEST Analyze's tester too" {
   grep -qF '`analyze_tester_541`' "$ROOT/runtimes/codex-cli.md"
 }
+
+# Milestone 7, task 003: a Kotlin UI task touched only *Screen.kt files, so stack-detect never made
+# `target` needed, step 5.7 found no resolved value, and developer/tester/validator fell back to the
+# bare KMP/JVM rows although SPINE.md said `Target: Android`.
+@test "agent resolution reads a fan-out axis from the config even when the task's files did not need it" {
+  grep -qF 'even when the task'"'"'s files did not make it needed' "$ROOT/skills/orchestrator/SKILL.md"
+}
