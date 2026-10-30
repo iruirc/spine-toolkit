@@ -187,5 +187,8 @@ Codex settings left as they were: Codex will keep asking before those steps.
 ## report_models_read_as_session
 In Codex the config's {entries} run on the session's model: those are Claude Code models, and the config is shared with Claude Code, so leave them as they are. Tasks will not mention this again.
 
+## warn_config_platform_not_installed
+The project config names the platform `{platform}`, which is not installed here. Its agents, rules and checks are left out of this run; install it and run `/setup` again, or choose Overwrite to pick another.
+
 ## report_codex_permissions_error
 Could not check Spine's Codex settings: {error}

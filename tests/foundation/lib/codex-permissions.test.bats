@@ -113,6 +113,17 @@ decision() { codex execpolicy check --resolve-host-executables --rules "$TPL" "$
   grep -F 'Cancel on the AUQ in state C' "$SK" | grep -qF 'step 6c and step 6d'
 }
 
+# Final review of milestone 6: a config naming a platform that was since removed ran 6d without
+# --platform-root and said nothing.
+@test "state C names a configured platform that is not installed, and runs on without it" {
+  grep -qF 'is not installed: report `warn_config_platform_not_installed` once' "$SK" || { echo "setup does not say it"; false; }
+  grep -qF 'step 6d without `--platform-root`' "$SK"
+  for l in en ru; do
+    grep -A1 -x '## warn_config_platform_not_installed' "$ROOT/skills/setup/locales/$l.md" | grep -qF '{platform}' \
+      || { echo "$l lacks the key"; false; }
+  done
+}
+
 # Final review of milestone 5: `long-run.sh start -- <command>` runs that command outside the
 # sandbox whatever it is, and the user grants it with one answer — the wording has to say so.
 @test "the rule header and the question say the rule runs any command outside the sandbox" {
