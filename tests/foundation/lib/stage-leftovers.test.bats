@@ -26,6 +26,14 @@ before() {
 
 snap() { "$SL" snap --out "$T/snap" "$@"; }
 
+@test "diff takes the file with the --out it was snapped with" {
+  before; snap
+  { row 111 110 14:00:00 'xcodebuild test -scheme App'; } >>"$T/ps"
+  run "$SL" diff --out "$T/snap"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+  [[ "$output" == "process pid=111 "* ]] || { echo "$output"; return 1; }
+}
+
 @test "a build the stage left under an MCP server is shown, once, at the top of its subtree" {
   before; snap
   { row 111 110 14:00:00 'xcodebuild test -scheme App'

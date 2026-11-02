@@ -983,7 +983,8 @@ the `dirs` row of the platform manifest's `## Build traces` names, if it has one
 are not leftovers (`conventions/platform-contract.md` → `## Build traces`). After the stage
 returns — at the artifact budget's boundaries, and also after `status: error`, after
 `status: interrupted` and after a `TaskStop` of your own, before `stage_error_prompt` — run
-`stage-leftovers.sh diff` on that file. Exit 0 says nothing.
+`<core root>/scripts/stage-leftovers.sh diff "${TMPDIR:-/tmp}/spine-stage-leftovers/<task_id>.snap"` — the
+file is the only argument. Exit 0 says nothing.
 
 On exit 1, report each `process` line with key `leftover_process` (`{pid}`, `{age}`, `{parent}`,
 `{cmd}`) and each `tree` line with key `leftover_tree` (`{root}`, `{path}`, `{change}`), then AUQ
