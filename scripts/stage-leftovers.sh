@@ -3,7 +3,7 @@
 # How the orchestrator uses it: skills/orchestrator/SKILL.md → Stage leftovers.
 #
 # Usage: scripts/stage-leftovers.sh snap --out <file> [--root <dir>]… [--exclude <dir>]…
-#        scripts/stage-leftovers.sh diff <file>
+#        scripts/stage-leftovers.sh diff [--out] <file>
 #        scripts/stage-leftovers.sh kill <pid>:<start>…
 #        scripts/stage-leftovers.sh watch --dir <transcript dir> --stall <s> --idle <s> [--since <epoch>]
 # Exit: diff 0 nothing, 1 findings; kill 0; watch 4 stalled call, 5 idle. 2: usage, any subcommand.
@@ -194,6 +194,8 @@ def registry_orphans(doc, table, seen):
 
 
 def diff(args):
+    if len(args) == 2 and args[0] == "--out":  # the flag snap was given the file with
+        args = args[1:]
     if len(args) != 1:
         usage("diff <file>")
     doc = json.load(open(args[0], encoding="utf-8"))
