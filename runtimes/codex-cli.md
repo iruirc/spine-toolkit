@@ -119,6 +119,9 @@ They read the process table with `ps`, which Codex's `workspace-write` sandbox r
 - **Hooks need review after an update.** Codex fingerprints a plugin's hooks by the whole plugin
   (`trusted_content_hash`), so every Spine update asks to trust its hooks again, though they did not
   change. Trust them (`t`); nothing in Spine's settings avoids it.
+- **`source-command-setup` in the skill list.** Codex turns a plugin command whose body takes no
+  `$ARGUMENTS` into a skill of its own; `setup` takes none, so the list shows `source-command-setup`
+  beside `spine-toolkit:setup`. Both run the same skill.
 - **Stage leftovers without the rules.** Called by Spine's rule, `stage-leftovers.sh` runs outside
   the sandbox and works as in Claude Code.
   `snap` exiting 2 with `ps is not permitted here` means the rule is missing or did not match:
