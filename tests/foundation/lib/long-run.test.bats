@@ -205,3 +205,24 @@ second_job_teardown() { [ -f "$LOG2.pid" ] && kill -KILL -- "-$(cat "$LOG2.pid")
   second_job_teardown
   [ "$status" -eq 0 ] || { echo "status $status: $output"; return 1; }
 }
+
+# Final review: a log stream or an emulator started with --parallel blocked every build after it.
+@test "a --parallel job does not block a build started after it" {
+  LOG2="$BATS_TEST_TMPDIR/two.log"; cd "$BATS_TEST_TMPDIR"
+  "$LR" start --log "$LOG" --parallel -- sleep 30 >/dev/null
+  run "$LR" start --log "$LOG2" -- true
+  second_job_teardown
+  [ "$status" -eq 0 ] || { echo "status $status: $output"; return 1; }
+}
+
+# Final review: a job killed from outside (stage-leftovers kill, a reboot) leaves no exit file; once
+# its pid is reused, the registry line must not block the folder. A pid whose process started long
+# after the line was written is a different process.
+@test "a registry line whose pid now belongs to a later process does not block" {
+  LOG2="$BATS_TEST_TMPDIR/two.log"; cd "$BATS_TEST_TMPDIR"
+  : >"$LOG"; pwd -P >"$LOG.cwd"; : >"$LOG.foreign"
+  echo "$$ $(( $(date +%s) - 86400 )) 0 $LOG" >>"$LONG_RUN_REGISTRY"
+  run "$LR" start --log "$LOG2" -- true
+  second_job_teardown
+  [ "$status" -eq 0 ] || { echo "status $status: $output"; return 1; }
+}

@@ -21,16 +21,28 @@ lines_of() { wc -l <"$1" | tr -d ' '; }
 alive() { local err; err="$(LC_ALL=C kill -0 "$1" 2>&1)" || [[ "$err" == *'not permitted'* ]]; }
 report() { echo "status=$1"; echo "--- tail $2"; tail -n 40 "$2" | cut -c1-500; }
 
+# When a process started, from its elapsed time ([[dd-]hh:]mm:ss); empty when ps cannot tell.
+started_at() {
+  local et d=0 h=0 m s
+  et="$(LC_ALL=C ps -o etime= -p "$1" 2>/dev/null | tr -d ' ')"
+  [[ "$et" =~ ^(([0-9]+)-)?(([0-9]+):)?([0-9]+):([0-9]+)$ ]] || return 0
+  d="${BASH_REMATCH[2]:-0}"; h="${BASH_REMATCH[4]:-0}"; m="${BASH_REMATCH[5]}"; s="${BASH_REMATCH[6]}"
+  echo $(( $(date +%s) - ((10#$d * 24 + 10#$h) * 60 + 10#$m) * 60 - 10#$s ))
+}
+
 # The live job a start from this folder would run beside: two builds sharing derived data corrupt
-# each other. A registry line outlives its job and its pid can be reused, so a job that left its
-# exit file is over whatever its pid says.
+# each other. A registry line outlives its job and its pid can be reused: a job that left its exit
+# file is over whatever its pid says, and so is one whose pid now names a process that started
+# elsewhen (a job killed from outside writes no exit file). A --parallel job writes no .cwd.
 running_here() {
-  local registry="${LONG_RUN_REGISTRY:-${TMPDIR:-/tmp}/spine-long-run.registry}" here pid _ts _owner log
+  local registry="${LONG_RUN_REGISTRY:-${TMPDIR:-/tmp}/spine-long-run.registry}" here pid ts _owner log t
   [ -f "$registry" ] || return 1
   here="$(pwd -P)"
-  while read -r pid _ts _owner log; do
+  while read -r pid ts _owner log; do
     [ -n "$log" ] && [ -f "$log.cwd" ] && [ ! -f "$log.exit" ] || continue
     [ "$(cat "$log.cwd")" = "$here" ] && alive "$pid" || continue
+    t="$(started_at "$pid")"
+    [ -n "$t" ] && [[ "$ts" =~ ^[0-9]+$ ]] && [ $(( t > ts ? t - ts : ts - t )) -le 5 ] || continue
     echo "pid=$pid log=$log"; return 0
   done <"$registry"
   return 1
@@ -48,14 +60,15 @@ cmd_start() {
   done
   [ $# -gt 0 ] || usage
   if [ -z "$parallel" ] && first="$(running_here)"; then
-    echo "long-run: a job is still running in this folder: $first; wait for it, or pass --parallel for a job that does not build" >&2
+    echo "long-run: a job is still running in this folder: $first; wait for it; a job that builds nothing starts with --parallel" >&2
     exit 2
   fi
   [ -n "$log" ] || log="$(mktemp "${TMPDIR:-/tmp}/long-run.XXXXXX")"
   : >"$log" || exit 2
   rm -f "$log.exit" "$log.exit.tmp"
+  rm -f "$log.cwd"
   date +%s >"$log.start"
-  pwd -P >"$log.cwd"
+  [ -n "$parallel" ] || pwd -P >"$log.cwd"
   # set -m gives the job a process group of its own: stop signals the group, children included.
   ( set -m
     LONG_RUN_LOG="$log" bash -c 'trap "" HUP; "$@"; echo $? >"$LONG_RUN_LOG.exit.tmp" && mv "$LONG_RUN_LOG.exit.tmp" "$LONG_RUN_LOG.exit"' long-run "$@" \
