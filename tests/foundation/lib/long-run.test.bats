@@ -154,3 +154,54 @@ foreign_group() {
   [ "$output" = "stop is not permitted here: rerun outside the sandbox" ] || { echo "$output"; return 1; }
   [ ! -f "$LOG.exit" ] || { echo "stop wrote an exit file"; return 1; }
 }
+
+# Write 550 started a second xcodebuild before the first had finished; the two shared DerivedData
+# and broke SourcePackages. start now refuses a second job from the folder a live one started in.
+second_job_teardown() { [ -f "$LOG2.pid" ] && kill -KILL -- "-$(cat "$LOG2.pid")" 2>/dev/null || true; }
+
+@test "a second job in the same folder is refused while the first runs" {
+  LOG2="$BATS_TEST_TMPDIR/two.log"; cd "$BATS_TEST_TMPDIR"
+  "$LR" start --log "$LOG" -- sleep 30 >/dev/null
+  run "$LR" start --log "$LOG2" -- true
+  second_job_teardown
+  [ "$status" -eq 2 ] || { echo "status $status: $output"; return 1; }
+  [[ "$output" == *"pid=$(cat "$LOG.pid") log=$LOG"* ]] || { echo "the first job is not named: $output"; return 1; }
+  [[ "$output" == *--parallel* ]] || { echo "no way out named: $output"; return 1; }
+  [ ! -f "$LOG2.pid" ] || { echo "the second job started"; return 1; }
+}
+
+@test "a second job in another folder starts" {
+  LOG2="$BATS_TEST_TMPDIR/two.log"; cd "$BATS_TEST_TMPDIR"
+  "$LR" start --log "$LOG" -- sleep 30 >/dev/null
+  mkdir other && cd other
+  run "$LR" start --log "$LOG2" -- true
+  second_job_teardown
+  [ "$status" -eq 0 ] || { echo "status $status: $output"; return 1; }
+}
+
+@test "a finished job does not block the next one" {
+  LOG2="$BATS_TEST_TMPDIR/two.log"; cd "$BATS_TEST_TMPDIR"
+  "$LR" start --log "$LOG" -- true >/dev/null
+  "$LR" wait "$LOG" --for 10 >/dev/null
+  run "$LR" start --log "$LOG2" -- true
+  second_job_teardown
+  [ "$status" -eq 0 ] || { echo "status $status: $output"; return 1; }
+}
+
+@test "a registry line whose job left an exit file does not block, though its pid is alive" {
+  LOG2="$BATS_TEST_TMPDIR/two.log"; cd "$BATS_TEST_TMPDIR"
+  # A finished job's pid reused by a live process: this test's own shell.
+  : >"$LOG"; echo 0 >"$LOG.exit"; pwd -P >"$LOG.cwd"; : >"$LOG.foreign"
+  echo "$$ $(date +%s) 0 $LOG" >>"$LONG_RUN_REGISTRY"
+  run "$LR" start --log "$LOG2" -- true
+  second_job_teardown
+  [ "$status" -eq 0 ] || { echo "status $status: $output"; return 1; }
+}
+
+@test "--parallel starts a second job in the same folder" {
+  LOG2="$BATS_TEST_TMPDIR/two.log"; cd "$BATS_TEST_TMPDIR"
+  "$LR" start --log "$LOG" -- sleep 30 >/dev/null
+  run "$LR" start --log "$LOG2" --parallel -- true
+  second_job_teardown
+  [ "$status" -eq 0 ] || { echo "status $status: $output"; return 1; }
+}

@@ -2,17 +2,18 @@
 # Runs a command that may outlast one tool call, and tells done, live, hung and over budget apart.
 # How an agent uses it: conventions/agent-tooling.md → Long-running commands.
 #
-# Usage: scripts/long-run.sh start [--log <path>] -- <cmd> [args…]   # prints pid=<n> log=<path>
+# Usage: scripts/long-run.sh start [--log <path>] [--parallel] -- <cmd> [args…]   # prints pid=<n> log=<path>
 #        scripts/long-run.sh wait <log> [--for s] [--stall s] [--max s]
 #        scripts/long-run.sh stop <log>
 # Exit (wait): 0 done ok, 1 done failed, 3 running, 4 stalled, 5 timeout. 2: usage, any subcommand.
+# Exit (start): 2 also while a job started from the same folder still runs, unless --parallel.
 # Exit (stop): 2 also when the host refuses the signal (a sandbox; the command runs outside it).
 set -uo pipefail
 
 POLL="${LONG_RUN_POLL:-10}"
 GRACE="${LONG_RUN_GRACE:-10}"
 
-usage() { echo "usage: $0 start [--log <path>] -- <cmd…> | wait <log> [--for s] [--stall s] [--max s] | stop <log>" >&2; exit 2; }
+usage() { echo "usage: $0 start [--log <path>] [--parallel] -- <cmd…> | wait <log> [--for s] [--stall s] [--max s] | stop <log>" >&2; exit 2; }
 mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"; }
 lines_of() { wc -l <"$1" | tr -d ' '; }
 # A process the host will not let this one signal (a sandbox looking at a command started outside
@@ -20,20 +21,41 @@ lines_of() { wc -l <"$1" | tr -d ' '; }
 alive() { local err; err="$(LC_ALL=C kill -0 "$1" 2>&1)" || [[ "$err" == *'not permitted'* ]]; }
 report() { echo "status=$1"; echo "--- tail $2"; tail -n 40 "$2" | cut -c1-500; }
 
+# The live job a start from this folder would run beside: two builds sharing derived data corrupt
+# each other. A registry line outlives its job and its pid can be reused, so a job that left its
+# exit file is over whatever its pid says.
+running_here() {
+  local registry="${LONG_RUN_REGISTRY:-${TMPDIR:-/tmp}/spine-long-run.registry}" here pid _ts _owner log
+  [ -f "$registry" ] || return 1
+  here="$(pwd -P)"
+  while read -r pid _ts _owner log; do
+    [ -n "$log" ] && [ -f "$log.cwd" ] && [ ! -f "$log.exit" ] || continue
+    [ "$(cat "$log.cwd")" = "$here" ] && alive "$pid" || continue
+    echo "pid=$pid log=$log"; return 0
+  done <"$registry"
+  return 1
+}
+
 cmd_start() {
-  local log=''
+  local log='' parallel='' first
   while [ $# -gt 0 ]; do
     case "$1" in
       --log) [ $# -ge 2 ] || usage; log="$2"; shift 2 ;;
+      --parallel) parallel=1; shift ;;
       --) shift; break ;;
       *) usage ;;
     esac
   done
   [ $# -gt 0 ] || usage
+  if [ -z "$parallel" ] && first="$(running_here)"; then
+    echo "long-run: a job is still running in this folder: $first; wait for it, or pass --parallel for a job that does not build" >&2
+    exit 2
+  fi
   [ -n "$log" ] || log="$(mktemp "${TMPDIR:-/tmp}/long-run.XXXXXX")"
   : >"$log" || exit 2
   rm -f "$log.exit" "$log.exit.tmp"
   date +%s >"$log.start"
+  pwd -P >"$log.cwd"
   # set -m gives the job a process group of its own: stop signals the group, children included.
   ( set -m
     LONG_RUN_LOG="$log" bash -c 'trap "" HUP; "$@"; echo $? >"$LONG_RUN_LOG.exit.tmp" && mv "$LONG_RUN_LOG.exit.tmp" "$LONG_RUN_LOG.exit"' long-run "$@" \
