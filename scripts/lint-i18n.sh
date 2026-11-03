@@ -8,6 +8,7 @@ cd "$(dirname "$0")/.."
 # Allowed cyrillic locations:
 #   skills/*/locales/ru.md           (Russian locale strings; en.md is checked)
 #   templates/claude-md-stub/ru.md   (Russian template)
+#   templates/agents-md-stub/ru.md   (Russian template)
 #   conventions/i18n.md              (canonical multilingual examples)
 #   any *.ru.md anywhere             (Russian-only mirrors)
 #   skills/<name>/SKILL.md           (only inside frontmatter description: bilingual triggers)
@@ -24,6 +25,7 @@ while IFS= read -r -d '' f; do
     *.ru.md) continue ;;
     ./skills/*/locales/ru.md) continue ;;
     ./templates/claude-md-stub/ru.md) continue ;;
+    ./templates/agents-md-stub/ru.md) continue ;;
     ./conventions/i18n.md) continue ;;
     ./.git/*) continue ;;
     # Defines the cyrillic range it searches for, so it matches itself.
