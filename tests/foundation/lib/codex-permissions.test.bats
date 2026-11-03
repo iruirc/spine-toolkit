@@ -133,3 +133,13 @@ decision() { codex execpolicy check --resolve-host-executables --rules "$TPL" "$
       | grep -qF 'long-run.sh start -- <' || { echo "$l codex_item_rules_core does not say it"; false; }
   done
 }
+
+# Milestone 7: the Android setup asked about the platform's "simulator" commands; Kotlin drives an
+# emulator, and the item is shared by every platform. The Russian word is "emulator" in its genitive,
+# spelled as UTF-8 bytes: a test file is not a place the i18n lint lets Cyrillic in.
+@test "the platform rules item names the emulator as well as the simulator" {
+  awk '/^## codex_item_rules_platform$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/setup/locales/en.md" \
+    | grep -qF 'simulator or emulator' || { echo "en does not name it"; false; }
+  awk '/^## codex_item_rules_platform$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/setup/locales/ru.md" \
+    | grep -qF "$(printf '\xd1\x8d\xd0\xbc\xd1\x83\xd0\xbb\xd1\x8f\xd1\x82\xd0\xbe\xd1\x80\xd0\xb0')" || { echo "ru does not name it"; false; }
+}

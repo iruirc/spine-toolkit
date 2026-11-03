@@ -164,7 +164,7 @@ Write | Skip
 - `.codex/rules/spine.rules` in the project: commits after a finished phase, builds and test runs Spine starts, and its leftovers check run without a question and outside the sandbox — the project's git hooks too. `long-run.sh start -- <command>` runs any command that way, whatever it is.
 
 ## codex_item_rules_platform
-- `.codex/rules/{file}` in the project: the platform's build, test and simulator commands run without a question and outside the sandbox, the project's build scripts with them.
+- `.codex/rules/{file}` in the project: the platform's build, test, simulator or emulator commands run without a question and outside the sandbox, the project's build scripts with them.
 
 ## codex_item_menu
 - The question menu: Spine's questions come as a menu you pick from with the arrow keys instead of numbered text. Adds `default_mode_request_user_input = true` under `[features]` in `{config_path}`; it applies to every Codex session, and Codex warns the feature is "under development".
