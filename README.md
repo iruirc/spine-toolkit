@@ -58,6 +58,7 @@ offers Codex's own settings: rules in `.codex/rules/` that let builds, tests, th
 emulator and `git commit` run without a question and outside the sandbox, and the question menu.
 Restart Codex the way its report says. Tasks then run as `$spine-toolkit:orchestrator run 001`, and
 `$spine-toolkit:task-new <description>` creates one.
+After every Spine update Codex shows "Hooks need review" for its hooks, though they did not change: Codex fingerprints the whole plugin. Trust them (`t`).
 
 What differs from Claude Code: each stage runs as a Codex subagent, one at a time (Codex has no
 `Workflow` tool, so a run is always Method B), and an EPIC dispatches its steps one by one.

@@ -256,3 +256,13 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   grep -qF '$spine-toolkit:task-new' "$M"
   grep -qF 'the one change' "$M"
 }
+
+# Milestone 6: after every Spine update Codex asks to trust its hooks again, though they did not
+# change — its fingerprint covers the whole plugin. Spine cannot avoid it; the user is told why.
+@test "Known limits and the README say Codex asks to trust the hooks again after an update" {
+  sec="$(awk '/^## Known limits$/{on=1; next} on && /^## /{exit} on' "$ROOT/runtimes/codex-cli.md")"
+  grep -qF 'Hooks need review' <<<"$sec" || { echo "Known limits does not name it"; false; }
+  grep -qF 'trusted_content_hash' <<<"$sec" || { echo "Known limits does not say why"; false; }
+  awk '/^### Codex CLI$/{on=1; next} on && /^##/{exit} on' "$ROOT/README.md" | grep -qF 'Hooks need review' \
+    || { echo "README does not name it"; false; }
+}
