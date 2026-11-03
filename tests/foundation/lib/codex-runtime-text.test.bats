@@ -266,3 +266,11 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   awk '/^### Codex CLI$/{on=1; next} on && /^##/{exit} on' "$ROOT/README.md" | grep -qF 'Hooks need review' \
     || { echo "README does not name it"; false; }
 }
+
+# Milestone 2 found a skill `source-command-setup` in Codex's list and no reason for it: Codex turns a
+# plugin command whose body takes no $ARGUMENTS into a skill of its own (checked 2026-11-03, 0.166).
+@test "Known limits says why source-command-setup is in Codex's skill list" {
+  sec="$(awk '/^## Known limits$/{on=1; next} on && /^## /{exit} on' "$ROOT/runtimes/codex-cli.md")"
+  grep -qF 'source-command-setup' <<<"$sec" || { echo "Known limits does not name it"; false; }
+  grep -qF '$ARGUMENTS' <<<"$sec" || { echo "Known limits does not say why"; false; }
+}
