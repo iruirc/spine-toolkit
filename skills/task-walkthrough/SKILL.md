@@ -51,10 +51,13 @@ Whether a reader with none of the writer's context reads the file back is a seco
 
 ## Inputs
 
+- `Task.md` as a whole — what was asked for, and in whose words
+- `Research.md`, when the task has one — the domain the change lives in, and the alternatives already weighed
 - `Plan.md` — the intent: the phase table and the per-phase checkboxes
 - The task's own git commits — the fact: `git log` for the range, and at `deep` a `git show --stat` **and** a read of the substantive hunks of every commit, because a section per commit cannot be written from subjects
-- `Task.md` `## 2. [Description]` and `## 3. [Task]` — what was asked for
 - The file's own previous content, when it already exists
+
+Read the task and its research first, before any `git show`. Then write down the 3 to 8 concepts the reader needs to follow this task. At `deep` they become `## Glossary`; at `brief` they are the words the file has to name in passing. The diff tells you what the code does; only the task and the research tell you what the reader is missing.
 
 ## Coverage anchor
 
@@ -91,13 +94,21 @@ What the header never holds is the bookkeeping of the run: which finding a later
 which edit is not committed yet, why the file was refreshed. A finding closed by a commit is already
 a row of `## Plan vs. outcome` with the trigger `Review`; the rest belongs to `Done.md`.
 
+At `deep` the header is followed by a quote block of two or three lines that tells the reader how to
+use the file: which sections give the gist, where the glossary is, how a commit section is built.
+
+```markdown
+> **How to read.** The gist is in What changed and Summary. Unfamiliar words are in Glossary.
+> Each commit section opens with one sentence on what it did and says how it was verified.
+```
+
 | Section | Content | `brief` | `deep` |
 |---|---|---|---|
 | header | The perimeter and where the verdicts live, as above | the four parts above | the four parts above |
 | `## What changed` | Every observable change, before and after on one concrete case | 1 line per change | 1 item per change |
 | `## Glossary` | Every domain term the document uses that the reader would not already know | absent | 1–4 lines per term |
-| `## Summary` | Why the task existed, and the idea of the solution | ≤ 8 lines | no count: not a list of changes, not a retelling of commits |
-| `## Commit order` | Why the commits are in this order and what depends on what | absent | prose + 1 diagram |
+| `## Summary` | Why the task existed, and the idea of the solution | ≤ 8 lines | no count: three leads, not a list of changes, not a retelling of commits |
+| `## Commit order` | Why the commits are in this order and what depends on what | absent | table + 1 diagram |
 | `## Plan vs. outcome` | One row per divergence, with its trigger | 1 row per divergence | same |
 | `## Commits` | The log | 1 bullet, 1–3 sentences each | 1 section each |
 | `## How it works` | Diagrams, and only the prose that connects them | ≤ 2 diagrams | ≤ 2 diagrams |
@@ -115,23 +126,28 @@ commit's sub-heading — is bounded by its scope alone. The first move holds the
 third is the only test left: a section that grows run after run covers more than its row says, and
 the fix is fewer claims, never shorter sentences.
 
-The glossary and `## How it works` are not required: the first is left out when the task names no new term, the second when no diagram earns its place. Every other section of the depth is present, with `none` when it has nothing to say.
+The glossary and `## How it works` are not required: the first is left out when the reader needs no concept explained, the second when no diagram earns its place. Every other section of the depth is present, with `none` when it has nothing to say.
 
 See `## Style`.
 
 ### `## What changed`
 
 The first section after the header, at both depths. It answers "what did this task do" without the
-reader opening anything below it. One numbered item per observable change:
+reader opening anything below it. Its first line says whether a user sees anything new. At `deep`
+each observable change is a numbered `###` heading and a table of three rows:
 
 ```markdown
 ## What changed
 
-1. **A promo code no longer discounts the delivery fee**
-   - **Before:** a 10% code came off the whole total — an order of 1000 with a delivery fee of 300
-     cost 1170.
-   - **After:** the code comes off the goods alone — the same order costs 1200.
-   - **Commits:** 3, 4.
+A user sees one difference, at checkout.
+
+### 1. A promo code no longer discounts the delivery fee
+
+| | |
+|---|---|
+| **Before:** | A 10% code came off the whole total: an order of 1000 with a delivery fee of 300 cost 1170. |
+| **After:** | The code comes off the goods alone: the same order costs 1200. |
+| **Commits:** | 3, 4 |
 ```
 
 - It is written in the words of the user or of the domain, with no identifier from the code. It
@@ -145,20 +161,24 @@ What counts as a change depends on the profile:
 | Profile | An item describes |
 |---|---|
 | FEATURE, BUG | observable behaviour |
-| REFACTOR | structure, before and after, plus a `**Behaviour:** unchanged` line naming what proves it |
+| REFACTOR | structure, before and after, plus a `**Behaviour:** unchanged` row naming what proves it |
 | TEST | a breakage that now fails a test where it used to pass unnoticed |
 | EPIC | a change of the delivery as a whole, with `**Steps:**` in place of `**Commits:**` |
 
-At `brief` every item keeps its before and after, on one line:
-``1. A promo code no longer discounts the delivery fee: 1170 → 1200 on the same order (commits `a1b2c3d`, `e4f5a6b`).``
+At `brief` every item keeps its before and after, on one numbered line:
+`1. A promo code no longer discounts the delivery fee: 1170 → 1200 on the same order (commits a1b2c3d, e4f5a6b).`
 
-At `brief` the log is not numbered, so an item cites its commits by short sha.
+At `brief` the log is not numbered, so an item cites its commits by short sha. The shas go without
+backticks: this section holds no code span at either depth, and `scripts/lint-walkthrough.sh` names
+one as a `style` line.
 
 ### `## Glossary` (`deep`)
 
-The single largest clarity win, and the one most often skipped. A term earns an entry when the reader would have to grep the repository to follow the next paragraph — a domain noun, a role in a relationship, a state that has a name in the code. A term earns nothing when it is general engineering vocabulary.
+The single largest clarity win, and the one most often skipped. It comes right after `## What changed`. A term earns an entry when the reader would have to grep the repository to follow the next paragraph — a domain noun, a role in a relationship, a state that has a name in the code. That holds for every concept of the area without which `## What changed` cannot be followed, even if it is not new to the code: a basic mechanism the text leans on, such as undo or a cache the change goes through, is an entry as much as a new type. The concepts listed before reading the commits (see `## Inputs`) are where the entries come from. A term earns nothing when it is general engineering vocabulary.
 
-Per entry: what it is, and why it matters *here*. Ordinary-language name first, identifier second.
+When the concepts are spatial — a layout, a timeline, things nested in other things — the section may open with a small ASCII sketch of them, before the first entry.
+
+Per entry: what it is, and why it matters *here*. Ordinary-language name first, identifier second, in parentheses.
 
 ```markdown
 **Reservation (`CartHold`)** — a claim on stock that a cart makes before payment. Not the order
@@ -166,11 +186,47 @@ line itself: it expires on its own after fifteen minutes, and an expired one lea
 while the stock goes back. That expiry is where commit 3 gets its trouble.
 ```
 
-The section is omitted entirely when the task introduces no such term. A glossary of words the document never uses is worse than none.
+The section is omitted entirely when no concept earns an entry. A glossary of words the document never uses is worse than none.
+
+### `## Summary`
+
+At `brief` it is at most eight lines of prose: why the task existed, and the idea of the solution.
+At `deep` it is three parts, each opened by a bold lead rather than a heading:
+
+```markdown
+**Why.** Two later steps need the discount to know which lines are goods:
+
+- the loyalty points are counted on goods alone;
+- the invoice shows the delivery fee as a line of its own.
+
+**What was done.**
+
+| # | Part | In plain words |
+|---|---|---|
+| 1 | Line kinds | Every cart line says whether it is goods, delivery or a fee |
+| 2 | Discount base | A promo code is applied to the goods lines only |
+
+**Main decisions.**
+
+1. The kind is stored on the line, not looked up from the catalogue: a deleted product would leave its line without one.
+```
+
+- `**Why.**` is the need, as a short list of what later work or the user requires.
+- `**What was done.**` is a table of the parts of the solution, each said in plain words.
+- `**Main decisions.**` is numbered, and every decision names the alternative it rejected.
 
 ### `## Commit order` (`deep`)
 
-Why this order and not another — dependency, not importance. One `graph TD` when the task has more than four commits, showing which commit each one needs; below that, prose alone. A sentence naming which node collects most of the edges, and why that is not a coincidence, is worth more than the diagram.
+Why this order and not another — dependency, not importance. It opens with a table, one row per commit:
+
+```markdown
+| Commit | Needs | Why here |
+|---|---|---|
+| 1. Line kinds | — | Every later commit reads the kind |
+| 2. Discount base | 1 | The base is the sum of the goods lines |
+```
+
+Below the table, one `graph TD` when the task has more than four commits, showing which commit each one needs; at four or fewer, the table alone. A sentence naming which node collects most of the edges, and why that is not a coincidence, is worth more than the diagram.
 
 ### `## Plan vs. outcome`
 
@@ -195,7 +251,7 @@ Per commit: short sha, subject, then what it does, which files carry it, and wha
 
 ### `## Commits` — `deep`
 
-One `###` section per commit — never one per phase: a heading names exactly one sha. Four parts are always present: the heading, which names what the commit did *in the reader's words* rather than repeating the subject; the subject itself on its own line; the files with their line counts; and `**Changes:**` — the items of `## What changed` the commit serves, or `—` when it serves none, and then its section says why it exists: preparation, a characterisation, a guard.
+One `###` section per commit — never one per phase: a heading names exactly one sha. Four parts open every section: the heading, which names what the commit did *in the reader's words* rather than repeating the subject; the subject itself on its own line; the files with their line counts, where a commit of tests alone says so; and `**Changes:**` — the items of `## What changed` the commit serves, or `—` when it serves none, and then its section says why it exists: preparation, a characterisation, a guard.
 
 ```markdown
 ### 3. `d770f52` — the one door untrusted data comes through
@@ -205,24 +261,54 @@ One `###` section per commit — never one per phase: a heading names exactly on
 **Files:** `CartSanitizer` (+140), `CartStore` (+12), tests (+310).
 
 **Changes:** 2.
+
+**In short:** every stored cart now passes one check on its way in, so a damaged one can no longer crash the app.
+
+#### What failure this is written against
+
+1. A price in the stored cart is malformed.
+2. The user opens the cart.
+3. The app crashes, and it crashes every time: the stored value does not go away, so that cart can never be opened again.
+
+#### How it is closed
+
+- The cart is read through one check, and nothing else reads it (`CartSanitizer`).
+- A malformed price is dropped with its line, and the rest of the cart opens.
+
+**How verified:** a test loads a cart with a malformed price and expects it to open without that line. With the check removed on purpose, this test and two others went red.
+
+#### Why the store is not the gate
+
+…
 ```
 
-Below that the sub-headings are a **menu, not a checklist**:
+Then the frame. Always present, in every commit that carries logic, in this order:
+
+| Part | What it says |
+|---|---|
+| `**In short:**` | One sentence: what the commit did and why |
+| `#### What failure this is written against` | What would break without it, down to what the user sees |
+| `#### How it is closed` | The mechanism, one bullet per mechanism |
+| `**How verified:**` | Which test proves it, what was broken on purpose to watch the test fail, and how many tests went red |
+
+The one exception: a commit with no logic gets only `**In short:**` — a rename, a move, a constant changed. `scripts/lint-walkthrough.sh` names a `deep` commit section without `**In short:**`, and one with sub-headings but without `**How verified:**`.
+
+The other three sub-headings are a **menu, not a checklist**:
 
 | Sub-heading | Earned when |
 |---|---|
-| `#### What appeared` | The commit introduces a type, a method or a field the reader has not met |
-| `#### What failure this is written against` | The commit exists to prevent something — the usual case, and the most valuable section in the file |
-| `#### How it is closed` | The mechanism is not obvious from the name |
-| `#### Why <X> and not <Y>` | A reader would ask why the obvious alternative was rejected. One heading per alternative |
-| `#### What is deliberately absent` | Something a reader would expect to be here is missing on purpose |
+| `#### What appeared` | The commit introduces a type, a method or a field the reader has not met. It goes right after `**In short:**` |
+| `#### Why <X> and not <Y>` | A reader would ask why the obvious alternative was rejected. One heading per alternative, after `**How verified:**` |
+| `#### What is deliberately absent` | Something a reader would expect to be here is missing on purpose. Last |
 
-A commit that renames a symbol earns none of them and gets three sentences under the files line; a commit that introduces a subsystem earns all five. The depth of a section is a property of the commit, not of the document.
+A commit that renames a symbol gets its `**In short:**` and nothing more; a commit that introduces a subsystem earns the frame and all three of the menu. The depth of a section is a property of the commit, not of the document.
 
-Two of these carry the weight, and both are usually missing when this artifact disappoints:
+Two parts carry the weight, and both are usually missing when this artifact disappoints:
 
-- **The failure** is written as a chain the reader can follow to its consequence, not as a category. `a malformed price in the stored cart → the user opens the cart → the process crashes`, and then the part that matters: it crashes *every time*, because the stored value does not go away, so that cart is unopenable forever. "Guards against invalid input" says none of that.
+- **The failure** is written as a numbered chain the reader can follow to its consequence, not as a category, and the last step is what the user sees. In the example above, the part that matters is the last step: the cart crashes *every time*, so it is unopenable forever. "Guards against invalid input" says none of that. When a commit closes several failures, a table with the columns `What could break` and `How it would look` replaces the chain.
 - **The rejected alternative** is what the reader actually came for. `Why the store is not the gate` beats any amount of description of the gate.
+
+For the hardest commit of the task, a small ASCII sequence or a table of cases — the case, what it should do, what it did before — is worth adding under `#### How it is closed`.
 
 ### Bookkeeping commits
 
@@ -248,6 +334,8 @@ A diagram only where prose is genuinely worse than a picture. One file changed d
 | A state machine, a lifecycle | `stateDiagram-v2` |
 | Schema or migration shape | `erDiagram` |
 
+When the change has one user action that crosses several components, a `sequenceDiagram` of that one action is encouraged: it is usually the picture the reader was missing. Tables and ASCII sketches do not count against the two diagrams, here or anywhere in the file.
+
 ### `## Out of scope` (`deep`)
 
 What the task could plausibly have contained and deliberately did not, with where it went instead. Distinct from `## Follow-ups`, which is work this task created; this is work this task *declined*. A reader who cannot tell which of the two a missing piece falls into will open the wrong task to look for it.
@@ -263,6 +351,7 @@ The budgets say how much. This says how, and it is the half that decides whether
 - **An identifier is a reference, never the subject.** A test case, a review finding, a decision, a question, a phase or a neighbouring step is never what a sentence is about. Say the thing in words, then cite the identifier in parentheses: "a separate test proves the cart keeps its reservation through a second payment (`CH4`)", not "`CH4` proves the reservation is kept". A neighbouring step is named by what it did — "the delivery price formula (step `04`)". `## Glossary` gets no entry for an identifier: what needs defining is the thing it points at.
 - **After any sentence that needs the repository open to parse, write a plainer one.** "Put simply: …". This is not padding; it is the difference between a document that transfers understanding and one that proves the author had it. At `brief` this one does not apply — a commit bullet of one to three sentences has no room for a second pass at the same sentence.
 - **A failure is a causal chain, then its consequence.** See `## Commits` — `deep`.
+- **The lint measures part of this.** `scripts/lint-walkthrough.sh` reports as class `style` a sentence over 30 words, a code span in `## What changed`, a sentence that opens on an identifier or holds more than two, and a `deep` commit section without its labels. Tables, code blocks, quotes and headings are not measured. Passing the lint is the floor, not the goal: `## Check` reads for what it cannot count.
 - **Code excerpts are allowed and are not diff-restating.** A signature, a doc comment, or the one line that carries the invariant — ≤ 12 lines, and only when the shape *is* the point. A hunk-by-hunk retelling is a different thing and is banned below.
 
 ## Feeding a progress component
@@ -290,7 +379,7 @@ The file is living, not append-once. On a stage that runs it when the file alrea
 1. Read `[COVERS]`. Its end already at the task's last commit, and `scripts/lint-walkthrough.sh` exits 0 → change nothing, report that. `[COVERS]` can match `HEAD` over a body that names commits long gone.
 2. Otherwise refresh, and treat the sections differently:
    - A line of class `unreachable` — a commit the task's history no longer holds, because a reset or a squash dropped it — first: its section or bullet in `## Commits` is removed, and a `### Bookkeeping` line or a perimeter row whose range starts or ends on it is rewritten to the commits that exist or removed. Append-only protects rework; it does not keep an account of what `git log` no longer shows. `## Plan vs. outcome` gains one row per repository with the trigger `history`: how many commits are gone, never why — the writer was not told.
-   - A line of any other class, next: `section` — the section is written back from git and `Plan.md`; `missing` and `heading` — a section, or a `brief` bullet, or a `### Bookkeeping` line for a commit that carries no engineering decision, for each commit named, split out of a section that held several; `count` — the header's number follows the history; `range` — the range is rewritten to the commits that exist, in the repository that holds them. Append-only is not broken: a missing commit is appended.
+   - A line of any other class, next: `section` — the section is written back from git and `Plan.md`; `missing` and `heading` — a section, or a `brief` bullet, or a `### Bookkeeping` line for a commit that carries no engineering decision, for each commit named, split out of a section that held several; `count` — the header's number follows the history; `range` — the range is rewritten to the commits that exist, in the repository that holds them; `style` — the place named is rewritten by `## Style`: a long sentence is split, an identifier leaves `## What changed` or the subject position, and a `deep` commit section gains the `**In short:**` or `**How verified:**` it lacks. Append-only is not broken: a missing commit is appended, and a `style` repair edits a commit section in place without dropping what it says.
    - `## Commits` — **append only**, at both depths, except when the resolved depth changed — see below. It is a log; a rework commit arrives with its own reason (`addresses Review finding 2`) and does not overwrite its predecessors. New bookkeeping commits join `### Bookkeeping`.
    - `## Plan vs. outcome` — **accumulates**, each new row carrying its trigger. A round of fixes after Review is precisely the divergence worth keeping.
    - `## What changed`, `## Glossary`, `## Summary`, `## Commit order`, `## How it works`, `## Out of scope`, `## Follow-ups` — **rewritten** to the current state. The reader needs what is true now, not archaeology.
@@ -304,7 +393,7 @@ A refresh that finds the file at the other depth rewrites it to the resolved one
 a run as the contract's `walkthrough_check`, `on` or `off`. `auto`, its default, is `on` at `deep`
 and `off` at `brief`, and nothing is checked where `[WALKTHROUGH]` wrote nothing.
 
-When it is `on`, every write that changed the file is followed by one read. A refresh that changed
+When it is `on`, every write that changed the file is followed by a read. A refresh that changed
 nothing is not checked. The writer never checks its own file: the dispatcher does — the profile
 script under Method A, the workflow skill's main context under Method B.
 
@@ -314,9 +403,14 @@ other file of the task, no source file, no git — and returns two lists:
 
 - `retelling` — one sentence in its own words for each item of `## What changed`;
 - `unclear` — every place it had to guess, each as a quote of at most one line and what was
-  missing: a term or an identifier nobody explained; a sentence it had to read twice; a
-  `## What changed` item no commit builds; a commit whose section does not say which item it serves,
-  or, at `**Changes:** —`, why it exists.
+  missing. A place is unclear when it holds one of these:
+  - a sentence it had to read twice;
+  - a term used without a definition, or an identifier nobody explained;
+  - an identifier as the subject of a sentence, where the thing it names should be;
+  - a commit without its reason or its verification — no `**In short:**`, no `**How verified:**`,
+    or, at `**Changes:** —`, nothing on why it exists;
+  - a `## What changed` item no commit builds, or a commit whose section does not say which item it
+    serves.
 
 The role is the writer's because the reader this file is for is an engineer of the same stack who
 was not on the task. The `reviewer` is not the reader: its job is the diff, and the author's story is
@@ -327,9 +421,13 @@ place named; where the retelling misreads a change, the text that led it there i
 `[COVERS]` stays. `## Commits` is edited in place — this is the same version of the file, not a
 refresh, so the append-only rule does not apply.
 
-**One round.** What is left after the revision is not checked again. The run notes one line: how
-many places were named and whether the file was revised. A failure of either dispatch is noted and
-stops nothing, as a failure of the write does.
+**At most two rounds.** When the first read listed three places or fewer, what is left after the
+revision is not checked again. When the first read listed more than three places, the revised file
+is read once more by a fresh reader, and the writer revises once more from that second read —
+never a third. The count that decides is the first read's, so a second read that lists more still
+ends the check after its revision. The run notes one line per round: how many places were named and
+whether the file was revised. A failure of any of these dispatches is noted and stops nothing, as a
+failure of the write does.
 
 ## Not applicable
 
@@ -347,7 +445,7 @@ The depth switch reads the same, with the step standing in for the commit: at `d
 
 ## Localization
 
-Prose in the project's language, structure in English — headings, the `[COVERS]` anchor, the trigger values. The English half covers `## What changed`, `## Glossary`, `## Commit order`, `## Out of scope`, `### Bookkeeping`, the five `####` sub-headings of a `deep` commit section, and the labels `**Before:**`, `**After:**`, `**Behaviour:**`, `**Commits:**`, `**Steps:**`, `**Changes:**` and `**Files:**`: later tasks cite them by their exact spelling, and a translated heading breaks that citation.
+Prose in the project's language, structure in English — headings, the `[COVERS]` anchor, the trigger values. The English half covers `## What changed`, `## Glossary`, `## Commit order`, `## Out of scope`, `### Bookkeeping`, the five `####` sub-headings of a `deep` commit section, the table header rows `| # | Part | In plain words |` and `| Commit | Needs | Why here |`, the quote lead `> **How to read.**`, the `## Summary` leads `**Why.**`, `**What was done.**` and `**Main decisions.**`, and the labels `**Before:**`, `**After:**`, `**Behaviour:**`, `**Commits:**`, `**Steps:**`, `**Changes:**`, `**Files:**`, `**In short:**` and `**How verified:**`: later tasks cite them by their exact spelling, and a translated heading breaks that citation.
 `conventions/i18n.md`, Artifact authoring rule.
 
 ## Anti-patterns to avoid
@@ -360,7 +458,7 @@ The reader and style rules every task artifact follows are in the `artifact-read
 - **A glossary of unused terms.** Entries earn their place by appearing later in the document.
 - **Feeding it to the Review stage.** The `reviewer` agent exists to read the diff independently; the author's narrative anchors it. `OpsChecklist.md` is fine as its input — that is evidence, not story. The reader of this file is a person.
 - **Copying the validation verdict in.** It lives in `Validation.md` and `Done.md`. Link, do not duplicate.
-- **A diagram per commit.** Two diagrams is the ceiling in `## How it works`, plus the one in `## Commit order`, and most tasks want fewer.
+- **A diagram per commit.** Two diagrams is the ceiling in `## How it works`, plus the one in `## Commit order`, and most tasks want fewer. Tables and ASCII sketches are not diagrams in this count.
 - **Rewriting `## Commits` on refresh.** That erases the rework, which is the part worth having. The exceptions are a refresh at a depth the file was not written at, and when a commit is gone from history — see `## Refreshing`.
 - **Bookkeeping in the header.** Which finding which commit closed, what is not committed yet, why the file was refreshed. The header is the perimeter; the run's history belongs to `Done.md`, and a finding a commit closed is already a row of `## Plan vs. outcome`.
 - **An identifier as the subject.** "`CH4` proves …", "closes Minor 3". The reader was not there when the label was handed out. Say what it is, then cite it.
