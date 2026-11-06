@@ -11,9 +11,14 @@ set -euo pipefail
 
 [ "$#" -ge 1 ] || { echo "usage: $0 <task-dir> [<task-dir> ...]" >&2; exit 2; }
 
-RESOLVE="$(dirname -- "${BASH_SOURCE[0]}")/resolve-settings.sh"
-python3 - "$RESOLVE" "$@" <<'PY'
+HERE="$(dirname -- "${BASH_SOURCE[0]}")"
+RESOLVE="$HERE/resolve-settings.sh"
+python3 - "$RESOLVE" "$HERE/lib" "$@" <<'PY'
 import json, os, re, subprocess, sys
+
+# chunks() and prose() are shared with the other artifact lints.
+sys.path.insert(0, sys.argv[2])
+from prose import chunks, prose
 
 # conventions/artifact-language.md carries the same table. A language that shares its script with
 # another row cannot be told apart from it: only a foreign script is caught.
@@ -26,61 +31,6 @@ FLOOR_PERCENT = 10
 ARTIFACTS = ['Research.md', 'Reproduce.md', 'Plan.md', 'Validation.md', 'Review.md',
              'ChangesRequested.md', 'Done.md', 'Walkthrough.md', 'OpsChecklist.md',
              'ManualChecks.md', 'Docs.md']
-# The types of conventions/commit-messages.md: a quoted subject stays English at any [LANG].
-SUBJECT = re.compile(r'\b(?:feat|fix|refactor|test|docs|chore|perf|style)(?:\([^)\n]*\))?!?: .*$', re.M)
-INLINE = [
-    re.compile(r'`[^`\n]*`'),
-    re.compile(r'\*\*[^*\n]{1,40}:\*\*'),
-    re.compile(r'https?://\S+'),
-    re.compile(r'\S*[/\\]\S*'),
-    re.compile(r'\b\w+\.[A-Za-z][A-Za-z0-9]{0,5}\b'),
-]
-HEADING = re.compile(r'^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$')
-FENCE = re.compile(r'^\s*(`{3,}|~{3,})(.*)$')
-DROPPED_LINE = re.compile(r'^\s*(\||>|\[[A-Z_]+\]\s*=|\*\*Run:\*\*)')
-LIST_ITEM = re.compile(r'^\s*[-*+]\s')
-
-
-def chunks(text, checklist=False):
-    """(heading, prose) pairs: the text before the first heading, then the text under each
-    heading up to the next one of any level. A fence may be indented under a list item, and
-    what it holds is code whatever the indentation."""
-    text = re.sub(r'<!--.*?-->', '', text, flags=re.S)
-    out, title, buf, fence = [], '(preamble)', [], None
-    for line in text.split('\n'):
-        m = FENCE.match(line)
-        if fence:
-            # CommonMark: only the run alone, at least as long as the opening one, closes a fence.
-            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence) and not m.group(2).strip():
-                fence = None
-            continue
-        # CommonMark: a backtick fence's info string holds no backtick, or the line opens nothing.
-        if m and not (m.group(1)[0] == '`' and '`' in m.group(2)):
-            fence = m.group(1)
-            continue
-        h = HEADING.match(line)
-        if h:
-            out.append((title, '\n'.join(buf)))
-            title, buf = h.group(0).strip(), []
-            continue
-        if DROPPED_LINE.match(line):
-            continue
-        if checklist and LIST_ITEM.match(line):
-            # A checklist item's own text is the catalog's, English at any [LANG]: prose is what
-            # follows its first dash, and an item with no dash has none.
-            if ' — ' not in line:
-                continue
-            line = line.split(' — ', 1)[1]
-        buf.append(line)
-    out.append((title, '\n'.join(buf)))
-    return out
-
-
-def prose(text):
-    text = SUBJECT.sub('', text)
-    for pattern in INLINE:
-        text = pattern.sub(' ', text)
-    return text
 
 
 def count(text, lang):
@@ -123,7 +73,7 @@ def settings(task_dir, resolve):
     return json.loads(out.stdout)
 
 
-resolve, dirs = sys.argv[1], sys.argv[2:]
+resolve, dirs = sys.argv[1], sys.argv[3:]
 if any(d.startswith('--') for d in dirs):
     print('usage: lint-artifact-lang.sh <task-dir> [<task-dir> ...]', file=sys.stderr)
     sys.exit(2)
