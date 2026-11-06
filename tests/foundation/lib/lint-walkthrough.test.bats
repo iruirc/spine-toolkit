@@ -27,7 +27,8 @@ commit() {
 }
 
 # $1 deep|brief, $2 the body of ## Commits, $3 the perimeter's Range cell ("-" leaves the table
-# out), $4 its Commits cell. Every section the depth requires is present.
+# out), $4 its Commits cell. Every section the depth requires is present, and every numbered
+# commit section carries **In short:**, so the style class has nothing to say about it.
 walkthrough() {
   local range="${3:-$A1..$A2}" count="${4:-2}" s
   {
@@ -37,8 +38,8 @@ walkthrough() {
       [ "$1" = deep ] || case "$s" in Glossary | 'Commit order' | 'Out of scope') continue ;; esac
       printf '\n## %s\n\n' "$s"
       case "$s" in
-        Commits) printf '%s\n' "$2" ;;
-        'How it works') printf -- '- `%s` is only named here.\n' "$GONE" ;;
+        Commits) printf '%s\n' "$2" | awk '{ print } /^### [0-9]/ { print "\n**In short:** x." }' ;;
+        'How it works') printf -- '- Only `%s` is named here.\n' "$GONE" ;;
         *) printf 'x\n' ;;
       esac
     done
@@ -230,4 +231,167 @@ PY2
   [ "$status" -eq 2 ] || { echo "no dir: $status"; return 1; }
   run "$LINT" --current
   [ "$status" -eq 2 ] || { echo "--current alone: $status"; return 1; }
+}
+
+# The style class: how the prose of the file reads, not what it says about the history.
+STYLE="$BATS_TEST_DIRNAME/../../fixtures/walkthrough-style"
+
+# $1 the body of ## What changed, $2 the body of ## Summary, $3 the body of ## Commits.
+styled() {
+  printf '# Walkthrough\n[COVERS] = a..b\n\n## What changed\n\n%s\n\n## Summary\n\n%s\n\n## Commits\n\n%s\n' \
+    "$1" "$2" "$3" >"$BATS_TEST_TMPDIR/w.md"
+}
+
+@test "style: a sentence over thirty words is a finding with its word count" {
+  run "$LINT" --style "$STYLE/long-sentences.en.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: sentence of 38 words (## Summary)" ] || { echo "$output"; return 1; }
+}
+
+@test "style: the same rule reads a Russian file" {
+  run "$LINT" --style "$STYLE/bad.ru.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: sentence of 35 words (## Summary)" ] || { echo "$output"; return 1; }
+}
+
+@test "style: a sentence of exactly thirty words passes and thirty-one does not" {
+  local w30 w31
+  w30="$(printf 'word %.0s' $(seq 30))"
+  w31="$(printf 'word %.0s' $(seq 31))"
+  styled 'x' "${w30%% }." x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  styled 'x' "${w31%% }." x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: sentence of 31 words (## Summary)" ] || { echo "$output"; return 1; }
+}
+
+@test "style: a list without final dots is not one long sentence" {
+  local item="$(printf 'word %.0s' $(seq 12))"
+  styled x "$(printf -- '- %s\n- %s\n- %s\n1. %s\n2. %s' "$item" "$item" "$item" "$item" "$item")" x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "style: a full stop inside a code span or after a list number does not split a sentence" {
+  local w29="$(printf 'word %.0s' $(seq 27))"
+  # 27 words + two spans = 29 words, one sentence although each span holds a full stop and a space.
+  styled x "1. ${w29}\`a. b\` \`c. d\`." x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  # One more word and the same sentence is over the limit: the span did not hide it.
+  styled x "1. word word ${w29}\`a. b\` \`c. d\`." x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: sentence of 31 words (## Summary)" ] || { echo "$output"; return 1; }
+}
+
+@test "style: an identifier in what changed is a finding, a table row there too" {
+  styled "$(printf 'The cart now reads `CartTotals` first.\n\n| Before | After |\n|---|---|\n| a | `CartTotals` |')" x x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: identifier in ## What changed (## What changed)" ] || { echo "$output"; return 1; }
+  styled "$(printf '| Before | After |\n|---|---|\n| a | `CartTotals` |')" x x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: identifier in ## What changed (## What changed)" ] || { echo "$output"; return 1; }
+}
+
+@test "style: identifiers outside what changed are not rule b" {
+  styled 'No names here.' 'The total comes from `CartTotals` only.' x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "style: a sentence that starts with an identifier is a finding" {
+  styled x "$(printf 'The total is right. `CartTotals` now adds delivery last.')" x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: sentence starts with an identifier (## Summary)" ] || { echo "$output"; return 1; }
+}
+
+@test "style: a bullet that starts with an identifier is a finding, a commit log line is not" {
+  styled x "- \`CartTotals\` adds delivery last." x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: sentence starts with an identifier (## Summary)" ] || { echo "$output"; return 1; }
+  styled x x "$(printf -- '- `a1b2c3d` `feat: a` — first, see `CartTotals` and `CartStore`.\n- `a1b2c3d..e4f5a6b` — two commits.')"
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "style: a brief log bullet that names a type and closes on a path is a log line" {
+  styled x x "$(printf -- '- `a1b2c3d` `feat(domain): add CartReader` — introduces the read side, so the UI can\n  move off `CartService` before the write side is touched. `Sources/Domain/Cart*`.\n  **Changes:** 1.')"
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "style: three identifiers in one sentence are a finding, two are not" {
+  styled x 'The `CartTotals` type reads `CartStore` and writes `CartLog` last.' x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: 3 identifiers in one sentence (## Summary)" ] || { echo "$output"; return 1; }
+  styled x 'The `CartTotals` type reads `CartStore`. It writes `CartLog` last.' x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "style: a deep commit section without In short is a finding, Bookkeeping is not" {
+  styled x x "$(printf '### 1. `a1b2c3d` — first\n\nText.\n\n### Bookkeeping\n\n- `a1b2c3d` — formatting.')"
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: missing **In short:** (### 1)" ] || { echo "$output"; return 1; }
+}
+
+@test "style: a commit section with sub-headings also needs How verified" {
+  styled x x "$(printf '### 1. `a1b2c3d` — first\n\n**In short:** one.\n\n#### What appeared\n\nText.\n\n### 2. `e4f5a6b` — second\n\n**In short:** two.\n\n#### What appeared\n\nText.\n\n**How verified:** a test.\n\n### 3. `0a1b2c3` — third\n\n**In short:** three.')"
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: missing **How verified:** (### 1)" ] || { echo "$output"; return 1; }
+}
+
+@test "style: a brief file needs no commit labels" {
+  styled x x "$(printf -- '- `a1b2c3d` `feat: a` — first.\n- `e4f5a6b` `feat: b` — second.')"
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "style: tables, fences, headings, quotes and label lines full of backticks are not prose" {
+  styled x "$(printf '| `A` `B` `C` `D` | `E` starts a cell. |\n|---|---|\n\n```\n`A` `B` `C` `D`. `E` starts a line.\n```\n\n> `A` `B` `C` `D` in a quote.\n\n**Files:** `A` (+1), `B` (+2), `C` (+3), `D` (+4).\n**Changes:** `A`, `B`, `C`, `D`.\n\n### `A` `B` `C` `D` heading')" x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "style: a wrapped Files line is one label line" {
+  styled x "$(printf '**Files:** `A` (+1), `B` (+2),\n  `C` (+3), `D` (+4).')" x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "style: the clean files pass" {
+  run "$LINT" --style "$STYLE/clean.en.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  [ -z "$output" ]
+  run "$LINT" --style "$STYLE/clean.ru.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  [ -z "$output" ]
+}
+
+@test "style: a directory or a missing file exits 2" {
+  run "$LINT" --style "$BATS_TEST_TMPDIR"
+  [ "$status" -eq 2 ]
+  run "$LINT" --style "$BATS_TEST_TMPDIR/nope.md"
+  [ "$status" -eq 2 ]
+  run "$LINT" --style
+  [ "$status" -eq 2 ]
+}
+
+@test "style: a task directory reports the style findings after the history ones" {
+  walkthrough brief "$(printf -- '- `%s` `feat: a` — first.\n- `%s` `feat: b` — second.' "$A1" "$A2")"
+  sed -i.bak 's/^x$/The total comes from `A` and `B` and `C`./' "$TASK/Walkthrough.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [[ "$output" == *"Walkthrough.md: style: identifier in ## What changed (## What changed)"* ]] || { echo "$output"; return 1; }
+  [[ "$output" == *"Walkthrough.md: style: 3 identifiers in one sentence (## Summary)"* ]] || { echo "$output"; return 1; }
 }
