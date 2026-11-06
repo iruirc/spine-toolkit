@@ -158,6 +158,7 @@ PY
   [ "$(grep -c '2.0-incompatible' <<<"$output")" -eq 1 ] || { echo "$output"; return 1; }
   # A [LANG] line before the failure is the one both forwarding paths would take: a stub forces it.
   cp "$LINT" "$BATS_TEST_TMPDIR/lint.sh"
+  cp -R "$ROOT/scripts/lib" "$BATS_TEST_TMPDIR/lib"
   printf '#!/usr/bin/env bash\necho "CLAUDE-spine-toolkit.md [LANG]: '"'fr'"' not recognized, skipped" >&2\nexit 2\n' \
     >"$BATS_TEST_TMPDIR/resolve-settings.sh"
   chmod +x "$BATS_TEST_TMPDIR/resolve-settings.sh"
