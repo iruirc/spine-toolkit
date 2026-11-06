@@ -340,13 +340,12 @@ calls whose work the script's own prompt defines — reading `Plan.md` back, tic
 moving a reviewed task, reading `Walkthrough.md` back for its check — and falls back to the role's
 key when it says `session`. `walkthrough` covers writing `Walkthrough.md` and revising it after the
 check, and falls back to the writer's role — not to `light` — when it says `session`, as `done` does:
-`walkthrough: sonnet` puts that one file on a cheaper model and moves no other call. Before this change a
+`walkthrough: sonnet` puts that one file on a cheaper model and moves no other call. Up to 2.29.1 a
 `session` walkthrough ran on `light`, so `Walkthrough.md` now costs more unless a project pins
-`walkthrough`. `done` covers writing `Done.md`, and falls back to the
-writer's role — not to `light` — when it says `session`: a Done checks its report against the task,
-and `done: sonnet` runs that check on its own model without moving the role's other stages. Under
-Method B, Done is written in the main context, on the session's model. `session` passes
-no model, so `CLAUDE_CODE_SUBAGENT_MODEL`, then the session's model decide. `validator` starts on
+`walkthrough`. `done` covers writing `Done.md`, and falls back to the writer's role — not to `light` —
+when it says `session`: a Done checks its report against the task, and `done: sonnet` runs that check
+on its own model without moving the role's other stages. Under Method B, Done is written in the main
+context, on the session's model. `session` passes no model, so `CLAUDE_CODE_SUBAGENT_MODEL`, then the session's model decide. `validator` starts on
 `sonnet`: building, running the tests and reading their logs need no heavier model. A `platform` left
 from 1.11.0 reads as if its line were absent. `haiku` has a 200k context and no effort setting, too
 small for a phase or a walkthrough. On Amazon Bedrock, Google Cloud's Agent Platform and Microsoft

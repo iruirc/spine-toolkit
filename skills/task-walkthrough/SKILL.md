@@ -352,6 +352,8 @@ Prose in the project's language, structure in English — headings, the `[COVERS
 
 ## Anti-patterns to avoid
 
+The reader and style rules every task artifact follows are in the `artifact-reader` skill; this section adds what is specific to `Walkthrough.md`.
+
 - **Telegraphic compression.** Packing three claims into one sentence to stay inside a budget. The budget bounds how much this section may cover, never how hard it may be to read; go a line over rather than a comprehension short, and when a section runs far over line after line, follow the ranked rule under the `## Structure` table — the answer there is fewer claims, never shorter sentences. This is the failure that makes an accurate file useless.
 - **Restating the diff.** A hunk-by-hunk retelling. The diff is readable and does not rot; prose about it does. Quoting a signature or a doc comment is not this — see `## Style`. The test: does the excerpt carry the *why*, or is it there because it was in the change?
 - **Deep by reflex.** A five-part section for a commit that renamed a constant. The sub-headings are a menu; an empty one filled to look complete is noise the reader has to wade through.
