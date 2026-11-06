@@ -198,6 +198,7 @@ PY
       [m({ walkthrough: 'session', light: 'sonnet', architect: 'opus' }, 'architect', 'light'), 'sonnet'],
       [m({ walkthrough: 'session', light: 'sonnet', architect: 'opus' }, 'architect', 'done'), 'opus'],
       [m({ walkthrough: 'sonnet', architect: 'opus' }, 'architect', 'walkthrough'), 'sonnet'],
+      [m({ walkthrough: 'session', light: 'sonnet', architect: 'session' }, 'architect', 'walkthrough'), undefined],
       [m(same, 'architect', 'walkthrough'), undefined],
       [Object.keys(run(same)('architect', 'walkthrough')).includes('model'), false],
     ]

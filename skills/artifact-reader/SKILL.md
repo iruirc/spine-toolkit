@@ -17,7 +17,7 @@ Everything in `## Style` follows from this reader.
 
 ## Style
 
-1. **One fact per sentence.** A sentence over about 25 words is split. Three facts in one sentence cost the reader three re-reads.
+1. **One fact per sentence.** A sentence over about 30 words is split. Three facts in one sentence cost the reader three re-reads.
 
 2. **Meaning first, identifier in brackets.** Write "The table of track languages (`TrackLanguageStore`) remembers the last choice", never "`TrackLanguageStore` remembers the last choice".
 
@@ -37,7 +37,7 @@ Everything in `## Style` follows from this reader.
 
 10. **Human text on the first screen.** Machine lines such as commit lists, run directives and device strings go last wherever the format allows it. They never push the summary below the fold.
 
-11. **No history in the body.** No "changes in this revision" and no round-by-round story. The commit history and the walkthrough carry those.
+11. **No history in the body.** No "changes in this revision" and no round-by-round story: the commit history and the walkthrough carry those. A `Walkthrough.md` keeps the rework of its commits, because that is its content; no other artifact narrates round-by-round history.
 
 12. **A blank line before every field, list and table.** Without it Markdown renders the block glued to the previous line.
 
@@ -64,6 +64,6 @@ Read the file as the reader above, and fix each of these before finishing:
 
 This skill governs the prose of every task artifact an agent writes: `Walkthrough.md`, `ManualChecks.md`, `Done.md`, `Plan.md`, `Review.md`, `Questions.md`, `Research.md`, `OpsChecklist.md`, `Validation.md` and `Docs.md`.
 
-Where an agent body asks for brevity and this skill asks for a full sentence, the Style above governs: it wins over any brevity instruction in an agent body. Brevity here means no padding, not compression.
+Where an agent body asks for brevity and this skill asks for a full sentence, the Style above wins over any brevity instruction in an agent body. Brevity here means no padding, not compression. A line budget still holds: meet it by covering less, never by compressing the sentences.
 
 Lines the toolkit's scripts parse stay where the toolkit's contracts put them: the section headings, the marker lines and the commit headings that a script reads are written exactly as their contract says, whatever the Style above would prefer.
