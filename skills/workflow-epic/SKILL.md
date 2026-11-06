@@ -60,7 +60,7 @@ Key fields and their EPIC-specific semantics:
 
 ## 2. Stages
 
-A stage names its owner as a role in brackets — `[architect]`, `[developer]`. Which agent a role means arrives in the contract's `agents` map; dispatch that agent per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage whose role resolved to `—` says so before it starts. Dispatch it on the model `conventions/stage-dispatch.md` → Model and effort derives from the contract's `models` map — a walkthrough takes its own `walkthrough` key, then `light`, before its writer's role, and its check takes `light` — and name no model where the rule yields `session`; this method cannot pass an effort.
+A stage names its owner as a role in brackets — `[architect]`, `[developer]`. Which agent a role means arrives in the contract's `agents` map; dispatch that agent per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage whose role resolved to `—` says so before it starts. Dispatch it on the model `conventions/stage-dispatch.md` → Model and effort derives from the contract's `models` map — a walkthrough takes its own `walkthrough` key, then its role, and its check takes `light` — and name no model where the rule yields `session`; this method cannot pass an effort.
 
 - **Research** — `[architect]`. Artifact: `Research.md` in the epic's folder. Goal: a wide investigation of the topic (context, actors, constraints, technology options, related modules). The Research output must answer: **is decomposition required** (a large initiative needs to be split into executable chunks) **or is pure research enough** (Research.md is itself the final artifact; no implementation will follow).
 

@@ -137,7 +137,7 @@ The `walkthrough`, `done`, `light` and `mechanical` lists are closed, and
 | Kind | model | effort |
 |---|---|---|
 | `stage` | `models[role]` | `effort[role]` |
-| `walkthrough` | `models.walkthrough`, else `models.light`, else `models[role]` | `effort.walkthrough`, else `effort[role]` |
+| `walkthrough` | `models.walkthrough`, else `models[role]` | `effort.walkthrough`, else `effort[role]` |
 | `done` | `models.done`, else `models[role]` | `effort.done`, else `effort[role]` |
 | `light` | `models.light`, else `models[role]` | `effort[role]` |
 | `mechanical` | `models.light`, else `models[role]` | `low` |
