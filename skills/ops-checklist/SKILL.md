@@ -7,6 +7,8 @@ description: "Use during validation or review of any feature to verify operation
 
 A cross-cutting checklist for shippable-feature operational concerns. It is *not* a design tool — design happens in `feature-landscape`. It is the late-stage verification that nothing operational was forgotten: feature flag, analytics, deep link, push, offline, privacy, release readiness.
 
+`OpsChecklist.md` follows the reader and style rules in the `artifact-reader` skill.
+
 > **Related skills:**
 > - `feature-requirements` — Secondary list maps onto a subset of this checklist; this skill is the validation-time counterpart
 > - `feature-landscape` — graph layers determine which items apply (no networking layer → most networking items become N/A)

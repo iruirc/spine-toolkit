@@ -49,3 +49,9 @@ section() { # $1 = heading text
   grep -qF 'allow_implicit_invocation: false' "$ROOT/skills/artifact-reader/agents/openai.yaml" \
     || { echo "artifact-reader can be picked by Codex on its own"; return 1; }
 }
+
+@test "the core skills that write task artifacts point at artifact-reader" {
+  for s in task-walkthrough task-documents ops-checklist; do
+    grep -qF 'artifact-reader' "$ROOT/skills/$s/SKILL.md" || { echo "$s never names artifact-reader"; return 1; }
+  done
+}
