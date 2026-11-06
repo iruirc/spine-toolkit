@@ -26,7 +26,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 @test "the rule's table gives each kind its model and effort" {
   s="$(section "$RULE" '## Model and effort')"
   grep -qxF '| `stage` | `models[role]` | `effort[role]` |' <<<"$s" || { echo "no stage row"; return 1; }
-  grep -qxF '| `walkthrough` | `models.walkthrough`, else `models.light`, else `models[role]` | `effort.walkthrough`, else `effort[role]` |' <<<"$s" \
+  grep -qxF '| `walkthrough` | `models.walkthrough`, else `models[role]` | `effort.walkthrough`, else `effort[role]` |' <<<"$s" \
     || { echo "no walkthrough row"; return 1; }
   grep -qxF '| `light` | `models.light`, else `models[role]` | `effort[role]` |' <<<"$s" || { echo "no light row"; return 1; }
   grep -qxF '| `mechanical` | `models.light`, else `models[role]` | `low` |' <<<"$s" || { echo "no mechanical row"; return 1; }
@@ -88,7 +88,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   # The guidance left the template when the settings became one-line fields; the reference page is
   # where it lands, and this assertion goes live with it.
   doc="$ROOT/docs/configuration.md"
-  for token in 'CLAUDE_CODE_SUBAGENT_MODEL' '200k' 'Sonnet 4.5' '[MODELS]' 'as if its line were absent' 'walkthrough: opus'; do
+  for token in 'CLAUDE_CODE_SUBAGENT_MODEL' '200k' 'Sonnet 4.5' '[MODELS]' 'as if its line were absent' 'walkthrough: sonnet'; do
     grep -qF "$token" "$doc" || { echo "the guidance does not mention $token"; return 1; }
   done
 }
@@ -119,7 +119,7 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     for line in "const tuning = (role, kind) => {" \
                 "  const pick = (map, key, none) => (map && map[key] && map[key] !== none ? map[key] : null)" \
                 "  const own = (map) => (kind === 'walkthrough' || kind === 'done' ? pick(map, kind, 'session') : null)" \
-                "  const model = own(A.models) || (kind !== 'stage' && kind !== 'done' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')" \
+                "  const model = own(A.models) || (kind !== 'stage' && kind !== 'done' && kind !== 'walkthrough' && pick(A.models, 'light', 'session')) || pick(A.models, role, 'session')" \
                 "  const effort = kind === 'mechanical' ? 'low' : own(A.effort) || pick(A.effort, role, 'session')" \
                 "  return { ...(model ? { model } : {}), ...(effort ? { effort } : {}) }"; do
       grep -qxF "$line" "$p" || { echo "$(basename "$p"): missing '$line'"; return 1; }
@@ -174,11 +174,37 @@ PY
     [ -n "$para" ] || { echo "$f: no dispatch paragraph"; return 1; }
     grep -qF '`conventions/stage-dispatch.md` → Model and effort' <<<"$para" || { echo "$f: the paragraph does not point at the rule"; return 1; }
     grep -qF 'cannot pass an effort' <<<"$para" || { echo "$f: the paragraph does not say effort stays behind"; return 1; }
-    grep -qF 'a walkthrough takes its own `walkthrough` key, then `light`' <<<"$para" \
+    grep -qF 'a walkthrough takes its own `walkthrough` key, then its role' <<<"$para" \
       || { echo "$f: the paragraph does not give a walkthrough its own key first"; return 1; }
     grep -qF 'where the rule yields `session`' <<<"$para" || { echo "$f: the paragraph does not name session"; return 1; }
   done
   [ "$n" -eq 8 ] || { echo "scanned $n skill(s), expected 8"; return 1; }
+}
+
+@test "a walkthrough never falls onto light" {
+  command -v node >/dev/null 2>&1 || skip "node is not installed"
+  block="$(awk '/^const tuning = /,/^}/' "$ROOT/workflows/profile-feature.js")"
+  [ -n "$block" ] || { echo "no tuning block in profile-feature.js"; return 1; }
+  run node -e "
+    const run = (models) => {
+      const A = { models, effort: null }
+      $block
+      return tuning
+    }
+    const m = (models, role, kind) => run(models)(role, kind).model
+    const same = { architect: 'session', developer: 'session', walkthrough: 'session', light: 'session', done: 'session' }
+    const cases = [
+      [m({ walkthrough: 'session', light: 'sonnet', architect: 'opus' }, 'architect', 'walkthrough'), 'opus'],
+      [m({ walkthrough: 'session', light: 'sonnet', architect: 'opus' }, 'architect', 'light'), 'sonnet'],
+      [m({ walkthrough: 'session', light: 'sonnet', architect: 'opus' }, 'architect', 'done'), 'opus'],
+      [m({ walkthrough: 'sonnet', architect: 'opus' }, 'architect', 'walkthrough'), 'sonnet'],
+      [m(same, 'architect', 'walkthrough'), undefined],
+      [Object.keys(run(same)('architect', 'walkthrough')).includes('model'), false],
+    ]
+    const bad = cases.map(([got, want], i) => [i, got, want]).filter(([, got, want]) => got !== want)
+    if (bad.length) { console.log(JSON.stringify(bad)); process.exit(1) }
+  "
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }
 
 @test "the platform contract and the platform guide keep model and effort out of agent frontmatter" {

@@ -339,8 +339,10 @@ Which model a subagent runs on. A role's key covers every stage its agent runs. 
 calls whose work the script's own prompt defines — reading `Plan.md` back, ticking an epic step,
 moving a reviewed task, reading `Walkthrough.md` back for its check — and falls back to the role's
 key when it says `session`. `walkthrough` covers writing `Walkthrough.md` and revising it after the
-check, and falls back to `light` when it says `session`: `walkthrough: opus` puts that one file on a
-stronger model and moves no other call. `done` covers writing `Done.md`, and falls back to the
+check, and falls back to the writer's role — not to `light` — when it says `session`, as `done` does:
+`walkthrough: sonnet` puts that one file on a cheaper model and moves no other call. Before this change a
+`session` walkthrough ran on `light`, so `Walkthrough.md` now costs more unless a project pins
+`walkthrough`. `done` covers writing `Done.md`, and falls back to the
 writer's role — not to `light` — when it says `session`: a Done checks its report against the task,
 and `done: sonnet` runs that check on its own model without moving the role's other stages. Under
 Method B, Done is written in the main context, on the session's model. `session` passes
