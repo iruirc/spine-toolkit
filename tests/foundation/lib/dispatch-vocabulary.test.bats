@@ -116,6 +116,14 @@ offenders_in() {
   [ -z "$offenders" ] || { echo "single-ecosystem vocabulary in task-documents:"; echo "$offenders"; return 1; }
 }
 
+@test "the artifact-reader skill names one ecosystem's tooling nowhere" {
+  # Its examples are the model every platform's writer copies from.
+  f="$ROOT/skills/artifact-reader/SKILL.md"
+  [ -f "$f" ] || { echo "no $f — the scan would run over nothing"; return 1; }
+  offenders="$(offenders_in "$f")"
+  [ -z "$offenders" ] || { echo "single-ecosystem vocabulary in artifact-reader:"; echo "$offenders"; return 1; }
+}
+
 @test "the security-lens skill names one ecosystem's tooling nowhere" {
   # Its perimeter and its questions reach every platform's security agent verbatim.
   f="$ROOT/skills/security-lens/SKILL.md"

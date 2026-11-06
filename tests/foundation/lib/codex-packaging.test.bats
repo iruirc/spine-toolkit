@@ -6,7 +6,7 @@
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  HIDDEN="docs-route manual-checks phase-verification security-lens task-documents task-walkthrough
+  HIDDEN="artifact-reader docs-route manual-checks phase-verification security-lens task-documents task-walkthrough
           test-authoring ops-checklist feature-estimation feature-landscape feature-requirements
           stack-detect workflow-bug workflow-epic workflow-feature workflow-quick workflow-refactor
           workflow-research workflow-review workflow-test"
