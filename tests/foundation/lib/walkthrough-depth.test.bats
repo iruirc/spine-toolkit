@@ -9,6 +9,12 @@ setup() {
   SKILL="$ROOT/skills/task-walkthrough/SKILL.md"
 }
 
+# The body of one `##`/`###` subsection of the skill, by its exact heading line. Headings inside a
+# fenced example do not end it: the examples are full of them.
+sub_of() {
+  awk -v h="$1" '/^```/ { fence = !fence } !fence && $0 == h { f = 1; next } !fence && f && /^###? / { f = 0 } f' "$SKILL"
+}
+
 @test "the switch offers all three values" {
   sw="$(awk '/^## The switch$/{f=1;next} /^## /{f=0} f' "$SKILL")"
   for v in '`brief`' '`deep`' '`off`'; do
@@ -275,8 +281,81 @@ NAMES
   ck="$(awk '/^## Check$/{f=1;next} /^## /{f=0} f' "$SKILL")"
   for token in '`walkthrough_check`' '`[WALKTHROUGH_CHECK]`' 'The writer never checks its own file' \
                'reads `Walkthrough.md` and nothing else' '`retelling`' '`unclear`' '**Revision.**' \
-               '**One round.**' 'append-only rule does not apply'; do
+               '**At most two rounds.**' 'append-only rule does not apply'; do
     grep -qF "$token" <<<"$ck" || { echo "## Check does not say $token"; return 1; }
+  done
+}
+
+@test "the check names what counts as unclear, and a second round only above three places" {
+  ck="$(awk '/^## Check$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  for token in 'a sentence it had to read twice' 'a term used without a definition' \
+               'an identifier as the subject of a sentence' 'a commit without its reason or its verification' \
+               'the first read listed more than three places' 'never a third'; do
+    grep -qF "$token" <<<"$ck" || { echo "## Check does not say $token"; return 1; }
+  done
+  ! grep -qF '**One round.**' "$SKILL" || { echo "the single-round rule is still stated"; return 1; }
+}
+
+@test "the writer reads the whole task and its research, and lists the concepts first" {
+  inp="$(awk '/^## Inputs$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  for token in '`Task.md` as a whole' '`Research.md`' '3 to 8 concepts' '`## Glossary`'; do
+    grep -qF -- "$token" <<<"$inp" || { echo "## Inputs does not name $token"; return 1; }
+  done
+}
+
+@test "the skeleton opens with a how-to-read block and a three-row table per change" {
+  grep -qF '> **How to read.**' "$SKILL" || { echo "no how-to-read block"; return 1; }
+  wc="$(sub_of '### `## What changed`')"
+  for row in '| **Before:** |' '| **After:** |' '| **Commits:** |'; do
+    grep -qF -- "$row" <<<"$wc" || { echo "## What changed does not show the row $row"; return 1; }
+  done
+}
+
+@test "the glossary covers the basics the reader needs and may open with a sketch" {
+  gl="$(sub_of '### `## Glossary` (`deep`)')"
+  grep -qF 'even if it is not new to the code' <<<"$gl" || { echo "the glossary still admits only new terms"; return 1; }
+  grep -qF 'ASCII' <<<"$gl" || { echo "the glossary does not allow an ASCII sketch"; return 1; }
+}
+
+@test "the deep summary has three bold leads, not headings" {
+  sm="$(sub_of '### `## Summary`')"
+  [ -n "$sm" ] || { echo "no subsection for ## Summary"; return 1; }
+  for lead in '**Why.**' '**What was done.**' '**Main decisions.**'; do
+    grep -qF -- "$lead" <<<"$sm" || { echo "## Summary does not show the lead $lead"; return 1; }
+  done
+  ! grep -qE '^#{3,} (Why|What was done|Main decisions)\.?$' "$SKILL" || { echo "a summary lead became a heading"; return 1; }
+}
+
+@test "the commit order is a table, with a graph above four commits" {
+  co="$(sub_of '### `## Commit order` (`deep`)')"
+  grep -qF '| Commit | Needs | Why here |' <<<"$co" || { echo "## Commit order shows no table"; return 1; }
+  grep -qF 'more than four commits' <<<"$co" || { echo "## Commit order does not say when the graph is drawn"; return 1; }
+}
+
+@test "a deep commit always says what it did and how it was verified" {
+  dc="$(sub_of '### `## Commits` — `deep`')"
+  for token in '**In short:**' '**How verified:**' 'Always present' 'a commit with no logic gets only `**In short:**`'; do
+    grep -qF -- "$token" <<<"$dc" || { echo "the deep commit frame does not say $token"; return 1; }
+  done
+}
+
+@test "tables and sketches are outside the diagram limit, and a sequence diagram is encouraged" {
+  hw="$(sub_of '### `## How it works`')"
+  grep -qF 'Tables and ASCII sketches do not count against the two diagrams' <<<"$hw" \
+    || { echo "## How it works counts tables as diagrams"; return 1; }
+  grep -qF 'is encouraged' <<<"$hw" || { echo "## How it works does not encourage a sequence diagram"; return 1; }
+}
+
+@test "a refresh repairs the style class" {
+  refresh="$(awk '/^## Refreshing$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  grep -qF '`style` — ' <<<"$refresh" || { echo "## Refreshing does not repair class style"; return 1; }
+}
+
+@test "the English structure list carries the new labels" {
+  lang="$(awk '/^## Localization$/{f=1;next} /^## /{f=0} f' "$SKILL")"
+  for token in '`**In short:**`' '`**How verified:**`' '`> **How to read.**`' '`**Why.**`' \
+               '`**What was done.**`' '`**Main decisions.**`'; do
+    grep -qF -- "$token" <<<"$lang" || { echo "## Localization does not keep $token in English"; return 1; }
   done
 }
 
