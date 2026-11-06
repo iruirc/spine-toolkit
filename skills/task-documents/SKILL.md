@@ -7,6 +7,8 @@ description: "Use when writing or rewriting a task's Task.md, Research.md or Pla
 
 A task's documents are written by one agent and read by another. The reader never saw the investigation: an executor starts in a clean context, a person opens the task a month later. Density that saves the writer a sentence costs every reader a search, and a rule written as a formula gets implemented literally, contradiction included. **Write for the reader who was not there.**
 
+The reader and the style rules every task artifact follows are in the `artifact-reader` skill; the documents below follow them.
+
 ## Layers
 
 | Document | Answers | Carries | Never carries |

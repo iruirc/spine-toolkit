@@ -25,6 +25,8 @@ Commit messages do not make this artifact redundant. `conventions/commit-message
 
 ## Reader
 
+The reader and style rules every task artifact follows are in the `artifact-reader` skill; this section adds what is specific to `Walkthrough.md`.
+
 **An engineer who did not write this code and was not on this task.** Not a reviewer, who has the diff; not the author, who has the context. Someone who arrives months later with a question about this area and finds this file.
 
 Every rule below is derived from that one sentence, and it settles the arguments the budgets cannot. A term this reader does not know gets defined. An alternative this reader would ask about gets named. A sentence this reader cannot parse without opening the repository gets a second, plainer sentence after it — at `deep`; see `## Style`. Writing for the author's own future self is the failure mode: it produces a file that is accurate, short, and useless to everyone else.
@@ -252,13 +254,14 @@ What the task could plausibly have contained and deliberately did not, with wher
 
 ## Style
 
+The reader and style rules every task artifact follows are in the `artifact-reader` skill; this section adds what is specific to `Walkthrough.md`.
+
 The budgets say how much. This says how, and it is the half that decides whether the file gets read twice.
 
-- **One claim per sentence.** Three facts stacked into one sentence with subordinate clauses fit the line count and cost the reader a re-read each. Prefer three sentences over the line you saved.
+- One fact per sentence, and every decision naming the alternative it rejected, are rules of `artifact-reader`.
 - **Define before use.** An identifier appearing for the first time in the middle of an explanation stops the reader dead. At `deep`, define it where it appears or link it to `## Glossary`; at `brief`, where that section is absent, name what the identifier is and move on.
 - **An identifier is a reference, never the subject.** A test case, a review finding, a decision, a question, a phase or a neighbouring step is never what a sentence is about. Say the thing in words, then cite the identifier in parentheses: "a separate test proves the cart keeps its reservation through a second payment (`CH4`)", not "`CH4` proves the reservation is kept". A neighbouring step is named by what it did — "the delivery price formula (step `04`)". `## Glossary` gets no entry for an identifier: what needs defining is the thing it points at.
 - **After any sentence that needs the repository open to parse, write a plainer one.** "Put simply: …". This is not padding; it is the difference between a document that transfers understanding and one that proves the author had it. At `brief` this one does not apply — a commit bullet of one to three sentences has no room for a second pass at the same sentence.
-- **Name the alternative.** Every non-obvious decision is written as "X and not Y, because …". A decision presented without its rejected sibling reads as arbitrary, and gets undone by the next person.
 - **A failure is a causal chain, then its consequence.** See `## Commits` — `deep`.
 - **Code excerpts are allowed and are not diff-restating.** A signature, a doc comment, or the one line that carries the invariant — ≤ 12 lines, and only when the shape *is* the point. A hunk-by-hunk retelling is a different thing and is banned below.
 
