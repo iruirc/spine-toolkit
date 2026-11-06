@@ -2,7 +2,7 @@
 
 [![release](https://img.shields.io/github/v/tag/iruirc/spine-toolkit?sort=semver&label=release&color=0969da)](https://github.com/iruirc/spine-toolkit)
 [![license](https://img.shields.io/github/license/iruirc/spine-toolkit?color=555)](LICENSE)
-[![install from iruirc/claude-marketplace](https://img.shields.io/badge/install%20from-iruirc%2Fclaude--marketplace-6f42c1)](https://github.com/iruirc/claude-marketplace)
+[![install from iruirc/spine-marketplace](https://img.shields.io/badge/install%20from-iruirc%2Fspine--marketplace-6f42c1)](https://github.com/iruirc/spine-marketplace)
 
 A task lifecycle orchestrator for Claude Code: stages, the artifacts that travel between them, and
 the rules for moving from one to the next. It knows nothing about any programming language or
@@ -16,7 +16,7 @@ it; `/setup` stops and says so if none is found.
 ## Install
 
 ```
-/plugin marketplace add iruirc/claude-marketplace
+/plugin marketplace add iruirc/spine-marketplace
 /plugin install spine-toolkit
 ```
 
@@ -47,10 +47,10 @@ and bare they resolve to nothing — verified in both an interactive and a headl
 ### Codex CLI
 
 ```bash
-codex plugin marketplace add iruirc/claude-marketplace
-codex plugin add spine-toolkit@iruirc
-codex plugin add spine-platform-swift@iruirc     # or spine-platform-kotlin@iruirc
-codex plugin add spine-driver-mobile@iruirc      # optional: Validation drives the running app
+codex plugin marketplace add iruirc/spine-marketplace
+codex plugin add spine-toolkit@spine
+codex plugin add spine-platform-swift@spine     # or spine-platform-kotlin@spine
+codex plugin add spine-driver-mobile@spine      # optional: Validation drives the running app
 ```
 
 Start a new Codex session in the project, then run `$spine-toolkit:setup`. Besides `SPINE.md`, it
