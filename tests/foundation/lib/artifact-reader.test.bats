@@ -55,3 +55,9 @@ section() { # $1 = heading text
     grep -qF 'artifact-reader' "$ROOT/skills/$s/SKILL.md" || { echo "$s never names artifact-reader"; return 1; }
   done
 }
+
+@test "both registries of core skill names list artifact-reader" {
+  grep -qF '`artifact-reader`' "$ROOT/.claude/CLAUDE.md" || { echo ".claude/CLAUDE.md does not list it"; return 1; }
+  awk '/^Do \*\*not\*\* name that skill `setup`/{f=1} f' "$ROOT/docs/building-a-platform.md" | grep -qF '`artifact-reader`' \
+    || { echo "the platform guide's list of core skill names does not include it"; return 1; }
+}
