@@ -29,15 +29,15 @@ Everything in `## Style` follows from this reader.
 
 6. **Every decision names the rejected alternative.** "Store the choice per project, not per user, because two people share one project file."
 
-7. **Tables for comparisons and lists of cases.** Before and after; "what could break / how it would look"; "case / expected / actual".
+7. **Tables for comparisons and lists of cases.** Put anything the reader has to compare in a table. Examples: before and after; "what could break / how it would look"; "case / expected / actual".
 
-8. **Pictures where space or order matters.** An ASCII sketch for a layout such as a timeline, lanes or screens. A sequence diagram for one user action passing through several objects. A dependency graph for what waits for what.
+8. **Pictures where space or order matters.** Draw what the reader would otherwise have to imagine. Use an ASCII sketch for a layout such as a timeline, lanes or screens, a sequence diagram for one user action passing through several objects, and a dependency graph for what waits for what.
 
 9. **Proof is concrete.** "Removed the words from the copy and 6 tests failed", never "covered by tests".
 
 10. **Human text on the first screen.** Machine lines such as commit lists, run directives and device strings go last wherever the format allows it. They never push the summary below the fold.
 
-11. **No history in the body.** No "changes in this revision" and no round-by-round story. The version history and the walkthrough carry those.
+11. **No history in the body.** No "changes in this revision" and no round-by-round story. The commit history and the walkthrough carry those.
 
 12. **A blank line before every field, list and table.** Without it Markdown renders the block glued to the previous line.
 
@@ -64,6 +64,6 @@ Read the file as the reader above, and fix each of these before finishing:
 
 This skill governs the prose of every task artifact an agent writes: `Walkthrough.md`, `ManualChecks.md`, `Done.md`, `Plan.md`, `Review.md`, `Questions.md`, `Research.md`, `OpsChecklist.md`, `Validation.md` and `Docs.md`.
 
-Where an agent body asks for brevity and this skill asks for a full sentence, this skill wins over any brevity instruction in an agent body. Brevity here means no padding, not compression.
+Where an agent body asks for brevity and this skill asks for a full sentence, the Style above governs: it wins over any brevity instruction in an agent body. Brevity here means no padding, not compression.
 
 Lines the toolkit's scripts parse stay where the toolkit's contracts put them: the section headings, the marker lines and the commit headings that a script reads are written exactly as their contract says, whatever the Style above would prefer.
