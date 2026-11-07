@@ -407,6 +407,19 @@ NAMES
   [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
 }
 
+@test "every profile script's writer reads the task and its research before git, and the skill's style wins" {
+  n=0
+  for p in "$ROOT"/workflows/profile-*.js; do
+    n=$((n + 1))
+    for line in 'Before any git show, read ${DIR}/Task.md as a whole and, when it exists, ${DIR}/Research.md' \
+                'list the 3 to 8 concepts the reader needs to follow this task' 'at deep they become ## Glossary' \
+                "This skill's ## Style overrides any brevity instruction in your agent body."; do
+      grep -qF -- "$line" "$p" || { echo "$(basename "$p"): missing '$line'"; return 1; }
+    done
+  done
+  [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
+}
+
 @test "the reader of the check is kept away from everything but the file" {
   for p in "$ROOT"/workflows/profile-*.js; do
     grep -qF 'open no other file of the task and no source file' "$p" \

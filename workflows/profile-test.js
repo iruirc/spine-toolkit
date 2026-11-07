@@ -532,24 +532,36 @@ const MANUAL_CHECKS_REVISED = {
   },
 }
 
-// A reader with none of the writer's context, then one revision: task-walkthrough → ## Check.
+// A reader with none of the writer's context, then a revision; a second round only when the first
+// read listed more than three places, never a third: task-walkthrough → ## Check.
 const checkWalkthrough = async (stage, agentType, depth, extra) => {
+  let first = 0
+  for (let round = 1; round <= 2; round++) {
+    const tag = round === 1 ? 'Walkthrough.md check' : 'Walkthrough.md second check'
+    if (!(await walkthroughRound(stage, agentType, depth, extra, tag, (n) => (first = first || n)))) return
+    if (first <= 3) return
+  }
+}
+
+// One read and, when it names places, one revision. Returns true only when the file was revised.
+const walkthroughRound = async (stage, agentType, depth, extra, tag, count) => {
   const read = await agent(
     brief(
       stage,
-      `Apply the spine-toolkit:task-walkthrough skill, its ## Check section, as the reader it describes: an engineer of this stack who was not on this task. Of the task and the repository, read ${DIR}/Walkthrough.md and nothing else — open no other file of the task and no source file, and run no git command. Return retelling, one sentence in your own words for each item of its ## What changed, and unclear, every place you had to guess: a quote of at most one line, and what was missing. Change nothing on disk.`,
+      `Apply the spine-toolkit:task-walkthrough skill, its ## Check section, as the reader it describes: an engineer of this stack who was not on this task. Of the task and the repository, read ${DIR}/Walkthrough.md and nothing else — open no other file of the task and no source file, and run no git command. Return retelling, one sentence in your own words for each item of its ## What changed, and unclear, every place you had to guess: a quote of at most one line, and what was missing. A place is unclear when it holds a sentence you had to read twice, a term used without a definition, an identifier as the subject of a sentence, or a commit without its reason or its verification — or anything else that section names. Change nothing on disk.`,
     ),
     { label: 'walkthrough:check', phase: stage, agentType, schema: COLD_READ, ...tuning(WALKTHROUGH_AGENT, 'light') },
   )
   if (!read) {
-    result.notes.push('The walkthrough check returned nothing, so Walkthrough.md went unchecked.')
-    return
+    result.notes.push(`${tag}: the reader returned nothing, so the file went unchecked.`)
+    return false
   }
   const unclear = read.unclear || []
   if (!unclear.length) {
-    result.notes.push('Walkthrough.md check: nothing unclear.')
-    return
+    result.notes.push(`${tag}: nothing unclear.`)
+    return false
   }
+  count(unclear.length)
   const places = unclear.map((u, i) => `${i + 1}. "${u.quote}" — ${u.missing}`).join('\n')
   const retold = (read.retelling || []).map((r, i) => `${i + 1}. ${r}`).join('\n')
   const fix = await agent(
@@ -574,10 +586,11 @@ Return changed true once the file is revised. Change no production code and no t
   result.notes.push(
     fix && fix.artifact_path
       ? fix.changed === false
-        ? `Walkthrough.md check: ${unclear.length} unclear place(s); the revision found nothing to change.`
-        : `Walkthrough.md check: ${unclear.length} unclear place(s), revised.`
-      : `Walkthrough.md check: ${unclear.length} unclear place(s); the revision returned nothing, so the file stands as written.`,
+        ? `${tag}: ${unclear.length} unclear place(s); the revision found nothing to change.`
+        : `${tag}: ${unclear.length} unclear place(s), revised.`
+      : `${tag}: ${unclear.length} unclear place(s); the revision returned nothing, so the file stands as written.`,
   )
+  return !!(fix && fix.artifact_path) && fix.changed !== false
 }
 
 // A reader with none of the task's context, then one revision: manual-checks → ## Check.
@@ -644,7 +657,9 @@ const writeWalkthrough = async (stage, extra) => {
   const w = await agent(
     brief(
       stage,
-      `Write or refresh ${DIR}/Walkthrough.md at depth ${depth} by applying the spine-toolkit:task-walkthrough skill, which owns the section list, the header rule and the refresh rules. Read it first — its ## The switch section says what ${depth} changes, and its ## Reader section says who the file is for.
+      `Write or refresh ${DIR}/Walkthrough.md at depth ${depth} by applying the spine-toolkit:task-walkthrough skill, which owns the section list, the header rule and the refresh rules. Read it first — its ## The switch section says what ${depth} changes, and its ## Reader section says who the file is for. This skill's ## Style overrides any brevity instruction in your agent body.
+
+Before any git show, read ${DIR}/Task.md as a whole and, when it exists, ${DIR}/Research.md, then list the 3 to 8 concepts the reader needs to follow this task: at deep they become ## Glossary, at brief they are the words the file names in passing.
 
 Derive the account from git — the task's own commits, git log over the range and git show for what each one carries — reconciled against ${DIR}/Plan.md. The plan is intent, the commits are fact, and the divergences between them, each labelled with its trigger, are what this artifact exists for. The second line is required to be exactly:
 

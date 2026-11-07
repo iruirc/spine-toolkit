@@ -289,15 +289,18 @@ out-rank it, while the task's own `[WALKTHROUGH]` is read before it and wins out
 skill, `## Check`
 
 Whether `Walkthrough.md` is read back by a reader with none of the writer's context, and revised
-once from what that reader could not follow. The reader is a fresh agent of the writer's role that
+from what that reader could not follow. The reader is a fresh agent of the writer's role that
 opens the file and nothing else. It retells every item of `## What changed` and names each place it
-had to guess; an empty list ends the check, otherwise the writer fixes the places named. One round,
-and the run notes how many places there were.
+had to guess; an empty list ends the check, otherwise the writer fixes the places named. At most two
+rounds: when the first read named more than three places, a second fresh reader reads the revised
+file and the writer revises once more, never a third time. The run notes how many places each round
+found.
 
 `auto` follows the depth `[WALKTHROUGH]` resolves to: `on` at `deep`, `off` at `brief`. `on` checks
 a `brief` file too; `off` never checks. Where `[WALKTHROUGH]` resolves to `off` — a `lite` task
 included — nothing is checked, whatever this field says. The check costs one `light` dispatch per
-write that changed the file, and one more writer dispatch when it finds something.
+write that changed the file, and one more writer dispatch when it finds something; a second round
+adds one of each.
 
 ### [SECURITY]
 

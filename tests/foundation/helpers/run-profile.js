@@ -1,12 +1,14 @@
 // Runs a profile script end to end with stubbed agents, replies keyed by dispatch label.
 // Usage: node run-profile.js <script> <contract-json> <replies-json>  → {result, calls: [{label, prompt, schema}]}
+// A reply keyed <label>#<n> answers only the n-th dispatch of that label; otherwise <label> answers every one.
 const fs = require('fs')
 const [script, contract, replies] = process.argv.slice(2)
 const R = JSON.parse(replies)
 const calls = []
 globalThis.agent = async (prompt, opts) => {
   calls.push({ label: opts.label, prompt, schema: opts.schema })
-  return R[opts.label] || { ok: true, artifact_path: 'x', summary: 's', changed: false }
+  const n = calls.filter((c) => c.label === opts.label).length
+  return R[`${opts.label}#${n}`] || R[opts.label] || { ok: true, artifact_path: 'x', summary: 's', changed: false }
 }
 // A nested workflow answers from replies keyed workflow:<name>; unkeyed, it throws as the bare runtime would.
 globalThis.workflow = async (name, args) => {
