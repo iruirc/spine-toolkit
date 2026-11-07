@@ -19,8 +19,11 @@ set -euo pipefail
 #
 # With --style it runs only the style pass, on one file: no task dir, no git.
 #
-# Usage: scripts/lint-walkthrough.sh [--current] <task-dir>
-#        scripts/lint-walkthrough.sh --style <path-to-Walkthrough.md>
+# With --words-per-sentence <n>, a positive integer, in either mode, n replaces the threshold the
+# directory resolves to: the run's own budget, which a directory cannot know.
+#
+# Usage: scripts/lint-walkthrough.sh [--words-per-sentence <n>] [--current] <task-dir>
+#        scripts/lint-walkthrough.sh --style [--words-per-sentence <n>] <path-to-Walkthrough.md>
 # Exit:  0 nothing found, or nothing to measure (no Walkthrough.md, no Base.md, an EPIC);
 #        1 one line per finding, "Walkthrough.md: <class>: <what> (<where>)";
 #        2 usage, a --style argument that is not a file, or task-ranges.sh could not answer.
@@ -28,6 +31,20 @@ set -euo pipefail
 HERE="$(dirname -- "${BASH_SOURCE[0]}")"
 current=0
 mode=task
+# --words-per-sentence may stand anywhere before the path; the rest of the parsing never sees it.
+wps=
+args=()
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = --words-per-sentence ]; then
+    case "${2:-}" in '' | *[!0-9]* | 0*) echo "usage: $0 [--style] [--words-per-sentence <n>] [--current] <task-dir|path-to-Walkthrough.md>  (n: a positive integer)" >&2; exit 2 ;; esac
+    wps="$2"
+    shift 2
+  else
+    args+=("$1")
+    shift
+  fi
+done
+set -- ${args[@]+"${args[@]}"}
 if [ "${1:-}" = --style ]; then
   mode=style
   shift
@@ -39,10 +56,11 @@ else
   [ -d "$1" ] || { echo "not a directory: $1" >&2; exit 2; }
 fi
 
-python3 - "$HERE/task-ranges.sh" "$1" "$current" "$HERE/lib" "$mode" <<'PY'
+python3 - "$HERE/task-ranges.sh" "$1" "$current" "$HERE/lib" "$mode" "$wps" <<'PY'
 import os, re, subprocess, sys
 
 RANGES, TASK, CURRENT, MODE = sys.argv[1], sys.argv[2], sys.argv[3] == '1', sys.argv[5]
+WPS = int(sys.argv[6]) if sys.argv[6] else None
 # chunks() and the sentence helpers are shared with the other artifact lints. No bytecode: a python
 # without a cache prefix would otherwise leave scripts/lib/__pycache__ in the plugin.
 sys.dont_write_bytecode = True
@@ -218,7 +236,7 @@ def report(found):
 if MODE == 'style':
     with open(TASK, encoding='utf-8') as fh:
         text = fh.read()
-    report(style(text, is_deep(outline(text)), words_per_sentence(os.path.dirname(os.path.abspath(TASK)), 'lint-walkthrough.sh')))
+    report(style(text, is_deep(outline(text)), WPS or words_per_sentence(os.path.dirname(os.path.abspath(TASK)), 'lint-walkthrough.sh')))
 
 path = os.path.join(TASK, 'Walkthrough.md')
 # An epic's ## Commits holds a section per step, not per commit.
@@ -315,7 +333,7 @@ for repo, a, b, count in declared:
 # Style findings go to the writer once (spec D-7). --current decides whether the writer runs again,
 # so it judges the history and the coverage only: a style finding never makes a file stale.
 if not CURRENT:
-    found += style(text, deep, words_per_sentence(TASK, 'lint-walkthrough.sh'))
+    found += style(text, deep, WPS or words_per_sentence(TASK, 'lint-walkthrough.sh'))
 
 if CURRENT:
     r = subprocess.run([RANGES, 'last', TASK], capture_output=True, text=True)

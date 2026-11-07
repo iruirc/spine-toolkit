@@ -472,3 +472,34 @@ fifteen() { printf 'one two three four five six seven eight nine ten eleven twel
   [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
   [ -z "$output" ] || { echo "$output"; return 1; }
 }
+
+@test "--words-per-sentence replaces the resolved threshold in both modes" {
+  mkdir -p "$BATS_TEST_TMPDIR/d"
+  styled x "$(fifteen)" x
+  mv "$BATS_TEST_TMPDIR/w.md" "$BATS_TEST_TMPDIR/d/Walkthrough.md"
+  run "$LINT" --style --words-per-sentence 12 "$BATS_TEST_TMPDIR/d/Walkthrough.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: sentence of 15 words (## Summary)" ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [words-per-sentence: 12]\n' >"$BATS_TEST_TMPDIR/d/Task.md"
+  run "$LINT" --words-per-sentence 15 --style "$BATS_TEST_TMPDIR/d/Walkthrough.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  walkthrough brief "$(printf -- '- `%s` `feat: a` — first.\n- `%s` `feat: b` — second.' "$A1" "$A2")"
+  sed -i.bak "s/^x\$/$(fifteen)/" "$TASK/Walkthrough.md"
+  run "$LINT" --words-per-sentence 12 "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  grep -qF 'Walkthrough.md: style: sentence of 15 words (## What changed)' <<<"$output" || { echo "$output"; return 1; }
+  run "$LINT" --words-per-sentence 12 --current "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "--words-per-sentence takes a positive integer, anything else is usage" {
+  styled x x x
+  for bad in 0 -1 abc ''; do
+    run "$LINT" --style --words-per-sentence "$bad" "$BATS_TEST_TMPDIR/w.md"
+    [ "$status" -eq 2 ] || { echo "'$bad': $status $output"; return 1; }
+    run "$LINT" --words-per-sentence "$bad" "$TASK"
+    [ "$status" -eq 2 ] || { echo "'$bad' task: $status $output"; return 1; }
+  done
+  run "$LINT" --words-per-sentence
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+}

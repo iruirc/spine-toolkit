@@ -55,7 +55,7 @@ expect() {
   sentence 30
   expect 0
   sentence 31
-  expect 1 'Done.md: sentence: sentence of 31 words (Summary)'
+  expect 1 'Done.md: sentence: sentence of 31 words: "word word word word word …" (Summary)'
 }
 
 @test "words-per-sentence in a Task.md moves the threshold" {
@@ -63,7 +63,7 @@ expect() {
   sentence 12
   expect 0
   sentence 13
-  expect 1 'Done.md: sentence: sentence of 13 words (Summary)'
+  expect 1 'Done.md: sentence: sentence of 13 words: "word word word word word …" (Summary)'
 }
 
 @test "the sentence class reads Plan.md, Review.md, Research.md and Questions.md too" {
@@ -106,7 +106,7 @@ expect() {
 
 @test "a list item is its own unit and a long item is found alone" {
   { printf '# Done\n\n## Summary\n\n- short item\n- '; words 31; printf '.\n- another short item\n'; } | write Done.md
-  expect 1 'Done.md: sentence: sentence of 31 words (Summary)'
+  expect 1 'Done.md: sentence: sentence of 31 words: "word word word word word …" (Summary)'
 }
 
 @test "identifiers: at least 3 spans and more than 10 percent of the first section" {
@@ -203,7 +203,7 @@ MD
 
 M1 fixed the rounding in the totals.
 MD
-  expect 1 'Done.md: label: label without a gloss (Summary)'
+  expect 1 'Done.md: label: label without a gloss: M1 in "M1 fixed the rounding in …" (Summary)'
 }
 
 @test "label: a label in brackets or parentheses passes" {
@@ -227,7 +227,7 @@ MD
 
 `u3` is done. See M1.
 MD
-  expect 1 'Done.md: label: label without a gloss (Summary)' 'Done.md: label: label without a gloss (Summary)'
+  expect 1 'Done.md: label: label without a gloss: u3 in "`u3` is done." (Summary)' 'Done.md: label: label without a gloss: M1 in "See M1." (Summary)'
 }
 
 @test "label: a label in a sentence of four words or more once it is removed passes" {
@@ -252,6 +252,131 @@ MD
   expect 0
 }
 
+@test "label: a key before a title is not a label to gloss, in any artifact" {
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+- M1. The total drops below zero when a code is worth more than the goods.
+- **M2. Rounding twice** on the cart screen and in the totals.
+- M3: the delivery fee is added after the discount.
+- M4 — the empty cart still costs nothing at all.
+MD
+  write Review.md <<'MD'
+[REVIEW_STATUS] = APPROVED
+
+# Review
+
+## Findings
+
+**M1. Rounding twice**
+
+**Impact:** a shopper may see a total one cent off.
+MD
+  expect 0
+}
+
+@test "label: a label that leads with its gloss in parentheses or after a dash passes" {
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+M3 (the double rounding) is closed by the new totals. The cart is green again. M4: the delivery fee comes last now. The fix is small. M5 — an empty cart is free.
+MD
+  expect 0
+}
+
+@test "label: a dash or colon gloss of fewer than three words is a finding" {
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+The fix is in place for every cart. M4: fixed now.
+MD
+  expect 1 'Done.md: label: label without a gloss: M4 in "M4: fixed now." (Summary)'
+}
+
+@test "label: a sentence never ends after a lone label inside a paragraph" {
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+The fix is in place for every cart. M1. The total is rounded once at the end.
+MD
+  expect 1 'Done.md: label: label without a gloss: M1 in "M1. The total is rounded …" (Summary)'
+}
+
+@test "label: versions, hyphenated names and three-digit codes are not labels" {
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+v2.0 ships the new totals to every shopper. S3-compatible storage keeps the receipts for a year. H264 streams play in the product video. The H1-style heading stays.
+MD
+  expect 0
+}
+
+@test "label: the known limit, a short code shaped like a label is read as one" {
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+EC2 hosts run the cart service today. Q3 opens the new campaign for shoppers. The MP3 file, the V8 engine and the H1 heading stay as they are.
+MD
+  expect 1 'Done.md: label: label without a gloss: EC2 in "EC2 hosts run the cart …" (Summary)' \
+    'Done.md: label: label without a gloss: Q3 in "Q3 opens the new campaign …" (Summary)'
+}
+
+@test "label: the spec's own labels stay labels" {
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+u3 is done. M1 is done. P5 is done. Q1 is done. R1 is done.
+MD
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  for t in u3 M1 P5 Q1 R1; do grep -qF "label without a gloss: $t in \"$t is done.\"" <<<"$output" || { echo "$t: $output"; return 1; }; done
+}
+
+@test "sentence: a finding quotes the first five words of the sentence, a short one whole" {
+  { printf '# Done\n\n## Summary\n\nThe total drops below zero when '; words 26; printf '.\n'; } | write Done.md
+  expect 1 'Done.md: sentence: sentence of 32 words: "The total drops below zero …" (Summary)'
+  { printf '# Done\n\n## Summary\n\nThe `CartTotals` rounding '; words 29; printf '.\n'; } | write Done.md
+  expect 1 'Done.md: sentence: sentence of 32 words: "The `CartTotals` rounding word word …" (Summary)'
+}
+
+@test "--words-per-sentence replaces the resolved threshold" {
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [words-per-sentence: 12]\n' >"$TASK/Task.md"
+  sentence 31
+  run "$LINT" --words-per-sentence 40 "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  sentence 13
+  run "$LINT" --words-per-sentence 13 "$TASK/Done.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  run "$LINT" --words-per-sentence 10 "$TASK/Done.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = 'Done.md: sentence: sentence of 13 words: "word word word word word …" (Summary)' ] || { echo "$output"; return 1; }
+}
+
+@test "--words-per-sentence takes a positive integer, anything else is usage" {
+  sentence 3
+  for bad in 0 -3 abc 1.5 ''; do
+    run "$LINT" --words-per-sentence "$bad" "$TASK"
+    [ "$status" -eq 2 ] || { echo "'$bad': $status $output"; return 1; }
+    [[ "$output" == *usage* ]] || { echo "'$bad': $output"; return 1; }
+  done
+  run "$LINT" "$TASK" --words-per-sentence
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+}
+
 @test "question: an entry in the log without a question is a finding" {
   write Questions.md <<'MD'
 # Questions
@@ -265,8 +390,20 @@ MD
 - [plan] q4 — **Decision:** once at the end
 MD
   expect 1 'Questions.md: question: entry without a question (Questions Log)' \
-    'Questions.md: question: entry without a question (Questions Log)' \
     'Questions.md: question: entry without a question (Questions Log)'
+}
+
+@test "question: an entry already written in the old form stays as it is" {
+  write Questions.md <<'MD'
+# Questions
+
+## Questions Log
+
+- [plan] q1 — RESOLVED: once at the end
+- [review] q2 — DEFERRED to the next release
+- [plan] q3 — **Question:** short — DEFERRED
+MD
+  expect 1 'Questions.md: question: entry without a question (Questions Log)'
 }
 
 @test "question: entries under other headings are free text" {
@@ -333,11 +470,40 @@ MD
   expect 0
 }
 
+@test "format: a table after a heading is its own finding, even with no blank line between" {
+  write OpsChecklist.md <<'MD'
+# Ops checklist
+
+## Applicable
+| Item | State |
+|---|---|
+| Analytics | done |
+## Not applicable
+| Item | State |
+|---|---|
+| Push | none |
+MD
+  expect 1 'OpsChecklist.md: format: table row; the checklist is a list (Applicable)' \
+    'OpsChecklist.md: format: table row; the checklist is a list (Not applicable)'
+}
+
+@test "the Done fixtures follow the section order and the Plan fixtures keep the progress table for the owner" {
+  for f in Done.en.md Done.ru.md; do
+    [ "$(grep '^## ' "$FIX/$f" | head -4 | tr '\n' '|')" = '## Summary|## Why|## What is left and risks|## Objections|' ] || { echo "$f"; return 1; }
+    [ "$(tail -n 4 "$FIX/$f" | cut -c1-13 | tr '\n' '|')" = '[DONE_COMMIT]|[REVIEW_FIXES|**Run:** 2026|**Device:** n|' ] || { echo "$f closing"; return 1; }
+    ! sed -n '/^## Summary/,/^## Why/p' "$FIX/$f" | grep -q '`' || { echo "$f: identifier in Summary"; return 1; }
+  done
+  for f in Plan.en.md Plan.ru.md; do
+    sed -n '/^## For the owner/,/^## For the implementer/p' "$FIX/$f" | grep -q '^| Phase | What | Status |$' || { echo "$f"; return 1; }
+    ! sed -n '/^## For the implementer/,$p' "$FIX/$f" | grep -q '^| Phase ' || { echo "$f: table below"; return 1; }
+  done
+}
+
 @test "an old-layout Done.md passes and a defect in it is still found" {
   fixture Done.old-layout.en.md Done.md
   expect 0
   { cat "$FIX/Done.old-layout.en.md"; printf '\nM1 fixed the rounding.\n'; } | write Done.md
-  expect 1 'Done.md: label: label without a gloss (Follow-ups)'
+  expect 1 'Done.md: label: label without a gloss: M1 in "M1 fixed the rounding." (Follow-ups)'
 }
 
 @test "a file argument is checked by its basename and read against its own directory" {
@@ -345,13 +511,13 @@ MD
   sentence 13
   run "$LINT" "$TASK/Done.md"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
-  [ "$output" = 'Done.md: sentence: sentence of 13 words (Summary)' ] || { echo "$output"; return 1; }
+  [ "$output" = 'Done.md: sentence: sentence of 13 words: "word word word word word …" (Summary)' ] || { echo "$output"; return 1; }
 }
 
 @test "a directory checks only the artifacts that exist, in a fixed order" {
   { printf '# T\n\n## Summary\n\n'; words 31; printf '.\n'; } | write Plan.md
   sentence 31
-  expect 1 'Done.md: sentence: sentence of 31 words (Summary)' 'Plan.md: sentence: sentence of 31 words (Summary)'
+  expect 1 'Done.md: sentence: sentence of 31 words: "word word word word word …" (Summary)' 'Plan.md: sentence: sentence of 31 words: "word word word word word …" (Summary)'
 }
 
 @test "usage: no argument, two arguments, a missing path and a foreign basename exit 2" {
