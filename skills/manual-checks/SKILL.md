@@ -10,7 +10,7 @@ description: "Use at Plan to enumerate what a task's automation will not be able
 > **Related skills:**
 > - `artifact-reader` — the style rules every task artifact follows; this skill sets this file's reader and its format
 > - `ops-checklist` — the same late stage, the opposite direction: evidence for what WAS verified. A case deferred here is a Pending item there
-> - `task-walkthrough` — narrative for a reader; this is procedure for a doer
+> - `task-walkthrough` — narrative for a reader; this is a procedure a tester runs
 > - `feature-requirements` — the Secondary list is where checks nothing can automate first become visible
 
 ## The reader
@@ -105,7 +105,7 @@ A case names the scene it starts from in `**Preconditions:**`, and only what dif
 
 **Expected result:** the end state that passes the case
 
-**By instrument:** the criterion and its threshold, for a developer-run verdict
+**By instrument:** (optional) the criterion and its threshold, for a developer-run verdict
 
 **Failure looks like:** what is on the screen when it is broken
 
@@ -127,7 +127,7 @@ The heading is `### MC-<n>. <observable behaviour>`. The id is stable: a refresh
 - `**Test data:**` carries every concrete value the steps use: names, prices, quantities, addresses.
 - `**Steps:**` is the table above. `Expected` is what the screen shows right after that action; it is `—` only for a step that merely prepares the next one. `Actual` stays empty for the tester.
 - `**Expected result:**` is the end state that passes the case, in one line.
-- `**Expected result:**` and `**By instrument:**` are not alternatives. The eye answers "was the action performed at all?", the instrument answers "was it performed correctly?". A case carrying only the instrument cannot tell a defect from a fumbled step.
+- `**Expected result:**` and `**By instrument:**` are not alternatives. `**Expected result:**` answers "was the action performed at all?", the instrument answers "was it performed correctly?". A case carrying only the instrument cannot tell a defect from a fumbled step.
 - `**Failure looks like:**` is the cheapest field and the strongest. A failure is recognised faster than a success is verified, and this is what turns "it did not add up" into "here is what is broken".
 - `**Cleanup:**` puts back what the case changed: an item left in the cart, a setting switched. `—` when there is nothing.
 - `**Code:**` holds the `(file:line)` references the case was grounded in. It is the only place in a case where code appears.
@@ -135,7 +135,7 @@ The heading is `### MC-<n>. <observable behaviour>`. The id is stable: a refresh
 
 Write a blank line before every field, list and table. Markdown joins consecutive lines into one paragraph, and a table with no blank line above it renders as plain text. The lint checks structure, not rendering, so open the preview before handing the file over.
 
-**Language.** The section headings, `[COVERS]`, the table's column names and the field labels above stay English: they are the file's structure. A case's title after `### MC-<n>.`, the text after each label, the table's cells, and the text of every section — `## Scope`, `## Preparation`, `## Reading the verdict`, `## Troubleshooting`, `## Not covered`, `## Charter` — are prose in the project's `[LANG]` (`conventions/i18n.md` → Artifact authoring rule).
+**Language.** The section headings, `[COVERS]`, the table's column names and the field labels above stay English: they are the file's structure. So do the sub-headings of `## Preparation`: `### Screen map` and the scene ids `P0`…`Pn` are written in Latin letters in every language, and only a scene's title after its id is prose. A case's title after `### MC-<n>.`, the text after each label, the table's cells, and the text of every section — `## Scope`, `## Preparation`, `## Reading the verdict`, `## Troubleshooting`, `## Not covered`, `## Charter` — are prose in the project's `[LANG]` (`conventions/i18n.md` → Artifact authoring rule).
 
 ## Step rules
 
@@ -153,9 +153,9 @@ Write a blank line before every field, list and table. Markdown joins consecutiv
 
 | Check | What it finds |
 |---|---|
-| `case` | a case heading that is not `### MC-<n>. <behaviour>`, a repeated id, a missing label; a file of old `### <n>.` headings is named as the old format |
+| `case` | a case heading that is not `### MC-<n>. <behaviour>`, a repeated id, a missing label, a `## Cases` with no `### MC-` case under it; a file of old `### <n>.` headings is named as the old format |
 | `steps` | no steps table, a header other than the one in `## The case`, an empty `Action` or `Expected` (`—` is a value) |
-| `compound` | two steps in one `Action`: "then", "and then", "repeat steps", a semicolon |
+| `compound` | two steps in one `Action`: "then", "and then", "afterwards", "repeat steps", a semicolon |
 | `code` | code in `Action`, `Expected`, `**Preconditions:**` or `**What it checks:**`: a CamelCase word, a source file, a dotted name of three parts or more, a `(file:line)` |
 | `codeslot` | a `**Code:**` with no `file:line` in it |
 | `chain` | "after case N", "the state right after", or an edit history kept in the file |

@@ -63,6 +63,27 @@ setup() {
   done
 }
 
+@test "the scale convention says the lint counts the case ceilings, and only the commit is read" {
+  C="$ROOT/conventions/task-scale.md"
+  grep -qF '`scripts/lint-manual-checks.sh` holds a case to 40 lines' "$C" \
+    || { echo "the convention does not say which script counts a case"; return 1; }
+  tr '\n' ' ' <"$C" | grep -qF "Only the Walkthrough's per-commit size stays unmeasured" \
+    || { echo "the convention does not say what review alone reads"; return 1; }
+  ! grep -qF 'A per-unit budget is not something a line count can decide' "$C" \
+    || { echo "the convention still says no count can decide a case's size"; return 1; }
+}
+
+@test "a Preparation sub-heading is structure: Screen map and Latin scene ids in every language" {
+  grep -qF '`### Screen map` and the scene ids `P0`…`Pn` are written in Latin letters in every language' "$SKILL" \
+    || { echo "the Language paragraph does not keep the Preparation sub-headings English"; return 1; }
+  for f in "$ROOT/skills/manual-checks/examples/manual-checks.ru.md" "$ROOT/tests/fixtures/manual-checks/good.ru.md"; do
+    grep -qx '### Screen map' "$f" || { echo "$f: the screen map heading is translated"; return 1; }
+    # A Cyrillic letter Pe before a scene number looks like the Latin P and is not it.
+    ! grep -q "$(printf '\xd0\x9f')[0-9]" "$f" || { echo "$f: a scene id written with a Cyrillic letter"; return 1; }
+    grep -q '^### P0\. ' "$f" || { echo "$f: no Latin scene P0"; return 1; }
+  done
+}
+
 @test "the skill carries both rules that decide whether a case is executable" {
   grep -q '^## The instrument rule$' "$SKILL" || { echo "no instrument rule"; return 1; }
   grep -q '^## The symbol rule$' "$SKILL" || { echo "no symbol rule"; return 1; }
@@ -448,6 +469,8 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     done
     r="$(bullet "$S" Review)"
     grep -qF '`## The case` and `## Grounding`' <<<"$r" || { echo "workflow-$p: Review does not name its rules"; return 1; }
+    grep -qF 'a case a tester cannot execute as written' <<<"$r" \
+      || { echo "workflow-$p: Review does not judge a case as its tester would"; return 1; }
     ! grep -qF 'two rules in the `manual-checks` skill' <<<"$r" || { echo "workflow-$p: the two-rule clause is back"; return 1; }
   done
 }

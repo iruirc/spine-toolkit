@@ -42,6 +42,11 @@ Product page                    Cart
 | stepper | the minus button, the number and the plus button in a row |
 | total | the line "Total" above the Checkout button |
 | limit text | the grey line "Limit 10 per item" that appears under a row at ten |
+| sign-in screen | the first screen after the app opens, with the Sign in button |
+| home screen | the screen right after sign-in, with the search field |
+| search field | the box at the top of the home screen with the grey word "Search" |
+| Quantity list | the "Quantity" box on a product page; tapping it lists the numbers 1 to 10 |
+| Checkout button | the button at the foot of the cart, right of the total |
 
 ### P0. Build
 
@@ -52,17 +57,18 @@ Product page                    Cart
 - The interface language is English: every label in the cases is quoted from the English app.
 - The test account is the one in Test data of each case; its password is on the team's test-accounts page.
 
-### P2. A cart with one Green tea
+### P2. A cart with Green tea
 
 | # | Action | Expected |
 |---|---|---|
 | 1 | Open the app | The sign-in screen |
 | 2 | Sign in with the test account from the case's Test data | The home screen; the cart icon shows no badge |
 | 3 | Type "Green tea" in the search field at the top | One result: Green tea, 4.50 |
-| 4 | Tap the Green tea result | The product page of Green tea, Quantity 1 |
-| 5 | Tap Add to cart | The badge on the cart icon shows 1 |
+| 4 | Tap the Green tea result | The product page of Green tea; the Quantity list reads 1 |
+| 5 | Choose the quantity from the case's Test data in the Quantity list | The Quantity list reads that quantity |
+| 6 | Tap Add to cart | The badge on the cart icon shows that quantity |
 
-If the badge shows a number before step 5, the account's cart is not empty: record the case as BLOCKED with that number.
+If the badge shows a number before step 6, the account's cart is not empty: record the case as BLOCKED with that number.
 
 ## Cases
 
@@ -78,7 +84,7 @@ If the badge shows a number before step 5, the account's cart is not empty: reco
 
 - A cart with one Green tea (Preparation, P2).
 
-**Test data:** test account cart.tester.1; Green tea at 4.50.
+**Test data:** test account cart.tester.1; quantity 1 at P2; Green tea at 4.50.
 
 **Steps:**
 
@@ -113,9 +119,9 @@ If the badge shows a number before step 5, the account's cart is not empty: reco
 
 **Preconditions:**
 
-- A cart with Green tea (Preparation, P2), with 9 chosen in the Quantity list before its step 5.
+- A cart with nine Green tea (Preparation, P2).
 
-**Test data:** test account cart.tester.1; limit of 10 per item.
+**Test data:** test account cart.tester.1; quantity 9 at P2; limit of 10 per item.
 
 **Steps:**
 
@@ -150,7 +156,7 @@ If the badge shows a number before step 5, the account's cart is not empty: reco
 
 - A cart with one Green tea (Preparation, P2).
 
-**Test data:** test account cart.tester.1; the shop's address shop.example.com, shown at the foot of the empty cart.
+**Test data:** test account cart.tester.1; quantity 1 at P2; the shop's address shop.example.com, shown at the foot of the empty cart.
 
 **Steps:**
 

@@ -49,7 +49,7 @@
 
 **In short:** the discount no longer includes delivery, so a free-delivery order stays above zero.
 
-**Files:** `CartTotals` (+40), `CartTotalsTests` (+90), `Sources/Cart/Promo.swift`, `docs/promo.md`, `a.b.c`.
+**Files:** `CartTotals` (+40), `CartTotalsTests` (+90), `Sources/Cart/Promo.src`, `docs/promo.md`, `a.b.c`.
 
 **Changes:** 1, 2.
 

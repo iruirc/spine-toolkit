@@ -49,7 +49,7 @@
 
 **In short:** скидка больше не включает доставку, поэтому заказ с бесплатной доставкой остаётся выше нуля.
 
-**Files:** `CartTotals` (+40), `CartTotalsTests` (+90), `Sources/Cart/Promo.swift`.
+**Files:** `CartTotals` (+40), `CartTotalsTests` (+90), `Sources/Cart/Promo.src`.
 
 **Changes:** 1, 2.
 
