@@ -359,7 +359,7 @@ The budgets say how much. This says how, and it is the half that decides whether
 - **An identifier is a reference, never the subject.** A test case, a review finding, a decision, a question, a phase or a neighbouring step is never what a sentence is about. Say the thing in words, then cite the identifier in parentheses: "a separate test proves the cart keeps its reservation through a second payment (`CH4`)", not "`CH4` proves the reservation is kept". A neighbouring step is named by what it did — "the delivery price formula (step `04`)". `## Glossary` gets no entry for an identifier: what needs defining is the thing it points at.
 - **After any sentence that needs the repository open to parse, write a plainer one.** "Put simply: …". This is not padding; it is the difference between a document that transfers understanding and one that proves the author had it. At `brief` this one does not apply — a commit bullet of one to three sentences has no room for a second pass at the same sentence.
 - **A failure is a causal chain, then its consequence.** See `## Commits` — `deep`.
-- **The lint measures part of this.** `scripts/lint-walkthrough.sh` reports as class `style` a sentence over 30 words, a code span in `## What changed`, a sentence that opens on an identifier or holds more than two, and a `deep` commit section without its labels. Tables, code blocks, quotes and headings are not measured. Passing the lint is the floor, not the goal: `## Check` reads for what it cannot count.
+- **The lint measures part of this.** `scripts/lint-walkthrough.sh` reports as class `style` a sentence over 30 words, a code span in `## What changed`, a sentence that opens on an identifier or holds more than two, and a `deep` commit section without its labels. Tables, code blocks, quotes and headings are not measured. Known limit: a full stop after an abbreviation such as `e.g.` or `etc.` never ends a sentence, so a sentence that ends on one is counted together with the next; when the count looks one sentence too long, that is why. Passing the lint is the floor, not the goal: `## Check` reads for what it cannot count.
 - **Code excerpts are allowed and are not diff-restating.** A signature, a doc comment, or the one line that carries the invariant — ≤ 12 lines, and only when the shape *is* the point. A hunk-by-hunk retelling is a different thing and is banned below.
 
 ## Feeding a progress component
@@ -433,7 +433,8 @@ refresh, so the append-only rule does not apply.
 revision is not checked again. When the first read listed more than three places, the revised file
 is read once more by a fresh reader, and the writer revises once more from that second read —
 never a third. The count that decides is the first read's, so a second read that lists more still
-ends the check after its revision. The run notes one line per round: how many places were named and
+ends the check after its revision. When the first revision changed nothing or returned nothing, there
+is no second read: a fresh reader would only meet the text the first one already judged. The run notes one line per round: how many places were named and
 whether the file was revised. A failure of any of these dispatches is noted and stops nothing, as a
 failure of the write does.
 

@@ -14,6 +14,7 @@ set -euo pipefail
 #
 # With --current it also asks whether the file is up to date: every repository's newest own commit
 # named in ## Commits. Nothing to measure is then a finding, since there is nothing up to date.
+# --current leaves the style class out: its verdict is the history and the coverage only.
 #
 # With --style it runs only the style pass, on one file: no task dir, no git.
 #
@@ -41,7 +42,9 @@ python3 - "$HERE/task-ranges.sh" "$1" "$current" "$HERE/lib" "$mode" <<'PY'
 import os, re, subprocess, sys
 
 RANGES, TASK, CURRENT, MODE = sys.argv[1], sys.argv[2], sys.argv[3] == '1', sys.argv[5]
-# chunks() and the sentence helpers are shared with the other artifact lints.
+# chunks() and the sentence helpers are shared with the other artifact lints. No bytecode: a python
+# without a cache prefix would otherwise leave scripts/lib/__pycache__ in the plugin.
+sys.dont_write_bytecode = True
 sys.path.insert(0, sys.argv[4])
 from prose import chunks, sentences, words, MAX_WORDS, SUBJECT, INLINE, HEADING, FENCE as PROSE_FENCE
 SHA = r'[0-9a-f]{7,40}'
@@ -337,8 +340,11 @@ for repo, a, b, count in declared:
     if count.strip() != str(len(listed)):
         found.append('count: the header says %s, the range holds %d (%s)' % (count.strip(), len(listed), repo))
 
-with open(path, encoding='utf-8') as fh:
-    found += style(fh.read(), deep)
+# Style findings go to the writer once (spec D-7). --current decides whether the writer runs again,
+# so it judges the history and the coverage only: a style finding never makes a file stale.
+if not CURRENT:
+    with open(path, encoding='utf-8') as fh:
+        found += style(fh.read(), deep)
 
 if CURRENT:
     r = subprocess.run([RANGES, 'last', TASK], capture_output=True, text=True)

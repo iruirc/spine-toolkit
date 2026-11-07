@@ -16,7 +16,9 @@ RESOLVE="$HERE/resolve-settings.sh"
 python3 - "$RESOLVE" "$HERE/lib" "$@" <<'PY'
 import json, os, re, subprocess, sys
 
-# chunks() and prose() are shared with the other artifact lints.
+# chunks() and prose() are shared with the other artifact lints. No bytecode: a python without a
+# cache prefix would otherwise leave scripts/lib/__pycache__ in the plugin.
+sys.dont_write_bytecode = True
 sys.path.insert(0, sys.argv[2])
 from prose import chunks, prose
 

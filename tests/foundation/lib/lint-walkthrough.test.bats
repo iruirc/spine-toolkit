@@ -395,3 +395,22 @@ styled() {
   [[ "$output" == *"Walkthrough.md: style: identifier in ## What changed (## What changed)"* ]] || { echo "$output"; return 1; }
   [[ "$output" == *"Walkthrough.md: style: 3 identifiers in one sentence (## Summary)"* ]] || { echo "$output"; return 1; }
 }
+
+# Style findings reach the writer once (spec D-7): --current decides whether Done dispatches the
+# writer again, so a style finding left after the implementing stage must not make the file stale.
+@test "--current ignores a style finding: the file is current, with no output" {
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")"
+  sed -i.bak 's/^x$/The total comes from `A` and `B` and `C`./' "$TASK/Walkthrough.md"
+  run "$LINT" --current "$TASK"
+  [ "$status" -eq 0 ] || { echo "a style finding made the file stale: $status $output"; return 1; }
+  [ -z "$output" ] || { echo "$output"; return 1; }
+}
+
+@test "the same style finding is still reported without --current" {
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")"
+  sed -i.bak 's/^x$/The total comes from `A` and `B` and `C`./' "$TASK/Walkthrough.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  grep -qF 'Walkthrough.md: style: 3 identifiers in one sentence (## Summary)' <<<"$output" || { echo "$output"; return 1; }
+  ! grep -qv '^Walkthrough.md: style: ' <<<"$output" || { echo "a finding other than style: $output"; return 1; }
+}

@@ -6,12 +6,13 @@ set -euo pipefail
 # every step row holds one action, and code lives only in the **Code:** field. Its checks:
 #
 #   case      every case under ## Cases is "### MC-<n>. <observable behaviour>", ids are unique, and
-#             the twelve labels are there; a file of "### <n>." headings and no MC- heading is named
-#             once as the old format, and its cases are not read further;
+#             the twelve labels are there; a ## Cases with no such case under it is named (a case
+#             at the wrong level, #### MC-1. or ## MC-1., is no case); a file of "### <n>." headings
+#             and no MC- heading is named once as the old format, and its cases are not read further;
 #   steps     **Steps:** is a table headed "| # | Action | Data | Expected | Actual |", and no row
 #             leaves Action or Expected empty ("—" is a value);
-#   compound  an Action that holds two steps: then, and then, repeat steps, a semicolon, and their
-#             Russian forms;
+#   compound  an Action that holds two steps: then, and then, afterwards, repeat steps, a semicolon,
+#             and their Russian forms;
 #   code      code in Action, Expected, **Preconditions:** or **What it checks:** — a CamelCase word of
 #             two or more humps, a source file, a dotted name of three or more parts (a version or a
 #             decimal is not one), a (file:line) gloss;
@@ -51,7 +52,7 @@ CELL_SPLIT = re.compile(r'(?<!\\)\|')
 
 # Russian words are \u escapes: the toolkit keeps Cyrillic out of scripts (scripts/lint-i18n.sh).
 COMPOUND = [re.compile(p, re.I) for p in (
-    r'\band then\b', r'\bthen\b', r'\brepeat\s+(?:the\s+)?steps?\b', r';',
+    r'\band then\b', r'\bthen\b', r'\bafterwards\b', r'\brepeat\s+(?:the\s+)?steps?\b', r';',
     r'\b\u0437\u0430\u0442\u0435\u043c\b',                               # then
     r'\b\u043f\u043e\u0442\u043e\u043c\b',                               # afterwards
     r'\b\u0438\s+\u0441\u0440\u0430\u0437\u0443\b',                      # and at once
@@ -182,13 +183,20 @@ old = [(i, h) for i, h in headings if OLD.match(h[1])]
 if not cases and old:
     found.append('case: old format, ### <n>. headings instead of ### MC-<n>. (### %s.)' % OLD.match(old[0][1][1]).group(1))
 else:
-    in_cases = False
+    in_cases, under_cases = False, None
     for i, h in headings:
-        if h[0] == 2:
+        if h[0] <= 2:
             in_cases = h[1] == '## Cases'
-        elif h[0] == 3 and in_cases and not MC.match(h[1]):
+            if in_cases and under_cases is None:
+                under_cases = 0
+        elif h[0] == 3 and in_cases and MC.match(h[1]):
+            under_cases += 1
+        elif h[0] == 3 and in_cases:
             m = OLD.match(h[1])
             found.append('case: heading is not ### MC-<n>. <observable behaviour> (%s)' % ('### %s.' % m.group(1) if m else h[1]))
+    # A case one level off (#### MC-1., ## MC-1.) is not a case: the section reads as empty.
+    if under_cases == 0:
+        found.append('case: no case under ## Cases (## Cases)')
 
 seen = set()
 for i, h in cases:

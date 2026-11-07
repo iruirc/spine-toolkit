@@ -184,6 +184,20 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
   done
 }
 
+@test "a writer whose lint left only style lines still makes the file current for Done" {
+  # Style findings reach the writer once (spec D-7): the writer already had them.
+  idle='"done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": false}'
+  rest="\"edit\": {\"ok\": true, \"artifact_path\": \"e\", \"summary\": \"s\", \"committed\": true}, \"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\"}, $PASSED, $idle"
+  style='Walkthrough.md: style: sentence of 31 words (## Summary)\nWalkthrough.md: style: missing **In short:** (### 1)'
+  for p in $RANGED quick; do
+    case "$p" in bug) code=Fix ;; feature) code=Execute ;; refactor) code=Refactor ;; test) code=Write ;; quick) code=Edit ;; esac
+    out="$(run_profile "$p" "$(contract "$code" ", \"review_ranges\": $TWO")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"$style\"}}")"
+    [ "$(pick "o.calls.filter((c) => c.label === 'walkthrough').length" <<<"$out")" = 1 ] || { echo "profile-$p: a style line sent the writer back at Done"; return 1; }
+    grep -qF 'Walkthrough.md lint: Walkthrough.md: style: sentence of 31 words' <<<"$(pick 'o.result.notes' <<<"$out")" \
+      || { echo "profile-$p: the style lines left the report"; return 1; }
+  done
+}
+
 @test "an item about the walkthrough goes to its writer and is closed by it" {
   item='name the third commit in ## Commits'
   replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$item\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"walkthrough_findings\": [\"$item\"]}, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true}}"

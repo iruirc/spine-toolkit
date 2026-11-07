@@ -2,3 +2,5 @@
 .claude/settings.local.json
 # Agent scratch. Ignoring it is enough: the suite enumerates through git.
 .superpowers/
+# Python bytecode the lints would write next to scripts/lib/prose.py.
+__pycache__/
