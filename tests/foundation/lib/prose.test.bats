@@ -12,7 +12,7 @@ py() {
 import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, '$ROOT/scripts/lib')
-from prose import chunks, prose, sentences, words, MAX_WORDS
+from prose import chunks, prose, sentences, words, units, words_per_sentence, DROPPED_LINE, MAX_WORDS
 $1"
 }
 
@@ -129,4 +129,72 @@ print("ok")'
     || { echo "prose.py does not document the merge"; return 1; }
   grep -qF 'Known limit: a full stop after an abbreviation such as `e.g.` or `etc.` never ends a sentence' "$ROOT/skills/task-walkthrough/SKILL.md" \
     || { echo "task-walkthrough does not document the merge"; return 1; }
+}
+
+@test "units makes a list item or a numbered item a unit of its own" {
+  run py '
+body = "Intro line\ncontinues here.\n\n- one\n- two\n  wrapped\n1. three\n2) four\n\n**Files:** a, b\n  c, d\nAfter."
+for u in units(body):
+    print(" | ".join(u))'
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "${lines[0]}" = "Intro line | continues here." ] || { echo "$output"; return 1; }
+  [ "${lines[1]}" = "one" ] || { echo "$output"; return 1; }
+  [ "${lines[2]}" = "two | wrapped" ] || { echo "$output"; return 1; }
+  [ "${lines[3]}" = "three" ] || { echo "$output"; return 1; }
+  [ "${lines[4]}" = "four" ] || { echo "$output"; return 1; }
+  [ "${lines[5]}" = "After." ] || { echo "$output"; return 1; }
+  [ "${#lines[@]}" -eq 6 ] || { echo "$output"; return 1; }
+}
+
+@test "a Device line is not prose" {
+  run py '
+assert DROPPED_LINE.match("**Device:** iPhone 15, iOS 17")
+assert DROPPED_LINE.match("  **Device:** x")
+body = "\n".join(b for _, b in chunks("Intro.\n\n**Device:** the long device line that is not prose at all.\n\nMore.\n"))
+assert "device line" not in body, body
+print("ok")'
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "ok" ]
+}
+
+# words_per_sentence(directory) asks scripts/resolve-settings.sh; $1 of mk is a Task.md body.
+mk() {
+  P="$BATS_TEST_TMPDIR/proj"
+  mkdir -p "$P/Tasks/ACTIVE/001-x"
+  printf '## Paths\n' >"$P/CLAUDE-spine-toolkit.md"
+  printf '%s\n' "$1" >"$P/Tasks/ACTIVE/001-x/Task.md"
+  D="$P/Tasks/ACTIVE/001-x"
+}
+
+@test "words_per_sentence is the default 30 with no entry" {
+  mk '[TASK_TYPE] = [BUG]'
+  run py "print(words_per_sentence('$D'))"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "30" ]
+}
+
+@test "words_per_sentence reads a Task.md entry" {
+  mk '[TASK_TYPE] = [BUG]
+[BUDGETS] = [words-per-sentence: 12]'
+  run py "print(words_per_sentence('$D'))"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "12" ]
+}
+
+@test "words_per_sentence forwards a budgets warning once and drops the others" {
+  mk '[TASK_TYPE] = [BUG]
+[BUDGETS] = [words-per-sentence: 12, Plan.md: abc]
+[MODELS] = [nonsense]'
+  mkdir -p "$P/Tasks/ACTIVE/002-y"
+  cp "$D/Task.md" "$P/Tasks/ACTIVE/002-y/Task.md"
+  run py "print(words_per_sentence('$D')); print(words_per_sentence('$P/Tasks/ACTIVE/002-y'))"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(grep -c "Plan.md: abc' not recognized" <<<"$output")" -eq 1 ] || { echo "$output"; return 1; }
+  ! grep -q 'MODELS' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "words_per_sentence on a resolver failure names the lint and the directory and exits 2" {
+  run py "words_per_sentence('$BATS_TEST_TMPDIR/missing', 'lint-x.sh')"
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+  [[ "$output" == *"lint-x.sh: resolve-settings.sh failed for $BATS_TEST_TMPDIR/missing"* ]] || { echo "$output"; return 1; }
 }

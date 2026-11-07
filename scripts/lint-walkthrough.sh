@@ -7,7 +7,8 @@ set -euo pipefail
 # body never names — what a patch that cut the file short leaves behind. Its classes: unreachable,
 # section, heading, missing, count, range, behind, style.
 #
-# The style class reads the prose, not the history: a sentence over MAX_WORDS words, an identifier
+# The style class reads the prose, not the history: a sentence over words-per-sentence words (the
+# budget key of the task's directory, 30 unless a Task.md, an epic or the project sets it), an identifier
 # in ## What changed, a sentence that starts with an identifier or holds more than two, and, at
 # deep, a commit section without **In short:** (or, with sub-headings, without **How verified:**).
 # What counts as prose is scripts/lib/prose.py, the same text lint-artifact-lang.sh measures.
@@ -46,7 +47,7 @@ RANGES, TASK, CURRENT, MODE = sys.argv[1], sys.argv[2], sys.argv[3] == '1', sys.
 # without a cache prefix would otherwise leave scripts/lib/__pycache__ in the plugin.
 sys.dont_write_bytecode = True
 sys.path.insert(0, sys.argv[4])
-from prose import chunks, sentences, words, MAX_WORDS, SUBJECT, INLINE, HEADING, FENCE as PROSE_FENCE
+from prose import chunks, sentences, words, units, words_per_sentence, LEAD, SUBJECT, INLINE, HEADING, FENCE as PROSE_FENCE
 SHA = r'[0-9a-f]{7,40}'
 # Every backticked sha or sha range on a line, wherever it sits: a heading may put a word or bold
 # markup before one.
@@ -95,42 +96,11 @@ def cells(line):
 
 
 # The style pass. Prose is what scripts/lib/prose.py keeps: no code, tables, quotes or headings.
-# A label line (**Files:** and its kin) is a list of names, not prose, and so is its wrapped tail.
-LABEL_LINE = re.compile(r'^\s*(?:[-*+]\s+)?\*\*(?:Files|Changes|Commits|Steps):\*\*')
-LIST_START = re.compile(r'^\s*(?:[-*+]|\d+[.)])\s+')
-LEAD = re.compile(r'^\*\*[^*\n]{1,40}[.:]\*\*\s*')
 SPAN = re.compile(r'`[^`\n]*`')
 # A commit log line (brief ## Commits, ### Bookkeeping) starts on a sha or a range by design.
 SHA_SPAN = re.compile(r'^`%s(?:\.\.%s)?`$' % (SHA, SHA))
 BARE = re.compile(r'^(?:`[XS]`[\s.,;:!?]*)+$')
 LOG_LINE = re.compile(r'^`%s(?:\.\.%s)?`' % (SHA, SHA))
-
-
-def units(body):
-    """The lines of each paragraph, a list item or a numbered item starting a unit of its own, so
-    that a list without final dots is not read as one long sentence."""
-    cur, tail = [], False
-    for line in body.split('\n'):
-        if not line.strip():
-            if cur:
-                yield cur
-            cur, tail = [], False
-        elif LABEL_LINE.match(line):
-            if cur:
-                yield cur
-            cur, tail = [], True
-        elif tail and line[0] in ' \t' and not LIST_START.match(line):
-            continue
-        else:
-            tail = False
-            if LIST_START.match(line):
-                if cur:
-                    yield cur
-                cur = [LIST_START.sub('', line, 1)]
-            else:
-                cur.append(line.strip())
-    if cur:
-        yield cur
 
 
 def outline(text):
@@ -172,7 +142,7 @@ def is_deep(entries):
     return False
 
 
-def style(text, deep):
+def style(text, deep, limit):
     out = []
     for title, body in chunks(text):
         where = place(title)
@@ -197,7 +167,7 @@ def style(text, deep):
                 for pattern in INLINE[1:]:
                     plain = pattern.sub(' ', plain)
                 count = words(plain)
-                if count > MAX_WORDS:
+                if count > limit:
                     out.append('style: sentence of %d words (%s)' % (count, where))
                 # A sentence that is only a reference (a path closing a log line) has no subject to be.
                 if BARE.match(sentence):
@@ -248,7 +218,7 @@ def report(found):
 if MODE == 'style':
     with open(TASK, encoding='utf-8') as fh:
         text = fh.read()
-    report(style(text, is_deep(outline(text))))
+    report(style(text, is_deep(outline(text)), words_per_sentence(os.path.dirname(os.path.abspath(TASK)), 'lint-walkthrough.sh')))
 
 path = os.path.join(TASK, 'Walkthrough.md')
 # An epic's ## Commits holds a section per step, not per commit.
@@ -303,7 +273,9 @@ for line in open(path, encoding='utf-8'):
         continue
     bullet = None
 
-deep = 'Glossary' in headings or any(n or numbered for _, n, numbered in headers)
+with open(path, encoding='utf-8') as fh:
+    text = fh.read()
+deep = is_deep(outline(text))
 declared = []
 for row in perimeter:
     m = TOKEN.search(row[columns[0]]) if len(row) > max(columns) else None
@@ -343,8 +315,7 @@ for repo, a, b, count in declared:
 # Style findings go to the writer once (spec D-7). --current decides whether the writer runs again,
 # so it judges the history and the coverage only: a style finding never makes a file stale.
 if not CURRENT:
-    with open(path, encoding='utf-8') as fh:
-        found += style(fh.read(), deep)
+    found += style(text, deep, words_per_sentence(TASK, 'lint-walkthrough.sh'))
 
 if CURRENT:
     r = subprocess.run([RANGES, 'last', TASK], capture_output=True, text=True)

@@ -414,3 +414,52 @@ styled() {
   grep -qF 'Walkthrough.md: style: 3 identifiers in one sentence (## Summary)' <<<"$output" || { echo "$output"; return 1; }
   ! grep -qv '^Walkthrough.md: style: ' <<<"$output" || { echo "a finding other than style: $output"; return 1; }
 }
+
+# The threshold is the budget key words-per-sentence of the directory the file sits in.
+fifteen() { printf 'one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen.'; }
+
+@test "style: a Task.md budget of 12 flags a 15-word sentence, the default passes it" {
+  mkdir -p "$BATS_TEST_TMPDIR/d"
+  styled x "$(fifteen)" x
+  mv "$BATS_TEST_TMPDIR/w.md" "$BATS_TEST_TMPDIR/d/Walkthrough.md"
+  run "$LINT" --style "$BATS_TEST_TMPDIR/d/Walkthrough.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [words-per-sentence: 12]\n' >"$BATS_TEST_TMPDIR/d/Task.md"
+  run "$LINT" --style "$BATS_TEST_TMPDIR/d/Walkthrough.md"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: style: sentence of 15 words (## Summary)" ] || { echo "$output"; return 1; }
+}
+
+@test "style: a task directory reads its own words-per-sentence" {
+  walkthrough brief "$(printf -- '- `%s` `feat: a` — first.\n- `%s` `feat: b` — second.' "$A1" "$A2")"
+  sed -i.bak "s/^x\$/$(fifteen)/" "$TASK/Walkthrough.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [words-per-sentence: 12]\n' >"$TASK/Task.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  grep -qF 'Walkthrough.md: style: sentence of 15 words (## What changed)' <<<"$output" || { echo "$output"; return 1; }
+  [ "$(grep -c 'style: sentence of' <<<"$output")" -ge 1 ]
+}
+
+@test "style: a Device line is not prose" {
+  styled x "$(printf '**Device:** %s\n\nShort.' "$(printf 'word %.0s' $(seq 40))")" x
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "style: a resolver failure is exit 2 in both modes" {
+  cp -R "$ROOT/scripts" "$BATS_TEST_TMPDIR/scripts"
+  # task-ranges.sh shares the resolver: only the reading the style pass makes (its caller is the
+  # lint's python, not a shell script) fails.
+  printf '#!/usr/bin/env bash\ncase "$(ps -o comm= -p "$PPID")" in *ython*) exit 1 ;; esac\nexec "%s/scripts/resolve-settings.sh" "$@"\n' "$ROOT" >"$BATS_TEST_TMPDIR/scripts/resolve-settings.sh"
+  chmod +x "$BATS_TEST_TMPDIR/scripts/resolve-settings.sh"
+  styled x x x
+  run "$BATS_TEST_TMPDIR/scripts/lint-walkthrough.sh" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+  [[ "$output" == *"lint-walkthrough.sh: resolve-settings.sh failed for $BATS_TEST_TMPDIR"* ]] || { echo "$output"; return 1; }
+  walkthrough brief "$(printf -- '- `%s` `feat: a` — first.\n- `%s` `feat: b` — second.' "$A1" "$A2")"
+  run "$BATS_TEST_TMPDIR/scripts/lint-walkthrough.sh" "$TASK"
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+  [[ "$output" == *"lint-walkthrough.sh: resolve-settings.sh failed for $TASK"* ]] || { echo "$output"; return 1; }
+}
