@@ -98,6 +98,9 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 @test "the doc lets a task override MODELS and EFFORT, with the resolver's roles and the runtime's values" {
   roles="$(sed -n 's/^ROLES="\(.*\)"$/\1/p' "$ROOT/scripts/resolve-settings.sh")"
   [ "$(wc -w <<<"$roles")" -eq 8 ] || { echo "the resolver has '$roles', not the eight roles the doc counts"; return 1; }
+  # Keys beyond the roles: MODELS has light, walkthrough and done; EFFORT has no light.
+  extra_MODELS="light walkthrough done"
+  extra_EFFORT="walkthrough done"
   # The vocabulary the doc quotes is the Claude runtime's, named as such: other runtimes have their own.
   rt() { python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))[sys.argv[2]]))' "$ROOT/runtimes/claude-code.json" "$1"; }
   for pair in MODELS:models EFFORT:effort; do
@@ -106,6 +109,18 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     sec="$(config_doc_section "$field" | tr '\n' ' ')"
     grep -qF "\`[$field] = [<key>: <value>, …]\`" <<<"$sec" || { echo "[$field]: the override spelling is missing"; return 1; }
     grep -qF 'the eight role' <<<"$sec" || { echo "[$field]: the doc does not count the eight roles"; return 1; }
+    # the key paragraph, as the doc's first paragraph of the section, names the keys beyond the roles
+    keys="$(config_doc_section "$field" | awk '$0 == "" { if (n) exit; next } { n = 1; print }' | tr '\n' ' ')"
+    extra="extra_$field"
+    for k in ${!extra} $roles; do
+      grep -qF "\`$k\`" <<<"$sec" || { echo "[$field]: the key $k is not in the doc section"; return 1; }
+    done
+    for k in ${!extra}; do
+      grep -qF "\`$k\`" <<<"$keys" || { echo "[$field]: the key $k is not in the Values paragraph"; return 1; }
+    done
+    if [ "$field" = EFFORT ]; then
+      ! grep -qF '`light`' <<<"$keys" || { echo "[EFFORT] lists a light key; the resolver has none"; return 1; }
+    fi
     for v in $(rt "${pair##*:}"); do
       grep -qF "\`$v\`" <<<"$sec" || { echo "[$field]: the runtime value $v is not in the doc"; return 1; }
     done

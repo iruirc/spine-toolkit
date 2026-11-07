@@ -357,6 +357,8 @@ small for a phase or a walkthrough. On Amazon Bedrock, Google Cloud's Agent Plat
 Foundry `sonnet` means Sonnet 4.5. The orchestrator and any stage it runs in the main context stay on
 the session's model. An epic's keys reach its steps.
 
+The eight roles are `architect`, `developer`, `tester`, `reviewer`, `refactorer`, `validator`, `security` and `diagnostics`.
+
 ### [EFFORT]
 
 **Values:** `<key>: <value>` entries, comma-separated; keys `walkthrough`, `done` and the eight role
@@ -371,6 +373,8 @@ applies. The mechanical calls always run at `low`; writing and revising `Walkthr
 `session`. A level the model does not support drops to the nearest one it does. When the Workflow
 tool is unavailable and a profile runs through its skill, no effort can travel with a dispatch:
 every stage runs at the session's level, and the run says so once.
+
+The eight roles are `architect`, `developer`, `tester`, `reviewer`, `refactorer`, `validator`, `security` and `diagnostics`; `light` is a `[MODELS]` key only.
 
 ### [LONG_RUN]
 
