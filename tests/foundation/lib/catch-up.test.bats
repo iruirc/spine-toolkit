@@ -64,3 +64,32 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     done
   done
 }
+
+@test "the five workflow skills put the Review and Done record lines in the closing block" {
+  for p in bug feature quick refactor test; do
+    f="$ROOT/skills/workflow-$p/SKILL.md"
+    rev="$(grep -E '^- \*\*Review\*\* — `\[reviewer\]`' "$f")"
+    done_="$(grep -E '^- \*\*Done\*\* — final report' "$f")"
+    [ -n "$rev" ] && [ -n "$done_" ] || { echo "workflow-$p: no Review or Done bullet"; return 1; }
+    grep -qF 'closing block of `Review.md`' <<<"$rev" || { echo "workflow-$p: Review bullet names no closing block"; return 1; }
+    grep -qF 'the first line stays the status line' <<<"$rev" || { echo "workflow-$p: Review bullet drops the status line"; return 1; }
+    ! grep -qF 'directly under the status line' <<<"$rev" || { echo "workflow-$p: Review bullet keeps the old position"; return 1; }
+    grep -qF 'the closing block of `Done.md` holds the `[DONE_COMMIT]` lines' <<<"$done_" || { echo "workflow-$p: Done bullet names no closing block"; return 1; }
+    ! grep -qF 'the first lines of `Done.md`' <<<"$done_" || { echo "workflow-$p: Done bullet keeps the old position"; return 1; }
+  done
+}
+
+@test "the orchestrator reads the markers wherever they stand" {
+  grep -qF 'a marker is read wherever it stands in `Done.md`, the first match per repository' "$S" || { echo "State Detection"; return 1; }
+  grep -qF 'the `[REVIEW_FIXES]` line of `Done.md`, read wherever it stands in the file' "$S" || { echo "Gating"; return 1; }
+}
+
+@test "the task-ranges convention places every record in the closing block, and the walkthrough keeps COVERS on line 2" {
+  t="$ROOT/conventions/task-ranges.md"
+  for k in REVIEWED_COMMIT DONE_COMMIT REVIEW_FIXES; do
+    row="$(grep -E "^\| \`\[$k\]\`" "$t")"
+    grep -qF 'closing block' <<<"$row" || { echo "$k: the Records row names no closing block"; return 1; }
+  done
+  ! grep -qE 'directly under `\[REVIEW_STATUS\]`|its first lines' "$t" || { echo "an old position is left"; return 1; }
+  grep -qF '`[COVERS]` stays line 2' "$ROOT/skills/task-walkthrough/SKILL.md" || { echo "walkthrough sentence"; return 1; }
+}

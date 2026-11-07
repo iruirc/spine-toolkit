@@ -69,6 +69,8 @@ Second line of the file, byte-for-byte:
 [COVERS] = <first-sha>..<last-sha>
 ```
 
+`[COVERS]` stays line 2. The run's `**Run:**` line and the `**Device:**` line go to the closing block at the end of the file (`conventions/stage-dispatch.md` → Closing block), never into the header.
+
 Short shas of the task's own commits. This is what makes a refresh decidable without reading the whole file: the range already ends at the task's last commit → change nothing and say so; it is behind → refresh. The line is parsed by `scripts/docs-route.sh`, so its shape is fixed at both depths — a range spanning several repositories is described in the header's perimeter table, never by bending this line.
 
 ## Structure

@@ -240,3 +240,33 @@ S_OF() { awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orch
   grep -qF "an epic's notes" <<<"$p" || { echo "an epic's step refusals are not surfaced"; return 1; }
   for l in en ru; do grep -qx '## warn_run_file_tracked' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l lacks warn_run_file_tracked"; return 1; }; done
 }
+
+# The closing block: conventions/stage-dispatch.md → Closing block. Machine lines go last.
+closing() { awk '/^## Closing block$/{f=1;next} f&&/^## /{exit} f' "$CONV"; }
+
+@test "the convention defines the closing block, its order and the two lines that keep their place" {
+  c="$(closing)"
+  [ -n "$c" ] || { echo "no ## Closing block in the convention"; return 1; }
+  # The order is the order of the first mentions.
+  flat="$(tr '\n' ' ' <<<"$c")"
+  prev=-1
+  for m in '[DONE_COMMIT]' '[REVIEWED_COMMIT]' '[REVIEW_FIXES] = n' '**Run:** …' '**Device:** …'; do
+    [[ "$flat" == *"$m"* ]] || { echo "the closing block does not name $m"; return 1; }
+    head="${flat%%"$m"*}"
+    [ "${#head}" -gt "$prev" ] || { echo "$m is out of order"; return 1; }
+    prev="${#head}"
+  done
+  for m in 'after a blank line' '`[REVIEW_STATUS] = …` is line 1 of `Review.md`' '`[COVERS]` is line 2 of `Walkthrough.md`' 'at any position' 'first match per repository'; do
+    [[ "$flat" == *"$m"* ]] || { echo "the closing block lost: $m"; return 1; }
+  done
+}
+
+@test "the Run sentence puts the line in the closing block, in the convention and in every script" {
+  want="$(block 2 '' '{run}')"
+  [ "$want" = 'Every artifact you write this run carries the line "**Run:** {run}" in its closing block, after any marker lines this brief tells you to write there.' ] || { echo "$want"; return 1; }
+  for p in bug feature refactor test quick research review epic; do
+    pr="$(run_profile "$p" "$(contract ', "run_settings": {"drive_app": "off"}')" | pick 'o.calls.filter((c) => c.prompt)[0].prompt')"
+    [[ "$pr" == *'carries the line "**Run:** drive_app=off" in its closing block, after any marker lines this brief tells you to write there.'* ]] || { echo "profile-$p: $pr"; return 1; }
+    [[ "$pr" != *'directly below its first line'* ]] || { echo "profile-$p still asks for line 2"; return 1; }
+  done
+}

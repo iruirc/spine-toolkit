@@ -293,3 +293,9 @@ PY
   run "$LINT" "$F" "$F"
   [ "$status" -eq 2 ] || { echo "status $status"; return 1; }
 }
+
+@test "a file ending in a closing block passes" {
+  write
+  printf '\n**Run:** drive_app=off; directive: «leave the cart package alone»\n**Device:** Phone B, set by this run\n' >>"$F"
+  clean "$F"
+}

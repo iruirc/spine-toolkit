@@ -51,7 +51,7 @@ each `run_settings` entry as `<field>=<value>`, then `directive: «…»`, joine
 line: every run of whitespace in the directive becomes one space there, and only there:
 
 ```text
-Every artifact you write this run carries the line "**Run:** {run}" directly below its first line and any lines this brief tells you to write there.
+Every artifact you write this run carries the line "**Run:** {run}" in its closing block, after any marker lines this brief tells you to write there.
 ```
 
 A workflow script carries both in its prelude; a Method B skill puts the same words in each stage's
@@ -67,7 +67,7 @@ nothing and the platform chooses as it always did. A named device goes into ever
 prompt, after the owner's directive, in these words:
 
 ```text
-Device: «{device}» — every build, test and drive of this stage runs on it, packages included, whatever the project's files or your own defaults name. Say at the top of your artifact which device you used, and that the brief named it.
+Device: «{device}» — every build, test and drive of this stage runs on it, packages included, whatever the project's files or your own defaults name. Write a line "**Device:** …" in the closing block of your artifact: which device you used, and that the brief named it.
 ```
 
 When the contract's `device_from` says where the device was set, the last sentence ends `that the
@@ -84,7 +84,7 @@ it is:
 At `auto` with a command, in these words instead:
 
 ```text
-Device: run `{device_source}` from the project root once, at the start of this stage; its first non-empty line is the device every build, test and drive of this stage runs on, packages included, whatever the project's files or your own defaults name. If the command exits non-zero or prints nothing, the platform's own choice stands. Say at the top of your artifact which device you used, and whether the command gave it.
+Device: run `{device_source}` from the project root once, at the start of this stage; its first non-empty line is the device every build, test and drive of this stage runs on, packages included, whatever the project's files or your own defaults name. If the command exits non-zero or prints nothing, the platform's own choice stands. Write a line "**Device:** …" in the closing block of your artifact: which device you used, and whether the command gave it.
 ```
 
 A command holding a backtick goes in a code span one backtick longer than its longest run, padded
@@ -93,6 +93,23 @@ with a space on each side.
 The command runs in every stage rather than once per run, so a device changed between two stages
 is the one the second stage uses. It comes from the contract, not from a file, which is what lets a
 stage run it: the project named it in its config, as it names its build.
+
+## Closing block
+
+The machine lines of an artifact are its last lines, so the first screen is the prose a reader came
+for. The closing block follows the body after a blank line and holds, in this order, the lines the
+artifact has:
+
+1. the marker lines the brief names: `[DONE_COMMIT]` lines, then `[REVIEWED_COMMIT]` lines, then
+   `[REVIEW_FIXES] = n`;
+2. `**Run:** …`, the line of "Owner's directive" above;
+3. `**Device:** …`, the line of "Device" above.
+
+Two lines keep their place: the status line `[REVIEW_STATUS] = …` is line 1 of `Review.md`, and
+`[COVERS]` is line 2 of `Walkthrough.md`. A reader takes a marker at any position, first match per
+repository, because `Tasks/DONE` holds files that carry the markers on top; `scripts/task-ranges.sh`
+is that reader, and a malformed marker anywhere is still an error. The readability lint skips the closing block
+(`scripts/lint-artifact-readability.sh`).
 
 ## Declared deviation
 

@@ -166,3 +166,17 @@ S_OF() { awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orch
   grep -qF '→ `device=<device>`' <<<"$t" || { echo "$t"; return 1; }
   ! grep -qiF 'device"' <<<"$(grep -F '**`user_directive`**' -A2 <<<"$t")" || { echo "a device phrase is still a directive example"; return 1; }
 }
+
+@test "the device line goes to the closing block, with the pinned tails kept, in the convention and in every script" {
+  one='Write a line "**Device:** …" in the closing block of your artifact: which device you used, and that the brief named it.'
+  two='Write a line "**Device:** …" in the closing block of your artifact: which device you used, and whether the command gave it.'
+  [[ "$(block 1 'Phone B')" == *"$one" ]] || { block 1 'Phone B'; return 1; }
+  [[ "$(block 2 'scripts/device.sh get')" == *"$two" ]] || { block 2 'scripts/device.sh get'; return 1; }
+  for p in bug feature refactor test quick research review epic; do
+    pr="$(run_profile "$p" "$(contract ', "device": "Phone B", "device_from": "run"')" | pick 'o.calls.filter((c) => c.prompt)[0].prompt')"
+    [[ "$pr" == *'Write a line "**Device:** …" in the closing block of your artifact: which device you used, and that the brief named it, set by this run.'* ]] || { echo "profile-$p: $pr"; return 1; }
+    pr="$(run_profile "$p" "$(contract ', "device_source": "scripts/device.sh get"')" | pick 'o.calls.filter((c) => c.prompt)[0].prompt')"
+    [[ "$pr" == *"$two"* ]] || { echo "profile-$p: $pr"; return 1; }
+    [[ "$pr" != *'Say at the top of your artifact'* ]] || { echo "profile-$p still says the top"; return 1; }
+  done
+}

@@ -256,3 +256,16 @@ PY
     grep -qF -- "$token" "$mc" || { echo "manual-checks does not say: $token"; return 1; }
   done
 }
+
+@test "a closing block of machine lines is not prose, however English its Run line" {
+  # A Russian report in a ru project, ending in the closing block of conventions/stage-dispatch.md.
+  cp "$FIX/research.ru.md" "$TASK/Done.md"
+  {
+    printf '\n[DONE_COMMIT] = .: 1a2b3c4d5e6f\n[REVIEW_FIXES] = 0\n\n'
+    printf '**Run:** drive_app=off; directive: «%s»\n' "$(printf 'run the whole suite on the second device and leave the shared cart package alone. %.0s' 1 2 3 4)"
+    printf '**Device:** the second device, set by this run, picked from the list the project command printed at the start of the stage\n'
+  } >>"$TASK/Done.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "${lines[${#lines[@]}-1]}" = "artifact language passed" ]
+}

@@ -253,3 +253,16 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
     if grep -qF 'Never edit' <<<"$d"; then echo "profile-$p: Done is told to hand items to a writer that will not run"; return 1; fi
   done
 }
+
+@test "Review and Done write their record lines in the closing block, in all eight scripts" {
+  for p in bug feature refactor test quick research review epic; do
+    f="$ROOT/workflows/profile-$p.js"
+    grep -qF 'at the end, write those lines in the closing block of Review.md, exactly as printed; the first line stays the status line' "$f" || { echo "profile-$p: Review sentence"; return 1; }
+    grep -qF 'The closing block of Done.md holds the lines "${core('"'"'scripts/task-ranges.sh'"'"')}" tips ${DIR} --kind done prints, run right before you finish.' "$f" || { echo "profile-$p: Done sentence"; return 1; }
+    ! grep -qE 'directly under the first line|The first lines of Done.md' "$f" || { echo "profile-$p: an old position is left"; return 1; }
+  done
+  for p in $RANGED; do
+    r="$(run_profile "$p" "$(contract Review ", \"review_ranges\": $TWO")" '{}' | prompt_of review)"
+    grep -qF 'write those lines in the closing block of Review.md, exactly as printed; the first line stays the status line' <<<"$r" || { echo "profile-$p: review prompt"; return 1; }
+  done
+}

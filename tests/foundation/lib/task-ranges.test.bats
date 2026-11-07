@@ -319,3 +319,43 @@ origin_at() { # $1 commit: origin/main stands there and is the remote's HEAD, as
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ "$output" = "$(printf '%s\n%s' "$t1" "$t2")" ] || { echo "$output"; return 1; }
 }
+
+# Markers are read at any position, first match per repository: Tasks/DONE holds files with them on
+# top, new files carry them in a closing block after the prose and the Run line.
+layout() { # $1 top|closing|stale, $2 done|reviewed
+  local file=Done.md tips; [ "$2" = reviewed ] && file=Review.md
+  tips="$("$TR" tips "$TASK" --kind "$2")"
+  {
+    [ "$2" = reviewed ] && [ "$1" != top ] && printf '[REVIEW_STATUS] = APPROVED\n\n'
+    case "$1" in
+      top) printf '%s\n**Run:** drive_app=off\n\nThe cart now keeps its promo code.\n' "$tips" ;;
+      closing) printf 'The cart now keeps its promo code.\n\n%s\n\n**Run:** drive_app=off\n**Device:** Phone B\n' "$tips" ;;
+      stale)
+        printf 'The cart now keeps its promo code.\n\n%s\n\n**Run:** drive_app=off\n\n## History\n\n' "$tips"
+        sed 's/: [0-9a-f]*$/: 0000000000000000000000000000000000000000/' <<<"$tips" ;;
+    esac
+  } >"$TASK/$file"
+}
+
+@test "since done and since reviewed give one answer for markers on top, in a closing block, and with a stale copy below" {
+  for since in done reviewed; do
+    for l in top closing stale; do
+      layout "$l" "$since"
+      commit "$PROJ" "$since-$l.txt"
+      run "$TR" ranges "$TASK" --since "$since"
+      [ "$status" -eq 0 ] || { echo "$since/$l: $status $output"; return 1; }
+      [ "$(state . <<<"$output")" = "ok 1" ] || { echo "$since/$l: $output"; return 1; }
+      [ "$(state Packages/Core <<<"$output")" = "ok 0" ] || { echo "$since/$l: $output"; return 1; }
+    done
+  done
+}
+
+@test "a malformed marker in the closing block stops with exit 2, as one on top does" {
+  for since in done reviewed; do
+    layout closing "$since"
+    kind=DONE; file=Done.md; [ "$since" = reviewed ] && { kind=REVIEWED; file=Review.md; }
+    printf '[%s_COMMIT] = .: not-a-sha\n' "$kind" >>"$TASK/$file"
+    run "$TR" ranges "$TASK" --since "$since"
+    [ "$status" -eq 2 ] || { echo "$since: $status $output"; return 1; }
+  done
+}

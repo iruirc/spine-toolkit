@@ -463,3 +463,12 @@ fifteen() { printf 'one two three four five six seven eight nine ten eleven twel
   [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
   [[ "$output" == *"lint-walkthrough.sh: resolve-settings.sh failed for $TASK"* ]] || { echo "$output"; return 1; }
 }
+
+@test "a walkthrough ending in a closing block passes, and COVERS stays on line 2" {
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### Bookkeeping\n\n- `%s` — one commit.' "$A1" "$A2")"
+  printf '\n**Run:** drive_app=off; directive: «leave the cart package alone»\n**Device:** Phone B, set by this run\n' >>"$TASK/Walkthrough.md"
+  [ "$(sed -n 2p "$TASK/Walkthrough.md" | cut -c1-9)" = '[COVERS] ' ]
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  [ -z "$output" ] || { echo "$output"; return 1; }
+}
