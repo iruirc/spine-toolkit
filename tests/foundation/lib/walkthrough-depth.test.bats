@@ -4,6 +4,8 @@
 # ceiling but two things a grep can see: a named reader, and a value vocabulary
 # with more than "yes" in it.
 
+load "$(dirname "$BATS_TEST_FILENAME")/../helpers/config-doc"
+
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   SKILL="$ROOT/skills/task-walkthrough/SKILL.md"
@@ -163,12 +165,10 @@ NAMES
     || { echo "the shipped value deep is not the one the guidance calls the default"; return 1; }
 }
 
-@test "both task templates offer the three values in the optional block" {
-  for f in task-root task-step; do
-    grep -qF '# [WALKTHROUGH] = [off]       # brief | deep | off' \
-      "$ROOT/templates/task-md/$f.md" \
-      || { echo "$f.md does not offer the three values"; return 1; }
-  done
+@test "the doc lets a task override WALKTHROUGH, with the three values" {
+  config_doc_offers WALKTHROUGH || { echo "no overridable [WALKTHROUGH] in the doc"; return 1; }
+  config_doc_section WALKTHROUGH | grep -qF '`[WALKTHROUGH] = [brief|deep|off]`' \
+    || { echo "the override spelling is missing from the [WALKTHROUGH] section"; return 1; }
 }
 
 @test "task-new tells the author when brief is the right choice" {
@@ -371,10 +371,7 @@ NAMES
   T="$ROOT/templates/spine-md/en.md"
   grep -qE '^\[WALKTHROUGH_CHECK\] = \[auto\] +# auto \| on \| off$' "$T" \
     || { echo "the config template does not ship auto beside the three values"; return 1; }
-  for f in task-root task-step; do
-    grep -qxF '# [WALKTHROUGH_CHECK] = [off] # auto | on | off' "$ROOT/templates/task-md/$f.md" \
-      || { echo "$f.md does not offer the field"; return 1; }
-  done
+  config_doc_offers WALKTHROUGH_CHECK || { echo "the doc does not let a task override the field"; return 1; }
   D="$ROOT/docs/configuration.md"
   grep -qxF '### [WALKTHROUGH_CHECK]' "$D" || { echo "docs/configuration.md has no section for the field"; return 1; }
   grep -qF '`[WALKTHROUGH_CHECK] = [auto|on|off]`' "$D" || { echo "the override spelling is missing"; return 1; }

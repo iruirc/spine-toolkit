@@ -5,24 +5,8 @@
 [NEED_TEST] = [{{NEED_TEST}}]
 [NEED_REVIEW] = [{{NEED_REVIEW}}]
 
-# Optional (only if overriding the project config's default):
-# [WORKFLOW_MODE] = [auto]    # manual | auto
-# [DRIVE_APP] = [off]         # auto | off
-# [DRIVER] = [auto]           # <driver-plugin> | auto | —
-# [DEVICE] = [auto]           # auto | <device>
-# [MANUAL_CHECKS] = [always]  # auto | always
-# [MANUAL_CHECKS_CHECK] = [off] # on | off
-# [PHASE_VERIFICATION] = [full] # proportional | full
-# [FIX_ROUNDS] = [0]         # a whole number, 0 turns the auto loop off
-# [WALKTHROUGH] = [off]       # brief | deep | off
-# [WALKTHROUGH_CHECK] = [off] # auto | on | off
-# [SECURITY] = [on]           # auto | on | off
-# [SCALE] = [full]            # lite | full
-# [MODELS] = [architect: opus]  # <light|walkthrough|done|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <opus|sonnet|haiku|fable|session in Claude Code; the runtime's own names elsewhere>, comma-separated
-# [EFFORT] = [reviewer: high]   # <walkthrough|done|architect|developer|tester|reviewer|refactorer|validator|security|diagnostics>: <low|medium|high|xhigh|max|session in Claude Code; the runtime's own names elsewhere>, comma-separated
-# [LONG_RUN] = [max: 60]      # <stall|max>: <minutes>, comma-separated
-# [DOCS] = [off]              # on | off
-# [DOCS_NEW] = [Name:state]   # components this task creates: <name>:<state|progress>, comma-separated
+# Optional overrides: any field under "Task defaults" in the toolkit's docs/configuration.md,
+# written here as [FIELD] = [value] on a line of its own, replaces the project's value for this task.
 
 ## 1. [Files]
 

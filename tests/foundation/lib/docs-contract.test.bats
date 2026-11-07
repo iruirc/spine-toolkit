@@ -3,6 +3,8 @@
 # it, and the template a project starts from. A template that does not parse is the copy a
 # project actually gets, so it is checked by running the parser over it rather than by reading.
 
+load "$(dirname "$BATS_TEST_FILENAME")/../helpers/config-doc"
+
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   DR="$ROOT/scripts/docs-route.sh"
@@ -28,13 +30,13 @@ setup() {
   [ "$status" -eq 0 ]
 }
 
-@test "the task template ships both docs overrides, commented out" {
-  tpl="$ROOT/templates/task-md/task-root.md"
-  grep -q '^# \[DOCS\] = ' "$tpl"
-  grep -q '^# \[DOCS_NEW\] = ' "$tpl"
+@test "the doc lets a task override DOCS and names the DOCS_NEW field beside it" {
+  config_doc_offers DOCS || { echo "no overridable [DOCS] in the doc"; return 1; }
+  config_doc_section DOCS | tr '\n' ' ' | grep -qF 'names the components it creates in `[DOCS_NEW]`' \
+    || { echo "the [DOCS] section does not document [DOCS_NEW]"; return 1; }
 }
 
-@test "the template's commented overrides are not read as values" {
+@test "the template's pointer comment is not read as a value" {
   proj="$BATS_TEST_TMPDIR/q"
   taskdir="$proj/Tasks/ACTIVE/001-t"
   mkdir -p "$taskdir"
@@ -44,8 +46,9 @@ setup() {
   run bash -c "printf 'M\tSources/A.txt\n' | '$DR' route '$proj' --task-dir '$taskdir' --phase 1"
   [ "$status" -eq 0 ]
   grep -q '^| 1 | D |' "$taskdir/Docs.md"
-  # The row count is what makes this test cover BOTH commented lines: a [DOCS_NEW] read as a value
-  # would add a second row beside the real one, which a presence check alone would never notice.
+  # The row count is what makes this test cover the pointer: a `[FIELD] = [value]` it spells out and
+  # a reader takes for a [DOCS_NEW] would add a second row beside the real one, which a presence
+  # check alone would never notice.
   [ "$(grep -c '^| 1 |' "$taskdir/Docs.md")" -eq 1 ]
 }
 

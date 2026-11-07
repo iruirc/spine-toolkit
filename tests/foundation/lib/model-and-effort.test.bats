@@ -4,6 +4,8 @@ bats_require_minimum_version 1.5.0
 # and one resolver (scripts/resolve-settings.sh). These tests hold every surface that restates a piece
 # of the rule to it: a surface that drifts is how a project's choice stops reaching a dispatch.
 
+load "$(dirname "$BATS_TEST_FILENAME")/../helpers/config-doc"
+
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   RULE="$ROOT/conventions/stage-dispatch.md"
@@ -93,15 +95,20 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   done
 }
 
-@test "both task templates offer the MODELS and EFFORT overrides with the resolver's keys and values" {
-  var() { sed -n "s/^$1=\"\(.*\)\"$/\1/p" "$ROOT/scripts/resolve-settings.sh" | tr ' ' '|'; }
-  # The vocabulary a template quotes is the Claude runtime's, named as such: other runtimes have their own.
-  rt() { python3 -c 'import json,sys; print("|".join(json.load(open(sys.argv[1]))[sys.argv[2]]))' "$ROOT/runtimes/claude-code.json" "$1"; }
-  models="# [MODELS] = [architect: opus]  # <light|walkthrough|done|$(var ROLES)>: <$(rt models) in Claude Code; the runtime's own names elsewhere>, comma-separated"
-  effort="# [EFFORT] = [reviewer: high]   # <walkthrough|done|$(var ROLES)>: <$(rt effort) in Claude Code; the runtime's own names elsewhere>, comma-separated"
-  for t in task-root task-step; do
-    grep -qxF "$models" "$ROOT/templates/task-md/$t.md" || { echo "$t.md: [MODELS] is not '$models'"; return 1; }
-    grep -qxF "$effort" "$ROOT/templates/task-md/$t.md" || { echo "$t.md: [EFFORT] is not '$effort'"; return 1; }
+@test "the doc lets a task override MODELS and EFFORT, with the resolver's roles and the runtime's values" {
+  roles="$(sed -n 's/^ROLES="\(.*\)"$/\1/p' "$ROOT/scripts/resolve-settings.sh")"
+  [ "$(wc -w <<<"$roles")" -eq 8 ] || { echo "the resolver has '$roles', not the eight roles the doc counts"; return 1; }
+  # The vocabulary the doc quotes is the Claude runtime's, named as such: other runtimes have their own.
+  rt() { python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))[sys.argv[2]]))' "$ROOT/runtimes/claude-code.json" "$1"; }
+  for pair in MODELS:models EFFORT:effort; do
+    field="${pair%%:*}"
+    config_doc_offers "$field" || { echo "no overridable [$field] in the doc"; return 1; }
+    sec="$(config_doc_section "$field" | tr '\n' ' ')"
+    grep -qF "\`[$field] = [<key>: <value>, …]\`" <<<"$sec" || { echo "[$field]: the override spelling is missing"; return 1; }
+    grep -qF 'the eight role' <<<"$sec" || { echo "[$field]: the doc does not count the eight roles"; return 1; }
+    for v in $(rt "${pair##*:}"); do
+      grep -qF "\`$v\`" <<<"$sec" || { echo "[$field]: the runtime value $v is not in the doc"; return 1; }
+    done
   done
 }
 

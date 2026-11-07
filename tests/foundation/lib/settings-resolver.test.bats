@@ -3,6 +3,8 @@
 # The chain is what a project's choice travels along; a chain resolved in prose cannot be tested,
 # which is why five surfaces used to resolve it five ways.
 
+load "$(dirname "$BATS_TEST_FILENAME")/../helpers/config-doc"
+
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   RESOLVE="$ROOT/scripts/resolve-settings.sh"
@@ -588,10 +590,7 @@ FIELDS
   grep -qF '`[MANUAL_CHECKS_CHECK] = [on|off]`' "$D" || { echo "the override spelling is missing"; return 1; }
   grep -qF '`[MANUAL_CHECKS_CHECK] = [<on|off>]`' "$ROOT/skills/task-new/SKILL.md" \
     || { echo "task-new does not offer the field"; return 1; }
-  for t in task-root task-step; do
-    grep -qxF '# [MANUAL_CHECKS_CHECK] = [off] # on | off' "$ROOT/templates/task-md/$t.md" \
-      || { echo "no [MANUAL_CHECKS_CHECK] in $t.md"; return 1; }
-  done
+  config_doc_offers MANUAL_CHECKS_CHECK || { echo "the doc does not let a task override the field"; return 1; }
 }
 
 @test "walkthrough_check follows the depth when nobody chose it" {

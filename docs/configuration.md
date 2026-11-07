@@ -135,6 +135,8 @@ reads as `—`.
 
 ## Task defaults
 
+A task overrides any field below by writing the same field into its own `Task.md`.
+
 ### [WORKFLOW_MODE]
 
 **Values:** `manual` `auto` · **Default:** `manual` · **Task override:** `[WORKFLOW_MODE] = [manual|auto]`

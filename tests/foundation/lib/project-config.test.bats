@@ -12,6 +12,8 @@ bats_require_minimum_version 1.5.0
 # spelling a trailing slash, which is how two bats files kept core's suite bound
 # to platform/ for twelve tasks.
 
+load "$(dirname "$BATS_TEST_FILENAME")/../helpers/config-doc"
+
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   TPL="$ROOT/templates/spine-md/en.md"
@@ -138,23 +140,17 @@ catalog_words() {
     || { echo "[DRIVER] must ship 'auto' or a placeholder"; return 1; }
 }
 
-@test "both task templates offer the DRIVER override" {
-  # Both, not one: a field in the root template and not the step template is a
-  # field an epic's steps silently cannot use, which surfaces only as a step that
+@test "the doc lets a task override DRIVER and DRIVE_APP" {
+  # Both, not one: a field the doc marks overridable is one an epic's steps can use too, since the
+  # step template carries the same pointer; a DRIVER left out here surfaces only as a step that
   # drove the app when its parent said not to.
-  for t in task-root task-step; do
-    f="$ROOT/templates/task-md/$t.md"
-    grep -q '\[DRIVER\]' "$f" || { echo "no [DRIVER] in $t.md"; return 1; }
-    grep -q '\[DRIVE_APP\]' "$f" || { echo "no [DRIVE_APP] in $t.md — the anchor moved"; return 1; }
-  done
+  config_doc_offers DRIVER || { echo "docs/configuration.md has no overridable [DRIVER]"; return 1; }
+  config_doc_offers DRIVE_APP || { echo "docs/configuration.md has no overridable [DRIVE_APP]"; return 1; }
 }
 
-@test "both task templates offer the DEVICE override, and neither the DEVICE_SOURCE one" {
-  for t in task-root task-step; do
-    f="$ROOT/templates/task-md/$t.md"
-    grep -q '^# \[DEVICE\] = \[' "$f" || { echo "no [DEVICE] in $t.md"; return 1; }
-    ! grep -q 'DEVICE_SOURCE' "$f" || { echo "$t.md offers a field no task can set"; return 1; }
-  done
+@test "the doc lets a task override DEVICE, and not the DEVICE_SOURCE one" {
+  config_doc_offers DEVICE || { echo "docs/configuration.md has no overridable [DEVICE]"; return 1; }
+  ! config_doc_offers DEVICE_SOURCE || { echo "the doc offers a field no task can set"; return 1; }
 }
 
 @test "the config template declares the phase_verification field" {
@@ -169,11 +165,10 @@ catalog_words() {
     || { echo "[PHASE_VERIFICATION] must ship proportional and name proportional | full"; return 1; }
 }
 
-@test "both task templates offer the PHASE_VERIFICATION override" {
-  for t in task-root task-step; do
-    grep -qF '# [PHASE_VERIFICATION] = [full] # proportional | full' "$ROOT/templates/task-md/$t.md" \
-      || { echo "no [PHASE_VERIFICATION] in $t.md"; return 1; }
-  done
+@test "the doc lets a task override PHASE_VERIFICATION, with its two values" {
+  config_doc_offers PHASE_VERIFICATION || { echo "no overridable [PHASE_VERIFICATION] in the doc"; return 1; }
+  config_doc_section PHASE_VERIFICATION | grep -qF '`[PHASE_VERIFICATION] = [proportional|full]`' \
+    || { echo "the override spelling is missing from the [PHASE_VERIFICATION] section"; return 1; }
 }
 
 @test "the Budgets field ships empty" {
@@ -201,11 +196,10 @@ catalog_words() {
     || { echo "[SECURITY] must ship auto and name auto | on | off"; return 1; }
 }
 
-@test "both task templates offer the SECURITY override" {
-  for t in task-root task-step; do
-    grep -qxF '# [SECURITY] = [on]           # auto | on | off' "$ROOT/templates/task-md/$t.md" \
-      || { echo "no [SECURITY] in $t.md"; return 1; }
-  done
+@test "the doc lets a task override SECURITY, with its three values" {
+  config_doc_offers SECURITY || { echo "no overridable [SECURITY] in the doc"; return 1; }
+  config_doc_section SECURITY | grep -qF '`[SECURITY] = [auto|on|off]`' \
+    || { echo "the override spelling is missing from the [SECURITY] section"; return 1; }
 }
 
 @test "the config template ships long_run at its defaults" {
@@ -213,20 +207,20 @@ catalog_words() {
     || { echo "[LONG_RUN] must ship stall: 5, max: 30"; return 1; }
 }
 
-@test "both task templates offer the LONG_RUN override" {
-  for t in task-root task-step; do
-    grep -qF '# [LONG_RUN] = [max: 60]' "$ROOT/templates/task-md/$t.md" \
-      || { echo "no [LONG_RUN] in $t.md"; return 1; }
-  done
+@test "the doc lets a task override LONG_RUN, one key or both" {
+  config_doc_offers LONG_RUN || { echo "no overridable [LONG_RUN] in the doc"; return 1; }
+  config_doc_section LONG_RUN | grep -qF '`[LONG_RUN] = [<key>: <minutes>, …]`' \
+    || { echo "the override spelling is missing from the [LONG_RUN] section"; return 1; }
 }
 
-@test "the fix_rounds field ships at 2 in the config and as an override in both task templates" {
+@test "the fix_rounds field ships at 2 in the config and is an override the doc explains" {
   grep -qE '^\[FIX_ROUNDS\] = \[2\] +# a whole number, 0 turns the auto loop off$' "$TPL" \
     || { echo "[FIX_ROUNDS] must ship 2 with its comment"; return 1; }
-  for t in task-root task-step; do
-    grep -qF '# [FIX_ROUNDS] = [0]         # a whole number, 0 turns the auto loop off' "$ROOT/templates/task-md/$t.md" \
-      || { echo "no [FIX_ROUNDS] in $t.md"; return 1; }
-  done
+  config_doc_offers FIX_ROUNDS || { echo "no overridable [FIX_ROUNDS] in the doc"; return 1; }
+  config_doc_section FIX_ROUNDS | grep -qF '`[FIX_ROUNDS] = [<n>]`' \
+    || { echo "the override spelling is missing from the [FIX_ROUNDS] section"; return 1; }
+  config_doc_section FIX_ROUNDS | tr '\n' ' ' | grep -qF '`0` turns the automatic loop off' \
+    || { echo "the [FIX_ROUNDS] section does not say what 0 does"; return 1; }
 }
 
 # --- Project config lookup: SPINE.md, or the legacy name where a project has not migrated ---
