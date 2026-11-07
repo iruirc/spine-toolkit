@@ -869,7 +869,7 @@ If no open items found → render the unchanged `stage_done_prompt`.
 3. `stage_done_dialog_skip` → leave item untouched.
 4. `confirm_dispatch_cancel` → abort the dialog; return to the `stage_done_prompt_with_questions` AUQ with the (possibly partially) updated list.
 
-Edits land in the primary artifact in-place; an `## Open Questions Log` section is appended to `Questions.md` (created if absent) with one bullet per resolved or deferred item, format: `- [<stage>] [<section>] <id> — <RESOLVED: answer | DEFERRED>`.
+Edits land in the primary artifact in-place; an `## Open Questions Log` section is appended to `Questions.md` (created if absent) with one entry per resolved or deferred item, in the form `skills/task-documents/SKILL.md` gives under Questions.md: `- [<stage>] <id> — **Question:** <item text>`, the item's own line without its sub-items, then on the lines below it `**Decision:**` (the accepted recommendation or the owner's words; `deferred` for a deferral), `**Rejected:**` (the item's other options, or `none offered`) and `**Decided by:** owner, <ISO date>`. Only the log entry takes this form: the `[RESOLVED]` or `[DEFERRED]` prefix on the original bullet stays as it is.
 
 After the dialog finishes (all items processed OR user aborted), re-run the open-questions inspection on the updated artifact and re-render `stage_done_prompt_with_questions` until either zero open items remain or the user picks `stage_done_option_continue` / `confirm_dispatch_cancel`.
 

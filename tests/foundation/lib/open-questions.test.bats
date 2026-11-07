@@ -160,3 +160,21 @@ MD
   grep -qF 'the recommended one carries `(recommended)`' "$ROOT/skills/task-documents/SKILL.md" \
     || { echo "rule 5 does not say how a recommendation is marked"; return 1; }
 }
+
+@test "a closed bullet keeps its prefix and a log entry in the Questions.md form is not an open item" {
+  cat >"$A" <<'MD'
+### Open questions
+- [RESOLVED] Q1 Does a promo code apply to discounted items
+  - no, full-price items only
+- [DEFERRED] Q2 Rounding of the total
+- Q3 Which cache
+## Open Questions Log
+- [Research] Q1 — **Question:** does a promo code apply to discounted items?
+  **Decision:** no, the code applies to full-price items only.
+  **Rejected:** applying it to every item, because two discounts on one item can break the cap.
+  **Decided by:** owner, 2026-11-07
+MD
+  run "$OQ" "$A"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(field 'i["id"]' <<<"$output")" = 'Q3' ] || { echo "$output"; return 1; }
+}

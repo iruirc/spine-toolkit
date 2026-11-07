@@ -780,7 +780,7 @@ Then do exactly one of these, and nothing else:
 
 - APPROVED — move the task folder into Tasks/DONE/ using the spine-toolkit:task-move skill. If it is already in Tasks/DONE/, leave it and still report it as moved: this step is idempotent.
 - CHANGES_REQUESTED — leave the task where it is. Append a section to ${DIR}/Done.md listing the concrete Critical and Major points from Review.md, or create ChangesRequested.md beside Review.md when Done.md does not exist. The heading is the byte-for-byte literal \`## Awaiting changes\` — never translated, localized, or adapted, because it is a machine-parsed anchor. The bullets beneath it are prose and follow the output language.
-- DISCUSSION — leave the task where it is. Create or extend ${DIR}/Questions.md with a section headed \`## <ISO date> — Discussion from Review\`, quoting or linking the disputed points. Get the date from the system rather than guessing it.
+- DISCUSSION — leave the task where it is. Create or extend ${DIR}/Questions.md with an \`## Open Questions Log\` section holding one entry per disputed point of Review.md, in the form of the task-documents skill's Questions.md section: \`- [Review] <id> — **Question:** <disputed point>\`, then \`**Decision:**\` (\`deferred\`: the owner rules), \`**Rejected:**\` (the positions of the dispute not taken, or \`none offered\`) and \`**Decided by:** owner, <ISO date>\`. Get the date from the system rather than guessing it.
 - anything else, or a first line that does not match the format — change nothing at all, and report status_line_valid as false along with what you actually read.
 
 Report the status you read, not the one you expected to read.`,
