@@ -106,6 +106,9 @@ DocsMap.md: {docs_map_status}
 
 Откат: `mv {backup_path} {config_name}`
 
+## report_walkthrough_check_off
+[WALKTHROUGH_CHECK] в этом проекте выключен, поэтому Walkthrough.md никогда не перечитывается свежим читателем; поставь auto, чтобы включить проверку.
+
 ## stack_status_deferred
 не задан — у этой платформы нет setup-скилла; оркестратор спросит по осям на первой задаче, которой они понадобятся
 

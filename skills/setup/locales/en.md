@@ -106,6 +106,9 @@ Backup: {backup_path}
 
 To roll back: `mv {backup_path} {config_name}`
 
+## report_walkthrough_check_off
+[WALKTHROUGH_CHECK] is off in this project, so Walkthrough.md is never read back by a fresh reader; set it to auto to turn the check on.
+
 ## stack_status_deferred
 not set — this platform ships no setup skill; the orchestrator will ask per axis on the first task that needs one
 
