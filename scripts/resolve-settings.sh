@@ -559,7 +559,8 @@ if lr['stall'] >= lr['max']:
 # (Plan.md, words-per-sentence) and its values positive whole numbers.
 caps, budget_source = dict(CAPS), 'default'
 found = [('--set budgets', 'run', ['%s: %s' % kv for kv in RUN_BUDGETS.items()])]
-found += [(('Task.md [BUDGETS]'), label, task_map_entries(path, 'BUDGETS')) for label, path in task_files()]
+# A bad entry names the file it came from: the step's own Task.md, or its epic's.
+found += [(('epic Task.md [BUDGETS]' if label == 'epic' else 'Task.md [BUDGETS]'), label, task_map_entries(path, 'BUDGETS')) for label, path in task_files()]
 found.append((('%s [BUDGETS]' % CFG), 'project', config_entries('BUDGETS')))
 budget_decided = {}
 for label, source, entries in found:

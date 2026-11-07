@@ -791,6 +791,8 @@ const ARTIFACT_REVISED = {
   },
 }
 // A dispatch that throws counts as one that returned nothing.
+// quietly, unlike checkWalkthrough: a failed read or revision of Plan.md or Done.md is noted and
+// stops nothing (artifact-reader → ## Check), while a walkthrough dispatch fails as any stage's does.
 const quietly = async (call) => {
   try {
     return await call()
@@ -809,11 +811,12 @@ const checkArtifact = async (stage, role, agentType, file) => {
       { label: 'artifact:check', phase: stage, agentType, schema: ARTIFACT_READ, ...tuning(role, 'light') },
     ),
   )
-  if (!read) {
+  // A reply without an unclear list carries no answer to check against: the same as none.
+  if (!read || !Array.isArray(read.unclear)) {
     result.notes.push(`${name} check: the reader returned nothing, so the file went unchecked.`)
     return
   }
-  const listed = Array.isArray(read.unclear) ? read.unclear : []
+  const listed = read.unclear
   // An entry without a quote names no place, so there is nothing in the file to fix for it.
   const unclear = listed.filter((u) => u && typeof u.quote === 'string' && u.quote.trim())
   if (unclear.length < listed.length) result.notes.push(`${name} check: ${listed.length - unclear.length} entry(ies) quoted no place, so they were skipped.`)

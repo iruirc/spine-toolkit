@@ -1383,6 +1383,18 @@ budget() { python3 -c 'import json,sys; print(json.load(sys.stdin)["budgets"][sy
   [ "$(source_of budgets <<<"$output")" = task ] || { echo "$output"; return 1; }
 }
 
+@test "a bad budgets entry names whose Task.md it came from, the epic's or the step's" {
+  EPIC="$PROJ/Tasks/ACTIVE/052-an-epic"
+  STEP="$EPIC/1-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[BUDGETS] = [Plan.md: 0, Done.md: 60]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n[BUDGETS] = [Review.md: many]\n' >"$STEP/Task.md"
+  "$RESOLVE" json "$STEP" >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  grep -qxF "epic Task.md [BUDGETS]: 'Plan.md: 0' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+  grep -qxF "Task.md [BUDGETS]: 'Review.md: many' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+  [ "$(budget Done.md <"$BATS_TEST_TMPDIR/out")" = 60 ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+}
+
 @test "budgets keys resolve independently across run, task, epic and project" {
   EPIC="$PROJ/Tasks/ACTIVE/050-an-epic"
   STEP="$EPIC/1-first.step"

@@ -120,10 +120,10 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   done
 }
 
-@test "a read that returns nothing, or throws, ends the check quietly and the run goes on" {
+@test "a read that returns nothing, throws, or returns no unclear list ends the check quietly and the run goes on" {
   for p in $SEVEN; do
     for s in $(stages_of "$p"); do
-      for reply in null '{"__throw": "dispatch failed"}'; do
+      for reply in null '{"__throw": "dispatch failed"}' '{"retelling": ["r"], "unclear": "none"}' '{"retelling": ["r"]}'; do
         out="$(run_stage "$p" "$s" on "\"artifact:check\": $reply")"
         [ "$(order <<<"$out")" = "$(tr 'A-Z' 'a-z' <<<"$s") artifact:check/$s" ] || { echo "profile-$p $s: dispatched $(order <<<"$out")"; return 1; }
         grep -qF "$s.md check: the reader returned nothing, so the file went unchecked." <<<"$(notes <<<"$out")" \
@@ -292,4 +292,9 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   grep -qF 'a task raised to `full` mid-run is checked from the next run on' "$ROOT/conventions/task-settings.md" \
     || { echo "task-settings.md still says a mid-run raise turns the check on at once"; return 1; }
   ! grep -qF 'turns the check on with it' "$ROOT/conventions/task-settings.md" || { echo "the old claim is still there"; return 1; }
+}
+
+@test "the block says why the artifact check is quiet and the walkthrough check is not" {
+  grep -qF '// quietly, unlike checkWalkthrough:' <<<"$(block "$ROOT/workflows/profile-feature.js")" \
+    || { echo "the block does not say why it swallows a failed dispatch"; return 1; }
 }
