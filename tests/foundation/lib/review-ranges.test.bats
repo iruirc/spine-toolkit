@@ -198,6 +198,20 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
   done
 }
 
+@test "a writer whose lint left a style line beside a line of another class is still sent back at Done" {
+  # Only style is reported without a send-back; every other class keeps it, even next to a style line.
+  idle='"done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": false}'
+  rest="\"edit\": {\"ok\": true, \"artifact_path\": \"e\", \"summary\": \"s\", \"committed\": true}, \"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\"}, $PASSED, $idle"
+  mixed='Walkthrough.md: style: sentence of 31 words (## Summary)\nWalkthrough.md: unreachable: abc1234 (## Commits)'
+  for p in $RANGED quick; do
+    case "$p" in bug) code=Fix ;; feature) code=Execute ;; refactor) code=Refactor ;; test) code=Write ;; quick) code=Edit ;; esac
+    out="$(run_profile "$p" "$(contract "$code" ", \"review_ranges\": $TWO")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"$mixed\"}}")"
+    [ "$(pick "o.calls.filter((c) => c.label === 'walkthrough').length" <<<"$out")" = 2 ] || { echo "profile-$p: a non-style line beside a style one did not send the writer back"; return 1; }
+    grep -qF 'Walkthrough.md: unreachable: abc1234' <<<"$(pick 'o.result.notes' <<<"$out")" \
+      || { echo "profile-$p: the non-style line left the report"; return 1; }
+  done
+}
+
 @test "an item about the walkthrough goes to its writer and is closed by it" {
   item='name the third commit in ## Commits'
   replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$item\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"walkthrough_findings\": [\"$item\"]}, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true}}"

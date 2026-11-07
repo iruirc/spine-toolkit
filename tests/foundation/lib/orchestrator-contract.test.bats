@@ -309,6 +309,24 @@ section() {
   done
 }
 
+@test "the integrity pass reports a style line and sends the file back only for the other classes" {
+  # Style findings reach the writer once, through its own lint run; the rest goes into the report.
+  para="$(awk '/^\*\*Walkthrough integrity\.\*\*/{f=1;print;next} f&&/^\*\*/{exit} f' "$SKILL")"
+  [ -n "$para" ] || { echo "no Walkthrough integrity paragraph in the orchestrator"; return 1; }
+  for token in '`walkthrough_lint_style` (`{line}`)' 'A `style` line never sends the file back' \
+               'when a line of any other class is among them' 'name only the lines of the other classes' \
+               '`walkthrough_lint_finding` (`{line}`)' '**once**' '`walkthrough_lint_persists` (`{line}`)'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the Walkthrough integrity paragraph does not say $token"; return 1; }
+  done
+  for l in en ru; do
+    body="$(awk '/^## walkthrough_lint_style$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orchestrator/locales/$l.md")"
+    [ -n "$body" ] || { echo "$l.md has no walkthrough_lint_style"; return 1; }
+    grep -qF '{line}' <<<"$body" || { echo "$l.md walkthrough_lint_style does not carry {line}"; return 1; }
+  done
+  grep -qF 'not sent back' <<<"$(awk '/^## walkthrough_lint_style$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orchestrator/locales/en.md")" \
+    || { echo "the en walkthrough_lint_style line does not say the file is not sent back"; return 1; }
+}
+
 @test "a subagent is told the language in words, first and last" {
   grep -qF 'at the start of the prompt and again as its last' "$SKILL" \
     || { echo "Subagent Context still hands the language over as a bare code"; return 1; }

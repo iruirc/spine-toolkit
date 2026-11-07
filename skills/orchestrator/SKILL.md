@@ -964,15 +964,20 @@ commit section without its labels. `--current`, which measures `walkthrough_curr
 the `style` class: its verdict is the history and the coverage only, so a style finding the writer
 already had once never sends the writer back at Done. The writer runs it too; this run
 is the measurement its word does not replace. On exit 1, report each line with key
-`walkthrough_lint_finding` (`{line}`) and send the file back **once** to the role the table above
-names for `Walkthrough.md`, on the model of kind `walkthrough`, asking for one thing: apply
-`task-walkthrough` → `## Refreshing` to the lines named, nothing else. Then run the script again; a
-line still there is reported with key `walkthrough_lint_persists` (`{line}`) and the run carries on.
-A file already sent back in this run is not sent again: a later boundary reports its lines with that
-key instead. Exit 2 is reported as the script printed it, and the run carries on. Run it with the
-language and budget checks before sending any rewrite; when they name one file,
-the walkthrough goes first: it removes and restores sections the other two would otherwise rewrite
-or trim.
+`walkthrough_lint_finding` (`{line}`), except a `style` line, which is reported with key
+`walkthrough_lint_style` (`{line}`). A `style` line never sends the file back: the writer's own run
+of the script already handed it every style finding once, so what is left goes into the report.
+Only when a line of any other class is among them, send the file back **once** to the role the
+table above names for `Walkthrough.md`, on the model of kind `walkthrough`, asking for one thing:
+apply `task-walkthrough` → `## Refreshing` to the lines named, nothing else;
+name only the lines of the other classes. Then run the script again; a line of those classes still
+there is reported with key `walkthrough_lint_persists` (`{line}`), a `style` line with
+`walkthrough_lint_style` again, and the run carries on. A file already sent back in this run
+is not sent again: a later boundary reports its lines with `walkthrough_lint_persists` instead, and
+a `style` line with `walkthrough_lint_style` as always. Exit 2 is reported as the script printed it,
+and the run carries on. Run it with the language and budget checks before sending any rewrite; when
+they name one file, the walkthrough goes first: it removes and restores sections the other two would
+otherwise rewrite or trim.
 
 **Stage leftovers.** A stage can leave a process running or a file changed that nothing in its
 report explains: a test build under an MCP server outlives the agent stopped over it, a driver keeps
