@@ -69,6 +69,13 @@ doc_section() { # $1 = heading text
   grep -qF 'closing block' <<<"$s" || { echo "Done.md never names the closing block"; return 1; }
 }
 
+@test "Done.md says what shrinks at lite" {
+  s="$(doc_section Done.md)"
+  grep -qF 'At `lite` the sections stay in the same order' <<<"$s" || { echo "Done.md gives no lite guidance"; return 1; }
+  grep -qF 'never a list of commits' <<<"$s" || { echo "a lite section may still be a list of commits"; return 1; }
+  grep -qw 'lite' <<<"$s" || { echo "Done.md never names lite"; return 1; }
+}
+
 @test "every Review.md finding carries an Impact line" {
   s="$(doc_section Review.md)"
   grep -qF '`**Impact:**`' <<<"$s" || { echo "no **Impact:**"; return 1; }

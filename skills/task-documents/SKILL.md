@@ -93,6 +93,8 @@ Phases added later keep this shape: the progress table stays a top-level table i
 6. The service sections: the phase table, whose `What` column is words with the identifier in brackets; what the profile's Done stage adds, such as the regression test or the coverage reached; the artifacts the task produced; the validation status; `## Review findings closed`.
 7. The closing block: the `[DONE_COMMIT]` and `[REVIEW_FIXES]` lines, `**Run:**`, `**Device:**` (`conventions/stage-dispatch.md` → Closing block).
 
+At `lite` the sections stay in the same order, inside the line ceiling that `scripts/lint-artifact-budget.sh` measures. `## Objections` and `## Estimate retrospective` are left out when they would be empty. The phase table keeps one line per phase, and each section is a few sentences, never a list of commits.
+
 When `Done.md` already exists, every claim in it is checked against the current artifacts and the git log before it is kept, as the workflow skill's Done stage says; this template does not change that reconciliation.
 
 ## Review.md
