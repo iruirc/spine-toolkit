@@ -5,7 +5,7 @@
 
 | Repository | Range | Commits | ± lines |
 |---|---|---|---|
-| `shop` | `3f1a2b4..4e5f6a7` | 4 | +486/−61 |
+| `shop` | `3f1a2b4..4e5f6a7` | 4 | +649/−64 |
 
 The statement is in Task.md. The verdicts are in Validation.md, Review.md and Done.md.
 
@@ -30,7 +30,7 @@ A customer sees two differences, both at checkout. Nothing changes for an order 
 |---|---|
 | **Before:** | The summary had three lines: order 1300, discount −130, total 1170. Delivery was hidden inside the first one. |
 | **After:** | Four lines: goods 1000, promo code −100, delivery 300, total 1200. The customer can check that 100 is 10% of 1000. |
-| **Commits:** | 3 |
+| **Commits:** | 1, 3 |
 
 ## Glossary
 
@@ -196,7 +196,7 @@ A footnote saying "delivery is not discounted" states the rule. It does not show
 
 ### Bookkeeping
 
-- `4e5f6a7` — plan checkboxes ticked for the three phases.
+- `4e5f6a7` — plan checkboxes ticked for the three phases (+3/−3).
 
 ## How it works
 
