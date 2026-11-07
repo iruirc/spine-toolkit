@@ -214,6 +214,9 @@ The language check measured the prose against `{measured}`, while this run write
 ## walkthrough_lint_finding
 {line}. Sending `Walkthrough.md` back to its author to repair it.
 
+## walkthrough_lint_style
+{line}. A style finding: reported, and `Walkthrough.md` is not sent back for it, since its writer already had it once.
+
 ## walkthrough_lint_persists
 {line}, still, after one pass. Leaving `Walkthrough.md` as it is; the run carries on.
 

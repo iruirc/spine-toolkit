@@ -214,6 +214,9 @@ Method B ({skill}): {why}
 ## walkthrough_lint_finding
 {line}. Возвращаю `Walkthrough.md` автору на исправление.
 
+## walkthrough_lint_style
+{line}. Находка стиля: попадает в отчёт, а `Walkthrough.md` за неё не возвращается — автор её уже получал один раз.
+
 ## walkthrough_lint_persists
 {line} — осталось и после одного прохода. Оставляю `Walkthrough.md` как есть, прогон продолжается.
 
