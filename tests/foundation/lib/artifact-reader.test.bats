@@ -102,3 +102,13 @@ section() { # $1 = heading text
   grep -qxF -- "$line2" "$f" || { echo "second example line missing"; return 1; }
   grep -qF 'artifact-reader' "$f" || { echo "i18n.md never names artifact-reader"; return 1; }
 }
+
+@test "the platform guide names the closing block of Review.md and the Impact field" {
+  f="$ROOT/docs/building-a-platform.md"
+  grep -qF 'the closing block' "$f" || { echo "the guide never names the closing block"; return 1; }
+  grep -qF '`**Impact:**`' "$f" || { echo "the guide never names the Impact field"; return 1; }
+  grep -qF 'The status line stays line 1 of `Review.md`' "$f" || { echo "the guide does not keep the status line first"; return 1; }
+  grep -qF '`spine-platform-swift` 1.31.0' "$f" || { echo "the swift version is missing"; return 1; }
+  grep -qF '`spine-platform-kotlin` 1.20.0' "$f" || { echo "the kotlin version is missing"; return 1; }
+  grep -qF 'every reader takes a marker at any position' "$f" || { echo "the guide does not say an older reviewer still works"; return 1; }
+}

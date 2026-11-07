@@ -168,6 +168,16 @@ Validation.md   first line:  [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 Review.md       first line:  [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 ```
 
+The status line stays line 1 of `Review.md`. Every other marker line your reviewer writes goes in
+the closing block, the last lines of the file after the findings and a blank line: the
+`[REVIEWED_COMMIT]` lines `scripts/task-ranges.sh` prints, then `**Run:** …`, then `**Device:** …`
+when the brief names them (`conventions/stage-dispatch.md` → Closing block). Each finding in
+`Review.md` also carries an `**Impact:**` line: one sentence, what breaks and for whom, with no
+code. A platform reviewer that follows both is expected from `spine-platform-swift` 1.31.0 and
+`spine-platform-kotlin` 1.20.0. An older reviewer still works: it writes the marker lines under the
+status line, and every reader takes a marker at any position, so a file in either layout parses the
+same. Only the first screen of the review reads worse until the platform catches up.
+
 ### Step 4 — `## Roles`
 
 All nine role names must appear. Map each to `plugin:agent`, or to an em dash for a role you do not
