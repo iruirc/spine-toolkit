@@ -154,3 +154,10 @@ mapping_rows() {
   grep -qF '[WALKTHROUGH_CHECK] = [auto]' "$ROOT/templates/spine-md/en.md"
   grep -qF 'never writes `off`' "$SKILL" || { echo "the skill does not pin that the migration never writes off"; return 1; }
 }
+
+@test "the migration writes the artifact check at its declared default auto, never the derived on or off" {
+  grep -qF '[ARTIFACT_CHECK] = [auto]' "$ROOT/templates/spine-md/en.md"
+  para="$(awk '/^A field no block answered is written at/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  grep -qF '`[ARTIFACT_CHECK]`' <<<"$para" || { echo "the absent-field paragraph does not exempt [ARTIFACT_CHECK]"; return 1; }
+  grep -qF 'Twenty-four agree' <<<"$para" || { echo "the absent-field paragraph miscounts the fields that agree"; return 1; }
+}

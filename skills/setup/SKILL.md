@@ -487,12 +487,12 @@ past — chiefly the pre-rename spelling of `drive_app` in the row above — whi
 user wrote rather than on the default 1.x fell to.
 
 A field no block answered is written at **the value `scripts/resolve-settings.sh` resolves when the
-field is absent**, which is not the same thing as the template's line. Twenty-three agree; `[SCALE]` does
+field is absent**, which is not the same thing as the template's line. Twenty-four agree; `[SCALE]` does
 not — the template ships `lite`, the resolver resolves `full`. `lite` is what a *new* project is
 given; a 1.x config with no `Scale` block was running `full`, and writing `lite` would take
 `[WALKTHROUGH]` to `off` with it, so the project would silently stop writing `Walkthrough.md`.
-`[WALKTHROUGH_CHECK]` agrees by its declared default `auto` — the resolver's own output for it is
-the derived `on`/`off`, which is never what the file is written with.
+`[WALKTHROUGH_CHECK]` and `[ARTIFACT_CHECK]` agree by their declared default `auto` — the resolver's
+own output for each is the derived `on`/`off`, which is never what the file is written with.
 
 ### Preamble handling
 
