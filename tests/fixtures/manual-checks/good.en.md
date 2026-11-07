@@ -35,9 +35,11 @@ This file checks what a person sees: two cases, about ten minutes.
 
 | Word in the cases | What it is on the screen |
 |---|---|
+| cart icon | the trolley picture at the top right; tapping it opens the cart |
 | badge | the red circle with a number on the cart icon, top right |
 | stepper | the minus button, the number and the plus button on an item row |
 | total | the line "Total" above the Checkout button |
+| Checkout button | the button at the foot of the cart, right of the total |
 
 ### P0. Build — **dev-only**
 
