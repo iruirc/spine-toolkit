@@ -472,8 +472,13 @@ section() {
   para="$(awk '/^`walkthrough_current` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`walkthrough_current\` paragraph in the Outbound Contract"; return 1; }
   for token in 'lint-walkthrough.sh --current <task dir>' 'exit 0 is `true`' 'Always filled' \
-               'wherever `walkthrough` is `off`' 'JSON boolean' 'a Method B run asks the same script after Done'; do
+               'wherever `walkthrough` is `off`' 'JSON boolean' 'a Method B run asks the same script after Done' \
+               'a `style` finding does not count there'; do
     grep -qF "$token" <<<"$para" || { echo "the walkthrough_current paragraph does not say $token"; return 1; }
+  done
+  integrity="$(awk '/^\*\*Walkthrough integrity\.\*\*/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  for token in 'as class `style`' '`--current`, which measures `walkthrough_current`, does not count'; do
+    grep -qF "$token" <<<"$integrity" || { echo "the integrity paragraph does not say $token"; return 1; }
   done
 }
 

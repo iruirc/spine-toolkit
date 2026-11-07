@@ -103,6 +103,18 @@ clean() { # $1 a path; the lint must exit 0 with no output
   expect "$(printf '%s\n%s' 'ManualChecks.md: case: heading is not ### MC-<n>. <observable behaviour> (### 3.)' 'ManualChecks.md: case: id MC-1 is used twice (### MC-1.)')"
 }
 
+@test "case: a ## Cases with no case under it is named" {
+  write '**Steps:** none yet.'
+  expect 'ManualChecks.md: case: no case under ## Cases (## Cases)'
+}
+
+@test "case: cases at the wrong heading level are not cases, and ## Cases is named as empty" {
+  write "$(case_md 1 | sed '1s/^###/####/')"
+  expect 'ManualChecks.md: case: no case under ## Cases (## Cases)'
+  write "$(case_md 1 | sed '1s/^###/##/')"
+  expect 'ManualChecks.md: case: no case under ## Cases (## Cases)'
+}
+
 @test "case: a heading with no behaviour after the id is named" {
   write "$(case_md 1 | sed '1s/.*/### MC-1./')"
   expect 'ManualChecks.md: case: no observable behaviour after the id (### MC-1.)'
@@ -149,6 +161,15 @@ clean() { # $1 a path; the lint must exit 0 with no output
   ACTION='Tap plus' EXPECTED='Quantity 2; total 9.00'
   write
   clean "$F"
+}
+
+@test "compound: afterwards in Action is named, in any case, as a whole word only" {
+  ACTION='Tap plus, afterwards tap minus'
+  write
+  expect 'ManualChecks.md: compound: "afterwards" in the Action of step 2 (### MC-1.)'
+  ACTION='Tap plus. Afterwards tap minus'
+  write
+  expect 'ManualChecks.md: compound: "Afterwards" in the Action of step 2 (### MC-1.)'
 }
 
 @test "compound: the Russian words for then, afterwards, at once and repeat steps are named" {

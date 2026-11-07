@@ -669,7 +669,8 @@ Change no production code and no tests.`,
     ),
     { label: 'walkthrough', phase: stage, agentType, schema: WALKTHROUGH_ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'walkthrough') },
   )
-  walkthroughCurrent = !!(w && w.artifact_path) && !w.lint
+  // A style line is not staleness: the writer already had it once (spec D-7), as --current ignores it.
+  walkthroughCurrent = !!(w && w.artifact_path) && !String(w.lint || '').split('\n').some((l) => l.trim() && !l.trim().startsWith('Walkthrough.md: style: '))
   if (!w || !w.artifact_path) {
     result.notes.push('The walkthrough agent returned nothing, so Walkthrough.md may be missing or stale.')
     return

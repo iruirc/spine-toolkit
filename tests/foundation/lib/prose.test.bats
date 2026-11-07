@@ -10,6 +10,7 @@ setup() {
 py() {
   python3 -c "
 import sys
+sys.dont_write_bytecode = True
 sys.path.insert(0, '$ROOT/scripts/lib')
 from prose import chunks, prose, sentences, words, MAX_WORDS
 $1"
@@ -37,6 +38,13 @@ $1"
   run py 'print(len(sentences("\u041e\u0442\u0432\u0435\u0442 \u043f\u0440\u0438\u0445\u043e\u0434\u0438\u0442, \u0442.\u0435. \u0431\u044b\u0441\u0442\u0440\u043e, \u0438 \u0442.\u0434. \u0442\u043e\u0436\u0435. \u041d\u0430\u043f\u0440. \u043e\u0434\u0438\u043d \u0432\u0430\u0440\u0438\u0430\u043d\u0442. \u0421\u043c. \u0440\u0438\u0441. 3 \u043d\u0438\u0436\u0435.")))'
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ "$output" = "3" ] || { echo "got $output"; return 1; }
+}
+
+@test "the spaced Russian forms t. e. and t. d. do not end a sentence" {
+  # "Answer arrives, t. e. fast, and t. d. too. Next one." is two sentences, not four.
+  run py 'print(len(sentences("\u041e\u0442\u0432\u0435\u0442 \u043f\u0440\u0438\u0445\u043e\u0434\u0438\u0442, \u0442. \u0435. \u0431\u044b\u0441\u0442\u0440\u043e, \u0438 \u0442. \u0434. \u0442\u043e\u0436\u0435. \u0414\u0430\u043b\u044c\u0448\u0435 \u043e\u0434\u043d\u043e.")))'
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "2" ] || { echo "got $output"; return 1; }
 }
 
 @test "English abbreviations do not end a sentence" {
@@ -94,4 +102,31 @@ for gone in ("cart.add", "example.com", "src/cart", "file.md", "fix(cart)"):
 print("ok")'
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ "$output" = "ok" ]
+}
+
+# A python that keeps its bytecode next to the source would write scripts/lib/__pycache__ into the
+# plugin on every lint run. The scripts are copied out so a failure cannot dirty this checkout, and
+# a sitecustomize turns off any cache prefix the local python ships with.
+@test "the lints that import prose leave no __pycache__ behind" {
+  T="$BATS_TEST_TMPDIR/copy"
+  mkdir -p "$T/site" "$T/task"
+  cp -R "$ROOT/scripts" "$T/scripts"
+  rm -rf "$T/scripts/lib/__pycache__"
+  printf 'import sys\nsys.pycache_prefix = None\n' >"$T/site/sitecustomize.py"
+  printf '# W\n\n## Summary\n\nText.\n' >"$T/w.md"
+  env -u PYTHONDONTWRITEBYTECODE PYTHONPATH="$T/site" "$T/scripts/lint-walkthrough.sh" --style "$T/w.md" || true
+  [ ! -e "$T/scripts/lib/__pycache__" ] || { echo "lint-walkthrough.sh wrote $(ls "$T/scripts/lib/__pycache__")"; return 1; }
+  env -u PYTHONDONTWRITEBYTECODE PYTHONPATH="$T/site" "$T/scripts/lint-artifact-lang.sh" "$T/task" >/dev/null 2>&1 || true
+  [ ! -e "$T/scripts/lib/__pycache__" ] || { echo "lint-artifact-lang.sh wrote $(ls "$T/scripts/lib/__pycache__")"; return 1; }
+}
+
+@test "the repository ignores __pycache__" {
+  grep -qxF '__pycache__/' "$ROOT/.gitignore" || { echo ".gitignore does not name __pycache__/"; return 1; }
+}
+
+@test "the merge after a sentence-final abbreviation is documented as a known limit" {
+  grep -qF 'Known limit: a full stop after an abbreviation never ends a sentence' "$ROOT/scripts/lib/prose.py" \
+    || { echo "prose.py does not document the merge"; return 1; }
+  grep -qF 'Known limit: a full stop after an abbreviation such as `e.g.` or `etc.` never ends a sentence' "$ROOT/skills/task-walkthrough/SKILL.md" \
+    || { echo "task-walkthrough does not document the merge"; return 1; }
 }

@@ -94,6 +94,20 @@ order() { pick "o.calls.map((c) => c.label).filter((l) => l.startsWith('walkthro
   done
 }
 
+@test "a first revision that returned nothing is not read again" {
+  for p in $WRITERS; do
+    out="$(run_profile "$p" "{$BASE, \"walkthrough:check\": $(read_with 4), \"walkthrough:revise\": null}")"
+    [ "$(order <<<"$out")" = 'walkthrough walkthrough:check walkthrough:revise' ] || { echo "profile-$p: dispatched $(order <<<"$out")"; return 1; }
+  done
+}
+
+@test "the skill says a first revision that changed nothing or returned nothing ends the check" {
+  S="$ROOT/skills/task-walkthrough/SKILL.md"
+  ck="$(awk '/^## Check$/{f=1;next} f&&/^## /{exit} f' "$S" | tr '\n' ' ')"
+  grep -qF 'When the first revision changed nothing or returned nothing, there is no second read' <<<"$ck" \
+    || { echo "## Check does not say an idle first revision ends the check"; return 1; }
+}
+
 @test "the check prompt names the four classes of unclear" {
   out="$(run_profile quick "{$BASE, \"walkthrough:check\": $(read_with 0)}")"
   c="$(pick "o.calls.find((c) => c.label === 'walkthrough:check').prompt" <<<"$out")"

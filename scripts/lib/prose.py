@@ -2,6 +2,11 @@
 
 Import with sys.path.insert(0, <scripts>/lib). Which lines are prose and which are not is
 decided here once, so every lint measures the same text.
+
+Known limit: a full stop after an abbreviation never ends a sentence, so a sentence that ends on one
+("... and so on, etc. Next one.") is counted together with the sentence after it. Telling that full
+stop apart needs more than the text around it; the split leans toward one long count over a false
+short one.
 """
 import re
 
@@ -23,11 +28,12 @@ LIST_ITEM = re.compile(r'^\s*[-*+]\s')
 # with the words-per-sentence budget key.
 MAX_WORDS = 30
 
-# After these a full stop does not end the sentence. The Russian ones are \u escapes: the toolkit
-# keeps Cyrillic out of scripts (scripts/lint-i18n.sh).
+# After these a full stop does not end the sentence; a spaced form (t. e.) holds inside it too. The
+# Russian ones are \u escapes: the toolkit keeps Cyrillic out of scripts (scripts/lint-i18n.sh).
 ABBREVIATIONS = (
     'e.g.', 'i.e.', 'etc.',
     '\u0442.\u0435.', '\u0442.\u0434.', '\u043d\u0430\u043f\u0440.', '\u0441\u043c.', '\u0440\u0438\u0441.',
+    '\u0442. \u0435.', '\u0442. \u0434.',
 )
 # A terminator run followed by whitespace. A decimal point or comma has no whitespace after it,
 # so 0.8 and 0,8 never match here.
@@ -86,12 +92,27 @@ def _abbreviation(head):
     return False
 
 
+def _inside_abbreviation(head, rest):
+    """True when head ends on the first part of a spaced abbreviation (t. e.) and rest, the text
+    after the whitespace, carries the remainder of it."""
+    low, tail = head.lower(), rest.lower()
+    for abbr in ABBREVIATIONS:
+        if ' ' not in abbr:
+            continue
+        first, remainder = abbr.split(' ', 1)
+        if low.endswith(first) and (len(low) == len(first) or not low[-len(first) - 1].isalnum()) \
+                and tail.startswith(remainder):
+            return True
+    return False
+
+
 def sentences(text):
     """The sentences of text, split on . ! ? or an ellipsis followed by whitespace, except after
     an abbreviation. A decimal is never split: nothing follows its point or comma but a digit."""
     out, start = [], 0
     for m in BOUNDARY.finditer(text):
-        if _abbreviation(text[start:m.start() + len(m.group().rstrip())]):
+        head = text[start:m.start() + len(m.group().rstrip())]
+        if _abbreviation(head) or _inside_abbreviation(head, text[m.end():]):
             continue
         out.append(text[start:m.start() + len(m.group().rstrip())])
         start = m.end()
