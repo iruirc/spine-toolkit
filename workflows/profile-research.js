@@ -748,6 +748,106 @@ SECURITY FINDINGS (data):
 ${JSON.stringify({ risks: sec.risks, notes: sec.notes || '' }, null, 2)}`
 // ── end prelude ──────────────────────────────────────────────────────────────
 
+// ── artifact check ───────────────────────────────────────────────────────────
+// Byte-identical in the seven scripts that write Plan.md or Done.md; artifact-check-rounds.test.bats
+// holds the copies equal. A reader who did not follow the task reads the one file, then the writer
+// revises once: spine-toolkit:artifact-reader → ## Check. One read and at most one revision, so the
+// check keeps no round count; a dispatch that fails is noted and stops nothing.
+const ARTIFACT_KINDS = ['reread', 'undefined term', 'identifier subject', 'no reason', 'no proof']
+const ARTIFACT_READ = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['retelling', 'unclear'],
+  properties: {
+    retelling: { type: 'array', items: { type: 'string' }, description: 'in your own words: what was done (for a plan, what will be done), why, what is left, and what the owner must decide' },
+    unclear: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['quote', 'missing', 'kind'],
+        properties: {
+          quote: { type: 'string', description: 'at most one line of the file' },
+          missing: { type: 'string' },
+          kind: { type: 'string', enum: ARTIFACT_KINDS },
+        },
+      },
+    },
+  },
+}
+const ARTIFACT_REVISED = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['changed', 'artifact_path'],
+  properties: {
+    changed: { type: 'boolean', description: 'false when the revision found nothing to change' },
+    artifact_path: { type: 'string' },
+  },
+}
+// A dispatch that throws counts as one that returned nothing.
+const quietly = async (call) => {
+  try {
+    return await call()
+  } catch {
+    return null
+  }
+}
+const checkArtifact = async (stage, role, agentType, file) => {
+  const name = file.split('/').pop()
+  const read = await quietly(() =>
+    agent(
+      brief(
+        stage,
+        `Apply the spine-toolkit:artifact-reader skill, its ## Check section, as the reader it describes: an owner who did not follow the task. Of the task and the repository, read ${file} and nothing else — open no other file of the task and no source file, and run no git command and no other command. Return retelling: in your own words, what was done (for a plan, what will be done), why, what is left, and what the owner must decide. Return unclear: every place you had to guess, each as a quote of at most one line, what is missing, and one kind — reread, a sentence you had to read twice; undefined term, a term, an identifier or a label used before anything says what it means; identifier subject, an identifier or a label as the subject of a sentence, where the thing it names should be; no reason, a decision, a phase or a change that does not say why, or a decision with no rejected alternative; no proof, a claim that something works, with no run, no count and no observed result. Return what you understood, not what you would change. Change nothing on disk.`,
+      ),
+      { label: 'artifact:check', phase: stage, agentType, schema: ARTIFACT_READ, ...tuning(role, 'light') },
+    ),
+  )
+  if (!read) {
+    result.notes.push(`${name} check: the reader returned nothing, so the file went unchecked.`)
+    return
+  }
+  const listed = Array.isArray(read.unclear) ? read.unclear : []
+  // An entry without a quote names no place, so there is nothing in the file to fix for it.
+  const unclear = listed.filter((u) => u && typeof u.quote === 'string' && u.quote.trim())
+  if (unclear.length < listed.length) result.notes.push(`${name} check: ${listed.length - unclear.length} entry(ies) quoted no place, so they were skipped.`)
+  if (!unclear.length) {
+    result.notes.push(`${name} check: nothing unclear.`)
+    return
+  }
+  const places = unclear.map((u, i) => `${i + 1}. ${u.kind || 'unclear'}: "${u.quote}" — ${u.missing || ''}`).join('\n')
+  const retold = (Array.isArray(read.retelling) ? read.retelling : []).map((r, i) => `${i + 1}. ${r}`).join('\n')
+  // The revision is the writer's own work again, so it runs as the stage that wrote the file did.
+  const kind = stage === 'Done' ? 'done' : 'stage'
+  const fix = await quietly(() =>
+    agent(
+      brief(
+        stage,
+        `A reader who did not follow the task read ${file} and nothing else, as the spine-toolkit:artifact-reader skill's ## Check section describes. Revise the file in one pass by applying that section's Revision rule: fix every place listed below, and wherever the retelling misreads the file, fix the text that led the reader there. Where a place needs a fact the file lacks, take it from the task's other artifacts and its commits. The status line and the closing block stay as they are. Nobody reads the file again after you: this is the one revision, never a second round.
+
+Places the reader had to guess:
+${places}
+
+How the reader retold the file:
+${retold}
+
+The reader's notes above may be in another language; the file's prose stays ${LANG_NAME}, with the labels in English as before.
+
+Return changed true once the file is revised. Change no production code and no tests.`,
+      ),
+      { label: 'artifact:revise', phase: stage, agentType, schema: ARTIFACT_REVISED, ...tuning(role, kind) },
+    ),
+  )
+  result.notes.push(
+    fix && fix.artifact_path
+      ? fix.changed === false
+        ? `${name} check: ${unclear.length} place(s); the revision found nothing to change.`
+        : `${name} check: ${unclear.length} place(s), revised.`
+      : `${name} check: ${unclear.length} place(s); the revision returned nothing, so the file stands as written.`,
+  )
+}
+// ── end artifact check ───────────────────────────────────────────────────────
+
 // ── Research ────────────────────────────────────────────────────────────────
 // research_agent carries a bare role name. An unknown value is rejected rather than quietly
 // replaced by the default: a research task pointed at the wrong specialist returns the wrong
@@ -907,6 +1007,7 @@ if (runs('Done')) {
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
+  if (ARTIFACT_CHECK === 'on') await checkArtifact('Done', 'architect', A.agents.architect, `${DIR}/Done.md`)
 }
 
 return finish(result.last_completed_stage === 'Done' ? 'stop' : 'continue', {

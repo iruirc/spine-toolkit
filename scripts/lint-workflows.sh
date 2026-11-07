@@ -59,7 +59,15 @@ KIND_OF_LABEL = (
     (r'walkthrough:check', 'light'),
     (r'security:triage', 'light'),
     (r'manual-checks:check', 'light'),
+    (r'artifact:check', 'light'),
 )
+
+# Dispatches whose kind is the kind of the stage that wrote their file, as label → (identifier, the
+# one line that sets it). The identifier stands where a literal kind would; the line is what the lint
+# holds instead, so the kind cannot drift away from the writing stage unseen.
+VARIABLE_KIND = {
+    'artifact:revise': ('kind', "const kind = stage === 'Done' ? 'done' : 'stage'"),
+}
 
 # Dispatches whose role is a variable, as (agentType expression, tuning role expression). An unlisted
 # variable form is a violation, so no dispatch slips past the role check.
@@ -269,7 +277,7 @@ for fname in files:
 
     lens_role = dict(re.findall(r"^\s*const (\w+) = lens\('([a-z]+)'\)", raw, flags=re.M))
     for n, expr, label, line in dispatches:
-        tunings = re.findall(r"\.\.\.tuning\(\s*([^,]+?)\s*,\s*'([a-z]+)'\s*\)", line)
+        tunings = re.findall(r"\.\.\.tuning\(\s*([^,]+?)\s*,\s*'?([A-Za-z_]+)'?\s*\)", line)
         if len(tunings) != 1:
             violations.append(f"{path}:{n}: dispatch '{label}' carries {len(tunings)} tuning() call(s) beside its agentType, expected exactly one")
             continue
@@ -281,6 +289,13 @@ for fname in files:
                 violations.append(f"{path}:{n}: dispatch '{label}' reads role {read} in agentType but tunes for {role_expr}")
         elif (expr, role_expr) not in VARIABLE_DISPATCH:
             violations.append(f"{path}:{n}: dispatch '{label}' pairs agentType {expr} with tuning role {role_expr}, a variable form lint-workflows.sh does not list")
+        if label in VARIABLE_KIND:
+            ident, setter = VARIABLE_KIND[label]
+            if kind != ident:
+                violations.append(f"{path}:{n}: dispatch '{label}' is tuned {kind}; conventions/stage-dispatch.md → Model and effort makes it the writing stage's kind, through {ident}")
+            elif not re.search(rf'^\s*{re.escape(setter)}\s*$', raw, flags=re.M):
+                violations.append(f"{path}:{n}: dispatch '{label}' takes its kind from {ident}, which is no longer set by `{setter}`")
+            continue
         expected = next((k for pattern, k in KIND_OF_LABEL if re.fullmatch(pattern, label)), 'stage')
         if kind != expected:
             violations.append(f"{path}:{n}: dispatch '{label}' is tuned {kind}; conventions/stage-dispatch.md → Model and effort makes it {expected}")

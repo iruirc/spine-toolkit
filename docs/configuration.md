@@ -301,6 +301,11 @@ what that reader could not follow. The reader is a fresh agent of the writer's r
 artifact and nothing else, retells it and names each place it had to guess; the writer revises once,
 never a second round.
 
+Two artifacts are read: `Plan.md` after Plan and `Done.md` after Done. `QUICK` and `RESEARCH` read
+only `Done.md`, and an `EPIC` reads its `Plan.md` only on the decomposition branch. Each file gets
+one read and at most one revision, no second round however many places the read named; a reader
+that returns nothing, and an entry it gives without a quote, are noted and stop nothing.
+
 `auto` follows the scale: `on` at `full`, `off` at `lite`, a `QUICK` task being `lite`. An explicit
 `on` or `off` stands at either scale. The check costs one `light` dispatch per artifact read, and one
 more writer dispatch when it finds something.

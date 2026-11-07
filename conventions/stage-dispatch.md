@@ -144,12 +144,13 @@ does with the result. A dispatch is one of five kinds:
 - `done` — writing the final report, which on a Done run again is checking a report against the
   task: `done`.
 - `light` — work the script's own prompt defines that still takes judgement: `walkthrough:check`,
-  `security:triage`, `manual-checks:check`.
+  `security:triage`, `manual-checks:check`, `artifact:check`.
 - `mechanical` — reading a file back, ticking a box, moving a task: `<stage>:read-plan`,
   `execute:read-steps`, `execute:tick:<step>`, `done:read-branch`, `auto-move`.
 
 The `walkthrough`, `done`, `light` and `mechanical` lists are closed, and
-`scripts/lint-workflows.sh` holds them.
+`scripts/lint-workflows.sh` holds them. One dispatch takes the kind of the stage whose file it
+revises: `artifact:revise` is `stage` after Plan and `done` after Done.
 
 | Kind | model | effort |
 |---|---|---|
@@ -171,7 +172,7 @@ Method A passes both through the prelude's `tuning(role, kind)`. Method B passes
 dispatch and, in Claude Code, cannot pass effort: the host's dispatch takes no such parameter, so every
 stage runs at the session's effort and the orchestrator says so once. In another host, what the
 dispatch carries is in `runtimes/<runtime>.md`. Under Method B the walkthrough, its check and
-its revision, and the security triage, are the calls outside a stage that still get an agent, and
+its revision, the fresh read of `Plan.md` and `Done.md`, and the security triage, are the calls outside a stage that still get an agent, and
 the `mechanical` ones and Done run in the main context.
 Work in the main context — the orchestrator, a
 handed-back stage, a Method B stage without an agent — runs on the session's model and effort.

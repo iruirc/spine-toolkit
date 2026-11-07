@@ -93,3 +93,18 @@ REVIEW_LINE="{ label: 'review', phase: 'Review', agentType: A.agents.reviewer, s
   mutate profile-feature.js "ManualChecks.md check: nothing unclear." "ManualChecks.md check: all clear."
   expect_violation 'workflows/profile-feature.js: prelude differs'
 }
+
+@test "the artifact read tuned as a stage fails" {
+  mutate profile-quick.js "schema: ARTIFACT_READ, ...tuning(role, 'light') }" "schema: ARTIFACT_READ, ...tuning(role, 'stage') }"
+  expect_violation "dispatch 'artifact:check' is tuned stage; conventions/stage-dispatch.md → Model and effort makes it light"
+}
+
+@test "an artifact revision tuned by a literal kind fails" {
+  mutate profile-quick.js "schema: ARTIFACT_REVISED, ...tuning(role, kind) }" "schema: ARTIFACT_REVISED, ...tuning(role, 'stage') }"
+  expect_violation "dispatch 'artifact:revise' is tuned stage; conventions/stage-dispatch.md → Model and effort makes it the writing stage's kind"
+}
+
+@test "an artifact revision whose kind no longer follows the writing stage fails" {
+  mutate profile-quick.js "const kind = stage === 'Done' ? 'done' : 'stage'" "const kind = 'stage'"
+  expect_violation "dispatch 'artifact:revise' takes its kind from"
+}
