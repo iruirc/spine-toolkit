@@ -330,7 +330,8 @@ const escalate = (stage, r) => {
 // them; artifact-budget.test.bats fails when the two disagree. A project moves them in [BUDGETS],
 // and the orchestrator ships what they resolve to as budgets — a script cannot read the config.
 // Task.md is a step's, measured at every scale; the rest are a lite task's own artifacts.
-const CAP = { 'Reproduce.md': 120, 'Plan.md': 200, 'Validation.md': 100, 'Review.md': 120, 'Done.md': 80, 'Task.md': 100 }
+// words-per-sentence is the one key counted in words, and it is a lint threshold on both scales.
+const CAP = { 'Reproduce.md': 120, 'Plan.md': 200, 'Validation.md': 100, 'Review.md': 120, 'Done.md': 80, 'Task.md': 100, 'words-per-sentence': 30 }
 const BUDGETS = { ...CAP }
 if (A.budgets && typeof A.budgets === 'object') {
   for (const [name, lines] of Object.entries(A.budgets)) if (name in CAP && Number.isInteger(lines) && lines > 0) BUDGETS[name] = lines

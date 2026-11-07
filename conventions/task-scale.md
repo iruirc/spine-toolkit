@@ -126,9 +126,14 @@ and is bounded by the sub-headings it earns, so it is read like the rest of the 
 stage that reviews it. Adding a count for it to a lint's table would not make it measured; it would
 make the number arbitrary.
 
-A project may move a ceiling in its config's `[BUDGETS]`. The number still reaches an agent
-only through the script: the orchestrator asks `lint-artifact-budget.sh --budgets` and ships the
-answer as the contract's `budgets` field, so there is one reader of that field, not two. A budget
+A project may move a ceiling in its config's `[BUDGETS]`, and a task in its own `Task.md`'s. Each key
+walks the chain alone: this run's `--set budgets.<key>`, the task's `Task.md`, for a `.step/` the
+epic's `Task.md`, the project config, the default. `words-per-sentence` is the one key counted in
+words rather than lines, and it is a lint threshold on both scales; the line ceilings bind on
+`lite` only (a step's `Task.md` at every scale), so a `Task.md` entry for them on a `full` task
+changes nothing. The number still reaches an agent only through the script: the orchestrator asks
+`lint-artifact-budget.sh --budgets` and ships the answer as the contract's `budgets` field, so there
+is one reader of that field, not two. A budget
 moves a number, never which scale an artifact is measured at. A step's `Task.md` is the one artifact
 measured at every scale, with `--task-docs`: its ceiling and its three anchors hold the what-and-why
 layer of `skills/task-documents/SKILL.md`, and that layer does not depend on the task's size.

@@ -32,9 +32,10 @@ ROLES="architect developer tester reviewer refactorer validator security diagnos
 # A `platform` left by 1.11.0 reads as if its line were absent, not as `session`,
 # so the validator keeps its `sonnet` default.
 UNSET_MODELS="platform"
-# The per-artifact line ceilings. workflows/profile-*.js carries the same table as its prelude
-# CAP map, and tests/foundation/lib/artifact-budget.test.bats fails when the two disagree.
-CAPS="Reproduce.md:120 Plan.md:200 Validation.md:100 Review.md:120 Done.md:80 Task.md:100"
+# The per-artifact line ceilings and words-per-sentence, the one key counted in words. workflows/profile-*.js
+# carries the same table as its prelude CAP map, and tests/foundation/lib/artifact-budget.test.bats fails
+# when the two disagree.
+CAPS="Reproduce.md:120 Plan.md:200 Validation.md:100 Review.md:120 Done.md:80 Task.md:100 words-per-sentence:30"
 
 [ "$#" -ge 2 ] || { echo "usage: $0 json|show|open <task-dir> [--all] [--set <field>=<value>]... | raw <dir> <block>" >&2; exit 2; }
 if [ "$1" = open ] && [ "$2" = --contract ]; then
@@ -145,7 +146,7 @@ while rest:
         if RUNTIME_SEEN:
             usage_error('--runtime: given twice')
         RUNTIME, RUNTIME_SEEN = rest.pop(0), True
-    elif arg == '--set' and CONTRACT is None and rest and re.fullmatch(r'[a-z_]+(\.[A-Za-z]+)?=\S(.*\S)?', rest[0]):
+    elif arg == '--set' and CONTRACT is None and rest and re.fullmatch(r'[a-z_]+(\.[A-Za-z][A-Za-z.-]*)?=\S(.*\S)?', rest[0]):
         RUN_SET.append(rest.pop(0).split('=', 1))
     elif CMD == 'open' and arg in ('--method', '--why', '--range', '--progress', '--run-file', '--profile') and rest \
             and (CONTRACT is None or arg == '--method'):
@@ -227,7 +228,7 @@ SCALARS = (
 )
 # A field the config alone answers: no Task.md is read for it, which is what ## Project settings means.
 PROJECT_ONLY = {'lang', 'progress', 'settings_report', 'docs_map', 'docs_strictness',
-                'docs_freshness', 'budgets', 'device_source'}
+                'docs_freshness', 'device_source'}
 # A map's field is one bracketed, comma-separated list, in the config exactly as in a Task.md.
 MAPS = (
     ('models', 'MODELS', ['light', 'walkthrough', 'done'] + ROLES, MODEL_VALUES, UNSET_MODELS,
@@ -421,13 +422,16 @@ CFG_FIELDS = config_fields(CFG)
 resolved, sources, defaults = {}, {}, {}
 
 # What a run may set is what a task may say about itself: every field with a Task.md line.
-RUN_SCALARS, RUN_MAPS = {}, {}
+RUN_SCALARS, RUN_MAPS, RUN_BUDGETS = {}, {}, {}
 for target, raw in RUN_SET:
     name, _, key = target.partition('.')
     if not key and name in [s[0] for s in SCALARS] and name not in PROJECT_ONLY:
         RUN_SCALARS[name] = raw
     elif key and name in [m[0] for m in MAPS]:
         RUN_MAPS.setdefault(name, {})[key.lower()] = raw
+    elif key and name == 'budgets':
+        # A ceiling's name is a file name, and words-per-sentence is a word: the case is the key.
+        RUN_BUDGETS[key] = raw
     else:
         print('--set %s: not a field a run can set, skipped' % name, file=sys.stderr)
 
@@ -543,19 +547,29 @@ if lr['stall'] >= lr['max']:
     print('long_run: stall %d is not below max %d, the budget fires first' % (lr['stall'], lr['max']),
           file=sys.stderr)
 
+# [BUDGETS] walks the chain key by key as the maps above do, but its keys are case-sensitive names
+# (Plan.md, words-per-sentence) and its values positive whole numbers.
 caps, budget_source = dict(CAPS), 'default'
-for entry in config_entries('BUDGETS'):
-    m = re.match(r'^(\S+)\s*:\s*(\S+)$', entry)
-    name, value = (m.group(1), m.group(2)) if m else (entry, '')
-    if name in caps and re.fullmatch(r'[0-9]+', value) and int(value) > 0:
-        caps[name], budget_source = int(value), 'project'
-        # Recorded even when the value matches the default: the entry was still an override, and
-        # 'budgets.<name>' is how a caller asks which ceilings this project wrote down at all.
-        sources['budgets.%s' % name] = 'project'
-    else:
-        warn('%s [BUDGETS]' % CFG, entry)
+found = [('--set budgets', 'run', ['%s: %s' % kv for kv in RUN_BUDGETS.items()])]
+found += [(('Task.md [BUDGETS]'), label, task_map_entries(path, 'BUDGETS')) for label, path in task_files()]
+found.append((('%s [BUDGETS]' % CFG), 'project', config_entries('BUDGETS')))
+budget_decided = {}
+for label, source, entries in found:
+    for entry in entries:
+        m = re.fullmatch(r'(\S+)\s*:\s*(\S+)', entry)
+        name, value = (m.group(1), m.group(2)) if m else (entry, '')
+        if name in CAPS and re.fullmatch(r'[0-9]+', value) and int(value) > 0:
+            # The nearest source that names the key decides it; a later entry in the same source wins.
+            if budget_decided.get(name, source) == source:
+                caps[name], budget_decided[name] = int(value), source
+                # Recorded even when the value matches the default: the entry was still an override, and
+                # 'budgets.<name>' is how a caller asks which ceilings were written down at all.
+                sources['budgets.%s' % name] = source
+        else:
+            warn(label, entry)
 resolved['budgets'], defaults['budgets'] = caps, dict(CAPS)
-sources['budgets'] = budget_source
+order = ['run', 'task', 'epic', 'project']
+sources['budgets'] = min(budget_decided.values(), key=order.index, default=budget_source)
 
 
 

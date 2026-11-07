@@ -131,7 +131,7 @@ answers.
 | `docs_strictness` | — | `[DOCS_STRICTNESS]` | `blocking` `advisory` `off` | `advisory` |
 | `docs_freshness` | — | `[DOCS_FRESHNESS]` | `on` `off` | `on` |
 | `device_source` | — | `[DEVICE_SOURCE]` | a command run from the project root, `—` | `—` |
-| `budgets` | — | `[BUDGETS]`, entries `<artifact>: <lines>` | a positive integer | the `CAPS` table |
+| `budgets` | `[BUDGETS]`, entries `<key>: <n>` | `[BUDGETS]`, entries `<key>: <n>` | keys `Task.md` `Reproduce.md` `Plan.md` `Validation.md` `Review.md` `Done.md` (lines) and `words-per-sentence` (words); a positive integer | the `CAPS` table; `words-per-sentence: 30` |
 | `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | the runtime's `models` list (`runtimes/<id>.json`); `session` always | the runtime's `model_defaults`, `session` elsewhere: in Claude Code `sonnet` for `light` and `validator` |
 | `effort` | `[EFFORT]` | `[EFFORT]`, entries `<key>: <value>` | the runtime's `effort` list (`runtimes/<id>.json`); `session` always | `session` |
 | `long_run` | `[LONG_RUN]` | `[LONG_RUN]`, entries `<key>: <minutes>` | keys `stall` `max`, a whole number of minutes > 0 | `stall: 5, max: 30` |

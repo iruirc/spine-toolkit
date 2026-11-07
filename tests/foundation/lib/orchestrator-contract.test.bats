@@ -217,7 +217,7 @@ section() {
 }
 
 @test "the outbound contract carries budgets as a filled brace map" {
-  grep -qxF 'budgets={Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100}' "$SKILL" \
+  grep -qxF 'budgets={Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100, words-per-sentence: 30}' "$SKILL" \
     || { echo "no filled budgets= line in the Outbound Contract block"; return 1; }
   grep -qF 'The four map-valued fields (`agents`, `budgets`, `models`, `effort`)' "$SKILL" \
     || { echo "the encoding rule does not name all four map-valued fields"; return 1; }
@@ -255,6 +255,22 @@ section() {
   para="$(awk '/^In `auto` on a Method A range/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   grep -qF 'end_stage=Plan' <<<"$para" || { echo "an epic's range runs Execute before its steps are measured"; return 1; }
   grep -qF 'stage_scope=forward' <<<"$para" || { echo "the second call's scope is not pinned to forward"; return 1; }
+}
+
+@test "the budget warning names words-per-sentence and a Task.md entry in both locales" {
+  for l in en ru; do
+    body="$(awk '/^## warn_budget_unrecognised$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orchestrator/locales/$l.md")"
+    for token in '`words-per-sentence`' '`Task.md`' '`Plan.md`'; do
+      grep -qF -- "$token" <<<"$body" || { echo "$l.md: warn_budget_unrecognised does not name $token"; return 1; }
+    done
+  done
+}
+
+@test "the budgets paragraph names words-per-sentence and the per-key chain" {
+  para="$(awk '/^`budgets` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  for token in 'words-per-sentence' 'Task.md'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the budgets paragraph does not name $token"; return 1; }
+  done
 }
 
 @test "both new budget keys exist in both locales" {

@@ -1246,3 +1246,113 @@ contract_json() {
   run "$RESOLVE" open --contract "$BATS_TEST_TMPDIR/c.json" --method A
   [ "$status" -eq 2 ] || { echo "$output"; return 1; }
 }
+
+# [BUDGETS] walks the chain key by key, like the other maps; its keys keep their case.
+budget() { python3 -c 'import json,sys; print(json.load(sys.stdin)["budgets"][sys.argv[1]])' "$1"; }
+
+@test "a budgets key comes from the task's own Task.md" {
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [Plan.md: 150]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(budget Plan.md <<<"$output")" = 150 ] || { echo "$output"; return 1; }
+  [ "$(budget Review.md <<<"$output")" = 120 ] || { echo "$output"; return 1; }
+  [ "$(source_of budgets.Plan.md <<<"$output")" = task ] || { echo "$output"; return 1; }
+  [ "$(source_of budgets <<<"$output")" = task ] || { echo "$output"; return 1; }
+}
+
+@test "a step inherits a budgets key the epic set and overrides another" {
+  EPIC="$PROJ/Tasks/ACTIVE/050-an-epic"
+  STEP="$EPIC/1-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[BUDGETS] = [Plan.md: 150, Done.md: 60]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n[BUDGETS] = [Done.md: 70]\n' >"$STEP/Task.md"
+  run "$RESOLVE" json "$STEP"
+  [ "$(budget Plan.md <<<"$output")" = 150 ] || { echo "the epic's key did not reach the step: $output"; return 1; }
+  [ "$(source_of budgets.Plan.md <<<"$output")" = epic ] || { echo "$output"; return 1; }
+  [ "$(budget Done.md <<<"$output")" = 70 ] || { echo "the step's key lost to the epic: $output"; return 1; }
+  [ "$(source_of budgets.Done.md <<<"$output")" = task ] || { echo "$output"; return 1; }
+  [ "$(source_of budgets <<<"$output")" = task ] || { echo "$output"; return 1; }
+}
+
+@test "budgets keys resolve independently across run, task, epic and project" {
+  EPIC="$PROJ/Tasks/ACTIVE/050-an-epic"
+  STEP="$EPIC/1-first.step"
+  mkdir -p "$STEP"
+  printf '## Project settings\n\n[BUDGETS] = [Validation.md: 90, Review.md: 110, Done.md: 75, Plan.md: 190]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [EPIC]\n[BUDGETS] = [Review.md: 100, Done.md: 65, Plan.md: 180]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n[BUDGETS] = [Done.md: 60, Plan.md: 170]\n' >"$STEP/Task.md"
+  run "$RESOLVE" json "$STEP" --set budgets.Plan.md=150
+  [ "$status" -eq 0 ]
+  for pair in Plan.md:150:run Done.md:60:task Review.md:100:epic Validation.md:90:project Reproduce.md:120:default; do
+    IFS=: read -r key value src <<<"$pair"
+    [ "$(budget "$key" <<<"$output")" = "$value" ] || { echo "$key: $output"; return 1; }
+    if [ "$src" = default ]; then
+      ! python3 -c 'import json,sys; sys.exit(0 if "budgets.'"$key"'" in json.load(sys.stdin)["sources"] else 1)' <<<"$output" \
+        || { echo "$key has a source: $output"; return 1; }
+    else
+      [ "$(source_of "budgets.$key" <<<"$output")" = "$src" ] || { echo "$key: $output"; return 1; }
+    fi
+  done
+  [ "$(source_of budgets <<<"$output")" = run ] || { echo "$output"; return 1; }
+}
+
+@test "--set budgets takes a key with a dot and a key with hyphens, case kept" {
+  run "$RESOLVE" json "$TASK" --set budgets.Plan.md=150 --set budgets.words-per-sentence=20
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(budget Plan.md <<<"$output")" = 150 ] || { echo "$output"; return 1; }
+  [ "$(budget words-per-sentence <<<"$output")" = 20 ] || { echo "$output"; return 1; }
+  [ "$(source_of budgets.words-per-sentence <<<"$output")" = run ] || { echo "$output"; return 1; }
+  [ "$(source_of budgets <<<"$output")" = run ] || { echo "$output"; return 1; }
+}
+
+@test "a budgets entry that is zero, negative, not a number or unknown is reported and the chain goes on" {
+  printf '## Project settings\n\n[BUDGETS] = [Plan.md: 150, Done.md: 65, Review.md: 105, Validation.md: 95, words-per-sentence: 25]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [Plan.md: 0, Done.md: -5, Review.md: many, Validation.md: 1.5, Notes.md: 10, plan.md: 9, words-per-sentence: 0]\n' >"$TASK/Task.md"
+  "$RESOLVE" json "$TASK" >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  for pair in Plan.md:150 Done.md:65 Review.md:105 Validation.md:95 words-per-sentence:25; do
+    [ "$(budget "${pair%%:*}" <"$BATS_TEST_TMPDIR/out")" = "${pair##*:}" ] \
+      || { echo "$pair: the chain stopped at the bad entry"; cat "$BATS_TEST_TMPDIR/out"; return 1; }
+    [ "$(source_of "budgets.${pair%%:*}" <"$BATS_TEST_TMPDIR/out")" = project ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  done
+  for entry in 'Plan.md: 0' 'Done.md: -5' 'Review.md: many' 'Validation.md: 1.5' 'Notes.md: 10' 'plan.md: 9' 'words-per-sentence: 0'; do
+    grep -qxF "Task.md [BUDGETS]: '$entry' not recognized, skipped" "$ERR" || { echo "$entry"; cat "$ERR"; return 1; }
+  done
+}
+
+@test "a bad --set budgets entry is reported under --set budgets and the task's own applies" {
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [Plan.md: 150]\n' >"$TASK/Task.md"
+  "$RESOLVE" json "$TASK" --set budgets.Plan.md=0 --set budgets.Plan.txt=5 --set budgets.Done.md=abc >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(budget Plan.md <"$BATS_TEST_TMPDIR/out")" = 150 ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ "$(budget Done.md <"$BATS_TEST_TMPDIR/out")" = 80 ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  for entry in 'Plan.md: 0' 'Plan.txt: 5' 'Done.md: abc'; do
+    grep -qxF -- "--set budgets: '$entry' not recognized, skipped" "$ERR" || { echo "$entry"; cat "$ERR"; return 1; }
+  done
+}
+
+@test "words-per-sentence defaults to 30 with no warning and no source" {
+  "$RESOLVE" json "$TASK" >"$BATS_TEST_TMPDIR/out" 2>"$ERR"
+  [ "$(budget words-per-sentence <"$BATS_TEST_TMPDIR/out")" = 30 ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  [ "$(source_of budgets <"$BATS_TEST_TMPDIR/out")" = default ] || { cat "$BATS_TEST_TMPDIR/out"; return 1; }
+}
+
+@test "show lists a budgets key when the run set it or it differs, and only then" {
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [Plan.md: 200, words-per-sentence: 25]\n' >"$TASK/Task.md"
+  run "$RESOLVE" show "$TASK"
+  grep -qE '^\[BUDGETS\] += \[words-per-sentence: 25\] +# task$' <<<"$output" || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK" --set budgets.Done.md=80
+  grep -qE '^\[BUDGETS\] += \[Done\.md: 80, words-per-sentence: 25\] +# run$' <<<"$output" || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n' >"$TASK/Task.md"
+  run "$RESOLVE" show "$TASK"
+  ! grep -q '^\[BUDGETS\]' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "a budgets entry rides the contract's run_settings like any map key" {
+  python3 - "$TASK" "$BATS_TEST_TMPDIR/c.json" <<'PY'
+import json, sys
+json.dump({'task_dir': sys.argv[1], 'profile': 'bug', 'run_settings': {'budgets.Plan.md': '150'}},
+          open(sys.argv[2], 'w'))
+PY
+  run "$RESOLVE" open --contract "$BATS_TEST_TMPDIR/c.json" --method A
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  ! grep -q 'not a field a run can set' <<<"$output" || { echo "$output"; return 1; }
+}

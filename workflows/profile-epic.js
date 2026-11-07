@@ -324,7 +324,8 @@ const escalate = (stage, r) => {
 // them; artifact-budget.test.bats fails when the two disagree. A project moves them in [BUDGETS],
 // and the orchestrator ships what they resolve to as budgets — a script cannot read the config.
 // Task.md is a step's, measured at every scale; the rest are a lite task's own artifacts.
-const CAP = { 'Reproduce.md': 120, 'Plan.md': 200, 'Validation.md': 100, 'Review.md': 120, 'Done.md': 80, 'Task.md': 100 }
+// words-per-sentence is the one key counted in words, and it is a lint threshold on both scales.
+const CAP = { 'Reproduce.md': 120, 'Plan.md': 200, 'Validation.md': 100, 'Review.md': 120, 'Done.md': 80, 'Task.md': 100, 'words-per-sentence': 30 }
 const BUDGETS = { ...CAP }
 if (A.budgets && typeof A.budgets === 'object') {
   for (const [name, lines] of Object.entries(A.budgets)) if (name in CAP && Number.isInteger(lines) && lines > 0) BUDGETS[name] = lines
@@ -859,7 +860,7 @@ Write ${DIR}/Plan.md with a progress table of the steps, in execution order, wit
 Seed the steps from Research.md ### Work items, grouped along layer or feature boundaries — typically one step per major layer (Domain / Repository / Networking / UI) or per self-contained sub-feature.
 Write Plan.md by applying the task-documents skill, its Plan.md section — it holds how a step or phase is described, how a risk is written, and what the plan leaves out.
 Then create the step folders physically by invoking spine-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE] — never QUICK, which only the user chooses — [STATUS] = PENDING, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
-Write each step's Task.md by applying the task-documents skill, its section on a step's Task.md — it holds what goes above the three anchors and under each. After this stage each one is measured: at most ${BUDGETS['Task.md']} lines, and ### Expected behaviour, ### Questions for Research and ### Acceptance each carrying text or "— <reason>".
+Write each step's Task.md by applying the task-documents skill, its section on a step's Task.md — it holds what goes above the three anchors and under each. After this stage each one is measured: at most ${BUDGETS['Task.md']} lines, and ### Expected behaviour, ### Questions for Research and ### Acceptance each carrying text or "— <reason>". A [BUDGETS] entry is the owner's word: never write one to raise a ceiling.
 Apply feature-estimation at epic level and write ## Estimation into Plan.md: the aggregate is the SUM of the per-step ranges, reported as a named best/worst epic range, and it carries both the human and the AI-assisted range when the project is AI-assisted. Per-step ranges are written later by each step's own Plan stage; this roll-up is informational, it does NOT gate Execute, but it has to be present before the first step runs.
 Return every step you created in the steps array, in execution order, each with its own [NEED_TEST] and [NEED_REVIEW] from its Task.md as booleans.
 

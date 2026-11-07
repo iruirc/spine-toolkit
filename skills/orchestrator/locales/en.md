@@ -197,7 +197,7 @@ Scale raised to `full` at stage {stage}: {reason}. `[SCALE] = [full]` is now in 
 `{step}`: `{anchor}` in its `Task.md` is missing, empty or a bare dash. Sending it back to the architect to fill the anchor, or to write `— <reason>` where it does not apply.
 
 ## warn_budget_unrecognised
-`{line}` in `[BUDGETS]` of the project config names no artifact the budget lint knows, or its ceiling is not a positive whole number, so the default stays. The artifacts are `Task.md`, `Reproduce.md`, `Plan.md`, `Validation.md`, `Review.md` and `Done.md`.
+`{line}` in `[BUDGETS]` of a `Task.md` or the project config names no key the budget lint knows, or its value is not a positive whole number, so the next source down decides the key. The keys are `Task.md`, `Reproduce.md`, `Plan.md`, `Validation.md`, `Review.md` and `Done.md`, counted in lines, and `words-per-sentence`, counted in words.
 
 ## lang_mismatch
 `{artifact}` → `{section}`: the prose is not in the project language (`{lang}`). Sending the file back to its author to rewrite that prose in `{lang}`, structure untouched.

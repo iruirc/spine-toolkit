@@ -199,3 +199,11 @@ INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:
   grep -qF 'never append a second copy of a heading' <<<"$step" || { echo "no in-place rule"; return 1; }
   grep -qF 'only the axes that differ' <<<"$step" || { echo "no rule for a step's own Stack"; return 1; }
 }
+
+@test "writers of a Task.md never raise a ceiling: task-new, the epic skill and the epic planner say so" {
+  sentence="A \`[BUDGETS]\` entry is the owner's word: never write one to raise a ceiling."
+  grep -qF -- "$sentence" "$ROOT/skills/task-new/SKILL.md" || { echo "task-new/SKILL.md does not carry the sentence"; return 1; }
+  grep -qF -- "$sentence" "$ROOT/skills/workflow-epic/SKILL.md" || { echo "workflow-epic/SKILL.md does not carry the sentence"; return 1; }
+  plain="A [BUDGETS] entry is the owner's word: never write one to raise a ceiling."
+  stage_brief epic Plan | grep -qF -- "$plain" || { echo "profile-epic.js: the Plan brief does not carry the sentence"; return 1; }
+}

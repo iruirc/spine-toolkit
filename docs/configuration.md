@@ -33,11 +33,11 @@ to, run `scripts/resolve-settings.sh show <task-dir> --all`.
 
 ## The two blocks
 
-**`## Project settings`** is what a task cannot change. No `Task.md` is read for these eight fields:
+**`## Project settings`** is what a task cannot change. No `Task.md` is read for these seven fields:
 the config's line, or the default, is the answer.
 
 **`## Task defaults`** is what a task can change, by writing the same field into its own `Task.md`.
-The config's line is the project's default for these thirteen fields, and the task's own line beats it.
+The config's line is the project's default for these fields, and the task's own line beats it.
 
 Every other block of the file — `## Persona`, `## Rules`, `## Platform`, `## Agents`, `## Stack`,
 `## Modules`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`,
@@ -79,20 +79,6 @@ one `scripts/resolve-settings.sh show <task dir> --all` away at any time.
 
 This field governs reporting only — the between-stage confirmations of `manual` mode are unaffected
 by it.
-
-### [BUDGETS]
-
-**Values:** `<artifact>: <lines>` entries, comma-separated · **Default:** the `CAPS` table in
-`scripts/resolve-settings.sh` · **Task override:** no · **Defined by:**
-`scripts/lint-artifact-budget.sh`
-
-Optional: per-artifact line ceilings overriding the defaults, for example
-`[BUDGETS] = [Task.md: 120]`. The artifacts are a step's `Task.md`, measured at every scale, and
-`Reproduce.md`, `Plan.md`, `Validation.md`, `Review.md`, `Done.md`, measured on a `lite` task. An
-entry here moves a number, never which scale an artifact is measured at. Change a ceiling when a
-measurement of this project's documents says the default does not fit, not when the lint turns red:
-a ceiling raised to silence the lint measures nothing. A name the lint does not know, or a value
-that is not a positive whole number, keeps the default and is reported.
 
 ### [DOCS_MAP]
 
@@ -386,3 +372,20 @@ How long a command a stage agent runs through `scripts/long-run.sh` may print no
 counts as hung (`stall`), and how long it may run at all (`max`). Raise them for a project whose
 clean build or full UI test run is slower, or whose link step is silent for minutes. An epic's keys
 reach its steps.
+
+### [BUDGETS]
+
+**Values:** `<key>: <n>` entries, comma-separated; keys `Task.md`, `Reproduce.md`, `Plan.md`,
+`Validation.md`, `Review.md`, `Done.md` and `words-per-sentence`, each a positive whole number ·
+**Default:** the `CAPS` table in `scripts/resolve-settings.sh` · **Task override:**
+`[BUDGETS] = [<key>: <n>, …]` · **Defined by:** `scripts/lint-artifact-budget.sh`
+
+Optional: per-key limits overriding the defaults, for example `[BUDGETS] = [Plan.md: 150]`. Each key
+walks the chain alone, so a step can move one key, inherit another from its epic and take a third
+from the project. `words-per-sentence` counts words and is a lint threshold on both scales. Every
+other key counts lines: a step's `Task.md` ceiling binds at every scale, and the rest bind only on a
+`lite` task, so a `Task.md` entry for them on a `full` task changes nothing. An entry here moves a
+number, never which scale an artifact is measured at. Change a ceiling when a measurement of this
+project's documents says the default does not fit, not when the lint turns red: a ceiling raised to
+silence the lint measures nothing. A key the lint does not know, or a value that is not a positive
+whole number, is reported, and the key falls to the next source down.

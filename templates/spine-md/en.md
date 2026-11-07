@@ -11,7 +11,6 @@
 [LANG] = [en]                          # en | ru
 [PROGRESS] = [normal]                  # quiet | normal | live
 [SETTINGS_REPORT] = [diff]             # diff | full | off
-[BUDGETS] = []                         # <artifact>: <lines>, comma-separated
 [DOCS_MAP] = [DocsMap.md]
 [DOCS_STRICTNESS] = [advisory]         # blocking | advisory | off
 [DOCS_FRESHNESS] = [on]                # on | off
@@ -35,6 +34,7 @@
 [MODELS] = [light: sonnet, walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session]
 [EFFORT] = [walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session]
 [LONG_RUN] = [stall: 5, max: 30]       # minutes: stall | max
+[BUDGETS] = []                         # <key>: <n>, comma-separated; keys: artifact names (lines), words-per-sentence (words)
 
 ## Persona
 

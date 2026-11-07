@@ -112,7 +112,8 @@ def measure(task_dir):
     if s.get('scale', 'full') != 'lite':
         return
     for name, cap in sorted(s.get('budgets', {}).items()):
-        if name == 'Task.md':
+        # words-per-sentence is a count of words, not a ceiling on a file's lines.
+        if name == 'Task.md' or not name.endswith('.md'):
             continue
         path = os.path.join(task_dir, name)
         if not os.path.isfile(path):

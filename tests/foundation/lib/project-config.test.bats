@@ -171,6 +171,13 @@ catalog_words() {
     || { echo "the override spelling is missing from the [PHASE_VERIFICATION] section"; return 1; }
 }
 
+@test "the Budgets field sits under Task defaults, so a task may override it" {
+  awk '/^## Task defaults$/{f=1;next} f&&/^## /{exit} f' "$TPL" | grep -qE '^\[BUDGETS\] = \[\]' \
+    || { echo "[BUDGETS] is not in ## Task defaults"; return 1; }
+  ! awk '/^## Project settings$/{f=1;next} f&&/^## /{exit} f' "$TPL" | grep -q '^\[BUDGETS\]' \
+    || { echo "[BUDGETS] is still in ## Project settings"; return 1; }
+}
+
 @test "the Budgets field ships empty" {
   grep -qE '^\[BUDGETS\] = \[\]' "$TPL" \
     || { echo "the template ships a ceiling a project did not choose"; return 1; }

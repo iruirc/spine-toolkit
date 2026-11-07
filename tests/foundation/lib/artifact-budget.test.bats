@@ -216,8 +216,47 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
   printf '## Project settings\n\n[BUDGETS] = [Task.md: 120]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$LINT" --budgets "$TASK"
   [ "$status" -eq 0 ]
-  [ "$output" = "{Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 120, Validation.md: 100}" ] \
+  [ "$output" = "{Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 120, Validation.md: 100, words-per-sentence: 30}" ] \
     || { echo "$output"; return 1; }
+}
+
+@test "--budgets prints the contract example, words-per-sentence last" {
+  run "$LINT" --budgets "$TASK"
+  [ "$status" -eq 0 ]
+  [ "$output" = "{Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100, words-per-sentence: 30}" ] \
+    || { echo "$output"; return 1; }
+}
+
+@test "words-per-sentence is a count of words and is never measured as a file" {
+  lines "$TASK/words-per-sentence" 500
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "a file named like the key was measured: $output"; return 1; }
+  printf '## Project settings\n\n[BUDGETS] = [words-per-sentence: 1]\n\n## Task defaults\n\n[SCALE] = [lite]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  lines "$TASK/Plan.md" 199
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "a Task.md [BUDGETS] entry moves a lite ceiling and changes nothing at full" {
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [Plan.md: 300]\n' >"$TASK/Task.md"
+  lines "$TASK/Plan.md" 250
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  run "$LINT" --budgets "$TASK"
+  case "$output" in *"Plan.md: 300"*) ;; *) echo "$output"; return 1 ;; esac
+  printf '## Task defaults\n\n[SCALE] = [full]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  lines "$TASK/Plan.md" 900
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [Plan.md: 10]\n' >"$TASK/Task.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "a Task.md entry made a full task measured: $output"; return 1; }
+}
+
+@test "a bad Task.md [BUDGETS] entry is reported by the lint under Task.md [BUDGETS]" {
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [Plan.md: 0]\n' >"$TASK/Task.md"
+  lines "$TASK/Plan.md" 201
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ]
+  case "$output" in *"Task.md [BUDGETS]: 'Plan.md: 0' not recognized"*) ;; *) echo "$output"; return 1 ;; esac
 }
 
 @test "an unknown flag is a usage error" {
@@ -306,7 +345,7 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
 @test "--budgets keeps stdout to the map while a warning goes to stderr" {
   printf '## Project settings\n\n[BUDGETS] = [Plan.md: ²]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   out="$("$LINT" --budgets "$TASK" 2>/dev/null)"
-  [ "$out" = "{Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100}" ] \
+  [ "$out" = "{Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100, words-per-sentence: 30}" ] \
     || { echo "$out"; return 1; }
 }
 
