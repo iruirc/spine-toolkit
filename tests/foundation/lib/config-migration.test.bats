@@ -125,3 +125,32 @@ mapping_rows() {
   grep -qF 'routes to C, not D or E — to G while the file still carries the legacy name' "$SKILL"
   grep -qF 'State G → key `report_spine_name_migrated`' "$SKILL"
 }
+
+# --- A project that switched the walkthrough check off is told so by the migration report ---
+
+@test "the walkthrough-check-off line exists in both locales with the same placeholders" {
+  for l in en ru; do
+    f="$ROOT/skills/setup/locales/$l.md"
+    grep -qxF '## report_walkthrough_check_off' "$f" || { echo "$l lacks report_walkthrough_check_off"; return 1; }
+    awk '/^## report_walkthrough_check_off$/{f=1;next} f&&/^## /{exit} f' "$f" \
+      | grep -o '{[a-z_]*}' | sort -u > "$BATS_TEST_TMPDIR/$l.ph" || true
+  done
+  diff "$BATS_TEST_TMPDIR/en.ph" "$BATS_TEST_TMPDIR/ru.ph" || { echo "placeholder sets differ"; return 1; }
+}
+
+@test "the English walkthrough-check-off line is the pinned sentence" {
+  body="$(awk '/^## report_walkthrough_check_off$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/setup/locales/en.md")"
+  grep -qF '[WALKTHROUGH_CHECK] is off in this project, so Walkthrough.md is never read back by a fresh reader; set it to auto to turn the check on.' <<<"$body"
+}
+
+@test "the report step adds the walkthrough-check-off line for states D, E and F when the config holds off" {
+  step="$(awk '/^7\. Render the report:/{f=1} f&&/^```$/{exit} f' "$SKILL")"
+  grep -qF 'report_walkthrough_check_off' <<<"$step" || { echo "the report step never names the key"; return 1; }
+  grep -qF '[WALKTHROUGH_CHECK] = [off]' <<<"$step" || { echo "the report step does not name the condition"; return 1; }
+  grep -qF 'States D, E and F' <<<"$step" || { echo "the report step does not scope it to D, E and F"; return 1; }
+}
+
+@test "the migration never writes off for the walkthrough check: the template default is auto" {
+  grep -qF '[WALKTHROUGH_CHECK] = [auto]' "$ROOT/templates/spine-md/en.md"
+  grep -qF 'never writes `off`' "$SKILL" || { echo "the skill does not pin that the migration never writes off"; return 1; }
+}

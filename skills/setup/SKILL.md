@@ -333,6 +333,11 @@ anything — which is what lets F, G and C take the language and the platform fr
      {filled_default_fields}, {kept_blocks}, {backup_path}, {config_name}.
    - State G → key `report_spine_name_migrated` after a rename, `report_spine_name_kept` after
      Keep; neither takes a placeholder.
+   States D, E and F add one more line, on a line of its own right after that report: when the
+   existing project config holds `[WALKTHROUGH_CHECK] = [off]` (read from the source the state
+   parsed), `report_walkthrough_check_off`.
+   The migration never writes `off` itself: a field the source did not answer is written at the
+   template default `auto`, so the line appears only for a project that chose `off` on its own.
    Then, when step 6c changed or found `AGENTS.md`, the line it names, on a line of its own;
    then each line step 6d names, on a line of its own.
    {notes} is the platform half's returned notes, one per line, already rendered in <lang>;
