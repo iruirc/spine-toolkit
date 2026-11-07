@@ -44,6 +44,11 @@ Fill the `Verdict` cell of every row `route` opened in `Docs.md`:
 | **N/A** | nothing the component asserts was touched | a reason in `Note`, one line, required |
 | **Pending** | not done yet | surfaces as a blocker at Review; on a `blocking` component the phase does not close |
 
+The `Note` of an **Applicable** row is one sentence that says what changed in the document and
+names the file, for example `The cart total now rounds per line (docs/cart-pricing.md)`. An
+**N/A** reason stays one line. The `Style` of the `artifact-reader` skill applies to the `Note`:
+meaning first, the identifier in brackets.
+
 Default to **Applicable** unless there is a concrete reason not to. The conservative bias is
 deliberate and identical to `ops-checklist`'s: a false Applicable costs one line of reasoning, a
 false N/A costs a rule nobody can find.

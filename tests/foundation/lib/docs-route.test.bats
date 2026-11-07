@@ -1001,3 +1001,11 @@ EOF
   [ "$status" -eq 0 ]
   [ "$output" = "off" ] || { echo "$output"; return 1; }
 }
+
+@test "the skill names artifact-reader and holds the Note rule for an Applicable row and an N/A row" {
+  s="$(tr '\n' ' ' <"$ROOT/skills/docs-route/SKILL.md" | tr -s ' ')"
+  for token in '`artifact-reader`' 'The `Note` of an **Applicable** row is one sentence' 'what changed in the document' 'names the file' \
+               'An **N/A** reason stays one line' 'meaning first, the identifier in brackets'; do
+    grep -qF -- "$token" <<<"$s" || { echo "docs-route skill lacks: $token"; return 1; }
+  done
+}

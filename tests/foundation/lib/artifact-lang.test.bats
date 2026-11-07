@@ -269,3 +269,11 @@ PY
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ "${lines[${#lines[@]}-1]}" = "artifact language passed" ]
 }
+
+@test "ops-checklist says the file is a list, never a table, and shows an evidence sentence with the test in brackets" {
+  s="$(tr '\n' ' ' <"$ROOT/skills/ops-checklist/SKILL.md" | tr -s ' ')"
+  for token in 'a list, never a table' 'class `format`' 'a sentence of words with the test or the file in brackets' \
+               '- [x] The retry stops after three attempts (RetryPolicyTests)'; do
+    grep -qF -- "$token" <<<"$s" || { echo "ops-checklist does not say: $token"; return 1; }
+  done
+}

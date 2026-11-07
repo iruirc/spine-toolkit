@@ -207,6 +207,14 @@ no dash, like the Pending one above, carries only its status and its item, and h
 translate. With `[LANG] = [ru]`, `- N/A: Forced-upgrade — internal beta only, no public release`
 keeps `N/A: Forced-upgrade` and writes the reason in Russian.
 
+**Form.** `OpsChecklist.md` is a list, never a table: `scripts/lint-artifact-readability.sh` flags a
+table row in it with class `format`. The evidence of an Applicable item is a sentence of words with
+the test or the file in brackets, not a bare identifier:
+
+```markdown
+- [x] The retry stops after three attempts (RetryPolicyTests)
+```
+
 **Idempotency:** if `OpsChecklist.md` already exists, prompt the user — overwrite / merge / skip. Re-checking a list mid-feature is normal; preserve prior entries with timestamps if merging.
 
 ## N/A semantics by delivery form

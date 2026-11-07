@@ -17,17 +17,17 @@ scale_section() { # $1 = profile
   awk '/^## 2a\. Scale$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/workflow-$1/SKILL.md"
 }
 
-# Files that must name one of the two skills. docs-route and ops-checklist join in a later change.
-POINTERS='skills/workflow-bug skills/workflow-feature skills/workflow-refactor skills/workflow-test skills/workflow-quick skills/workflow-epic skills/workflow-research skills/workflow-review skills/orchestrator'
+# Files that must name one of the two skills.
+POINTERS='skills/workflow-bug skills/workflow-feature skills/workflow-refactor skills/workflow-test skills/workflow-quick skills/workflow-epic skills/workflow-research skills/workflow-review skills/orchestrator skills/docs-route skills/ops-checklist'
 
-@test "the eight workflow skills and the orchestrator name artifact-reader or task-documents" {
+@test "the eight workflow skills, the orchestrator, docs-route and ops-checklist name artifact-reader or task-documents" {
   n=0
   for d in $POINTERS; do
     grep -qE '`(artifact-reader|task-documents)`|skills/(artifact-reader|task-documents)/SKILL\.md' "$ROOT/$d/SKILL.md" \
       || { echo "$d/SKILL.md names neither artifact-reader nor task-documents"; return 1; }
     n=$((n + 1))
   done
-  [ "$n" -eq 9 ] || { echo "checked $n file(s), expected 9"; return 1; }
+  [ "$n" -eq 11 ] || { echo "checked $n file(s), expected 11"; return 1; }
 }
 
 @test "every workflow skill names artifact-reader for the style of the documents it writes" {
