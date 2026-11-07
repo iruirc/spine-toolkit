@@ -287,3 +287,9 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
     grep -qF "$token" <<<"$ck" || { echo "configuration.md does not say: $token"; return 1; }
   done
 }
+
+@test "the settings convention says a raise to full mid-run checks from the next run" {
+  grep -qF 'a task raised to `full` mid-run is checked from the next run on' "$ROOT/conventions/task-settings.md" \
+    || { echo "task-settings.md still says a mid-run raise turns the check on at once"; return 1; }
+  ! grep -qF 'turns the check on with it' "$ROOT/conventions/task-settings.md" || { echo "the old claim is still there"; return 1; }
+}

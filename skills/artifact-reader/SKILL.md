@@ -5,7 +5,7 @@ description: "Use when writing, refreshing or rewriting any task artifact in Tas
 
 # Artifact Reader
 
-A task artifact is accurate when it states what happened. It is readable when someone who was not there can follow it without opening the code. This skill fixes the second half: it changes **how** an artifact reads, and leaves **what** the file holds and every line the toolkit's scripts parse exactly where the toolkit's contracts put them.
+A task artifact is accurate when it states what happened. It is readable when someone who was not there can follow it without opening the code. This skill fixes the second half: it changes **how** an artifact reads. It leaves **what** the file holds, and every line the toolkit's scripts parse, exactly where the toolkit's contracts put them.
 
 ## Reader
 
@@ -78,7 +78,7 @@ Read the file as the reader above, and fix each of these before finishing:
 
 The role is the writer's so that the reader knows the trade; the brief, not the role, is what keeps it outside the task. The reader returns what it understood, not what it would change: a retelling that misses the point is a finding about the file, not about the reader.
 
-**Revision.** An empty `unclear` ends the check. Otherwise the writer gets both lists and makes one revision pass: it fixes every place named, and where the retelling misreads the file, it fixes the text that led the reader there. An entry without a quote names no place, so it is skipped. The revised file is not read again: one revision pass, never a second round, however many places the read named. The status line and the closing block stay as they are. What the reader returns in another language does not change the file's language: the revision is written in the project's `[LANG]`, with the labels in English as before.
+**Revision.** An empty `unclear` ends the check. Otherwise the writer gets both lists and makes one revision pass. It fixes every place named; where the retelling misreads the file, it fixes the text that led the reader there. An entry without a quote names no place, so it is skipped. The revised file is not read again: one revision pass, never a second round, however many places the read named. The status line and the closing block stay as they are. What the reader returns in another language does not change the file's language: the revision is written in the project's `[LANG]`, with the labels in English as before.
 
 The run notes one line per file: `Plan.md check: 3 place(s), revised.`, `Plan.md check: nothing unclear.`, or `Plan.md check: the reader returned nothing, so the file went unchecked.` A failure of either dispatch is noted and stops nothing.
 
@@ -88,8 +88,8 @@ This skill governs the prose of every task artifact an agent writes: `Walkthroug
 
 Where an agent body asks for brevity and this skill asks for a full sentence, the Style above wins over any brevity instruction in an agent body. Brevity here means no padding, not compression. A line budget still holds: meet it by covering less, never by compressing the sentences.
 
-Lines the toolkit's scripts parse stay where the toolkit's contracts put them: the section headings, the marker lines and the commit headings that a script reads are written exactly as their contract says, whatever the Style above would prefer.
+Lines the toolkit's scripts parse stay where the toolkit's contracts put them. The section headings, the marker lines and the commit headings that a script reads are written exactly as their contract says, whatever the Style above would prefer.
 
 Machine lines go in the closing block at the end of the file (`conventions/stage-dispatch.md` → Closing block): the marker lines first, then `**Run:**`, then `**Device:**`. Two lines keep their place: the status line `[REVIEW_STATUS] = …` is line 1 of `Review.md`, and `[COVERS]` is line 2 of `Walkthrough.md`.
 
-`scripts/lint-artifact-readability.sh` measures six of these files: `Done.md`, `Plan.md`, `Review.md`, `Research.md`, `Questions.md` and `OpsChecklist.md`. It reports a sentence over the `words-per-sentence` budget (30 words unless the task, its epic or the project sets another number), backticked identifiers piled into the first section or into one table cell, a label with nothing beside it that says what it means, a `Questions.md` entry without its question, and an `OpsChecklist.md` written as a table. It skips the closing block. The writer runs it once on its own file, fixes its findings once, and names what is left in its summary; nothing sends the file back for a lint line a second time. `Walkthrough.md` and `ManualChecks.md` have lints of their own.
+`scripts/lint-artifact-readability.sh` measures six of these files: `Done.md`, `Plan.md`, `Review.md`, `Research.md`, `Questions.md` and `OpsChecklist.md`. It reports a sentence over the `words-per-sentence` budget: 30 words unless the task, its epic or the project sets another number, and a run passes its own as `--words-per-sentence`. It also reports backticked identifiers piled into the first section or into one table cell, and a label with nothing beside it that says what it means. It reports a `Questions.md` entry without its question, and an `OpsChecklist.md` written as a table. It skips the closing block. The writer runs it once on its own file, fixes its findings once, and names what is left in its summary. Nothing sends the file back for a lint line a second time. `Walkthrough.md` and `ManualChecks.md` have lints of their own.

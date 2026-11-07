@@ -108,7 +108,7 @@ For reference, the templates contain these placeholders:
    - Logs → `## 5. [Logs]` (only if present in the request)
    - Stack traces / crashlogs → `## 6. [StackTrace]` (only if present)
    The prose follows the user's natural language. The headings themselves are not touched.
-   Apply the `task-documents` skill, its section on a root task's `Task.md`: keep the owner's words in the what-and-why layer, give an example only where the owner gave one, and write what the owner left open as an open question.
+   Apply the `task-documents` skill, its section on a root task's `Task.md`: keep the owner's words in the what-and-why layer, give an example only where the owner gave one, and write what the owner left open as an open question. A `[BUDGETS]` entry is the owner's word: never write one to raise a ceiling.
 9. **Optional override lines** — append via Edit immediately after the `[NEED_REVIEW]` line, one per line, only where the user explicitly asked for something other than the project default. Each one overrides the field of the same name in the project config. Otherwise leave the template as is (the commented-out lines stay as documentation).
    - `[WORKFLOW_MODE] = [<manual|auto>]`.
    - `[DRIVE_APP] = [<auto|off>]` — write `off` when the user says the UI check of this particular task has to be done by hand.

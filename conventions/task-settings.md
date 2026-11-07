@@ -93,8 +93,9 @@ overrode a chosen `on`, or where the value came from `auto`, the source reads `w
 `artifact_check` follows the scale. Its chain is the ordinary one and ends at `auto`, but only `on` or
 `off` leaves the resolver: `auto` becomes `on` where `scale` resolved to `full` and `off` where it
 resolved to `lite`. It reads the scale after the `QUICK` rule and the scale ratchet have been applied,
-so a `QUICK` task, always `lite`, checks nothing unless it says `on`, and a run that raises a task to
-`full` turns the check on with it. An explicit `on` or `off` stands at either scale. Where the value
+so a `QUICK` task, always `lite`, checks nothing unless it says `on`. The value is fixed when a run is
+dispatched: a task raised to `full` mid-run is checked from the next run on, once `[SCALE] = [full]`
+stands in its `Task.md`. An explicit `on` or `off` stands at either scale. Where the value
 came from `auto`, the source reads `scale` and `show` names the scale it followed.
 
 **A missing field is the default, not an error.** A task file that never names the field, a config

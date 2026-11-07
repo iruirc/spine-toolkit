@@ -292,3 +292,37 @@ INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:
   plain="A [BUDGETS] entry is the owner's word: never write one to raise a ceiling."
   stage_brief epic Plan | grep -qF -- "$plain" || { echo "profile-epic.js: the Plan brief does not carry the sentence"; return 1; }
 }
+
+@test "the closing block comes last in the Done.md section order" {
+  s="$(doc_section Done.md)"
+  last="$(grep -E '^[0-9]+\. ' <<<"$s" | tail -n 1)"
+  [[ "$last" == *'The closing block'* ]] || { echo "the last numbered section is: $last"; return 1; }
+  [ "$(grep -n 'The closing block' <<<"$s" | head -1 | cut -d: -f1)" -gt "$(grep -n '## Review findings closed' <<<"$s" | head -1 | cut -d: -f1)" ] \
+    || { echo "the closing block is named before the service sections"; return 1; }
+}
+
+@test "the progress table goes under For the owner, the phase details under For the implementer" {
+  s="$(doc_section Plan.md)"
+  owner="$(awk '/^`## For the owner` carries:/{f=1;next} /^`## For the implementer`/{exit} f' <<<"$s")"
+  grep -qF 'the progress table' <<<"$owner" || { echo "the owner's part does not carry the progress table"; return 1; }
+  grep -qF 'the detail section of each phase' <<<"$(grep -F '`## For the implementer` is everything below its heading' <<<"$s")" \
+    || { echo "the implementer's part does not carry the phase details"; return 1; }
+}
+
+@test "task-new keeps the ceiling the owner's word for a root task too" {
+  root="$(awk '/^## Process — root task/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/task-new/SKILL.md")"
+  grep -qF "A \`[BUDGETS]\` entry is the owner's word: never write one to raise a ceiling." <<<"$root" \
+    || { echo "task-new: the root task's fill step does not carry the sentence"; return 1; }
+}
+
+@test "the two reader skills keep their own sentences within thirty words" {
+  for s in artifact-reader task-documents; do
+    d="$BATS_TEST_TMPDIR/$s"
+    mkdir -p "$d"
+    cp "$ROOT/skills/$s/SKILL.md" "$d/Research.md"
+    out="$("$ROOT/scripts/lint-artifact-readability.sh" --words-per-sentence 30 "$d/Research.md" | grep ': sentence: ' || true)"
+    # The Style rules of artifact-reader are pinned by their leads; any other long sentence is a finding.
+    out="$(grep -v '(Style)$' <<<"$out" || true)"
+    [ -z "$out" ] || { echo "$s: $out"; return 1; }
+  done
+}

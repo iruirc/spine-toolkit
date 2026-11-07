@@ -41,7 +41,7 @@ Written from the owner's words, before any investigation. Keep the layer: what i
 
 Written by the epic's planner from the epic's `Task.md`, `Research.md` and `Questions.md`.
 
-- `## 2. [Description]` — the problem on one example, with numbers where the source gives them; the epic's decisions this step does not reopen, one line each; then the step's open questions, written as rule 5 says. An epic decision that carries a label is written as the sentence first and the label in brackets: "the discount never exceeds the campaign cap (`u3`)", never "as decided in `u3`".
+- `## 2. [Description]` — the problem on one example, with numbers where the source gives them. Then the epic's decisions this step does not reopen, one line each, and the step's open questions, written as rule 5 says. An epic decision that carries a label is written as the sentence first, the label in brackets. For example "the discount never exceeds the campaign cap (`u3`)", never "as decided in `u3`".
 - `## 3. [Task]` — what the step delivers, in plain words, then three anchors. The headings stay English; the text follows the project language.
   - `### Expected behaviour` — a table of cases, situation → result. A command and its outcome is a case.
   - `### Questions for Research` — what the step's own investigation must find out: mechanics, rare outcomes, where things live. Questions, not answers.
@@ -79,7 +79,7 @@ Written by the epic's planner from the epic's `Task.md`, `Research.md` and `Ques
 - A decision is stated in words, its label in brackets: "the cart keeps its items after sign-out (`u3`)", never "per `u3`".
 - Carry no history of superseded revisions: the decision goes to `Questions.md`, the plan states the current one.
 
-Phases added later keep this shape: the progress table stays a top-level table in the first part, so a review-fix round (`Review fixes <n>`) or a catch-up (`Catch-up: commits after Done`) adds its row there and its detail section under `## For the implementer`. A `full` plan has no line ceiling. At `lite` the ceiling that `scripts/lint-artifact-budget.sh` measures still holds, and the folded research section is the first section under `## For the implementer`.
+Phases added later keep this shape: the progress table stays a top-level table in the first part. A review-fix round (`Review fixes <n>`) or a catch-up (`Catch-up: commits after Done`) adds its row there, and its detail section under `## For the implementer`. A `full` plan has no line ceiling. At `lite` the ceiling that `scripts/lint-artifact-budget.sh` measures still holds, and the folded research section is the first section under `## For the implementer`.
 
 ## Done.md
 
@@ -90,12 +90,12 @@ Phases added later keep this shape: the progress table stays a top-level table i
 3. `## What is left and risks` — what the task did not do and what could still go wrong, written as what a user would see; when nothing is left, one sentence says so.
 4. `## Objections` — a contested decision the owner insisted on, with the alternative the agents proposed; only when there is one.
 5. `## Estimate retrospective` — when `Plan.md` carries an estimation section, by the `feature-estimation` skill.
-6. The service sections: the phase table, whose `What` column is words with the identifier in brackets; what the profile's Done stage adds, such as the regression test or the coverage reached; the artifacts the task produced; the validation status; `## Review findings closed`.
+6. The service sections. First the phase table, whose `What` column is words with the identifier in brackets. Then what the profile's Done stage adds, such as the regression test or the coverage reached. Last the artifacts the task produced, the validation status and `## Review findings closed`.
 7. The closing block: the `[DONE_COMMIT]` and `[REVIEW_FIXES]` lines, `**Run:**`, `**Device:**` (`conventions/stage-dispatch.md` → Closing block).
 
 At `lite` the sections stay in the same order, inside the line ceiling that `scripts/lint-artifact-budget.sh` measures. `## Objections` and `## Estimate retrospective` are left out when they would be empty. The phase table keeps one line per phase, and each section is a few sentences, never a list of commits.
 
-When `Done.md` already exists, every claim in it is checked against the current artifacts and the git log before it is kept, as the workflow skill's Done stage says; this template does not change that reconciliation.
+When `Done.md` already exists, every claim in it is checked against the current artifacts and the git log before it is kept, as the workflow skill's Done stage says. This template does not change that reconciliation.
 
 ## Review.md
 

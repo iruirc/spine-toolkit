@@ -273,7 +273,26 @@ PY
 @test "ops-checklist says the file is a list, never a table, and shows an evidence sentence with the test in brackets" {
   s="$(tr '\n' ' ' <"$ROOT/skills/ops-checklist/SKILL.md" | tr -s ' ')"
   for token in 'a list, never a table' 'class `format`' 'a sentence of words with the test or the file in brackets' \
-               '- [x] The retry stops after three attempts (RetryPolicyTests)'; do
+               '- [x] Feature flag wraps the feature — the cart opens the new screen only with the flag on (Features.cartV2)'; do
     grep -qF -- "$token" <<<"$s" || { echo "ops-checklist does not say: $token"; return 1; }
   done
+}
+
+@test "the ops-checklist example and template keep the catalog item and the dash, and both lints pass them" {
+  ops="$ROOT/skills/ops-checklist/SKILL.md"
+  # The fenced blocks of ## Output artifact: the Structure template, then the Form example.
+  blocks="$(awk '/^## Output artifact$/{f=1;next} !f{next} /^```/{c=!c;next} c{print;next} /^## /{exit}' "$ops")"
+  applicable="$(grep -E '^- \[x\] ' <<<"$blocks")"
+  [ "$(wc -l <<<"$applicable")" -ge 5 ] || { echo "too few Applicable lines: $applicable"; return 1; }
+  while IFS= read -r line; do
+    [[ "$line" == *' — '* ]] || { echo "no dash before the evidence: $line"; return 1; }
+    [[ "$line" == *')' ]] || { echo "the evidence does not end on its identifier in brackets: $line"; return 1; }
+    ! grep -qF '`' <<<"$line" || { echo "a bare backticked identifier as evidence: $line"; return 1; }
+  done <<<"$applicable"
+  printf '## Project settings\n\n[LANG] = [en]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  { printf '# Ops Checklist\n\n## Release & rollout\n\n'; grep -E '^- ' <<<"$blocks"; } >"$TASK/OpsChecklist.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "lint-artifact-lang: $output"; return 1; }
+  run "$ROOT/scripts/lint-artifact-readability.sh" "$TASK/OpsChecklist.md"
+  [ "$status" -eq 0 ] || { echo "lint-artifact-readability: $output"; return 1; }
 }
