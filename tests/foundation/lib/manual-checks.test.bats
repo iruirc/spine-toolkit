@@ -16,8 +16,50 @@ setup() {
 }
 
 @test "the skill carries every required field of a case" {
-  for field in '**What it checks:**' '**Scene:**' '**Steps:**' '**By eye:**' '**By instrument:**' '**Failure looks like:**'; do
+  for field in '**Priority:**' '**Traces to:**' '**What it checks:**' '**Preconditions:**' '**Test data:**' '**Steps:**' \
+               '**Expected result:**' '**Failure looks like:**' '**Cleanup:**' '**Code:**' '**Status:**' '**Notes / attachments:**'; do
     grep -qF "$field" "$SKILL" || { echo "the skill never names the field $field"; return 1; }
+  done
+  grep -qF '### MC-<n>.' "$SKILL" || { echo "the case heading is not ### MC-<n>."; return 1; }
+  grep -qxF '| # | Action | Data | Expected | Actual |' "$SKILL" || { echo "the skill has no steps header"; return 1; }
+  # The instrument stays, as an optional field for a verdict a developer reads from an attachment.
+  grep -qF '**By instrument:**' "$SKILL" || { echo "the optional instrument field is gone"; return 1; }
+}
+
+@test "the reader is a tester who knows the product but not the code" {
+  r="$(skill_section '## The reader')"
+  [ -n "$r" ] || { echo "no ## The reader"; return 1; }
+  for token in 'a tester who knows the product but not the code' 'only words from the screen' '`**Code:**`' '`artifact-reader`'; do
+    grep -qF -- "$token" <<<"$r" || { echo "## The reader does not name $token"; return 1; }
+  done
+  ! grep -qiE 'month later|codebase' <<<"$r" || { echo "## The reader is still the author a month later"; return 1; }
+  ! grep -qF 'its author, a month later' "$SKILL" || { echo "the old reader is back"; return 1; }
+}
+
+@test "the old case format is gone from the skill" {
+  for old in '**Scene:**' '**By eye:**' '**Wrap-up:**' '| # | Action | Data | You see |' '`You see`' '### N.'; do
+    ! grep -qF -- "$old" "$SKILL" || { echo "the skill still names $old"; return 1; }
+  done
+}
+
+@test "a step holds one action, starts from no other case, and copies the app's text" {
+  r="$(skill_section '## Step rules')"
+  [ -n "$r" ] || { echo "no ## Step rules"; return 1; }
+  for token in '**One row, one action.**' '**No "repeat steps".**' '**Cases are independent.**' 'state after case N' \
+               '**Visible text is copied from the app verbatim.**' 'One language per file'; do
+    grep -qF -- "$token" <<<"$r" || { echo "## Step rules does not name $token"; return 1; }
+  done
+}
+
+@test "the skill says how its lint counts and where it is wrong" {
+  l="$(skill_section '## The lint')"
+  [ -n "$l" ] || { echo "no ## The lint"; return 1; }
+  for id in case steps compound code codeslot chain budget file; do
+    grep -qF -- "| \`$id\` |" <<<"$l" || { echo "## The lint does not list the check $id"; return 1; }
+  done
+  for token in '`scripts/lint-manual-checks.sh`' 'blank lines inside it count' 'about 32 lines' 'about ten steps' \
+               '`YouTube`' '`shop.example.com`' 'no allow-list' 'runs it again'; do
+    grep -qF -- "$token" <<<"$l" || { echo "## The lint does not say $token"; return 1; }
   done
 }
 
@@ -49,6 +91,9 @@ setup() {
   # and a locales/ directory would put this skill under lint-locales parity for no reader.
   [ ! -d "$ROOT/skills/manual-checks/locales" ] || { echo "manual-checks must not carry locales/"; return 1; }
 }
+
+# A Russian string as \uXXXX escapes: no Cyrillic outside *.ru.md.
+ru() { python3 -c 'import sys; sys.stdout.write(sys.argv[1].encode().decode("unicode_escape"))' "$1"; }
 
 # The Plan brief of a profile script runs from its own banner to the next stage's.
 # Grepping the whole file would pass on a mention in the Validation brief, which is
@@ -208,18 +253,55 @@ review_brief() {
 # One section of the skill, heading excluded, up to the next H2.
 skill_section() { awk -v h="$1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
 
-@test "a case steps through a table, each row with what the doer sees" {
-  grep -qxF '| # | Action | Data | You see |' "$SKILL" || { echo "the case has no steps table"; return 1; }
-  grep -qF '**Wrap-up:**' "$SKILL" || { echo "the skill never names **Wrap-up:**"; return 1; }
-  grep -qF '| `## Cases` | Numbered, one per check | ≤ 40 lines each |' "$SKILL" || { echo "a case is not budgeted at 40 lines"; return 1; }
-  grep -qF 'a case to 20 lines' "$SKILL" || { echo "lite does not say what a case shrinks to"; return 1; }
-  grep -qF '**Cases are independent.**' "$SKILL" || { echo "cases may still lean on each other"; return 1; }
+@test "a case is budgeted at 40 lines, Scope at 8 and Preparation at 60, and lite keeps the case whole" {
+  grep -qF '| `## Cases` | `### MC-<n>.`, one per check | ≤ 40 lines each |' "$SKILL" || { echo "a case is not budgeted at 40 lines"; return 1; }
+  grep -qE '^\| `## Scope` \|.*\| ≤ 8 lines \|$' "$SKILL" || { echo "## Scope is not budgeted at 8 lines"; return 1; }
+  grep -qE '^\| `## Preparation` \|.*\| ≤ 60 lines \|$' "$SKILL" || { echo "## Preparation is not budgeted at 60 lines"; return 1; }
+  grep -qF 'a case keeps its 40 lines' "$SKILL" || { echo "lite cuts a case below what twelve fields need"; return 1; }
 }
 
-@test "Preparation is an environment and a dictionary of actions, and Scope says what BLOCKED means" {
-  grep -qF 'dictionary of actions' "$SKILL" || { echo "## Preparation has no dictionary of actions"; return 1; }
-  grep -qF 'BLOCKED' "$SKILL" || { echo "## Scope never says when a case is BLOCKED"; return 1; }
-  grep -qF '| `## Charter` |' "$SKILL" || { echo "the structure has no ## Charter"; return 1; }
+@test "Preparation maps the screen and its words, marks dev-only steps, and the file has its frame" {
+  for token in 'screen map' '| Word in the cases | What it is on the screen |' '**dev-only:**' 'BLOCKED' '| `## Charter` |' \
+               '## Run record' '## On failure — bug report' '[COVERS]'; do
+    grep -qF -- "$token" "$SKILL" || { echo "the skill never names $token"; return 1; }
+  done
+}
+
+# The worked examples: whole files the lint accepts, written for the neutral shopping cart.
+@test "two worked examples pass the lint and show every device of the format" {
+  grep -qF 'examples/manual-checks.en.md' "$SKILL" && grep -qF 'examples/manual-checks.ru.md' "$SKILL" \
+    || { echo "the skill does not point the writer at its examples"; return 1; }
+  for lang in en ru; do
+    ex="$ROOT/skills/manual-checks/examples/manual-checks.$lang.md"
+    [ -f "$ex" ] || { echo "no example $ex"; return 1; }
+    run "$ROOT/scripts/lint-manual-checks.sh" "$ex"
+    [ "$status" -eq 0 ] || { echo "manual-checks.$lang.md fails the lint:"; echo "$output"; return 1; }
+    prep="$(awk '$0=="## Preparation"{f=1;next} f&&/^## /{exit} f' "$ex")"
+    [ "$(grep -c '^```' <<<"$prep")" -ge 2 ] || { echo "manual-checks.$lang.md: ## Preparation has no screen-map sketch"; return 1; }
+    [ "$(grep -c '^### MC-[0-9]*\. ' "$ex")" -ge 3 ] || { echo "manual-checks.$lang.md: fewer than three cases"; return 1; }
+    grep -qF '**dev-only:**' <<<"$prep" || { echo "manual-checks.$lang.md: no dev-only preparation step"; return 1; }
+    grep -qF '**By instrument:**' "$ex" || { echo "manual-checks.$lang.md: no case with the instrument field"; return 1; }
+    fail="$(awk '/^## On failure/{f=1;next} f&&/^## /{exit} f' "$ex")"
+    for label in '**Title:**' '**Build / device:**' '**Steps to reproduce:**' '**Actual:**' '**Expected:**' '**Attachments:**'; do
+      grep -qF -- "$label" <<<"$fail" || { echo "manual-checks.$lang.md: the bug-report template has no $label"; return 1; }
+    done
+    ! grep -qiE '\b(swift|kotlin|java|android|ios|iphone|xcode|gradle)\b' "$ex" \
+      || { echo "manual-checks.$lang.md names an ecosystem"; return 1; }
+  done
+  grep -qxF '| Word in the cases | What it is on the screen |' "$ROOT/skills/manual-checks/examples/manual-checks.en.md" \
+    || { echo "manual-checks.en.md: no word table"; return 1; }
+  # The same header in Russian, as escapes: no Cyrillic in a test file.
+  grep -qxF "$(ru '| \u0421\u043b\u043e\u0432\u043e \u0432 \u043a\u0435\u0439\u0441\u0430\u0445 | \u0427\u0442\u043e \u044d\u0442\u043e \u043d\u0430 \u044d\u043a\u0440\u0430\u043d\u0435 |')" \
+    "$ROOT/skills/manual-checks/examples/manual-checks.ru.md" || { echo "manual-checks.ru.md: no word table"; return 1; }
+  run python3 - "$ROOT/skills/manual-checks/examples" <<'PY'
+import re, sys
+cyr = re.compile('[\u0400-\u04ff]')
+en = open(sys.argv[1] + '/manual-checks.en.md', encoding='utf-8').read()
+ru = open(sys.argv[1] + '/manual-checks.ru.md', encoding='utf-8').read()
+assert not cyr.search(en), 'manual-checks.en.md holds Cyrillic'
+assert len(cyr.findall(ru)) > 1500, 'manual-checks.ru.md is not written in Russian'
+PY
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }
 
 @test "a plan line carries its intent" {
@@ -230,7 +312,7 @@ skill_section() { awk -v h="$1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
 @test "claims are grounded in the code, and an empty case is deleted" {
   g="$(skill_section '## Grounding')"
   [ -n "$g" ] || { echo "no ## Grounding"; return 1; }
-  for token in 'checked against the code' '`Review.md`' '`[COVERS]`' '**The empty case.**' '`## Not covered`'; do
+  for token in 'checked against the code' '`Review.md`' '`[COVERS]`' '**The empty case.**' '`## Not covered`' '`**Code:**`'; do
     grep -qF -- "$token" <<<"$g" || { echo "## Grounding does not name $token"; return 1; }
   done
   [ "$(grep -c . <<<"$g")" -le 10 ] || { echo "## Grounding outgrew ten lines"; return 1; }
@@ -250,10 +332,12 @@ skill_section() { awk -v h="$1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
   [ -n "$c" ] || { echo "no ## Check"; return 1; }
   for token in '`[MANUAL_CHECKS_CHECK]`' '`manual_checks_check`' '`PASSED`' "validator's role" '`light`' 'nothing else' \
                '`walk`' '`smells`' '`ambiguous`' '`unverified`' '`precondition`' '`tacit`' '`oracle`' 'one pass' \
+               '`access`' '`twofold`' '`chained`' 'a tester with no access to the code' \
                '`ManualChecks.md check: N place(s), revised.`' '`ManualChecks.md check: nothing unclear.`' \
                'moving `[COVERS]` alone is no change'; do
     grep -qF -- "$token" <<<"$c" || { echo "## Check does not name $token"; return 1; }
   done
+  ! grep -qiE 'second round|two rounds' <<<"$c" || { echo "## Check grew a second round"; return 1; }
 }
 
 @test "Review judges a case by the case and its grounding" {
@@ -284,7 +368,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     out="$(walk_run "$p")"
     [ "$(labels <<<"$out")" = "validation manual-checks:check" ] || { echo "profile-$p: $(labels <<<"$out")"; return 1; }
     pr="$(pick 'o.calls[1].prompt' <<<"$out")"
-    for f in 'spine-toolkit:manual-checks skill, its ## Check section' '/p/Tasks/ACTIVE/001-x/ManualChecks.md and nothing else' 'run no git command'; do
+    for f in 'spine-toolkit:manual-checks skill, its ## Check section' 'a tester with no access to the code' '/p/Tasks/ACTIVE/001-x/ManualChecks.md and nothing else' 'run no git command'; do
       grep -qF -- "$f" <<<"$pr" || { echo "profile-$p: the reader brief lost: $f"; return 1; }
     done
     grep -qF 'ManualChecks.md check: nothing unclear.' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: no note"; return 1; }
@@ -324,7 +408,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     n=$((n + 1))
     for line in '// A reader with none of the task'"'"'s context, then one revision: manual-checks → ## Check.' \
                 "schema: MANUAL_CHECKS_READ, ...tuning(role, 'light')" \
-                "kind: { type: 'string', enum: ['ambiguous', 'unverified', 'precondition', 'tacit', 'oracle'] }" \
+                "kind: { type: 'string', enum: ['ambiguous', 'unverified', 'precondition', 'tacit', 'oracle', 'access', 'twofold', 'chained'] }" \
                 "manual_checks_changed: { type: 'boolean', description: 'false when no case was added, removed or rewritten; moving [COVERS] alone is no change' }"; do
       grep -qF -- "$line" "$f" || { echo "$(basename "$f"): missing '$line'"; return 1; }
     done
@@ -344,6 +428,8 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
 @test "Review judges the hand-run script by the case and its grounding" {
   for p in $PROFILES; do
     rb="$(review_brief "$ROOT/workflows/profile-$p.js")"
+    grep -qF 'a case a tester cannot execute as written' <<<"$rb" \
+      || { echo "profile-$p.js: Review does not judge a case as its tester would"; return 1; }
     grep -qF "the rules of the manual-checks skill's ## The case and ## Grounding" <<<"$rb" \
       || { echo "profile-$p.js: Review does not name the sections it judges by"; return 1; }
     grep -qF 'an empty case' <<<"$rb" || { echo "profile-$p.js: Review does not name the empty case"; return 1; }
@@ -386,7 +472,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
 }
 
 @test "the symbol rule covers the steps table, and lite keeps the ceilings too small to halve" {
-  grep -qF 'Neither `**Scene:**`, a cell of `**Steps:**`, nor either expectation' "$SKILL" \
+  grep -qF 'Neither `**Preconditions:**`, a cell of `**Steps:**`, nor `**Expected result:**`' "$SKILL" \
     || { echo "the symbol rule does not reach the steps table"; return 1; }
   grep -qF '`## Scope` and `## Charter` keep theirs' "$SKILL" \
     || { echo "lite halves ## Scope and ## Charter"; return 1; }
@@ -413,14 +499,20 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
   grep -qF '`scripts/lint-manual-checks.sh`' <<<"$(skill_section '## Grounding')" \
     || { echo "## Grounding does not name its lint"; return 1; }
   for p in feature bug refactor test quick; do
-    grep -qF "Then run \"\${core('scripts/lint-manual-checks.sh')}\" on the file and give every case it names a code reference" "$ROOT/workflows/profile-$p.js" \
-      || { echo "profile-$p.js: Validation never runs the grounding lint"; return 1; }
-    bullet "$ROOT/skills/workflow-$p/SKILL.md" Validation | grep -qF '`scripts/lint-manual-checks.sh`' \
-      || { echo "workflow-$p: Method B never runs the grounding lint"; return 1; }
+    grep -qF "Then run \"\${core('scripts/lint-manual-checks.sh')}\" on the file, repair every finding it prints, and run it again" "$ROOT/workflows/profile-$p.js" \
+      || { echo "profile-$p.js: Validation never runs the lint and repairs what it finds"; return 1; }
+    validation_brief "$ROOT/workflows/profile-$p.js" | grep -qF 'QA test cases for a tester who knows the product but not the code' \
+      || { echo "profile-$p.js: the Validation brief does not name the case format and its reader"; return 1; }
+    v="$(bullet "$ROOT/skills/workflow-$p/SKILL.md" Validation)"
+    grep -qF '`scripts/lint-manual-checks.sh`' <<<"$v" || { echo "workflow-$p: Method B never runs the grounding lint"; return 1; }
+    grep -qF 'repairs what it names and runs it again' <<<"$v" || { echo "workflow-$p: Method B does not repair the lint findings"; return 1; }
   done
   for f in "$ROOT"/workflows/profile-*.js; do
-    grep -qF "read each case's **Scene:** against its first step and its steps against each other" "$f" \
-      || { echo "$(basename "$f"): the revision never checks the scene against the steps"; return 1; }
+    grep -qF "read each case's **Preconditions:** against its first step and its steps against each other" "$f" \
+      || { echo "$(basename "$f"): the revision never checks the preconditions against the steps"; return 1; }
+    for old in '**Scene:**' 'By eye' 'Wrap-up' 'You see' 'a person about to execute the file'; do
+      ! grep -qF -- "$old" "$f" || { echo "$(basename "$f"): still names the old format: $old"; return 1; }
+    done
   done
 }
 

@@ -252,7 +252,7 @@ PY
   for token in "Everything after the dash" "is prose in" "keeps \`N/A: Forced-upgrade\` and"; do
     grep -qF -- "$token" "$ops" || { echo "ops-checklist does not say: $token"; return 1; }
   done
-  for token in 'field labels above stay English' "A case's title after \`### N.\`" 'are prose in the project'; do
+  for token in 'field labels above stay English' "A case's title after \`### MC-<n>.\`" 'are prose in the project'; do
     grep -qF -- "$token" "$mc" || { echo "manual-checks does not say: $token"; return 1; }
   done
 }
