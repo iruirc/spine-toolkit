@@ -448,8 +448,8 @@ NAMES
   n=0
   for p in "$ROOT"/workflows/profile-*.js; do
     n=$((n + 1))
-    for line in "that range already ends at the task's last commit and \"\${core('scripts/lint-walkthrough.sh')}\" \${DIR} exits 0, change nothing" \
-                "Last, run \"\${core('scripts/lint-walkthrough.sh')}\" \${DIR}." \
+    for line in "that range already ends at the task's last commit and \"\${core('scripts/lint-walkthrough.sh')}\" --words-per-sentence \${BUDGETS['words-per-sentence']} \${DIR} exits 0, change nothing" \
+                "Last, run \"\${core('scripts/lint-walkthrough.sh')}\" --words-per-sentence \${BUDGETS['words-per-sentence']} \${DIR}." \
                 'On exit 2 stop and return its output' 'a line that rule does not resolve is returned, not forced' \
                 "lint: { type: 'string'" \
                 'if (w.lint) result.notes.push(`Walkthrough.md lint: ${w.lint}`)'; do

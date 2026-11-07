@@ -12,7 +12,7 @@ setup() {
   AGENTS='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"—","diagnostics":"g","init":"—"}'
   REVISED='"artifact:revise": {"artifact_path": "x", "changed": true}'
   DECOMPOSED='"plan": {"ok": true, "artifact_path": "p", "summary": "s", "branch": "decomposition", "steps": []}'
-  LINT='Last, run scripts/lint-artifact-readability.sh on the file once; fix each finding once and name what is left in the stage summary.'
+  LINT='Last, run scripts/lint-artifact-readability.sh on the file once, with `--words-per-sentence` taken from the contract'"'"'s `budgets`; fix each finding once and name what is left in the stage summary.'
   METHOD_B="dispatch a fresh agent of the writer's role to read the file only, per \`artifact-reader\` → \`## Check\`, then revise once"
 }
 
@@ -226,27 +226,43 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   done
 }
 
-@test "the five workflow skills carry the Method B check paragraph" {
-  for s in bug feature refactor test quick; do
+@test "the seven workflow skills carry the Method B check paragraph" {
+  for s in bug feature refactor test quick epic research; do
     S="$ROOT/skills/workflow-$s/SKILL.md"
     para="$(grep -F '`artifact_check`' "$S" | grep -F "$METHOD_B")"
     [ -n "$para" ] || { echo "workflow-$s: no Method B paragraph"; return 1; }
     for token in 'is `on`' 'never a second round' '`light`'; do
       grep -qF "$token" <<<"$para" || { echo "workflow-$s: the paragraph does not say $token"; return 1; }
     done
-    if [ "$s" = quick ]; then
-      grep -qF '`Done.md`' <<<"$para" || { echo "workflow-quick: the paragraph does not name Done.md"; return 1; }
+    if [ "$s" = quick ] || [ "$s" = research ]; then
+      grep -qF '`Done.md`' <<<"$para" || { echo "workflow-$s: the paragraph does not name Done.md"; return 1; }
     else
       grep -qF '`Plan.md` after Plan' <<<"$para" && grep -qF '`Done.md` after Done' <<<"$para" \
         || { echo "workflow-$s: the paragraph does not name both files"; return 1; }
     fi
   done
+  grep -qF '`Plan.md` after Plan on the decomposition branch' <<<"$(grep -F "$METHOD_B" "$ROOT/skills/workflow-epic/SKILL.md")" \
+    || { echo "workflow-epic: the paragraph does not limit the Plan check to the decomposition branch"; return 1; }
+}
+
+@test "each Plan bullet of a skill with the check paragraph points at it" {
+  POINTER='When the contract'"'"'s `artifact_check` is `on`, a fresh reader checks `Plan.md` after this stage; the Done bullet says how.'
+  for s in bug feature refactor test epic; do
+    body="$(awk '/^## 2\. Stages/{z=1;next} z&&/^## /{exit} z&&/^- \*\*/{f=index($0, "- **Plan**")==1} z&&f' "$ROOT/skills/workflow-$s/SKILL.md")"
+    [ "$(grep -cF "$POINTER" <<<"$body")" -eq 1 ] || { echo "workflow-$s: the Plan bullet has no pointer at the check paragraph"; return 1; }
+  done
+}
+
+@test "the epic's research says the short answer opens it on either branch, once" {
+  body="$(awk '/^## 2\. Stages/{z=1;next} z&&/^## /{exit} z&&/^- \*\*/{f=index($0, "- **Research**")==1} z&&f' "$ROOT/skills/workflow-epic/SKILL.md")"
+  grep -qF 'On either branch `Research.md` opens with `## Short answer`.' <<<"$body" || { echo "workflow-epic: the short answer is not said for either branch"; return 1; }
 }
 
 @test "every workflow skill runs the readability lint where its script does" {
-  # One bullet per stage that writes a linted file, as the scripts' briefs do.
+  # One bullet per stage that writes a linted file, as the scripts' briefs do; the epic's Plan
+  # lints the decomposition plan and the pure-research roadmap.
   for entry in 'feature:Research Plan Review Done' 'bug:Diagnose Plan Review Done' 'refactor:Analyze Plan Review Done' \
-               'test:Analyze Plan Review Done' 'quick:Review Done' 'epic:Research Plan Done' 'research:Research Review Done' 'review:Review'; do
+               'test:Analyze Plan Review Done' 'quick:Review Done' 'epic:Research Plan Plan Done' 'research:Research Review Done' 'review:Review'; do
     s="${entry%%:*}"
     S="$ROOT/skills/workflow-$s/SKILL.md"
     [ "$(grep -cF "$LINT" "$S")" -eq "$(wc -w <<<"${entry#*:}")" ] || { echo "workflow-$s: the lint sentence appears $(grep -cF "$LINT" "$S") time(s)"; return 1; }

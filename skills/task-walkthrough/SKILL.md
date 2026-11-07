@@ -393,7 +393,7 @@ The file is living, not append-once. On a stage that runs it when the file alrea
    - `## Commits` — **append only**, at both depths, except when the resolved depth changed — see below. It is a log; a rework commit arrives with its own reason (`addresses Review finding 2`) and does not overwrite its predecessors. New bookkeeping commits join `### Bookkeeping`.
    - `## Plan vs. outcome` — **accumulates**, each new row carrying its trigger. A round of fixes after Review is precisely the divergence worth keeping.
    - `## What changed`, `## Glossary`, `## Summary`, `## Commit order`, `## How it works`, `## Out of scope`, `## Follow-ups` — **rewritten** to the current state. The reader needs what is true now, not archaeology.
-3. Update `[COVERS]`, then run `scripts/lint-walkthrough.sh` again. It exits 2 when it cannot read the task's records: stop and say so. A line the rule above does not resolve is returned, not forced.
+3. Update `[COVERS]`, then run `scripts/lint-walkthrough.sh` again. It exits 2 when it cannot read the task's records: stop and say so. A line the rule above does not resolve is returned, not forced. Each run of the lint here takes `--words-per-sentence` from the contract's `budgets`, so the `style` class measures the run's own number.
 
 A refresh that finds the file at the other depth rewrites it to the resolved one rather than mixing the two. Raising `brief` to `deep` means going back to `git show` for the commits already logged — the existing bullets are not enough to expand from, and expanding them from memory invents content.
 

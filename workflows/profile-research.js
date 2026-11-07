@@ -218,7 +218,7 @@ Write it by applying the spine-toolkit:task-documents skill, its Done.md section
 
 ${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}
 
-Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Done.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
+Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Done.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
 )
 
 // Every stage may decline part of the owner's directive, and says so here rather than in prose.
@@ -665,9 +665,9 @@ Derive the account from git — the task's own commits, git log over the range a
 
 [COVERS] = <first-sha>..<last-sha>
 
-If the file already exists, that range already ends at the task's last commit and "${core('scripts/lint-walkthrough.sh')}" ${DIR} exits 0, change nothing and say so. Return changed true when you wrote the file, false when you left it as it was.
+If the file already exists, that range already ends at the task's last commit and "${core('scripts/lint-walkthrough.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR} exits 0, change nothing and say so. Return changed true when you wrote the file, false when you left it as it was.
 
-Last, run "${core('scripts/lint-walkthrough.sh')}" ${DIR}. Each line it prints names a class: apply the skill's ## Refreshing rule for that class and run it once more. On exit 2 stop and return its output; a line that rule does not resolve is returned, not forced. Return what its last run printed in lint.${extra ? `
+Last, run "${core('scripts/lint-walkthrough.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}. Each line it prints names a class: apply the skill's ## Refreshing rule for that class and run it once more. On exit 2 stop and return its output; a line that rule does not resolve is returned, not forced. Return what its last run printed in lint.${extra ? `
 
 ${extra}` : ''}
 
@@ -934,7 +934,7 @@ The heading ## Follow-up is a byte-for-byte literal. Do not translate, localize,
 
 ${EXPERIMENT === 'on' ? EXPERIMENT_RULES : DESK}
 
-Write it by applying the spine-toolkit:task-documents skill, its Research.md section for the short answer and its rules for every document (the document is the deliverable, so the skill's layers and its other per-document sections do not apply); its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Research.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
+Write it by applying the spine-toolkit:task-documents skill, its Research.md section for the short answer and its rules for every document (the document is the deliverable, so the skill's layers and its other per-document sections do not apply); its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Research.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
     ),
     {
       label: `research:${picked}`,
@@ -983,7 +983,7 @@ Judge the research and only the research: does it cover the goal it set itself, 
 
 You are explicitly NOT verifying the findings against the codebase — the technical accuracy of a finding belongs to the research agent, and second-guessing it here duplicates that work at full cost while adding no gate. Modify nothing. Return the same status you wrote on the first line.
 
-Write it by applying the spine-toolkit:task-documents skill, its Review.md section, whose Impact rule gives every finding an **Impact:** line; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Review.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
+Write it by applying the spine-toolkit:task-documents skill, its Review.md section, whose Impact rule gives every finding an **Impact:** line; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Review.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )

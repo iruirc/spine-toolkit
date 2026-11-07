@@ -224,7 +224,7 @@ Write it by applying the spine-toolkit:task-documents skill, its Done.md section
 
 ${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}
 
-Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Done.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
+Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Done.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
 )
 
 // Every stage may decline part of the owner's directive, and says so here rather than in prose.
@@ -671,9 +671,9 @@ Derive the account from git — the task's own commits, git log over the range a
 
 [COVERS] = <first-sha>..<last-sha>
 
-If the file already exists, that range already ends at the task's last commit and "${core('scripts/lint-walkthrough.sh')}" ${DIR} exits 0, change nothing and say so. Return changed true when you wrote the file, false when you left it as it was.
+If the file already exists, that range already ends at the task's last commit and "${core('scripts/lint-walkthrough.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR} exits 0, change nothing and say so. Return changed true when you wrote the file, false when you left it as it was.
 
-Last, run "${core('scripts/lint-walkthrough.sh')}" ${DIR}. Each line it prints names a class: apply the skill's ## Refreshing rule for that class and run it once more. On exit 2 stop and return its output; a line that rule does not resolve is returned, not forced. Return what its last run printed in lint.${extra ? `
+Last, run "${core('scripts/lint-walkthrough.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}. Each line it prints names a class: apply the skill's ## Refreshing rule for that class and run it once more. On exit 2 stop and return its output; a line that rule does not resolve is returned, not forced. Return what its last run printed in lint.${extra ? `
 
 ${extra}` : ''}
 
@@ -891,7 +891,7 @@ Your findings feed Research.md, so apply the task-documents skill's Research.md 
       'Analyze',
       `Write ${DIR}/Research.md: what to test (uncovered code, critical paths, regression scenarios), at what level (unit, integration, UI, snapshot), and with which of this platform's test frameworks and helpers. Fold the testability findings below into it — a blocker that is not written down becomes a phase that cannot be finished.
 
-Research.md opens with ## Short answer: one or two sentences, in words, per question Task.md asks (on a step, its ### Questions for Research), each naming the question it answers; the sections below it hold the evidence for it. Write it by applying the spine-toolkit:task-documents skill, its Research.md section; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Research.md once. Fix each finding once; do not run it again; name what is left in your summary.
+Research.md opens with ## Short answer: one or two sentences, in words, per question Task.md asks (on a step, its ### Questions for Research), each naming the question it answers; the sections below it hold the evidence for it. Write it by applying the spine-toolkit:task-documents skill, its Research.md section; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Research.md once. Fix each finding once; do not run it again; name what is left in your summary.
 
 TESTABILITY FINDINGS (data):
 ${JSON.stringify(testability || { blockers: [] }, null, 2)}`,
@@ -917,13 +917,13 @@ if (runs('Plan')) {
 
 Group phases by testable unit — one per component, module, or use case — and give each a priority: P0 critical and release-blocking, P1 important, P2 nice to have.
 
-Write it by applying the spine-toolkit:task-documents skill, its Plan.md section; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body.
+Write it by applying the spine-toolkit:task-documents skill, its Plan.md section, which puts the progress table under ## For the owner and the details behind it under ## For the implementer; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body.
 
 Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation, and at proportional a phase checks only what it can break — repeating the whole suite there is a defect of this plan; at full every phase repeats it too. This run's phase_verification is ${PHASE_VERIFICATION}.
 
 Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, each stated as what must be true and what changed to make it so, rather than as what to press, so Validation can turn it into a case a person walks. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}
 
-Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Plan.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
+Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Plan.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
     ),
     { label: 'plan', phase: 'Plan', agentType: A.agents.tester, schema: withEscalation(PLAN), ...tuning('tester', 'stage') },
   )
@@ -1002,7 +1002,7 @@ if (runs('Review') && A.need_review !== false) {
 
 When ${DIR}/ManualChecks.md exists, read it too: a case a tester cannot execute as written is an ordinary finding, judged by the rules of the manual-checks skill's ## The case and ## Grounding — an empty case, whose failure looks the same as its success, and a claim about behaviour with no code reference are findings too. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does, every finding it lists — a name that does not say what broke included. Unlike the plan findings above, these are defects in what was delivered: an assertion that cannot fail and a double standing in for the behaviour under test always go into blocking_findings, and the rest may block. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${cap('Review.md')}
 
-Write it by applying the spine-toolkit:task-documents skill, its Review.md section, whose Impact rule gives every finding an **Impact:** line; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Review.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
+Write it by applying the spine-toolkit:task-documents skill, its Review.md section, whose Impact rule gives every finding an **Impact:** line; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Review.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )
