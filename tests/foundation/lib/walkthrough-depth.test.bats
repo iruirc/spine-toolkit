@@ -290,6 +290,7 @@ NAMES
   ck="$(awk '/^## Check$/{f=1;next} /^## /{f=0} f' "$SKILL")"
   for token in 'a sentence it had to read twice' 'a term used without a definition' \
                'an identifier as the subject of a sentence' 'a commit without its reason or its verification' \
+               'the first read listed three places or fewer' 'is not checked again' \
                'the first read listed more than three places' 'never a third'; do
     grep -qF "$token" <<<"$ck" || { echo "## Check does not say $token"; return 1; }
   done
@@ -495,4 +496,59 @@ NAMES
   grep -qF '`range` — the range is rewritten to the commits that exist' <<<"$refresh" || { echo "## Refreshing does not repair a range"; return 1; }
   grep -qF 'or a `### Bookkeeping` line for a commit that carries no engineering decision' <<<"$refresh" \
     || { echo "the missing repair does not name bookkeeping"; return 1; }
+}
+
+# The body of one example file under its exact `## ` heading, fences included.
+section_of() {
+  awk -v h="$2" '/^```/ { fence = !fence } !fence && $0 == h { f = 1; next } !fence && f && /^## / { f = 0 } f' "$1"
+}
+
+@test "the skill sends the writer to the example for its language" {
+  grep -qF "Before writing, read the example for the project's language" "$SKILL" \
+    || { echo "the skill does not point the writer at its worked example"; return 1; }
+  grep -qF 'Match its density, not its content' "$SKILL" \
+    || { echo "the skill does not say what to take from the example"; return 1; }
+}
+
+@test "the worked examples are whole files that pass the style lint and show every device" {
+  for lang in en ru; do
+    ex="$ROOT/skills/task-walkthrough/examples/deep.$lang.md"
+    [ -f "$ex" ] || { echo "no example $ex"; return 1; }
+    n="$(wc -l <"$ex" | tr -d ' ')"
+    [ "$n" -le 260 ] || { echo "deep.$lang.md is $n lines, over 260"; return 1; }
+    run "$ROOT/scripts/lint-walkthrough.sh" --style "$ex"
+    [ "$status" -eq 0 ] || { echo "deep.$lang.md fails the style lint:"; echo "$output"; return 1; }
+    [ "$(sed -n 2p "$ex" | cut -c1-11)" = '[COVERS] = ' ] || { echo "deep.$lang.md: [COVERS] is not line 2"; return 1; }
+    for token in '> **How to read.**' '| Commit | Needs | Why here |' '| What could break | What it would look like |' \
+                 '#### What failure this is written against' '#### How it is closed' '### Bookkeeping'; do
+      grep -qF -- "$token" "$ex" || { echo "deep.$lang.md does not show $token"; return 1; }
+    done
+    wc="$(section_of "$ex" '## What changed')"
+    for row in '| **Before:** |' '| **After:** |' '| **Commits:** |'; do
+      grep -qF -- "$row" <<<"$wc" || { echo "deep.$lang.md: ## What changed has no row $row"; return 1; }
+    done
+    gl="$(section_of "$ex" '## Glossary')"
+    [ "$(grep -c '^```' <<<"$gl")" -ge 2 ] || { echo "deep.$lang.md: ## Glossary has no fenced sketch"; return 1; }
+    sm="$(section_of "$ex" '## Summary')"
+    for lead in '**Why.**' '**What was done.**' '**Main decisions.**'; do
+      grep -qF -- "$lead" <<<"$sm" || { echo "deep.$lang.md: ## Summary has no lead $lead"; return 1; }
+    done
+    [ "$(grep -c '^\*\*In short:\*\*' "$ex")" -ge 3 ] || { echo "deep.$lang.md: fewer than three In short"; return 1; }
+    [ "$(grep -c '^\*\*How verified:\*\*' "$ex")" -ge 2 ] || { echo "deep.$lang.md: fewer than two How verified"; return 1; }
+    [ "$(grep -c '^sequenceDiagram$' "$ex")" -eq 1 ] || { echo "deep.$lang.md: not exactly one sequenceDiagram"; return 1; }
+    chain="$(awk '/^#### What failure this is written against$/ { f = 1; next } /^#{2,4} / { f = 0 } f && /^[0-9]+\. / { c++ } END { print c + 0 }' "$ex")"
+    [ "$chain" -ge 3 ] || { echo "deep.$lang.md: no numbered failure chain of three steps"; return 1; }
+    ! grep -qiE '\b(swift|kotlin|java|android|ios|xcode|gradle)\b' "$ex" \
+      || { echo "deep.$lang.md names an ecosystem"; return 1; }
+  done
+  # The English file holds no Cyrillic; the Russian one is written in it, not only labelled.
+  run python3 - "$ROOT/skills/task-walkthrough/examples" <<'PY'
+import re, sys
+cyr = re.compile('[\u0400-\u04ff]')
+en = open(sys.argv[1] + '/deep.en.md', encoding='utf-8').read()
+ru = open(sys.argv[1] + '/deep.ru.md', encoding='utf-8').read()
+assert not cyr.search(en), 'deep.en.md holds Cyrillic'
+assert len(cyr.findall(ru)) > 2000, 'deep.ru.md is not written in Russian'
+PY
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }

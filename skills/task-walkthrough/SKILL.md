@@ -33,13 +33,15 @@ Every rule below is derived from that one sentence, and it settles the arguments
 
 `brief` addresses the same reader with the area already known — the depth choice is an assumption about the reader's starting knowledge, not a second reader.
 
+Before writing, read the example for the project's language: `examples/deep.en.md` or `examples/deep.ru.md`, and the English one for any other language. Match its density, not its content. Both show `deep`; a `brief` file keeps the same reader and drops the sections the table marks absent.
+
 ## The switch
 
 `[WALKTHROUGH] = [brief|deep|off]` in `Task.md` → `off` when the run's `scale` is `lite` → the project config's `[WALKTHROUGH]` → `deep`. First hit wins; a missing field is not an error, it is the default. The axis moves the default only, so an explicit `[WALKTHROUGH] = [deep]` writes this file on a `lite` run (`conventions/task-scale.md`).
 
 | Value | Meaning |
 |---|---|
-| `deep` | What changed, item by item. Then a section per commit: what appeared, the failure it is written against, how that is closed, which alternative was rejected. Plus a glossary and a commit order. The default. |
+| `deep` | A how-to-read note, then what changed, item by item, each with its before and after. A glossary, a summary in three leads (why, what was done, the main decisions) and a commit order. Then a section per commit, opened by `**In short:**`: the failure it is written against, how that is closed, `**How verified:**`, which alternative was rejected. The default. |
 | `brief` | What changed, one line per item; then a summary, divergences and a commit log of one bullet each. The account for that reader when the area is already familiar. |
 | `off` | Not written. |
 
@@ -108,7 +110,7 @@ use the file: which sections give the gist, where the glossary is, how a commit 
 | `## What changed` | Every observable change, before and after on one concrete case | 1 line per change | 1 item per change |
 | `## Glossary` | Every domain term the document uses that the reader would not already know | absent | 1–4 lines per term |
 | `## Summary` | Why the task existed, and the idea of the solution | ≤ 8 lines | no count: three leads, not a list of changes, not a retelling of commits |
-| `## Commit order` | Why the commits are in this order and what depends on what | absent | table + 1 diagram |
+| `## Commit order` | Why the commits are in this order and what depends on what | absent | table (+ graph above four commits) |
 | `## Plan vs. outcome` | One row per divergence, with its trigger | 1 row per divergence | same |
 | `## Commits` | The log | 1 bullet, 1–3 sentences each | 1 section each |
 | `## How it works` | Diagrams, and only the prose that connects them | ≤ 2 diagrams | ≤ 2 diagrams |
@@ -121,7 +123,7 @@ The budgets bound **scope**, not comprehension. When a section is at its ceiling
 2. **Go over rather than drop.** A line or two past the ceiling costs less than a claim the reader needed and did not get. The ceiling is what yields first.
 3. **Consistently far over means the scope is wrong.** Not one line on one section — half again, section after section. Then the section is covering more than it should, and the fix is to drop claims until what remains fits, never to shrink the sentences that remain.
 
-A `deep` section with no number in the table — `## Summary`, the prose of `## Commit order`, a
+A `deep` section with no number in the table — `## Summary`, the table and prose of `## Commit order`, a
 commit's sub-heading — is bounded by its scope alone. The first move holds there as everywhere. The
 third is the only test left: a section that grows run after run covers more than its row says, and
 the fix is fewer claims, never shorter sentences.
@@ -133,7 +135,8 @@ See `## Style`.
 ### `## What changed`
 
 The first section after the header, at both depths. It answers "what did this task do" without the
-reader opening anything below it. Its first line says whether a user sees anything new. At `deep`
+reader opening anything below it. Its first line says whether a user sees anything new, at both
+depths: a task with nothing visible says so before its first item. At `deep`
 each observable change is a numbered `###` heading and a table of three rows:
 
 ```markdown
@@ -165,8 +168,13 @@ What counts as a change depends on the profile:
 | TEST | a breakage that now fails a test where it used to pass unnoticed |
 | EPIC | a change of the delivery as a whole, with `**Steps:**` in place of `**Commits:**` |
 
-At `brief` every item keeps its before and after, on one numbered line:
-`1. A promo code no longer discounts the delivery fee: 1170 → 1200 on the same order (commits a1b2c3d, e4f5a6b).`
+At `brief` every item keeps its before and after, on one numbered line, under the same first line:
+
+```markdown
+A user sees one difference, at checkout.
+
+1. A promo code no longer discounts the delivery fee: 1170 → 1200 on the same order (commits a1b2c3d, e4f5a6b).
+```
 
 At `brief` the log is not numbered, so an item cites its commits by short sha. The shas go without
 backticks: this section holds no code span at either depth, and `scripts/lint-walkthrough.sh` names
@@ -305,7 +313,7 @@ A commit that renames a symbol gets its `**In short:**` and nothing more; a comm
 
 Two parts carry the weight, and both are usually missing when this artifact disappoints:
 
-- **The failure** is written as a numbered chain the reader can follow to its consequence, not as a category, and the last step is what the user sees. In the example above, the part that matters is the last step: the cart crashes *every time*, so it is unopenable forever. "Guards against invalid input" says none of that. When a commit closes several failures, a table with the columns `What could break` and `How it would look` replaces the chain.
+- **The failure** is written as a numbered chain the reader can follow to its consequence, not as a category, and the last step is what the user sees. In the example above, the part that matters is the last step: the cart crashes *every time*, so it is unopenable forever. "Guards against invalid input" says none of that. When a commit closes several failures, a table with the columns `What could break` and `What it would look like` replaces the chain.
 - **The rejected alternative** is what the reader actually came for. `Why the store is not the gate` beats any amount of description of the gate.
 
 For the hardest commit of the task, a small ASCII sequence or a table of cases — the case, what it should do, what it did before — is worth adding under `#### How it is closed`.
@@ -445,7 +453,7 @@ The depth switch reads the same, with the step standing in for the commit: at `d
 
 ## Localization
 
-Prose in the project's language, structure in English — headings, the `[COVERS]` anchor, the trigger values. The English half covers `## What changed`, `## Glossary`, `## Commit order`, `## Out of scope`, `### Bookkeeping`, the five `####` sub-headings of a `deep` commit section, the table header rows `| # | Part | In plain words |` and `| Commit | Needs | Why here |`, the quote lead `> **How to read.**`, the `## Summary` leads `**Why.**`, `**What was done.**` and `**Main decisions.**`, and the labels `**Before:**`, `**After:**`, `**Behaviour:**`, `**Commits:**`, `**Steps:**`, `**Changes:**`, `**Files:**`, `**In short:**` and `**How verified:**`: later tasks cite them by their exact spelling, and a translated heading breaks that citation.
+Prose in the project's language, structure in English — headings, the `[COVERS]` anchor, the trigger values. The English half covers `## What changed`, `## Glossary`, `## Commit order`, `## Out of scope`, `### Bookkeeping`, the five `####` sub-headings of a `deep` commit section, the table header rows `| # | Part | In plain words |`, `| Commit | Needs | Why here |` and `| What could break | What it would look like |`, the quote lead `> **How to read.**`, the `## Summary` leads `**Why.**`, `**What was done.**` and `**Main decisions.**`, and the labels `**Before:**`, `**After:**`, `**Behaviour:**`, `**Commits:**`, `**Steps:**`, `**Changes:**`, `**Files:**`, `**In short:**` and `**How verified:**`: later tasks cite them by their exact spelling, and a translated heading breaks that citation.
 `conventions/i18n.md`, Artifact authoring rule.
 
 ## Anti-patterns to avoid
@@ -454,7 +462,7 @@ The reader and style rules every task artifact follows are in the `artifact-read
 
 - **Telegraphic compression.** Packing three claims into one sentence to stay inside a budget. The budget bounds how much this section may cover, never how hard it may be to read; go a line over rather than a comprehension short, and when a section runs far over line after line, follow the ranked rule under the `## Structure` table — the answer there is fewer claims, never shorter sentences. This is the failure that makes an accurate file useless.
 - **Restating the diff.** A hunk-by-hunk retelling. The diff is readable and does not rot; prose about it does. Quoting a signature or a doc comment is not this — see `## Style`. The test: does the excerpt carry the *why*, or is it there because it was in the change?
-- **Deep by reflex.** A five-part section for a commit that renamed a constant. The sub-headings are a menu; an empty one filled to look complete is noise the reader has to wade through.
+- **Deep by reflex.** A five-part section for a commit that renamed a constant. Such a commit gets `**In short:**` alone, and the three menu sub-headings are earned one by one; an empty one filled to look complete is noise the reader has to wade through.
 - **A glossary of unused terms.** Entries earn their place by appearing later in the document.
 - **Feeding it to the Review stage.** The `reviewer` agent exists to read the diff independently; the author's narrative anchors it. `OpsChecklist.md` is fine as its input — that is evidence, not story. The reader of this file is a person.
 - **Copying the validation verdict in.** It lives in `Validation.md` and `Done.md`. Link, do not duplicate.
