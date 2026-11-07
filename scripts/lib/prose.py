@@ -175,7 +175,14 @@ def words_per_sentence(directory, lint=None):
     if directory in _BUDGETS:
         return _BUDGETS[directory]
     lint = lint or os.path.basename(sys.argv[0] if sys.argv and sys.argv[0] not in ('', '-', '-c') else 'lint')
-    out = subprocess.run([_RESOLVE, 'json', directory], capture_output=True, text=True)
+    def fail():
+        print('%s: resolve-settings.sh failed for %s' % (lint, directory), file=sys.stderr)
+        sys.exit(2)
+
+    try:
+        out = subprocess.run([_RESOLVE, 'json', directory], capture_output=True, text=True)
+    except OSError:
+        fail()
     failed = out.returncode != 0
     for line in out.stderr.splitlines():
         if not line or line in _WARNED:
@@ -185,8 +192,12 @@ def words_per_sentence(directory, lint=None):
         _WARNED.add(line)
         print(line, file=sys.stderr)
     if failed:
-        print('%s: resolve-settings.sh failed for %s' % (lint, directory), file=sys.stderr)
-        sys.exit(2)
-    value = json.loads(out.stdout).get('budgets', {}).get('words-per-sentence', MAX_WORDS)
+        fail()
+    # An answer that is not the settings json is a failed resolver too, whatever its exit code said.
+    try:
+        budgets = json.loads(out.stdout).get('budgets', {})
+        value = budgets.get('words-per-sentence', MAX_WORDS)
+    except (ValueError, AttributeError):
+        fail()
     _BUDGETS[directory] = value if isinstance(value, int) and value > 0 else MAX_WORDS
     return _BUDGETS[directory]

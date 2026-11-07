@@ -198,3 +198,39 @@ mk() {
   [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
   [[ "$output" == *"lint-x.sh: resolve-settings.sh failed for $BATS_TEST_TMPDIR/missing"* ]] || { echo "$output"; return 1; }
 }
+
+# A resolver that is missing, not executable or answers with something that is not the settings
+# json is the same failure as one that exits non-zero: exit 2, not a traceback and exit 1, which
+# the lints read as "findings".
+@test "words_per_sentence with a missing resolver names the lint and exits 2" {
+  mk '[TASK_TYPE] = [BUG]'
+  run py "import prose
+prose._RESOLVE = '$BATS_TEST_TMPDIR/no-such-resolver.sh'
+prose.words_per_sentence('$D', 'lint-x.sh')"
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+  [[ "$output" == *"lint-x.sh: resolve-settings.sh failed for $D"* ]] || { echo "$output"; return 1; }
+  ! grep -q Traceback <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "words_per_sentence with malformed json names the lint and exits 2" {
+  mk '[TASK_TYPE] = [BUG]'
+  printf '#!/usr/bin/env bash\necho "{not json"\n' >"$BATS_TEST_TMPDIR/bad.sh"
+  chmod +x "$BATS_TEST_TMPDIR/bad.sh"
+  run py "import prose
+prose._RESOLVE = '$BATS_TEST_TMPDIR/bad.sh'
+prose.words_per_sentence('$D', 'lint-x.sh')"
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+  [[ "$output" == *"lint-x.sh: resolve-settings.sh failed for $D"* ]] || { echo "$output"; return 1; }
+  ! grep -q Traceback <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "words_per_sentence with json that is not an object names the lint and exits 2" {
+  mk '[TASK_TYPE] = [BUG]'
+  printf '#!/usr/bin/env bash\necho "[1, 2]"\n' >"$BATS_TEST_TMPDIR/list.sh"
+  chmod +x "$BATS_TEST_TMPDIR/list.sh"
+  run py "import prose
+prose._RESOLVE = '$BATS_TEST_TMPDIR/list.sh'
+prose.words_per_sentence('$D', 'lint-x.sh')"
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+  [[ "$output" == *"lint-x.sh: resolve-settings.sh failed for $D"* ]] || { echo "$output"; return 1; }
+}
