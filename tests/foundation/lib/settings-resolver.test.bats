@@ -1346,7 +1346,7 @@ budget() { python3 -c 'import json,sys; print(json.load(sys.stdin)["budgets"][sy
   ! grep -q '^\[BUDGETS\]' <<<"$output" || { echo "$output"; return 1; }
 }
 
-@test "a budgets entry rides the contract's run_settings like any map key" {
+@test "a budgets entry of the contract's run_settings decides the key, as run" {
   python3 - "$TASK" "$BATS_TEST_TMPDIR/c.json" <<'PY'
 import json, sys
 json.dump({'task_dir': sys.argv[1], 'profile': 'bug', 'run_settings': {'budgets.Plan.md': '150'}},

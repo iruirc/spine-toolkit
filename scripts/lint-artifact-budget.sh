@@ -5,13 +5,14 @@ set -euo pipefail
 # The axis, and why this is a script rather than a sentence in a brief: conventions/task-scale.md.
 #
 # Usage: scripts/lint-artifact-budget.sh [--task-docs] <task-dir> [<task-dir> ...]
-#        scripts/lint-artifact-budget.sh --budgets <task-dir>
+#        scripts/lint-artifact-budget.sh --budgets <task-dir> [--set budgets.<key>=<n>]...
 # Exit:  0 nothing over budget (or nothing measured), 1 something over, 2 usage.
 #
 # Without a flag: a lite task's own artifacts. --task-docs covers every .step/ folder not yet
 # started, at any scale — its ceiling and its three anchors (skills/task-documents/SKILL.md).
 # --budgets prints the ceilings a task resolves to, in the Outbound Contract's brace syntax, and
-# measures nothing: the orchestrator ships that line as the contract's budgets field.
+# measures nothing: the orchestrator ships that line as the contract's budgets field. Each --set
+# is a budgets word of the run itself, handed to the resolver as given; only --budgets takes one.
 #
 # Scale and the per-artifact ceilings both come from scripts/resolve-settings.sh, the one reader
 # of Task.md and the project config.
@@ -20,7 +21,7 @@ set -euo pipefail
 # its own Plan.md and Done.md are not gated by this ceiling (workflow-epic/SKILL.md). Its
 # .step/ subfolders are unaffected — walk() measures each one against its own Task.md.
 
-[ "$#" -ge 1 ] || { echo "usage: $0 [--task-docs] <task-dir> [<task-dir> ...] | --budgets <task-dir>" >&2; exit 2; }
+[ "$#" -ge 1 ] || { echo "usage: $0 [--task-docs] <task-dir> [<task-dir> ...] | --budgets <task-dir> [--set budgets.<key>=<n>]..." >&2; exit 2; }
 
 RESOLVE="$(dirname -- "${BASH_SOURCE[0]}")/resolve-settings.sh"
 python3 - "$RESOLVE" "$@" <<'PY'
@@ -55,7 +56,8 @@ def settings(task_dir):
     with exit 2, the usage/malformed code this script already uses for input it cannot read."""
     if task_dir in _SETTINGS_CACHE:
         return _SETTINGS_CACHE[task_dir]
-    out = subprocess.run([RESOLVE, 'json', task_dir], capture_output=True, text=True)
+    sets = [x for pair in RUN_SET for x in ('--set', pair)]
+    out = subprocess.run([RESOLVE, 'json', task_dir] + sets, capture_output=True, text=True)
     _emit_stderr(out.stderr, everything=out.returncode != 0)
     if out.returncode != 0:
         print('lint-artifact-budget.sh: resolve-settings.sh failed for %s' % task_dir, file=sys.stderr)
@@ -64,15 +66,24 @@ def settings(task_dir):
     return _SETTINGS_CACHE[task_dir]
 
 
-args = sys.argv[2:]
+args = []
+RUN_SET = []
+_rest = sys.argv[2:]
+while _rest:
+    a = _rest.pop(0)
+    if a == '--set' and _rest and _rest[0].startswith('budgets.'):
+        RUN_SET.append(_rest.pop(0))
+    else:
+        args.append(a)
 task_docs = '--task-docs' in args
 print_budgets = '--budgets' in args
 # --budgets reads the ceilings and nothing else, which is what lets the orchestrator announce
 # every line it forwards as a budget line.
-_MINE[:] = ['[BUDGETS]'] if print_budgets else ['[BUDGETS]', '[SCALE]']
+_MINE[:] = ['[BUDGETS]', '--set budgets'] if print_budgets else ['[BUDGETS]', '[SCALE]']
 dirs = [a for a in args if a not in ('--task-docs', '--budgets')]
-if any(a.startswith('--') for a in dirs) or not dirs or (print_budgets and (task_docs or len(dirs) != 1)):
-    print('usage: lint-artifact-budget.sh [--task-docs] <task-dir> [<task-dir> ...] | --budgets <task-dir>', file=sys.stderr)
+if any(a.startswith('--') for a in dirs) or not dirs or (print_budgets and (task_docs or len(dirs) != 1)) \
+        or (RUN_SET and not print_budgets):
+    print('usage: lint-artifact-budget.sh [--task-docs] <task-dir> [<task-dir> ...] | --budgets <task-dir> [--set budgets.<key>=<n>]...', file=sys.stderr)
     sys.exit(2)
 
 violations = []

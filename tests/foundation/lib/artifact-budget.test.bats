@@ -251,6 +251,35 @@ epic() { printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"; }
   [ "$status" -eq 0 ] || { echo "a Task.md entry made a full task measured: $output"; return 1; }
 }
 
+@test "--budgets carries a run's budgets words into the map" {
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [Plan.md: 300, Done.md: 70]\n' >"$TASK/Task.md"
+  run "$LINT" --budgets "$TASK" --set budgets.Plan.md=150 --set budgets.words-per-sentence=20
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "{Done.md: 70, Plan.md: 150, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100, words-per-sentence: 20}" ] \
+    || { echo "$output"; return 1; }
+}
+
+@test "--budgets reports a bad run word on stderr and keeps the next source's value" {
+  printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [Plan.md: 300]\n' >"$TASK/Task.md"
+  out="$("$LINT" --budgets "$TASK" --set budgets.Plan.md=0 --set budgets.Notes.md=5 2>"$BATS_TEST_TMPDIR/err")"
+  case "$out" in *"Plan.md: 300"*) ;; *) echo "$out"; return 1 ;; esac
+  grep -qxF -- "--set budgets: 'Plan.md: 0' not recognized, skipped" "$BATS_TEST_TMPDIR/err" || { cat "$BATS_TEST_TMPDIR/err"; return 1; }
+  grep -qxF -- "--set budgets: 'Notes.md: 5' not recognized, skipped" "$BATS_TEST_TMPDIR/err" || { cat "$BATS_TEST_TMPDIR/err"; return 1; }
+}
+
+@test "--set is a usage error without --budgets, and only budgets words are taken" {
+  run "$LINT" "$TASK" --set budgets.Plan.md=150
+  [ "$status" -eq 2 ]
+  run "$LINT" --budgets "$TASK" --set models.reviewer=opus
+  [ "$status" -eq 2 ]
+}
+
+@test "the orchestrator passes the run's budgets words to the budgets call" {
+  para="$(awk '/^`budgets` —/{f=1} f{print} f&&/^$/{exit}' "$ROOT/skills/orchestrator/SKILL.md")"
+  grep -qF 'Pass one `--set budgets.<key>=<n>` argument to that call per `budgets.*` entry of the run'"'"'s `run_settings`' <<<"$para" \
+    || { echo "the budgets paragraph does not carry the run's words to the call"; return 1; }
+}
+
 @test "a bad Task.md [BUDGETS] entry is reported by the lint under Task.md [BUDGETS]" {
   printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [Plan.md: 0]\n' >"$TASK/Task.md"
   lines "$TASK/Plan.md" 201
