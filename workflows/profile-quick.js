@@ -93,6 +93,7 @@ const MANUAL_CHECKS = A.manual_checks === 'always' ? 'always' : 'auto'
 const MANUAL_CHECKS_CHECK = A.manual_checks_check === 'off' ? 'off' : 'on'
 const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'
 const WALKTHROUGH_CHECK = A.walkthrough_check === 'on' ? 'on' : 'off'
+const ARTIFACT_CHECK = A.artifact_check === 'on' ? 'on' : 'off'
 // Whether Walkthrough.md names the task's newest commit: the orchestrator's measure before the run,
 // then each writer's result. Done's own commits are the one thing left that can move past it.
 let walkthroughCurrent = A.walkthrough_current === true

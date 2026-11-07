@@ -28,6 +28,7 @@ set -euo pipefail
 # config in the nearest directory holding SPINE.md or CLAUDE-spine-toolkit.md -> the defaults below. walkthrough has one more step: off when the
 # resolved scale is lite, which beats the project and loses to the task's own [WALKTHROUGH].
 # walkthrough_check then follows it: auto is on at deep and off at brief, and off where no file is written.
+# artifact_check follows the final scale: auto is on at full and off at lite.
 ROLES="architect developer tester reviewer refactorer validator security diagnostics"
 # A `platform` left by 1.11.0 reads as if its line were absent, not as `session`,
 # so the validator keeps its `sonnet` default.
@@ -212,6 +213,7 @@ SCALARS = (
     ('scale', 'SCALE', ['lite', 'full'], 'full'),
     ('walkthrough', 'WALKTHROUGH', ['brief', 'deep', 'off'], 'deep'),
     ('walkthrough_check', 'WALKTHROUGH_CHECK', ['auto', 'on', 'off'], 'auto'),
+    ('artifact_check', 'ARTIFACT_CHECK', ['auto', 'on', 'off'], 'auto'),
     ('drive_app', 'DRIVE_APP', ['auto', 'off'], 'auto'),
     ('manual_checks', 'MANUAL_CHECKS', ['auto', 'always'], 'auto'),
     ('manual_checks_check', 'MANUAL_CHECKS_CHECK', ['on', 'off'], 'on'),
@@ -494,13 +496,19 @@ if resolved['scale'] == 'lite' and sources['walkthrough'] in ('default', 'projec
 
 # walkthrough_check follows the depth it checks. CHOSEN keeps what the chain picked, so show can
 # tell a value derived from auto from one somebody wrote down.
-CHOSEN = {'walkthrough_check': resolved['walkthrough_check']}
+CHOSEN = {'walkthrough_check': resolved['walkthrough_check'], 'artifact_check': resolved['artifact_check']}
 chosen, depth = CHOSEN['walkthrough_check'], resolved['walkthrough']
 check = 'off' if depth == 'off' else ('on' if depth == 'deep' else 'off') if chosen == 'auto' else chosen
 if check != chosen:
     show_source['walkthrough_check'] = ('walkthrough: %s' % depth if chosen == 'auto' else
                                         'walkthrough: off (%s: %s)' % (sources['walkthrough_check'], chosen))
     resolved['walkthrough_check'], sources['walkthrough_check'] = check, 'walkthrough'
+
+# artifact_check follows the scale, read after the QUICK rule above. An explicit on or off stands.
+if CHOSEN['artifact_check'] == 'auto':
+    resolved['artifact_check'] = 'on' if resolved['scale'] == 'full' else 'off'
+    sources['artifact_check'] = 'scale'
+    show_source['artifact_check'] = 'scale: %s' % resolved['scale']
 
 for name, field, keys, values, unset, map_defaults in MAPS:
     out, decided = dict(map_defaults), set()
@@ -628,7 +636,7 @@ def show_rows(show_all):
                 continue
             text = ', '.join('%s: %s' % (k, value[k]) for k in keys)
         else:
-            # A value derived from the default (walkthrough_check's auto) is nobody's choice either.
+            # A value derived from the default (walkthrough_check's or artifact_check's auto) is nobody's choice either.
             if not show_all and sources[name] != 'run' and (sources[name] == 'default' or value == defaults[name]
                                                             or CHOSEN.get(name) == defaults[name]):
                 rest += 1

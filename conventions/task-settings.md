@@ -90,6 +90,13 @@ gate included — `walkthrough_check` is `off` as well, there being no file to c
 overrode a chosen `on`, or where the value came from `auto`, the source reads `walkthrough`, and
 `show` names the value that was displaced.
 
+`artifact_check` follows the scale. Its chain is the ordinary one and ends at `auto`, but only `on` or
+`off` leaves the resolver: `auto` becomes `on` where `scale` resolved to `full` and `off` where it
+resolved to `lite`. It reads the scale after the `QUICK` rule and the scale ratchet have been applied,
+so a `QUICK` task, always `lite`, checks nothing unless it says `on`, and a run that raises a task to
+`full` turns the check on with it. An explicit `on` or `off` stands at either scale. Where the value
+came from `auto`, the source reads `scale` and `show` names the scale it followed.
+
 **A missing field is the default, not an error.** A task file that never names the field, a config
 that does not name it either — each is a link that contributes nothing and hands the question to
 the next. Nothing stops because a setting was left unwritten, and a project that has never opened
@@ -118,6 +125,7 @@ answers.
 | `scale` | `[SCALE]` | `[SCALE]` | `lite` `full` | `full`; always `lite` for a `QUICK` task |
 | `walkthrough` | `[WALKTHROUGH]` | `[WALKTHROUGH]` | `brief` `deep` `off` | `off` when `scale` is `lite`, else `deep` |
 | `walkthrough_check` | `[WALKTHROUGH_CHECK]` | `[WALKTHROUGH_CHECK]` | `auto` `on` `off` | `auto`: `on` at `deep`, `off` at `brief`; `off` wherever `walkthrough` is `off` |
+| `artifact_check` | `[ARTIFACT_CHECK]` | `[ARTIFACT_CHECK]` | `auto` `on` `off` | `auto`: `on` at `full`, `off` at `lite` |
 | `drive_app` | `[DRIVE_APP]` | `[DRIVE_APP]` | `auto` `off` | `auto` |
 | `manual_checks` | `[MANUAL_CHECKS]` | `[MANUAL_CHECKS]` | `auto` `always` | `auto` |
 | `manual_checks_check` | `[MANUAL_CHECKS_CHECK]` | `[MANUAL_CHECKS_CHECK]` | `on` `off` | `on` |

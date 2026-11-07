@@ -490,6 +490,18 @@ section() {
   done
 }
 
+@test "the outbound contract carries artifact_check, on or off and never auto" {
+  grep -qxF 'artifact_check=on|off' "$SKILL" || { echo "no artifact_check= line in the contract block"; return 1; }
+  para="$(awk '/^`artifact_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`artifact_check\` paragraph in the Outbound Contract"; return 1; }
+  for token in 'resolve-settings.sh json' 'Always filled' '`auto` never reaches the contract' \
+               '`artifact-reader` → `## Check`'; do
+    grep -qF "$token" <<<"$para" || { echo "the artifact_check paragraph does not say $token"; return 1; }
+  done
+  own="$(awk '/^`walkthrough_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL" | wc -c)"
+  [ "$(printf '%s' "$para" | wc -c)" -le "$own" ] || { echo "the paragraph outgrew the walkthrough_check one"; return 1; }
+}
+
 @test "the outbound contract carries manual_checks_check, on or off" {
   grep -qxF 'manual_checks_check=on|off' "$SKILL" || { echo "no manual_checks_check= line in the contract block"; return 1; }
   para="$(awk '/^`manual_checks_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"

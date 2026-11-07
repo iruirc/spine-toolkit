@@ -29,6 +29,7 @@
 [FIX_ROUNDS] = [2]                     # a whole number, 0 turns the auto loop off
 [WALKTHROUGH] = [deep]                 # brief | deep | off
 [WALKTHROUGH_CHECK] = [auto]           # auto | on | off
+[ARTIFACT_CHECK] = [auto]              # auto | on | off
 [SECURITY] = [auto]                    # auto | on | off
 [DOCS] = [on]                          # on | off
 [MODELS] = [light: sonnet, walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session]

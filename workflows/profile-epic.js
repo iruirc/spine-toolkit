@@ -93,6 +93,7 @@ const MANUAL_CHECKS = A.manual_checks === 'always' ? 'always' : 'auto'
 const MANUAL_CHECKS_CHECK = A.manual_checks_check === 'off' ? 'off' : 'on'
 const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'
 const WALKTHROUGH_CHECK = A.walkthrough_check === 'on' ? 'on' : 'off'
+const ARTIFACT_CHECK = A.artifact_check === 'on' ? 'on' : 'off'
 // Whether Walkthrough.md names the task's newest commit: the orchestrator's measure before the run,
 // then each writer's result. Done's own commits are the one thing left that can move past it.
 let walkthroughCurrent = A.walkthrough_current === true
@@ -767,6 +768,7 @@ const STEP = {
     device_from: { type: 'string', description: "the step folder's own resolve-settings.sh sources.device value" },
     manual_checks: { type: 'string', enum: ['auto', 'always'], description: "the step folder's own resolve-settings.sh manual_checks value" },
     manual_checks_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh manual_checks_check value" },
+    artifact_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh artifact_check value" },
     phase_verification: { type: 'string', enum: ['proportional', 'full'], description: "the step folder's own resolve-settings.sh phase_verification value" },
     walkthrough: { type: 'string', enum: ['brief', 'deep', 'off'], description: "the step folder's own resolve-settings.sh walkthrough value" },
     walkthrough_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh walkthrough_check value" },
@@ -966,7 +968,7 @@ if (runs('Execute')) {
     const read = await agent(
       brief(
         'Execute',
-        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, device, manual_checks, manual_checks_check, phase_verification, security, walkthrough, walkthrough_check and long_run values, and its sources.device as device_from. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
+        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, device, manual_checks, manual_checks_check, phase_verification, security, walkthrough, walkthrough_check, artifact_check and long_run values, and its sources.device as device_from. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
       { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'mechanical') },
     )
@@ -1019,6 +1021,7 @@ if (runs('Execute')) {
       device_from: st.device === undefined ? A.device_from : st.device_from,
       manual_checks: st.manual_checks === undefined ? MANUAL_CHECKS : st.manual_checks,
       manual_checks_check: st.manual_checks_check === undefined ? MANUAL_CHECKS_CHECK : st.manual_checks_check,
+      artifact_check: st.artifact_check === undefined ? ARTIFACT_CHECK : st.artifact_check,
       phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
       walkthrough: stepWalkthrough(st),
       walkthrough_check: stepWalkthroughCheck(st),

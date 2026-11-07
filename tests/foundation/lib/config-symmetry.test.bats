@@ -26,6 +26,14 @@ fields_of_block() {
     || { echo "the doc's ## Task defaults and its Task override entries disagree"; return 1; }
 }
 
+@test "the artifact check is a task default, with auto beside its three values, and the doc lets a task override it" {
+  grep -qE '^\[ARTIFACT_CHECK\] = \[auto\] +# auto \| on \| off$' "$TPL" \
+    || { echo "the template does not ship auto beside the three values"; return 1; }
+  fields_of_block | grep -qx ARTIFACT_CHECK || { echo "[ARTIFACT_CHECK] is not under ## Task defaults"; return 1; }
+  config_doc_offers ARTIFACT_CHECK || { echo "the doc does not let a task override the field"; return 1; }
+  ! grep -rE '^# *\[ARTIFACT_CHECK\]' "$ROOT/templates/task-md" || { echo "a task template lists the field"; return 1; }
+}
+
 @test "every section of the doc states its Task override" {
   ! config_doc_fields | awk -F'\t' '$3 == "missing"' | grep . \
     || { echo "a section above has no **Task override:** entry"; return 1; }

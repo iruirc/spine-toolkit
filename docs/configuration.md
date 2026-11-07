@@ -290,6 +290,21 @@ included — nothing is checked, whatever this field says. The check costs one `
 write that changed the file, and one more writer dispatch when it finds something; a second round
 adds one of each.
 
+### [ARTIFACT_CHECK]
+
+**Values:** `auto` `on` `off` · **Default:** `auto` — `on` at `full`, `off` at `lite` ·
+**Task override:** `[ARTIFACT_CHECK] = [auto|on|off]` · **Defined by:** the `artifact-reader` skill,
+`## Check`
+
+Whether `Done.md` and `Plan.md` are read by a reader who did not follow the task, and revised from
+what that reader could not follow. The reader is a fresh agent of the writer's role that opens the
+artifact and nothing else, retells it and names each place it had to guess; the writer revises once,
+never a second round.
+
+`auto` follows the scale: `on` at `full`, `off` at `lite`, a `QUICK` task being `lite`. An explicit
+`on` or `off` stands at either scale. The check costs one `light` dispatch per artifact read, and one
+more writer dispatch when it finds something.
+
 ### [SECURITY]
 
 **Values:** `auto` `on` `off` · **Default:** `auto` · **Task override:** `[SECURITY] = [auto|on|off]` ·
