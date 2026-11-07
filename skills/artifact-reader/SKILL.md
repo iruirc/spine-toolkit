@@ -1,6 +1,6 @@
 ---
 name: artifact-reader
-description: "Use when writing, refreshing or rewriting any task artifact in Tasks/ — Walkthrough.md, ManualChecks.md, Done.md, Plan.md, Review.md, Questions.md, Research.md, OpsChecklist.md, Validation.md, Docs.md. The reader is someone who was not on the task and does not know this area of the code. The single source of the reader and the style rules for every artifact an agent writes."
+description: "Use when writing, refreshing or rewriting any task artifact in Tasks/ — Walkthrough.md, ManualChecks.md, Done.md, Plan.md, Review.md, Questions.md, Research.md, OpsChecklist.md, Validation.md, Docs.md. The reader is someone who was not on the task and does not know this area of the code. The single source of the reader, the style rules for every artifact an agent writes, and the fresh reader's check of Done.md and Plan.md."
 ---
 
 # Artifact Reader
@@ -35,7 +35,7 @@ Everything in `## Style` follows from this reader.
 
 9. **Proof is concrete.** "Removed the words from the copy and 6 tests failed", never "covered by tests".
 
-10. **Human text on the first screen.** Machine lines such as commit lists, run directives and device strings go last wherever the format allows it. They never push the summary below the fold.
+10. **Human text on the first screen.** Machine lines go in the closing block, the last lines of the file: the marker lines, the run directive and the device line. Other machine text, such as a list of commit hashes, goes as low as the format allows. Neither pushes the summary below the fold.
 
 11. **No history in the body.** No "changes in this revision" and no round-by-round story: the commit history and the walkthrough carry those. A `Walkthrough.md` keeps the rework of its commits, because that is its content; no other artifact narrates round-by-round history.
 
@@ -60,6 +60,28 @@ Read the file as the reader above, and fix each of these before finishing:
 - **A claim without proof.** "Works", "covered", "verified" with no run, no count, no observed result.
 - **Machine lines above human text.** A reader has to scroll past a list of hashes to learn what changed.
 
+## Check
+
+`[ARTIFACT_CHECK]` decides whether `Done.md` and `Plan.md` are read back by someone who did not follow the task before the run goes on. It reaches a run as the contract's `artifact_check`, `on` or `off`; `auto`, its default, is `on` at `scale = full` and `off` at `lite` (`conventions/task-settings.md`).
+
+**When.** With `artifact_check` `on`, a file is read once after the stage that wrote it: `Plan.md` after Plan, `Done.md` after Done. The writer never checks its own file: the dispatcher does, the profile script under Method A and the workflow skill's main context under Method B.
+
+**The reader** is a fresh dispatch of the writer's own role, tuned `light`; the fresh dispatch is where its lack of context comes from. Its brief tells it who it is: an owner who did not follow the task. Of the task and the repository it reads the one file and nothing else: no other file of the task, no source file, no git command and no other command. It returns two lists:
+
+- `retelling`: in its own words, what was done (for a plan, what will be done), why, what is left, and what the owner must decide;
+- `unclear`: every place it had to guess, each as a quote of at most one line, what is missing, and one kind:
+  - `reread`: a sentence it had to read twice;
+  - `undefined term`: a term, an identifier or a label used before anything says what it means;
+  - `identifier subject`: an identifier or a label as the subject of a sentence, where the thing it names should be;
+  - `no reason`: a decision, a phase or a change that does not say why, or a decision with no rejected alternative;
+  - `no proof`: a claim that something works, with no run, no count and no observed result.
+
+The role is the writer's so that the reader knows the trade; the brief, not the role, is what keeps it outside the task. The reader returns what it understood, not what it would change: a retelling that misses the point is a finding about the file, not about the reader.
+
+**Revision.** An empty `unclear` ends the check. Otherwise the writer gets both lists and makes one revision pass: it fixes every place named, and where the retelling misreads the file, it fixes the text that led the reader there. An entry without a quote names no place, so it is skipped. The revised file is not read again: one revision pass, never a second round, however many places the read named. The status line and the closing block stay as they are. What the reader returns in another language does not change the file's language: the revision is written in the project's `[LANG]`, with the labels in English as before.
+
+The run notes one line per file: `Plan.md check: 3 place(s), revised.`, `Plan.md check: nothing unclear.`, or `Plan.md check: the reader returned nothing, so the file went unchecked.` A failure of either dispatch is noted and stops nothing.
+
 ## Scope
 
 This skill governs the prose of every task artifact an agent writes: `Walkthrough.md`, `ManualChecks.md`, `Done.md`, `Plan.md`, `Review.md`, `Questions.md`, `Research.md`, `OpsChecklist.md`, `Validation.md` and `Docs.md`.
@@ -67,3 +89,7 @@ This skill governs the prose of every task artifact an agent writes: `Walkthroug
 Where an agent body asks for brevity and this skill asks for a full sentence, the Style above wins over any brevity instruction in an agent body. Brevity here means no padding, not compression. A line budget still holds: meet it by covering less, never by compressing the sentences.
 
 Lines the toolkit's scripts parse stay where the toolkit's contracts put them: the section headings, the marker lines and the commit headings that a script reads are written exactly as their contract says, whatever the Style above would prefer.
+
+Machine lines go in the closing block at the end of the file (`conventions/stage-dispatch.md` → Closing block): the marker lines first, then `**Run:**`, then `**Device:**`. Two lines keep their place: the status line `[REVIEW_STATUS] = …` is line 1 of `Review.md`, and `[COVERS]` is line 2 of `Walkthrough.md`.
+
+`scripts/lint-artifact-readability.sh` measures six of these files: `Done.md`, `Plan.md`, `Review.md`, `Research.md`, `Questions.md` and `OpsChecklist.md`. It reports a sentence over the `words-per-sentence` budget (30 words unless the task, its epic or the project sets another number), backticked identifiers piled into the first section or into one table cell, a label with nothing beside it that says what it means, a `Questions.md` entry without its question, and an `OpsChecklist.md` written as a table. It skips the closing block. The writer runs it once on its own file, fixes its findings once, and names what is left in its summary; nothing sends the file back for a lint line a second time. `Walkthrough.md` and `ManualChecks.md` have lints of their own.

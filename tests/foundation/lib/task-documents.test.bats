@@ -15,9 +15,86 @@ setup() {
 }
 
 @test "the skill carries every section the writers apply" {
-  for h in 'Layers' 'Rules for every document' 'Task.md of a root task' 'Task.md of a step' 'Research.md' 'Plan.md' 'Worked example'; do
+  for h in 'Layers' 'Rules for every document' 'Task.md of a root task' 'Task.md of a step' 'Research.md' 'Plan.md' \
+    'Done.md' 'Review.md' 'Questions.md' 'Validation.md' 'Worked example'; do
     grep -qxF "## $h" "$SKILL" || { echo "no ## $h"; return 1; }
   done
+}
+
+# A skill section, from its heading to the next one; the templates inside a section are fenced, so a
+# heading inside a fence does not end it.
+doc_section() { # $1 = heading text
+  awk -v h="## $1" '/^```/{fence=!fence} !fence&&$0==h{f=1;next} f&&!fence&&/^## /{exit} f' "$SKILL"
+}
+
+@test "the skill speaks of the documents a task leaves, not of three" {
+  desc="$(sed -n 's/^description: //p' "$SKILL")"
+  ! grep -qF 'three documents' <<<"$desc" || { echo "the description still speaks of three documents"; return 1; }
+  ! grep -qF 'Task.md, Research.md or Plan.md:' <<<"$desc" || { echo "the description still lists three files only"; return 1; }
+  for f in Done.md Review.md Questions.md Validation.md; do
+    grep -qF "$f" <<<"$desc" || { echo "the description never names $f"; return 1; }
+  done
+  grep -qF 'the documents a task leaves' "$SKILL" || { echo "the opening never speaks of the documents a task leaves"; return 1; }
+}
+
+@test "the layer table still divides Task.md, Research.md and Plan.md" {
+  grep -qxF '| Document | Answers | Carries | Never carries |' "$SKILL" || { echo "the layer table's header is gone"; return 1; }
+  for d in Task.md Research.md Plan.md; do
+    grep -q "^| \`$d\` | " "$SKILL" || { echo "the layer table has no row for $d"; return 1; }
+  done
+}
+
+@test "Research.md opens with a short answer to each question for Research" {
+  s="$(doc_section Research.md)"
+  grep -qF 'opens with `## Short answer`' <<<"$s" || { echo "Research.md is not told to open with ## Short answer"; return 1; }
+  grep -qF 'how it is ensured' <<<"$s" || { echo "the property table's cell rule is missing"; return 1; }
+}
+
+@test "Plan.md is two parts: for the owner, then for the implementer" {
+  s="$(doc_section Plan.md)"
+  grep -qF '`## For the owner`' <<<"$s" || { echo "no ## For the owner"; return 1; }
+  grep -qF '`## For the implementer`' <<<"$s" || { echo "no ## For the implementer"; return 1; }
+  [ "$(grep -bo '## For the owner' <<<"$s" | head -1 | cut -d: -f1)" -lt "$(grep -bo '## For the implementer' <<<"$s" | head -1 | cut -d: -f1)" ] \
+    || { echo "the implementer's part is named before the owner's"; return 1; }
+  grep -qF 'the progress table stays a top-level table' <<<"$s" || { echo "the progress table's place is not fixed"; return 1; }
+  grep -qF '`**Verification:**`' <<<"$s" || { echo "the implementer's part never names the Verification lines"; return 1; }
+  grep -qF 'lite' <<<"$s" || { echo "the lite ceiling is not mentioned"; return 1; }
+}
+
+@test "Done.md names its sections in order, then the closing block" {
+  s="$(doc_section Done.md)"
+  want='`## Summary`|`## Why`|`## What is left and risks`|`## Objections`|`## Estimate retrospective`|`## Review findings closed`'
+  got="$(grep -oE "$(sed 's/`//g; s/## //g; s/^/`## (/; s/$/)`/' <<<"$want")" <<<"$s" | awk '!seen[$0]++' | paste -sd'|' -)"
+  [ "$got" = "$want" ] || { echo "Done.md sections: '$got'"; return 1; }
+  grep -qF 'closing block' <<<"$s" || { echo "Done.md never names the closing block"; return 1; }
+}
+
+@test "every Review.md finding carries an Impact line" {
+  s="$(doc_section Review.md)"
+  grep -qF '`**Impact:**`' <<<"$s" || { echo "no **Impact:**"; return 1; }
+  grep -qF '`[REVIEW_STATUS] = …`' <<<"$s" || { echo "the status line is not kept first"; return 1; }
+}
+
+@test "a Questions.md entry holds the question, the decision, the rejected options, who and when" {
+  s="$(doc_section Questions.md)"
+  grep -qF -- '- [<stage>] <id> — **Question:** <text>' <<<"$s" || { echo "the entry form is missing"; return 1; }
+  for l in '**Decision:**' '**Rejected:**' '**Decided by:**'; do
+    grep -qF -- "$l" <<<"$s" || { echo "the entry lacks $l"; return 1; }
+  done
+  grep -qF 'RESOLVED' <<<"$s" || { echo "the old RESOLVED tail is not ruled out"; return 1; }
+}
+
+@test "Validation.md cites its logs from the task folder and keeps contract fields out of the summary" {
+  s="$(doc_section Validation.md)"
+  grep -qF 'validation-evidence/' <<<"$s" || { echo "logs are not cited from validation-evidence/"; return 1; }
+  for f in validation_status VALIDATION_STATUS manual_checks_changed; do
+    grep -qF "$f" <<<"$s" || { echo "the summary rule never names $f"; return 1; }
+  done
+}
+
+@test "a step writes an epic decision as the sentence, the label in brackets" {
+  s="$(doc_section 'Task.md of a step')"
+  grep -qF 'the label in brackets' <<<"$s" || { echo "a step may cite an epic decision by its label alone"; return 1; }
 }
 
 @test "the skill names the three anchors and what a dash needs" {

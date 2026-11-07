@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 # One skill holds the reader and the style rules for every task artifact.
-# This suite holds its shape: the sections, the twelve style rules, the artifacts it covers.
+# This suite holds its shape: the sections, the twelve style rules, the fresh reader's check,
+# the artifacts it covers.
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
@@ -20,9 +21,9 @@ section() { # $1 = heading text
   [ ! -d "$ROOT/skills/artifact-reader/locales" ] || { echo "artifact-reader must not carry locales/"; return 1; }
 }
 
-@test "the five sections exist, in order" {
+@test "the six sections exist, in order" {
   got="$(grep '^## ' "$SKILL" | paste -sd'|' -)"
-  [ "$got" = '## Reader|## Style|## Self-check|## Anti-patterns|## Scope' ] || { echo "headings: '$got'"; return 1; }
+  [ "$got" = '## Reader|## Style|## Self-check|## Anti-patterns|## Check|## Scope' ] || { echo "headings: '$got'"; return 1; }
 }
 
 @test "Scope names all ten artifacts and the precedence sentence" {
@@ -32,6 +33,34 @@ section() { # $1 = heading text
   done
   grep -qF 'wins over any brevity instruction in an agent body' <<<"$scope" \
     || { echo "Scope never says the style wins over a brevity instruction"; return 1; }
+}
+
+# The fresh reader of Done.md and Plan.md (artifact_check). The five kinds are the enum the workflow
+# scripts' read schema carries, so a kind renamed here and not there splits the protocol in two.
+@test "Check is the fresh reader's protocol: one file, a retelling, five kinds, one revision" {
+  check="$(section Check)"
+  [ -n "$check" ] || { echo "no ## Check"; return 1; }
+  for s in '`artifact_check`' 'an owner who did not follow the task' 'nothing else' '`retelling`' '`unclear`' \
+    '`reread`' '`undefined term`' '`identifier subject`' '`no reason`' '`no proof`' \
+    'one revision pass' 'never a second round' "does not change the file's language"; do
+    grep -qF -- "$s" <<<"$check" || { echo "## Check lacks: $s"; return 1; }
+  done
+}
+
+@test "Scope names the readability lint, the files it measures, and the closing block" {
+  scope="$(section Scope)"
+  grep -qF '`scripts/lint-artifact-readability.sh`' <<<"$scope" || { echo "Scope never names the lint"; return 1; }
+  lint="$(grep -F 'lint-artifact-readability.sh' <<<"$scope")"
+  for a in Done.md Plan.md Review.md Research.md Questions.md OpsChecklist.md; do
+    grep -qF "\`$a\`" <<<"$lint" || { echo "the lint's paragraph never names $a"; return 1; }
+  done
+  grep -qF 'fixes its findings once' <<<"$scope" || { echo "Scope never says the writer fixes the findings once"; return 1; }
+  grep -qF 'closing block' <<<"$scope" || { echo "Scope never names the closing block"; return 1; }
+}
+
+@test "Style rule 10 puts machine lines in the closing block" {
+  rule="$(section Style | grep -F '**Human text on the first screen.**')"
+  grep -qF 'closing block' <<<"$rule" || { echo "rule 10 never names the closing block"; return 1; }
 }
 
 @test "Style carries all twelve rules by their bold lead" {
