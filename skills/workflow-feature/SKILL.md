@@ -59,9 +59,9 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
 - **Research** — `[architect]`, after the `[security]` lens wherever the `security-lens` skill runs it; the architect folds its findings into the risks, or records the verdict line that stands in for them. Artifact: `Research.md` in the task folder. Goal: investigate the domain, surface risks, propose architectural options.
 
-  The architect MUST apply the `feature-requirements` skill and then the `feature-landscape` skill, producing two H2 sections inside `Research.md`, below its short answer: `## Requirements` (Primary / Secondary / Designer questions / Backend questions / Known unknowns) and `## Landscape` (Entity graph / Layer map / Integration points / Work items / Implementation sequence). The architect's analysis is appended as sections named for what they hold.
+  The architect MUST apply the `feature-requirements` skill and then the `feature-landscape` skill, producing two H2 sections inside `Research.md`, which opens with `## Short answer`; below it come `## Requirements` (Primary / Secondary / Designer questions / Backend questions / Known unknowns) and `## Landscape` (Entity graph / Layer map / Integration points / Work items / Implementation sequence). The architect's analysis is appended as sections named for what they hold.
 
-  Every agent of this stage applies the `task-documents` skill, its `Research.md` section — it holds what the document carries, which outcomes it lists, and what it leaves to `Task.md` and `Plan.md` — and writes in the style of the `artifact-reader` skill. `Research.md` opens with `## Short answer`; `## Requirements` and `## Landscape` follow it.
+  Every agent of this stage applies the `task-documents` skill, its `Research.md` section — it holds what the document carries, which outcomes it lists, and what it leaves to `Task.md` and `Plan.md` — and writes in the style of the `artifact-reader` skill.
 
 - **Plan** — `[architect]`. Artifact: `Plan.md` with **two layers of progress tracking**:
   1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase, coarse-grained completion. It stays a top-level table, in the `## For the owner` part.

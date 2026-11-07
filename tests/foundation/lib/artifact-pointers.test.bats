@@ -126,11 +126,46 @@ POINTERS='skills/workflow-bug skills/workflow-feature skills/workflow-refactor s
   grep -qF 'prefix the original bullet with `[DEFERRED]`' <<<"$s" || { echo "the DEFERRED prefix of the original bullet is gone"; return 1; }
 }
 
-@test "workflow-review writes the disputed points of a DISCUSSION in the same log form" {
+@test "workflow-review writes the disputed points of a DISCUSSION in the same log form, as open" {
   s="$(tr '\n' ' ' <"$ROOT/skills/workflow-review/SKILL.md")"
-  for token in '`## Open Questions Log`' '- [Review] <id> — **Question:** <disputed point>' '`**Decision:**`' '`**Rejected:**`' '`**Decided by:** owner, <ISO date>`' \
-               'skills/task-documents/SKILL.md'; do
+  for token in '`## Open Questions Log`' '- [Review] <id> — **Question:** <disputed point>' '`**Decision:**` (`open, the owner rules`)' '`**Rejected:**`' \
+               '`**Decided by:** open, raised by the reviewer, <ISO date>`' 'is `D1`, `D2`' 'skills/task-documents/SKILL.md'; do
     grep -qF -- "$token" <<<"$s" || { echo "workflow-review lacks: $token"; return 1; }
   done
   ! grep -qF 'Discussion from Review' <<<"$s" || { echo "workflow-review still writes the dated discussion section"; return 1; }
+  ! grep -qF '`deferred`: the owner rules' <<<"$s" || { echo "workflow-review still records a decision nobody took"; return 1; }
+  ! grep -qF '`**Decided by:** owner, <ISO date>`' <<<"$s" || { echo "workflow-review still names the owner as the one who decided"; return 1; }
+}
+
+# The DISCUSSION entry as the Auto-move brief and the Method B skill write it, sans the backslashes
+# a template literal puts before a backtick.
+discussion_sentence() { # $1 = file; prints the form from the first label to the id rule
+  tr '\n' ' ' <"$1" | sed 's/\\`/`/g' | grep -oE '`\*\*Decision:\*\*` \(.*`D1`, `D2` …\.' | head -n 1
+}
+
+@test "profile-review.js writes the DISCUSSION entry as open, in the words of the skill" {
+  js="$(discussion_sentence "$ROOT/workflows/profile-review.js")"
+  md="$(discussion_sentence "$ROOT/skills/workflow-review/SKILL.md")"
+  [ -n "$js" ] || { echo "profile-review.js: no DISCUSSION entry form ending at the id rule"; return 1; }
+  [ "$js" = "$md" ] || { echo "the script and the skill word the DISCUSSION entry differently:"; echo "script: $js"; echo "skill:  $md"; return 1; }
+  for token in '`**Decision:**` (`open, the owner rules`)' '`**Decided by:** open, raised by the reviewer, <ISO date>`' 'is `D1`, `D2`'; do
+    grep -qF -- "$token" <<<"$js" || { echo "profile-review.js lacks: $token"; return 1; }
+  done
+  f="$(tr '\n' ' ' <"$ROOT/workflows/profile-review.js")"
+  ! grep -qF 'owner, <ISO date>' <<<"$f" || { echo "profile-review.js still says the owner decided"; return 1; }
+  ! grep -qF '(\`deferred\`: the owner rules)' <<<"$f" || { echo "profile-review.js still records the point as deferred"; return 1; }
+}
+
+@test "an open DISCUSSION entry still has a question the lint can read" {
+  d="$BATS_TEST_TMPDIR/task"; mkdir -p "$d"
+  cat >"$d/Questions.md" <<'MD'
+## Open Questions Log
+
+- [Review] D1 — **Question:** does a promo code apply to items that are already discounted?
+  **Decision:** open, the owner rules
+  **Rejected:** none offered
+  **Decided by:** open, raised by the reviewer, 2026-11-07
+MD
+  run "$ROOT/scripts/lint-artifact-readability.sh" "$d"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }

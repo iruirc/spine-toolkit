@@ -174,7 +174,7 @@ INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:
 @test "every investigating stage points its writer at the Research.md section — Method A" {
   for pair in $INVESTIGATING; do
     b="$(stage_brief "${pair%%:*}" "${pair##*:}")"
-    grep -qF 'by applying the task-documents skill, its Research.md section' <<<"$b" \
+    grep -qF 'by applying the spine-toolkit:task-documents skill, its Research.md section' <<<"$b" \
       || { echo "profile-${pair%%:*}.js ${pair##*:}: no pointer at the skill"; return 1; }
   done
 }
@@ -188,7 +188,7 @@ INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:
 
 @test "every Plan stage points at the Plan.md section — both forms" {
   for p in feature bug refactor test epic; do
-    stage_brief "$p" Plan | grep -qF 'by applying the task-documents skill, its Plan.md section' \
+    stage_brief "$p" Plan | grep -qF 'by applying the spine-toolkit:task-documents skill, its Plan.md section' \
       || { echo "profile-$p.js Plan: no pointer at the skill"; return 1; }
     bullet "$p" Plan | grep -qF 'applies the `task-documents` skill, its `Plan.md` section' \
       || { echo "workflow-$p/SKILL.md Plan: no pointer at the skill"; return 1; }
@@ -223,7 +223,7 @@ INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:
 
 @test "RESEARCH applies only the rules for every document — both forms" {
   b="$(stage_brief research Research)"
-  grep -qF "task-documents skill's rules for every document" <<<"$b" || { echo "profile-research.js: no pointer at the skill"; return 1; }
+  grep -qF "task-documents skill, its Research.md section for the short answer and its rules for every document" <<<"$b" || { echo "profile-research.js: no pointer at the skill"; return 1; }
   ! grep -qF 'Questions for Research' <<<"$b" || { echo "profile-research.js: a research deliverable is held to a step's questions"; return 1; }
   bullet research Research | grep -qF "\`task-documents\` skill's rules for every document" \
     || { echo "workflow-research/SKILL.md: no pointer at the skill"; return 1; }
@@ -234,12 +234,13 @@ INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:
   [ "$n" -eq 1 ] || { echo "Reproduce names the skill $n time(s), expected exactly the lite fold"; return 1; }
 }
 
-@test "exactly five scripts carry each of the two stage clauses" {
-  # Vacuity guard: without it the loops above iterate over a list someone shortened.
-  n="$(grep -l 'by applying the task-documents skill, its Research.md section' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
-  [ "$n" -eq 5 ] || { echo "$n script(s) carry the Research.md clause, expected 5"; return 1; }
-  n="$(grep -l 'by applying the task-documents skill, its Plan.md section' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
-  [ "$n" -eq 5 ] || { echo "$n script(s) carry the Plan.md clause, expected 5"; return 1; }
+@test "exactly six scripts carry each of the two stage clauses" {
+  # Vacuity guard: without it the loops above iterate over a list someone shortened. Research.md is
+  # written by five investigating stages and RESEARCH; Plan.md by five Plan stages and QUICK's Edit.
+  n="$(grep -l 'by applying the spine-toolkit:task-documents skill, its Research.md section' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 6 ] || { echo "$n script(s) carry the Research.md clause, expected 6"; return 1; }
+  n="$(grep -l 'by applying the spine-toolkit:task-documents skill, its Plan.md section' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 6 ] || { echo "$n script(s) carry the Plan.md clause, expected 6"; return 1; }
 }
 
 @test "every panel lens is pointed at the skill" {

@@ -57,3 +57,12 @@ setup() {
   tr '\n' ' ' <"$ROOT/skills/orchestrator/SKILL.md" | grep -qF 'kind `walkthrough` for `Walkthrough.md`, `done` for `Done.md`, `mechanical` for what REVIEW'"'"'s' \
     || { echo "the Artifact language paragraph still sends Done.md back as mechanical"; return 1; }
 }
+
+@test "the Done writer is told to run the lint after the claims check and the closing block, not before" {
+  for f in "$ROOT"/workflows/profile-*.js; do
+    b="$(awk '/^const doneBrief = /{p=1} p{print} p&&/^\)$/{exit}' "$f")"
+    claims="$(grep -n 'Never confirm a claim you did not check' <<<"$b" | head -n 1 | cut -d: -f1)"
+    lint="$(grep -n 'lint-artifact-readability.sh' <<<"$b" | head -n 1 | cut -d: -f1)"
+    [ -n "$claims" ] && [ -n "$lint" ] && [ "$lint" -gt "$claims" ] || { echo "$(basename "$f"): the lint sentence does not come after the claims check"; return 1; }
+  done
+}

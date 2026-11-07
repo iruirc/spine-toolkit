@@ -220,7 +220,11 @@ const doneBrief = (body, handed) => brief(
   'Done',
   `${body}
 
-${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}`,
+Write it by applying the spine-toolkit:task-documents skill, its Done.md section; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body.
+
+${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}
+
+Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Done.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
 )
 
 // Every stage may decline part of the owner's directive, and says so here rather than in prose.
@@ -765,7 +769,7 @@ The invariant: external behaviour does not change. Only structure, readability, 
 
 ${securityNote(security, 'Research.md')}
 
-Write Research.md by applying the task-documents skill, its Research.md section — it holds what the document carries, which outcomes it lists, and what it leaves to Task.md and Plan.md.`,
+Research.md opens with ## Short answer: one or two sentences, in words, per question Task.md asks (on a step, its ### Questions for Research), each naming the question it answers; the sections below it hold the evidence for it. Write it by applying the spine-toolkit:task-documents skill, its Research.md section; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Research.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
     ),
     { label: 'analyze', phase: 'Analyze', agentType: A.agents.architect, schema: ARTIFACT, ...tuning('architect', 'stage') },
   )
@@ -790,11 +794,13 @@ if (runs('Plan')) {
 
 Every phase must be independently buildable, test-passing, AND committable on its own — that is the requirement of incremental refactoring, and commit-ready is not enough, because an interrupt destroys uncommitted work.
 
-Write Plan.md by applying the task-documents skill, its Plan.md section — it holds how a step or phase is described, how a risk is written, and what the plan leaves out.
+Write it by applying the spine-toolkit:task-documents skill, its Plan.md section; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body.
 
 Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation, and at proportional a phase checks only what it can break — repeating the whole suite there is a defect of this plan; at full every phase repeats it too. This run's phase_verification is ${PHASE_VERIFICATION}.
 
-Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, each stated as what must be true and what changed to make it so, rather than as what to press, so Validation can turn it into a case a person walks. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}`,
+Then add a ## Manual acceptance section: one line per check this task's automation will not be able to make, each stated as what must be true and what changed to make it so, rather than as what to press, so Validation can turn it into a case a person walks. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}
+
+Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Plan.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
     ),
     { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: withEscalation(PLAN), ...tuning('architect', 'stage') },
   )
@@ -877,7 +883,9 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-Judge it against the refactor invariant first: did external behaviour stay put. Then against the target landscape — Research.md, or the ## Analysis section of Plan.md on a run that folded it: is the structure actually where the plan said it would be, or did the phases stop halfway. When ${DIR}/ManualChecks.md exists, read it too: a case a tester cannot execute as written is an ordinary finding, judged by the rules of the manual-checks skill's ## The case and ## Grounding — an empty case, whose failure looks the same as its success, and a claim about behaviour with no code reference are findings too. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does, every finding it lists — a name that does not say what broke included. Unlike the plan findings above, these are defects in what was delivered: an assertion that cannot fail and a double standing in for the behaviour under test always go into blocking_findings, and the rest may block. Apply the spine-toolkit:security-lens skill, its ## Review rule, to the security verdict line of Research.md, or of Plan.md where there is no Research.md: a lens skipped by triage or returned empty on a diff that touches the perimeter is a finding, and none goes into blocking_findings. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${cap('Review.md')}`,
+Judge it against the refactor invariant first: did external behaviour stay put. Then against the target landscape — Research.md, or the ## Analysis section of Plan.md on a run that folded it: is the structure actually where the plan said it would be, or did the phases stop halfway. When ${DIR}/ManualChecks.md exists, read it too: a case a tester cannot execute as written is an ordinary finding, judged by the rules of the manual-checks skill's ## The case and ## Grounding — an empty case, whose failure looks the same as its success, and a claim about behaviour with no code reference are findings too. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does, every finding it lists — a name that does not say what broke included. Unlike the plan findings above, these are defects in what was delivered: an assertion that cannot fail and a double standing in for the behaviour under test always go into blocking_findings, and the rest may block. Apply the spine-toolkit:security-lens skill, its ## Review rule, to the security verdict line of Research.md, or of Plan.md where there is no Research.md: a lens skipped by triage or returned empty on a diff that touches the perimeter is a finding, and none goes into blocking_findings. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${cap('Review.md')}
+
+Write it by applying the spine-toolkit:task-documents skill, its Review.md section, whose Impact rule gives every finding an **Impact:** line; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Review.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )

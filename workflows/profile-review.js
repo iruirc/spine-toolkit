@@ -213,7 +213,11 @@ const doneBrief = (body, handed) => brief(
   'Done',
   `${body}
 
-${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}`,
+Write it by applying the spine-toolkit:task-documents skill, its Done.md section; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body.
+
+${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}
+
+Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Done.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
 )
 
 // Every stage may decline part of the owner's directive, and says so here rather than in prose.
@@ -756,7 +760,9 @@ if (runs('Review')) {
 
 The body: what was done well, what needs changing grouped by severity, and the open questions.
 
-The first line is machine-parsed and the next stage acts on it — a task folder moves or does not move because of it. Modify nothing else. Return the same status you wrote on that line.`,
+The first line is machine-parsed and the next stage acts on it — a task folder moves or does not move because of it. Modify nothing else. Return the same status you wrote on that line.
+
+Write it by applying the spine-toolkit:task-documents skill, its Review.md section, whose Impact rule gives every finding an **Impact:** line; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Review.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
     ),
     { label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW, ...tuning('reviewer', 'stage') },
   )
@@ -780,7 +786,7 @@ Then do exactly one of these, and nothing else:
 
 - APPROVED — move the task folder into Tasks/DONE/ using the spine-toolkit:task-move skill. If it is already in Tasks/DONE/, leave it and still report it as moved: this step is idempotent.
 - CHANGES_REQUESTED — leave the task where it is. Append a section to ${DIR}/Done.md listing the concrete Critical and Major points from Review.md, or create ChangesRequested.md beside Review.md when Done.md does not exist. The heading is the byte-for-byte literal \`## Awaiting changes\` — never translated, localized, or adapted, because it is a machine-parsed anchor. The bullets beneath it are prose and follow the output language.
-- DISCUSSION — leave the task where it is. Create or extend ${DIR}/Questions.md with an \`## Open Questions Log\` section holding one entry per disputed point of Review.md, in the form of the task-documents skill's Questions.md section: \`- [Review] <id> — **Question:** <disputed point>\`, then \`**Decision:**\` (\`deferred\`: the owner rules), \`**Rejected:**\` (the positions of the dispute not taken, or \`none offered\`) and \`**Decided by:** owner, <ISO date>\`. Get the date from the system rather than guessing it.
+- DISCUSSION — leave the task where it is. Create or extend ${DIR}/Questions.md with an \`## Open Questions Log\` section holding one entry per disputed point of Review.md, in the form of the task-documents skill's Questions.md section: \`- [Review] <id> — **Question:** <disputed point>\`, then \`**Decision:**\` (\`open, the owner rules\`), \`**Rejected:**\` (the positions of the dispute not taken, or \`none offered\`) and \`**Decided by:** open, raised by the reviewer, <ISO date>\`. The \`<id>\` of a point without a finding id is \`D1\`, \`D2\` …. Get the date from the system rather than guessing it.
 - anything else, or a first line that does not match the format — change nothing at all, and report status_line_valid as false along with what you actually read.
 
 Report the status you read, not the one you expected to read.`,

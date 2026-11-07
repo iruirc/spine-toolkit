@@ -216,7 +216,11 @@ const doneBrief = (body, handed) => brief(
   'Done',
   `${body}
 
-${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}`,
+Write it by applying the spine-toolkit:task-documents skill, its Done.md section; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body.
+
+${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}
+
+Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Done.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
 )
 
 // Every stage may decline part of the owner's directive, and says so here rather than in prose.
@@ -826,7 +830,7 @@ Do not translate, localize or adapt that heading — it is a machine-parsed anch
 
 For the decomposition verdict, apply feature-requirements and feature-landscape at epic level, so Research.md also carries ## Requirements (Primary / Secondary / Designer / Backend / Known Unknowns) and ## Landscape (entity graph, layer map, integration points, and a ### Work items list). Those work items seed the step decomposition in the next stage, so make them concrete.
 
-Write Research.md by applying the task-documents skill, its Research.md section — it holds what the document carries, which outcomes it lists, and what it leaves to Task.md and Plan.md.
+Research.md opens with ## Short answer: one or two sentences, in words, per question Task.md asks (on a step, its ### Questions for Research), each naming the question it answers; the sections below it hold the evidence for it. Write it by applying the spine-toolkit:task-documents skill, its Research.md section; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Research.md once. Fix each finding once; do not run it again; name what is left in your summary.
 
 You write no code. Research.md is the only file you create.`,
     ),
@@ -860,11 +864,12 @@ if (runs('Plan')) {
 If the verdict is DECOMPOSITION:
 Write ${DIR}/Plan.md with a progress table of the steps, in execution order, with the columns: Done? | step_id | TASK_TYPE | [STATUS] | short description | artifact. The Done? column renders as a markdown checkbox, "- [ ]" for every step that is not yet DONE.
 Seed the steps from Research.md ### Work items, grouped along layer or feature boundaries — typically one step per major layer (Domain / Repository / Networking / UI) or per self-contained sub-feature.
-Write Plan.md by applying the task-documents skill, its Plan.md section — it holds how a step or phase is described, how a risk is written, and what the plan leaves out.
+Write it by applying the spine-toolkit:task-documents skill, its Plan.md section; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body.
 Then create the step folders physically by invoking spine-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE] — never QUICK, which only the user chooses — [STATUS] = PENDING, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
 Write each step's Task.md by applying the task-documents skill, its section on a step's Task.md — it holds what goes above the three anchors and under each. After this stage each one is measured: at most ${BUDGETS['Task.md']} lines, and ### Expected behaviour, ### Questions for Research and ### Acceptance each carrying text or "— <reason>". A [BUDGETS] entry is the owner's word: never write one to raise a ceiling.
 Apply feature-estimation at epic level and write ## Estimation into Plan.md: the aggregate is the SUM of the per-step ranges, reported as a named best/worst epic range, and it carries both the human and the AI-assisted range when the project is AI-assisted. Per-step ranges are written later by each step's own Plan stage; this roll-up is informational, it does NOT gate Execute, but it has to be present before the first step runs.
 Return every step you created in the steps array, in execution order, each with its own [NEED_TEST] and [NEED_REVIEW] from its Task.md as booleans.
+Run "${core('scripts/lint-artifact-readability.sh')}" ${DIR}/Plan.md once. Fix each finding once; do not run it again; name what is left in your summary.
 
 If the verdict is PURE_RESEARCH:
 Finalize ${DIR}/Research.md. Plan.md is optional here and, if you write one, it is a research roadmap — what else needs investigating — with no executable steps. Return branch pure_research and an empty steps array. Create no step folders.`,

@@ -64,9 +64,9 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
 - **Research** — `[architect]`. Artifact: `Research.md` in the epic's folder. Goal: a wide investigation of the topic (context, actors, constraints, technology options, related modules). The Research output must answer: **is decomposition required** (a large initiative needs to be split into executable chunks) **or is pure research enough** (Research.md is itself the final artifact; no implementation will follow).
 
-  For the **decomposition** branch, the architect MUST apply `feature-requirements` (epic-level Primary / Secondary / Designer / Backend / Known Unknowns) and `feature-landscape` (epic-level entity graph + layer map + integration points). `Research.md` gets `## Requirements` and `## Landscape` sections below its short answer. The landscape's work-items list seeds the step decomposition in the next stage.
+  For the **decomposition** branch, the architect MUST apply `feature-requirements` (epic-level Primary / Secondary / Designer / Backend / Known Unknowns) and `feature-landscape` (epic-level entity graph + layer map + integration points). `Research.md` opens with `## Short answer`; below it come `## Requirements` and `## Landscape` sections. The landscape's work-items list seeds the step decomposition in the next stage.
 
-  Every agent of this stage applies the `task-documents` skill, its `Research.md` section — it holds what the document carries, which outcomes it lists, and what it leaves to `Task.md` and `Plan.md` — and writes in the style of the `artifact-reader` skill. `Research.md` opens with `## Short answer`; on the decomposition branch `## Requirements` and `## Landscape` follow it.
+  Every agent of this stage applies the `task-documents` skill, its `Research.md` section — it holds what the document carries, which outcomes it lists, and what it leaves to `Task.md` and `Plan.md` — and writes in the style of the `artifact-reader` skill.
 
   For the **pure_research** branch, these sections are optional but recommended where applicable (e.g. a pure-research task investigating a feasibility question still benefits from a Requirements section to scope the inquiry).
 
