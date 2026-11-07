@@ -277,11 +277,13 @@ for fname in files:
 
     lens_role = dict(re.findall(r"^\s*const (\w+) = lens\('([a-z]+)'\)", raw, flags=re.M))
     for n, expr, label, line in dispatches:
-        tunings = re.findall(r"\.\.\.tuning\(\s*([^,]+?)\s*,\s*'?([A-Za-z_]+)'?\s*\)", line)
+        # A kind is a quoted literal; a bare identifier parses apart so that only VARIABLE_KIND may use one.
+        tunings = re.findall(r"\.\.\.tuning\(\s*([^,]+?)\s*,\s*(?:'([a-z]+)'|([A-Za-z_]\w*))\s*\)", line)
         if len(tunings) != 1:
             violations.append(f"{path}:{n}: dispatch '{label}' carries {len(tunings)} tuning() call(s) beside its agentType, expected exactly one")
             continue
-        role_expr, kind = tunings[0]
+        role_expr, literal, bare = tunings[0]
+        kind = literal or bare
         direct = re.fullmatch(r'A\.agents\.(\w+)', expr)
         read = direct.group(1) if direct else lens_role.get(expr)
         if read:
@@ -291,10 +293,13 @@ for fname in files:
             violations.append(f"{path}:{n}: dispatch '{label}' pairs agentType {expr} with tuning role {role_expr}, a variable form lint-workflows.sh does not list")
         if label in VARIABLE_KIND:
             ident, setter = VARIABLE_KIND[label]
-            if kind != ident:
+            if bare != ident:
                 violations.append(f"{path}:{n}: dispatch '{label}' is tuned {kind}; conventions/stage-dispatch.md → Model and effort makes it the writing stage's kind, through {ident}")
             elif not re.search(rf'^\s*{re.escape(setter)}\s*$', raw, flags=re.M):
                 violations.append(f"{path}:{n}: dispatch '{label}' takes its kind from {ident}, which is no longer set by `{setter}`")
+            continue
+        if bare:
+            violations.append(f"{path}:{n}: dispatch '{label}' is tuned by the identifier {bare}; its kind has to be a quoted literal")
             continue
         expected = next((k for pattern, k in KIND_OF_LABEL if re.fullmatch(pattern, label)), 'stage')
         if kind != expected:

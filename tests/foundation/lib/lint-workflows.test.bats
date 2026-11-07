@@ -108,3 +108,18 @@ REVIEW_LINE="{ label: 'review', phase: 'Review', agentType: A.agents.reviewer, s
   mutate profile-quick.js "const kind = stage === 'Done' ? 'done' : 'stage'" "const kind = 'stage'"
   expect_violation "dispatch 'artifact:revise' takes its kind from"
 }
+
+@test "the artifact read tuned by a bare identifier fails" {
+  mutate profile-quick.js "schema: ARTIFACT_READ, ...tuning(role, 'light') }" "schema: ARTIFACT_READ, ...tuning(role, stage) }"
+  expect_violation "dispatch 'artifact:check' is tuned by the identifier stage; its kind has to be a quoted literal"
+}
+
+@test "an ordinary dispatch tuned by a bare identifier fails" {
+  mutate profile-quick.js "schema: DONE_ARTIFACT, ...tuning('developer', 'done') }" "schema: DONE_ARTIFACT, ...tuning('developer', stage) }"
+  expect_violation "dispatch 'done' is tuned by the identifier stage; its kind has to be a quoted literal"
+}
+
+@test "a half-quoted tuning kind fails" {
+  mutate profile-quick.js "schema: DONE_ARTIFACT, ...tuning('developer', 'done') }" "schema: DONE_ARTIFACT, ...tuning('developer', 'done) }"
+  expect_violation "dispatch 'done' carries 0 tuning() call(s)"
+}
