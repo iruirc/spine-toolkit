@@ -233,6 +233,19 @@ PY2
   [ "$status" -eq 2 ] || { echo "--current alone: $status"; return 1; }
 }
 
+@test "every usage text names --words-per-sentence <n>, in task mode, with --current and in --style" {
+  for args in "" "--current" "--style" "--style --words-per-sentence 12"; do
+    run "$LINT" $args
+    [ "$status" -eq 2 ] || { echo "'$args': $status $output"; return 1; }
+    grep -qF 'usage: ' <<<"$output" || { echo "'$args': $output"; return 1; }
+    [ "$(grep -cF -- '[--words-per-sentence <n>] [--current] <task-dir>' <<<"$output")" -eq 1 ] || { echo "'$args' task line: $output"; return 1; }
+    [ "$(grep -cF -- '--style [--words-per-sentence <n>] <path-to-Walkthrough.md>' <<<"$output")" -eq 1 ] || { echo "'$args' style line: $output"; return 1; }
+  done
+  run "$LINT" --words-per-sentence 0 "$TASK"
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+  grep -qF -- '[--words-per-sentence <n>] [--current] <task-dir>' <<<"$output" || { echo "$output"; return 1; }
+}
+
 # The style class: how the prose of the file reads, not what it says about the history.
 STYLE="$BATS_TEST_DIRNAME/../../fixtures/walkthrough-style"
 

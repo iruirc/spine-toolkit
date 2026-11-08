@@ -20,7 +20,8 @@ set -euo pipefail
 # With --style it runs only the style pass, on one file: no task dir, no git.
 #
 # With --words-per-sentence <n>, a positive integer, in either mode, n replaces the threshold the
-# directory resolves to: the run's own budget, which a directory cannot know.
+# directory resolves to: the run's own budget, which a directory cannot know. Every usage text names
+# it in each form; with --current, which leaves the style class out, it is accepted and changes nothing.
 #
 # Usage: scripts/lint-walkthrough.sh [--words-per-sentence <n>] [--current] <task-dir>
 #        scripts/lint-walkthrough.sh --style [--words-per-sentence <n>] <path-to-Walkthrough.md>
@@ -29,6 +30,13 @@ set -euo pipefail
 #        2 usage, a --style argument that is not a file, or task-ranges.sh could not answer.
 
 HERE="$(dirname -- "${BASH_SOURCE[0]}")"
+# Every usage error prints both forms; n is named in each mode it works in.
+usage() {
+  echo "usage: $0 [--words-per-sentence <n>] [--current] <task-dir>" >&2
+  echo "       $0 --style [--words-per-sentence <n>] <path-to-Walkthrough.md>" >&2
+  echo "       (n: a positive integer)" >&2
+  exit 2
+}
 current=0
 mode=task
 # --words-per-sentence may stand anywhere before the path; the rest of the parsing never sees it.
@@ -36,7 +44,7 @@ wps=
 args=()
 while [ "$#" -gt 0 ]; do
   if [ "$1" = --words-per-sentence ]; then
-    case "${2:-}" in '' | *[!0-9]* | 0*) echo "usage: $0 [--style] [--words-per-sentence <n>] [--current] <task-dir|path-to-Walkthrough.md>  (n: a positive integer)" >&2; exit 2 ;; esac
+    case "${2:-}" in '' | *[!0-9]* | 0*) usage ;; esac
     wps="$2"
     shift 2
   else
@@ -48,11 +56,11 @@ set -- ${args[@]+"${args[@]}"}
 if [ "${1:-}" = --style ]; then
   mode=style
   shift
-  [ "$#" -eq 1 ] || { echo "usage: $0 --style <path-to-Walkthrough.md>" >&2; exit 2; }
+  [ "$#" -eq 1 ] || usage
   [ -f "$1" ] || { echo "not a file: $1" >&2; exit 2; }
 else
   [ "${1:-}" = --current ] && { current=1; shift; }
-  [ "$#" -eq 1 ] || { echo "usage: $0 [--current] <task-dir>" >&2; exit 2; }
+  [ "$#" -eq 1 ] || usage
   [ -d "$1" ] || { echo "not a directory: $1" >&2; exit 2; }
 fi
 

@@ -963,7 +963,7 @@ an EPIC range. It checks `Walkthrough.md` against the task's history and against
 commit a reset or a squash dropped, a section the file's depth requires, a `deep` section holding
 several commits, a commit of a declared range the body never names — and, as class `style`, how its
 prose reads: a sentence over the word limit, identifiers where the skill keeps them out, a `deep`
-commit section without its labels. `--current`, which measures `walkthrough_current`, does not count
+commit section without its labels. Run it with `--words-per-sentence` taken from the contract's `budgets`, so that a `style` line follows the run's limit, a `--set budgets.words-per-sentence` included, and not the folder's. `--current`, which measures `walkthrough_current`, does not count
 the `style` class: its verdict is the history and the coverage only, so a style finding the writer
 already had once never sends the writer back at Done. The writer runs it too; this run
 is the measurement its word does not replace. On exit 1, report each line with key

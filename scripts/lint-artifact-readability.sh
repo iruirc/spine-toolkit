@@ -26,8 +26,10 @@ set -euo pipefail
 # A label is one or two capitals, or one small letter, then one or two digits, standing alone: not
 # followed by a letter, a digit, a backtick, a hyphen, a slash or a decimal point (v2.0, S3-compatible,
 # H264 and H1-style are no labels). A key before a title at the start of a list item or a paragraph
-# (M1. Title, **M1. Title**, M1: title, M1 — title) names that title and is not checked, and a
-# sentence never ends after a lone label: "M1." joins the sentence after it. Known limit: a short
+# (M1. Title, **M1. Title**, M1: title, M1 — title) names that title and is not checked, when a
+# title follows it: three words, or two when the title is the bold span the key opens. A key with
+# less than that after it stays a label ("- M1: fixed." reads as "M1: fixed." in a paragraph does).
+# A sentence never ends after a lone label: "M1." joins the sentence after it. Known limit: a short
 # code of the same shape (EC2, MP3, Q3, V8) reads as a label; in a sentence of four words or more
 # that does not start with it, it passes.
 #
@@ -104,7 +106,10 @@ LABEL_LEAD = re.compile(r'^[\s*_>"\'\u201c\u00ab-]*(`?)(%s)\1%s' % (LABEL, AFTER
 LABEL_ALONE = re.compile(r'^[\s*_>"\'\u201c\u00ab-]*(`?)%s\1[.:]?(?:\*\*)?$' % LABEL)
 # The key before a title at the start of a list item or a paragraph: "M1. Title", "**M1. Title**",
 # "M1: title", "M1 \u2014 title". It names the title that follows, as ENTRY_KEY does in Questions.md.
-KEY = re.compile(r'^(?:\[[ xX]\]\s+)?(?:\*\*)?(`?)%s\1(?:[.:]|\s+\u2014)(?:\*\*)?\s+' % LABEL)
+KEY = re.compile(r'^(?:\[[ xX]\]\s+)?(\*\*)?(`?)%s\2(?:[.:]|\s+\u2014)(\*\*)?\s+' % LABEL)
+KEY_TITLE_WORDS = 3          # a key is dropped only when a title of this many words follows it
+KEY_BOLD_TITLE_WORDS = 2     # ... or of this many, when the title is the bold span the key opens
+QUOTE_MARKS = '"\u201c\u201d\''
 BRACKETED = re.compile(r'\([^()]*\)|\[[^\[\]]*\]')
 LABEL_BOLD = re.compile(r'\*\*[^*\n]{1,40}:\*\*')
 QUESTION = re.compile(r'\*\*Question:\*\*\s*(.*)', re.S)
@@ -167,8 +172,22 @@ def mask(text, kept):
 def quote(sentence, kept):
     """The first five words of sentence, its spans as written, and an ellipsis when it goes on."""
     text = re.sub('`\x00(\\d+)\x00`', lambda m: kept[int(m.group(1))], sentence)
-    parts = text.split()
+    parts = text.strip(QUOTE_MARKS + ' \t').split()
     return '"%s"' % (' '.join(parts[:5]) + (' \u2026' if len(parts) > 5 else ''))
+
+
+def drop_key(joined):
+    """(joined without its leading key, True), or (joined, False) when the key has no title after
+    it: the label then stays and is judged like the same text in the middle of a paragraph."""
+    m = KEY.match(joined)
+    if not m:
+        return joined, True
+    rest = joined[m.end():]
+    if m.group(1) and not m.group(3) and '**' in rest:
+        title, need = rest.split('**', 1)[0], KEY_BOLD_TITLE_WORDS
+    else:
+        title, need = (sentences(mask(rest, []))[:1] or [''])[0], KEY_TITLE_WORDS
+    return (rest, True) if words(title) >= need else (joined, False)
 
 
 def debracket(t):
@@ -230,9 +249,9 @@ def prose_pass(text, limit, entries_keyed):
             joined = ' '.join(lines).strip()
             if entries_keyed:
                 joined = ENTRY_KEY.sub('', joined, 1)
-            joined = KEY.sub('', joined, 1)
+            joined, keyed = drop_key(joined)
             kept = []
-            masked = mask(LEAD.sub('', joined, 1), kept)
+            masked = mask(LEAD.sub('', joined, 1) if keyed else joined, kept)
             for sentence in joined_labels(sentences(masked)):
                 plain = sentence
                 for pattern in INLINE[1:]:

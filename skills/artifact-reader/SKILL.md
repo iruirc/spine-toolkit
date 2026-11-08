@@ -25,13 +25,13 @@ Everything in `## Style` follows from this reader.
 
 4. **Explain the basics the reader needs.** Domain words, and how a mechanism works when the text depends on it: how undo records a change, what a render snapshot is. One sentence too many is cheaper than a reader who has to open the code.
 
-5. **A problem is a chain, not a category.** Number it: 1, then 2, then 3, and the last step is what the user sees. "The list is rebuilt, so the row object is replaced, so the selection points at a row that is gone, so the highlight disappears" says more than "guards against stale state".
+5. **A problem is a chain, not a category.** Number it: 1, then 2, then 3, and the last step is what the user sees. "The list is rebuilt. So the row object is replaced. So the selection points at a row that is gone. So the highlight disappears." says more than "guards against stale state".
 
 6. **Every decision names the rejected alternative.** "Store the choice per project, not per user, because two people share one project file."
 
 7. **Tables for comparisons and lists of cases.** Put anything the reader has to compare in a table. Examples: before and after; "what could break / how it would look"; "case / expected / actual".
 
-8. **Pictures where space or order matters.** Draw what the reader would otherwise have to imagine. Use an ASCII sketch for a layout such as a timeline, lanes or screens, a sequence diagram for one user action passing through several objects, and a dependency graph for what waits for what.
+8. **Pictures where space or order matters.** Draw what the reader would otherwise have to imagine. Use an ASCII sketch for a layout such as a timeline, lanes or screens. Use a sequence diagram for one user action passing through several objects. Use a dependency graph for what waits for what.
 
 9. **Proof is concrete.** "Removed the words from the copy and 6 tests failed", never "covered by tests".
 

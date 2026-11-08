@@ -277,6 +277,71 @@ MD
   expect 0
 }
 
+@test "label: a key passes only with a title after it, form by form" {
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+- M1: the delivery fee is added after the discount.
+- M1 — the empty cart still costs nothing at all.
+- M1. The total drops below zero when the cart is empty
+- **M1. Rounding twice**
+MD
+  expect 0
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+- M1: fixed.
+MD
+  expect 1 'Done.md: label: label without a gloss: M1 in "M1: fixed." (Summary)'
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+- M1 — fixed now.
+MD
+  expect 1 'Done.md: label: label without a gloss: M1 in "M1 — fixed now." (Summary)'
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+- M1. Fixed now.
+MD
+  expect 1 'Done.md: label: label without a gloss: M1 in "M1. Fixed now." (Summary)'
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+- **M1. Fixed**
+MD
+  expect 1 'Done.md: label: label without a gloss: M1 in "**M1. Fixed**" (Summary)'
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+**M1.** fixed.
+MD
+  expect 1 'Done.md: label: label without a gloss: M1 in "**M1.** fixed." (Summary)'
+}
+
+@test "label: a key with no title is judged as the same text in mid-paragraph is" {
+  write Done.md <<'MD'
+# Done
+
+## Summary
+
+The fix is in place for every cart. M1: fixed.
+MD
+  expect 1 'Done.md: label: label without a gloss: M1 in "M1: fixed." (Summary)'
+}
+
 @test "label: a label that leads with its gloss in parentheses or after a dash passes" {
   write Done.md <<'MD'
 # Done
@@ -351,6 +416,15 @@ MD
   expect 1 'Done.md: sentence: sentence of 32 words: "The total drops below zero …" (Summary)'
   { printf '# Done\n\n## Summary\n\nThe `CartTotals` rounding '; words 29; printf '.\n'; } | write Done.md
   expect 1 'Done.md: sentence: sentence of 32 words: "The `CartTotals` rounding word word …" (Summary)'
+}
+
+@test "sentence: a sentence opening on a quote mark is quoted once" {
+  { printf '# Done\n\n## Summary\n\n"The list is rebuilt when '; words 30; printf '".\n'; } | write Done.md
+  expect 1 'Done.md: sentence: sentence of 35 words: "The list is rebuilt when …" (Summary)'
+  { printf '# Done\n\n## Summary\n\n\xe2\x80\x9cThe list is rebuilt when '; words 30; printf '\xe2\x80\x9d.\n'; } | write Done.md
+  expect 1 'Done.md: sentence: sentence of 35 words: "The list is rebuilt when …" (Summary)'
+  printf '# Done\n\n## Summary\n\n"M1 fixed."\n' | write Done.md
+  expect 1 'Done.md: label: label without a gloss: M1 in "M1 fixed." (Summary)'
 }
 
 @test "--words-per-sentence replaces the resolved threshold" {

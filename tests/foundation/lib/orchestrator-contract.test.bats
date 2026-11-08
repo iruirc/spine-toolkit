@@ -325,6 +325,14 @@ section() {
   done
 }
 
+@test "the integrity pass takes the word limit from the contract's budgets, not from the folder" {
+  para="$(awk '/^\*\*Walkthrough integrity\.\*\*/{f=1;print;next} f&&/^\*\*/{exit} f' "$SKILL")"
+  [ -n "$para" ] || { echo "no Walkthrough integrity paragraph in the orchestrator"; return 1; }
+  for token in 'with `--words-per-sentence` taken from the contract'"'"'s `budgets`' 'a `--set budgets.words-per-sentence` included'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the Walkthrough integrity paragraph does not say $token"; return 1; }
+  done
+}
+
 @test "the integrity pass reports a style line and sends the file back only for the other classes" {
   # Style findings reach the writer once, through its own lint run; the rest goes into the report.
   para="$(awk '/^\*\*Walkthrough integrity\.\*\*/{f=1;print;next} f&&/^\*\*/{exit} f' "$SKILL")"

@@ -74,6 +74,14 @@ section() { # $1 = heading text
   done
 }
 
+@test "no Style rule is a sentence over the threshold" {
+  # The skill read as a Research.md by the readability lint: its own rules keep to its own limit.
+  mkdir -p "$BATS_TEST_TMPDIR/skill"
+  cp "$SKILL" "$BATS_TEST_TMPDIR/skill/Research.md"
+  run "$ROOT/scripts/lint-artifact-readability.sh" "$BATS_TEST_TMPDIR/skill"
+  ! grep -F ': sentence: ' <<<"$output" | grep -F '(Style)' || { echo "$output"; return 1; }
+}
+
 @test "the Codex manifest hides the skill from implicit invocation" {
   grep -qF 'allow_implicit_invocation: false' "$ROOT/skills/artifact-reader/agents/openai.yaml" \
     || { echo "artifact-reader can be picked by Codex on its own"; return 1; }
