@@ -63,8 +63,9 @@ working as today; `setup` offers to move `sonnet` entries to `fast`.
 - `json`: `models` holds the final values (what dispatch receives; format unchanged). New field
   `model_tiers`: for each key resolved through `fast`, `{"tier": "fast", "model": <final>,
   "source": "project" | "unset"}`.
-- `show` and the opening block: `validator: fast → sonnet ([MODEL_TIERS])` or
-  `validator: fast → session (fast@codex-cli not set)`, in the resolved `lang`.
+- `show` and the opening block: `validator: fast → sonnet`, or
+  `validator: fast → session, no fast@codex-cli`. Config syntax, not prose, so not localized. A key
+  whose tier has no line is always in the column, chosen or not.
 
 ## 2. Messages
 
@@ -115,6 +116,9 @@ next to `is not a <runtime> model`). Each text names the source, the reason, the
 - Codex: one question, the model for `fast` in Codex — "keep the session's model" / free-form answer.
   The answer is written as `fast@codex-cli: <model>`. No list of models is offered: Spine cannot know
   what the account has.
+
+The edits to `SPINE.md` are made by a small script, `scripts/model-tiers.sh` (`check`, `apply`),
+not by hand, so they are tested and idempotent.
 
 ### Existing project (setup run again, either runtime)
 
