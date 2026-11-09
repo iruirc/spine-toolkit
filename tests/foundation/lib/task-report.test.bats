@@ -134,3 +134,48 @@ skill_section() { awk -v h="$1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
     [ "$status" -eq 0 ] || { echo "$f: $output"; return 1; }
   done
 }
+
+# A stage's own bullet in a Method B skill, as in artifact-pointers.test.bats.
+bullet() { # $1 = profile, $2 = stage
+  awk -v s="- **$2**" 'index($0,s)==1{p=1;print;next} p&&/^- \*\*/{exit} p' "$ROOT/skills/workflow-$1/SKILL.md"
+}
+
+@test "every Method B skill names the report at each of its stages" {
+  # profile:Plan-stage:implementing-stage:Review-stage:Done-stage; "-" where the profile has none.
+  # An epic has no implementing stage and no Review; research has no implementing stage, and its Done
+  # bullet does steps 1-2 itself.
+  for row in feature:Plan:Execute:Review:Done bug:Plan:Fix:Review:Done refactor:Plan:Refactor:Review:Done \
+             test:Plan:Write:Review:Done quick:Edit:Edit:Review:Done epic:Plan:-:-:Done research:Research:-:Review:Done; do
+    IFS=: read -r p plan impl rev done_ <<<"$row"
+    for stage in "$plan" "$impl" "$rev" "$done_"; do
+      [ "$stage" = - ] && continue
+      b="$(bullet "$p" "$stage")"
+      [ -n "$b" ] || { echo "workflow-$p has no $stage bullet"; return 1; }
+      grep -qF 'task-report' <<<"$b" || { echo "workflow-$p: the $stage bullet does not name task-report"; return 1; }
+    done
+    for h in '## When' '## The decision' ; do
+      grep -qF "$h" <<<"$(bullet "$p" "$plan")" || { echo "workflow-$p: the $plan bullet does not name $h"; return 1; }
+    done
+    grep -qF '## Links' <<<"$(bullet "$p" "$done_")" || { echo "workflow-$p: the Done bullet does not name ## Links"; return 1; }
+    grep -qF 'scripts/lint-report-links.sh' <<<"$(bullet "$p" "$done_")" || { echo "workflow-$p: the Done bullet does not run the lint"; return 1; }
+    [ "$impl" = - ] || grep -qF '## The document' <<<"$(bullet "$p" "$impl")" || { echo "workflow-$p: $impl does not name ## The document"; return 1; }
+    [ "$rev" = - ] || grep -qF '## Review' <<<"$(bullet "$p" "$rev")" || { echo "workflow-$p: Review does not name ## Review"; return 1; }
+  done
+}
+
+@test "the research Done bullet commits the report and marks Docs.md, and the experiment never carries it" {
+  d="$(bullet research Done)"
+  for token in 'commit the report' 'Docs.md' 'Applicable'; do
+    grep -qF -- "$token" <<<"$d" || { echo "workflow-research Done does not say: $token"; return 1; }
+  done
+  r="$(bullet research Research)"
+  grep -qF 'neither commits it nor touches' <<<"$r" || { echo "the Research bullet lets the Research agent commit the report"; return 1; }
+  grep -qF 'never' <<<"$(grep -F 'experiment-branch' <<<"$r")" || { echo "the Research bullet does not keep the report off the experiment branch"; return 1; }
+}
+
+@test "every Method B skill says audit flags files outside every covers and every places" {
+  for s in feature bug refactor test quick epic research review; do
+    grep -qF 'files created outside every `covers` and every `places`' "$ROOT/skills/workflow-$s/SKILL.md" \
+      || { echo "workflow-$s: audit is not described as ignoring places"; return 1; }
+  done
+}

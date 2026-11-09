@@ -90,6 +90,8 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   The branch decision is made based on `Research.md` and recorded inside it under an H2 heading. **CRITICAL — DO NOT TRANSLATE THE HEADING.** The heading is the byte-for-byte literal `## Decomposition decision`, written exactly that way regardless of the active language. Do not translate, localize, or adapt it — workflow-epic later parses this exact string to know which branch to take; translating it silently breaks the EPIC profile. The free-form prose under the heading IS composed by the architect agent in the user's natural language. Workflow-epic reads this section and acts accordingly — **it does not pick the branch on its own** (see section 6).
 
+  Unless the contract's `report` is `off`, apply the `task-report` skill's `## When`, `## Where` and `## The decision` and write `[REPORT_DECISION]` and `[REPORT_PATH]`. On the pure-research branch with no `Plan.md`, write them at the top of `Research.md`.
+
 - **Execute** (only on branch A — Decomposition). Walks the `.step/` subfolders sequentially — by prefix order (`1.step` → `2.step` → … for numeric prefixes; for named ones — in the order locked in `Plan.md`). **Steps are NOT run in parallel** — strictly sequential, for predictability and clean state recovery.
 
   **Per-step commits.** Workflow-epic itself does NOT create commits at the epic level. Each step's inner workflow-* (refactor/feature/bug/test) is responsible for its own per-phase commits, autonomously, without a user prompt. Workflow-epic only ensures the inner workflow runs to completion; the commit history is built up step by step by the inner workflows.
@@ -128,6 +130,8 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
   - For branch B (pure_research) — Done.md is short, points at `Research.md` as the final artifact; the steps section is empty; no estimate retrospective is required.
   - When `Done.md` already exists — a redo, a restart, a continue after a hand-back — every claim in it is checked against the current artifacts and the `git log` of every repository the task touched before it is kept, and the report says how many claims were corrected, or that every claim held.
   - Last, run scripts/lint-artifact-readability.sh on the file once, with `--words-per-sentence` taken from the contract's `budgets`; fix each finding once and name what is left in the stage summary.
+
+  Unless `report` is `off`, first dispatch an agent of the implementing stage's role — for an epic, the `[architect]`, once, after the walk of the steps or the pure-research branch — for `task-report` → `## Links` steps 1–2, then follow steps 3–6 and run `scripts/lint-report-links.sh <task dir>`.
 
   When the contract's `artifact_check` is `on`, the main context checks `Plan.md` after Plan on the decomposition branch and `Done.md` after Done on either branch; a roadmap `Plan.md` of the pure-research branch is not read: after the stage that wrote `Plan.md` or `Done.md`, dispatch a fresh agent of the writer's role to read the file only, per `artifact-reader` → `## Check`, then revise once. The reader runs on the `light` model and returns a retelling and the places it had to guess; an entry without a quote names no place and is skipped, and the writer revises once from the rest, never a second round, however many places the read named. A reader that returns nothing leaves the file unchecked and stops nothing; the run notes one line per file.
 
@@ -176,7 +180,7 @@ the ordinary case here, not the exception.
   close; exit 2 means the registry or the `Docs.md` table itself is malformed — fix that, it is
   not a question anyone can answer.
 - **Done** — run `audit`, then `progress`. `audit` names components living away from their
-  coverage and files created outside every `covers`; both are advisory and neither stops
+  coverage and files created outside every `covers` and every `places`; both are advisory and neither stops
   anything. `progress` regenerates the step table of every declared progress component
   between its markers, leaving everything outside them alone; a progress file whose markers
   are malformed is refused rather than reshaped, and named.

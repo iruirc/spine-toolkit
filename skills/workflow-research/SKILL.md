@@ -79,9 +79,15 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   The agent applies the `task-documents` skill's rules for every document to `Research.md` — here the document is the deliverable, so the skill's layers and its per-document sections do not apply, apart from the short answer above. It writes in the style of the `artifact-reader` skill. Last, run scripts/lint-artifact-readability.sh on the file once, with `--words-per-sentence` taken from the contract's `budgets`; fix each finding once and name what is left in the stage summary.
 
+  Unless the contract's `report` is `off`, apply the `task-report` skill's `## When`, `## Where` and `## The decision` and write `[REPORT_DECISION]` and `[REPORT_PATH]` at the top of `Research.md`. For `needed` or `update`, the Research agent also writes the report file by `task-report` → `## The document` and `## Updating`, but neither commits it nor touches `Docs.md`: Done does both. With `research_experiment=on` the report is never part of an experiment-branch commit, and it is the one file besides `Research.md` and `experiment/` the stage may write (§2c item 5).
+
 - **Review** — `[reviewer]` (only if `need_review=true`). Artifact: `Review.md`, **mandatory first line** `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (shared contract). `Review.md` is written by applying the `task-documents` skill, its `Review.md` section, in the style of the `artifact-reader` skill: every finding carries an `**Impact:**` line. The reviewer evaluates `Research.md` for: coverage of the stated goal, soundness of method, internal consistency of the findings, actionability of the follow-up list. **Critically — the reviewer does NOT validate the technical accuracy of the findings against the codebase**; that is the Research agent's domain. The reviewer judges only research quality. With `research_experiment=on` it also checks that `### Experiment` lets someone who was not there repeat the experiment — per checkout the branch, base commit and commits, where it ran, the steps, what each file in `experiment/` holds — and that every finding carries an `**Evidence:**` line. A finding backed by reasoning where the task asked for a run is a gap in coverage. Last, run scripts/lint-artifact-readability.sh on the file once, with `--words-per-sentence` taken from the contract's `budgets`; fix each finding once and name what is left in the stage summary.
 
+  Unless `report` is `off`, judge the numbers by `task-report` → `## Review`; a diverging number blocks.
+
 - **Done** — final report `Done.md` (written by applying the `task-documents` skill, its `Done.md` section, in the style of the `artifact-reader` skill): what was investigated, the verdict / key finding (one paragraph), pointer to `Research.md`, count and brief list of follow-up tasks (with `task-new` invocation hints). With `research_experiment=on` it names every experiment branch left unmerged and says that deleting it is the owner's call; Done deletes nothing. When `Done.md` already exists — a redo, a restart, a continue after a hand-back — every claim in it is checked against the current artifacts and the `git log` of every repository the task touched before it is kept, and the report says how many claims were corrected, or that every claim held. Last, run scripts/lint-artifact-readability.sh on the file once, with `--words-per-sentence` taken from the contract's `budgets`; fix each finding once and name what is left in the stage summary.
+
+  Unless `report` is `off`, do `task-report` → `## Links` steps 1–2 yourself, since RESEARCH has no implementing stage: when the report is new or changed, commit the report as `docs(<scope>): …` in the repository that holds it and mark the component's row in `Docs.md` Applicable with the file name in `Note`; then follow steps 3–6 and run `scripts/lint-report-links.sh <task dir>`. With `research_experiment=on` the report never rides on an experiment-branch commit.
 
   When the contract's `artifact_check` is `on`, the main context checks `Done.md` after Done; RESEARCH writes no `Plan.md`: after the stage that wrote `Done.md`, dispatch a fresh agent of the writer's role to read the file only, per `artifact-reader` → `## Check`, then revise once. The reader runs on the `light` model and returns a retelling and the places it had to guess; an entry without a quote names no place and is skipped, and the writer revises once from the rest, never a second round, however many places the read named. A reader that returns nothing leaves the file unchecked and stops nothing; the run notes one line per file.
 
@@ -115,7 +121,7 @@ the ordinary case here, not the exception.
   close; exit 2 means the registry or the `Docs.md` table itself is malformed — fix that, it is
   not a question anyone can answer.
 - **Done** — run `audit`, then `progress`. `audit` names components living away from their
-  coverage and files created outside every `covers`; both are advisory and neither stops
+  coverage and files created outside every `covers` and every `places`; both are advisory and neither stops
   anything. `progress` regenerates the step table of every declared progress component
   between its markers, leaving everything outside them alone; a progress file whose markers
   are malformed is refused rather than reshaped, and named.
@@ -154,8 +160,9 @@ brief carries these rules in full under either method:
    developer's; name it in `### Experiment`. The project's driver is resolved the way this
    platform's validator resolves it (`conventions/driver-contract.md`); with `drive_app=off`
    nothing is driven.
-5. **Outputs.** Outside the branch, only `Research.md` and `<task_dir>/experiment/` — data samples,
-   logs, screenshots. While a checkout that holds the task folder is on the experiment branch,
+5. **Outputs.** Outside the branch, only `Research.md`, `<task_dir>/experiment/` — data samples,
+   logs, screenshots — and, when the report decision is `needed` or `update`, the report file at
+   `[REPORT_PATH]`. While a checkout that holds the task folder is on the experiment branch,
    write nothing into the task folder: keep outputs in a temporary directory outside every
    checkout and move them in after switching back. A rerun adds to `experiment/` and overwrites
    what it regenerates, and `Research.md` names the files it relies on. When `Research.md` is

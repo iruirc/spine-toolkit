@@ -47,7 +47,7 @@ There is no fallback folder for reports, and the report never goes in the task f
 
 ## The decision
 
-Plan writes two machine-readable fields under `## For the owner` of `Plan.md`. A RESEARCH task has no Plan: its Research stage writes them at the top of `Research.md`. Below them goes one line with the reason, in the task's language:
+Plan writes two machine-readable fields under `## For the owner` of `Plan.md`; QUICK's Edit stage is the one that writes them, in the one-phase `Plan.md` it writes. A RESEARCH task has no Plan: its Research stage writes them at the top of `Research.md`, and so does an epic on the pure-research branch that wrote no `Plan.md`. Below them goes one line with the reason, in the task's language:
 
 ```
 [REPORT_DECISION] = needed | update | not-needed | unplaced
@@ -70,7 +70,7 @@ Three scenario tables over three sizes, and steps 03–12 take their inputs from
 
 ## The document
 
-The agent of the implementing stage's role writes the report, in a call of its own after the phases and before `Walkthrough.md`. It writes the file by this section (or by `## Updating`), marks the component's row in `Docs.md` `Applicable` with the file name in `Note`, and commits it as `docs(<scope>): …` in the repository that holds the file. For RESEARCH the agent of the Research stage writes it at the end of Research, with the fields. For an epic it is the architect, once, before Done: after the walk of the steps, or after the pure-research branch.
+The agent of the implementing stage's role writes the report, in a call of its own after the phases and before `Walkthrough.md`. It writes the file by this section (or by `## Updating`), marks the component's row in `Docs.md` `Applicable` with the file name in `Note`, and commits it as `docs(<scope>): …` in the repository that holds the file. For RESEARCH the agent of the Research stage only writes the file, at the end of Research, with the fields: it neither commits it nor touches `Docs.md`, and Done does both. For an epic it is the architect, once, before Done: after the walk of the steps, or after the pure-research branch.
 
 The required minimum, eight parts:
 
@@ -100,7 +100,7 @@ When the decision is `update`, the report already holds numbers from an earlier 
 
 ## Links
 
-What Done does. Under Method A the profile script runs steps 1–2 as one call to an agent of the implementing stage's role, before the Done agent; that agent answers `changed: false` when there is nothing to change, and that is no failure. The Done agent then does steps 3–6. Under Method B the workflow skill's Done stage does the same: steps 1–2 by dispatching that role's agent per `conventions/stage-dispatch.md`, as for `Walkthrough.md`, then steps 3–6 itself.
+What Done does. Under Method A the profile script runs steps 1–2 as one call to an agent of the implementing stage's role, before the Done agent; that agent answers `changed: false` when there is nothing to change, and that is no failure. The Done agent then does steps 3–6. Under Method B the workflow skill's Done stage does the same: steps 1–2 by dispatching that role's agent per `conventions/stage-dispatch.md`, as for `Walkthrough.md`, then steps 3–6 itself. A profile with no implementing-stage writer (RESEARCH) has no such agent: its Done agent does steps 1–2 itself, commits the report as `docs(<scope>): …` in the repository that holds it, marks the component's row in `Docs.md` `Applicable` with the file name in `Note`, and only then does steps 3–6. Under `research_experiment=on` the report never rides on an experiment-branch commit.
 
 1. If Validation or Review changed a number, the implementing role's agent adds it to the report, by `## Updating`.
 2. **The ratchet.** If the decision is `not-needed` and a criterion of `## When` turned out to hold, the fields are rewritten to `needed` or `update`, with the reason, and the implementing role's agent writes the report. There is no way back: a `needed` never becomes `not-needed`.

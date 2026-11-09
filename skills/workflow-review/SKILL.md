@@ -89,7 +89,7 @@ the ordinary case here, not the exception.
   close; exit 2 means the registry or the `Docs.md` table itself is malformed — fix that, it is
   not a question anyone can answer.
 - **Done** — run `audit`, then `progress`. `audit` names components living away from their
-  coverage and files created outside every `covers`; both are advisory and neither stops
+  coverage and files created outside every `covers` and every `places`; both are advisory and neither stops
   anything. `progress` regenerates the step table of every declared progress component
   between its markers, leaving everything outside them alone; a progress file whose markers
   are malformed is refused rather than reshaped, and named.
