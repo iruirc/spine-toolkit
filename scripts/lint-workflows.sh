@@ -74,6 +74,7 @@ VARIABLE_KIND = {
 VARIABLE_DISPATCH = {
     ('A.agents[role]', 'role'),
     ('agentType', 'WALKTHROUGH_AGENT'),
+    ('agentType', 'REPORT_AGENT'),
     ('l.agentType', 'l.role'),
     ('A.agents[ROLE_OF[picked]]', 'ROLE_OF[picked]'),
     ('agentType', 'role'),

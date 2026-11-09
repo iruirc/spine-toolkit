@@ -30,6 +30,8 @@ const AGENT_OF = {
 // Writes Walkthrough.md — the same agent that writes this profile's final report, so the two
 // speak with one voice.
 const WALKTHROUGH_AGENT = 'tester'
+// Writes the task's topic report (spine-toolkit:task-report): the implementing stage's role.
+const REPORT_AGENT = 'tester'
 
 // ── prelude ──────────────────────────────────────────────────────────────────
 // Byte-identical in every profile script; scripts/lint-workflows.sh enforces that. A workflow
@@ -102,6 +104,9 @@ const ARTIFACT_CHECK = A.artifact_check === 'on' ? 'on' : 'off'
 // then each writer's result. Done's own commits are the one thing left that can move past it.
 let walkthroughCurrent = A.walkthrough_current === true
 const SECURITY = A.security === 'on' || A.security === 'off' ? A.security : 'auto'
+// The task's topic report (spine-toolkit:task-report): auto leaves the decision to Plan, off drops
+// every clause and dispatch of it.
+const REPORT = A.report === 'on' || A.report === 'off' ? A.report : 'auto'
 
 // From the contract: the workflow sandbox cannot expand ${CLAUDE_PLUGIN_ROOT} itself.
 const CORE = A.plugin_root
@@ -222,7 +227,9 @@ const doneBrief = (body, handed) => brief(
 
 Write it by applying the spine-toolkit:task-documents skill, its Done.md section; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body.
 
-${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}
+${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}${REPORT === 'off' ? '' : `
+
+Report: apply the spine-toolkit:task-report skill, its ## Links section, steps 3 to 6; steps 1 and 2 ran before you. Unless step 6 applies, run "${core('scripts/lint-report-links.sh')}" ${DIR}. Fix each finding once, run it again, and name what is left in your summary.`}
 
 Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Done.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
 )
@@ -264,6 +271,7 @@ const PLAN = {
         },
       },
     },
+    report_decision: { type: 'string', enum: ['needed', 'update', 'not-needed', 'unplaced'], description: 'the [REPORT_DECISION] field this stage wrote, when it wrote one' },
   },
 }
 
@@ -693,6 +701,78 @@ Change no production code and no tests.`,
   return w
 }
 
+// The task's topic report (spine-toolkit:task-report). Plan decides and Review checks through the two
+// clauses below; the implementing stage's role writes the report through writeReport, once after the
+// phases and once before Done, and the Done agent links it (doneBrief). Documentation, like
+// Walkthrough.md — a failure here is noted and never stops the run.
+const reportPlan = () =>
+  REPORT === 'off'
+    ? ''
+    : `\n\nReport: apply the spine-toolkit:task-report skill, its ## When, ## Where and ## The decision sections, and write the two fields [REPORT_DECISION] and [REPORT_PATH] where ## The decision puts them, with the line of reason below them. This run's report is ${REPORT}${REPORT === 'on' ? ', so not-needed is not an answer' : ''}. Return the decision in report_decision.`
+const reportReview = () =>
+  REPORT === 'off'
+    ? ''
+    : `\n\nReport: apply the spine-toolkit:task-report skill, its ## Review section. A number in Done.md, Research.md or Plan.md that the report does not carry, or that disagrees with it, goes into blocking_findings and under ## For Done in Review.md.`
+const REPORT_ARTIFACT = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['changed', 'decision'],
+  properties: {
+    artifact_path: { type: 'string', description: 'path of the report from the project root; empty when there is none' },
+    changed: { type: 'boolean', description: 'false when you wrote nothing, which is no failure' },
+    decision: { type: 'string', enum: ['needed', 'update', 'not-needed', 'unplaced'], description: '[REPORT_DECISION] as it stands after you; not-needed when no field exists' },
+    summary: { type: 'string' },
+    lint: { type: 'string', description: 'what you could not settle and Done has to know; empty when nothing' },
+  },
+}
+const writeReport = async (stage, extra) => {
+  if (REPORT === 'off' || !REPORT_AGENT) return
+  // The Plan reply, where the script keeps one in a top-level plan; anywhere else the decision is
+  // unknown and the agent reads the fields itself. typeof, since some scripts declare no plan at all.
+  const decided = typeof plan === 'object' && plan ? plan.report_decision : undefined
+  if (stage !== 'Done' && ['not-needed', 'unplaced'].includes(decided)) {
+    log(`report: Plan decided ${decided}, so ${stage} writes none`)
+    return
+  }
+  const agentType = A.agents[REPORT_AGENT]
+  if (!agentType || agentType === '—') {
+    result.notes.push(`No agent implements the "${REPORT_AGENT}" role on this platform, so the report was not written.`)
+    return
+  }
+  const links = stage === 'Done'
+    ? `
+
+Then apply the skill's ## Links section, steps 1 and 2 only. If ${DIR}/Validation.md or ${DIR}/Review.md changed a number, add it to the report by ## Updating. If the decision is not-needed and a criterion of ## When turned out to hold, rewrite the fields to needed or update with the reason, and write the report. If the decision is unplaced and ${DIR}/Questions.md holds an answer naming the place, write the fields and the report there. Steps 3 to 6 belong to the Done agent after you. When there is nothing to change, change nothing and return changed false: on a repeat Done that is the expected answer, not a failure.`
+    : `
+
+Do not run scripts/lint-report-links.sh: ${DIR}/Done.md does not exist yet, and Done runs it.`
+  let r = null
+  try {
+    r = await agent(
+      brief(
+        stage,
+        `Report: apply the spine-toolkit:task-report skill. Read [REPORT_DECISION] and [REPORT_PATH] in ${DIR}/Plan.md, else in ${DIR}/Research.md. On needed or update, write or update the report at that path by the skill's ## The document or ## Updating section, mark the component's row in ${DIR}/Docs.md Applicable with the file name in Note, and commit it as docs(<scope>): … in the repository that holds the file. On not-needed, on unplaced and when no field exists, change nothing.${links}
+
+Return decision as the field stands after you, changed true when you wrote or updated a file, false otherwise, and artifact_path as the report's path.${extra ? `
+
+${extra}` : ''}
+
+Change no production code and no tests.`,
+      ),
+      { label: 'report', phase: stage, agentType, schema: REPORT_ARTIFACT, ...tuning(REPORT_AGENT, 'stage') },
+    )
+  } catch {
+    r = null
+  }
+  if (!r) {
+    result.notes.push('The report agent returned nothing, so the report may be missing or stale.')
+    return
+  }
+  log(`report: ${r.decision || 'no decision'}${r.changed === false ? ', nothing to change' : ` — ${r.artifact_path || 'written'}`}`)
+  if (r.lint) result.notes.push(`Report: ${r.lint}`)
+  return r
+}
+
 // The security lens (spine-toolkit:security-lens): a light triage decides whether the task touches
 // the perimeter, and the lens runs only when it does. Role and agent arrive as arguments — a role
 // literal here would count as dispatched by all seven scripts, and four of them never call this.
@@ -924,7 +1004,7 @@ Write it by applying the spine-toolkit:task-documents skill, its Plan.md section
 
 Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The full regression belongs to Validation, and at proportional a phase checks only what it can break — repeating the whole suite there is a defect of this plan; at full every phase repeats it too. This run's phase_verification is ${PHASE_VERIFICATION}.
 
-Then add a ## Manual acceptance section: one line per check that needs a person — a device action, a visual judgment or an external service — each stated as what must be true and what changed to make it so, rather than as what to press, and ending with needs: and which of the three, so Validation can turn it into a case a person walks. A check a machine could make is not listed: it is work for a phase — a script or a test that phase writes, named in its Verification line — or, when it is not worth that, a line with its reason in ## Not automated. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}
+Then add a ## Manual acceptance section: one line per check that needs a person — a device action, a visual judgment or an external service — each stated as what must be true and what changed to make it so, rather than as what to press, and ending with needs: and which of the three, so Validation can turn it into a case a person walks. A check a machine could make is not listed: it is work for a phase — a script or a test that phase writes, named in its Verification line — or, when it is not worth that, a line with its reason in ## Not automated. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}${reportPlan()}
 
 Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Plan.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
     ),
@@ -950,6 +1030,7 @@ if (runs('Write')) {
   )
   if (!phasesDone) return finish('ask_user', { status: 'interrupted' })
   record('Write', { artifact_path: plan.artifact_path, summary: phasesDone })
+  await writeReport('Write')
   await writeWalkthrough('Write')
 }
 
@@ -1003,7 +1084,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-When ${DIR}/ManualChecks.md exists, read it too: a case a tester cannot execute as written is an ordinary finding, judged by the rules of the manual-checks skill's ## The case and ## Grounding — an empty case, whose failure looks the same as its success, and a claim about behaviour with no code reference are findings too. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. A case that needs no person by the manual-checks skill's ## Does this check need a person?, and a ## Manual acceptance line with no needs:, are findings too; neither goes into blocking_findings. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does, every finding it lists — a name that does not say what broke included. Unlike the plan findings above, these are defects in what was delivered: an assertion that cannot fail and a double standing in for the behaviour under test always go into blocking_findings, and the rest may block. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${cap('Review.md')}
+When ${DIR}/ManualChecks.md exists, read it too: a case a tester cannot execute as written is an ordinary finding, judged by the rules of the manual-checks skill's ## The case and ## Grounding — an empty case, whose failure looks the same as its success, and a claim about behaviour with no code reference are findings too. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. A case that needs no person by the manual-checks skill's ## Does this check need a person?, and a ## Manual acceptance line with no needs:, are findings too; neither goes into blocking_findings. Judge each phase's **Verification:** line the way the phase-verification skill's ## Review section does: a phase with no line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does, every finding it lists — a name that does not say what broke included. Unlike the plan findings above, these are defects in what was delivered: an assertion that cannot fail and a double standing in for the behaviour under test always go into blocking_findings, and the rest may block. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${reportReview()}${cap('Review.md')}
 
 Write it by applying the spine-toolkit:task-documents skill, its Review.md section, whose Impact rule gives every finding an **Impact:** line; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Review.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
     ),
@@ -1021,6 +1102,7 @@ Write it by applying the spine-toolkit:task-documents skill, its Review.md secti
 // ── Done ────────────────────────────────────────────────────────────────────
 if (runs('Done')) {
   if (!need('Done', 'tester')) return finish('ask_user')
+  await writeReport('Done')
   const done = await agent(
     doneBrief(
       `Write the final report ${DIR}/Done.md: what is covered now (the components and scenarios), what coverage was reached if it was measured, which frameworks were used, the validation status including any test that came back flaky, and — under a heading "Objections" — any contested decision the user insisted on, such as declining to cover a critical path, with the risk it carries.${cap('Done.md')}`,

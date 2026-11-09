@@ -26,6 +26,8 @@ const AGENT_OF = {
 // Writes Walkthrough.md — the same agent that writes this profile's final report, so the two
 // speak with one voice.
 const WALKTHROUGH_AGENT = 'architect'
+// Writes the task's topic report (spine-toolkit:task-report): the implementing stage's role.
+const REPORT_AGENT = 'architect'
 
 // ── prelude ──────────────────────────────────────────────────────────────────
 // Byte-identical in every profile script; scripts/lint-workflows.sh enforces that. A workflow
@@ -98,6 +100,9 @@ const ARTIFACT_CHECK = A.artifact_check === 'on' ? 'on' : 'off'
 // then each writer's result. Done's own commits are the one thing left that can move past it.
 let walkthroughCurrent = A.walkthrough_current === true
 const SECURITY = A.security === 'on' || A.security === 'off' ? A.security : 'auto'
+// The task's topic report (spine-toolkit:task-report): auto leaves the decision to Plan, off drops
+// every clause and dispatch of it.
+const REPORT = A.report === 'on' || A.report === 'off' ? A.report : 'auto'
 
 // From the contract: the workflow sandbox cannot expand ${CLAUDE_PLUGIN_ROOT} itself.
 const CORE = A.plugin_root
@@ -218,7 +223,9 @@ const doneBrief = (body, handed) => brief(
 
 Write it by applying the spine-toolkit:task-documents skill, its Done.md section; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body.
 
-${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}
+${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}${REPORT === 'off' ? '' : `
+
+Report: apply the spine-toolkit:task-report skill, its ## Links section, steps 3 to 6; steps 1 and 2 ran before you. Unless step 6 applies, run "${core('scripts/lint-report-links.sh')}" ${DIR}. Fix each finding once, run it again, and name what is left in your summary.`}
 
 Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Done.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
 )
@@ -260,6 +267,7 @@ const PLAN = {
         },
       },
     },
+    report_decision: { type: 'string', enum: ['needed', 'update', 'not-needed', 'unplaced'], description: 'the [REPORT_DECISION] field this stage wrote, when it wrote one' },
   },
 }
 
@@ -687,6 +695,78 @@ Change no production code and no tests.`,
   if (w.lint) result.notes.push(`Walkthrough.md lint: ${w.lint}`)
   if (WALKTHROUGH_CHECK === 'on' && w.changed !== false) await checkWalkthrough(stage, agentType, depth, extra)
   return w
+}
+
+// The task's topic report (spine-toolkit:task-report). Plan decides and Review checks through the two
+// clauses below; the implementing stage's role writes the report through writeReport, once after the
+// phases and once before Done, and the Done agent links it (doneBrief). Documentation, like
+// Walkthrough.md — a failure here is noted and never stops the run.
+const reportPlan = () =>
+  REPORT === 'off'
+    ? ''
+    : `\n\nReport: apply the spine-toolkit:task-report skill, its ## When, ## Where and ## The decision sections, and write the two fields [REPORT_DECISION] and [REPORT_PATH] where ## The decision puts them, with the line of reason below them. This run's report is ${REPORT}${REPORT === 'on' ? ', so not-needed is not an answer' : ''}. Return the decision in report_decision.`
+const reportReview = () =>
+  REPORT === 'off'
+    ? ''
+    : `\n\nReport: apply the spine-toolkit:task-report skill, its ## Review section. A number in Done.md, Research.md or Plan.md that the report does not carry, or that disagrees with it, goes into blocking_findings and under ## For Done in Review.md.`
+const REPORT_ARTIFACT = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['changed', 'decision'],
+  properties: {
+    artifact_path: { type: 'string', description: 'path of the report from the project root; empty when there is none' },
+    changed: { type: 'boolean', description: 'false when you wrote nothing, which is no failure' },
+    decision: { type: 'string', enum: ['needed', 'update', 'not-needed', 'unplaced'], description: '[REPORT_DECISION] as it stands after you; not-needed when no field exists' },
+    summary: { type: 'string' },
+    lint: { type: 'string', description: 'what you could not settle and Done has to know; empty when nothing' },
+  },
+}
+const writeReport = async (stage, extra) => {
+  if (REPORT === 'off' || !REPORT_AGENT) return
+  // The Plan reply, where the script keeps one in a top-level plan; anywhere else the decision is
+  // unknown and the agent reads the fields itself. typeof, since some scripts declare no plan at all.
+  const decided = typeof plan === 'object' && plan ? plan.report_decision : undefined
+  if (stage !== 'Done' && ['not-needed', 'unplaced'].includes(decided)) {
+    log(`report: Plan decided ${decided}, so ${stage} writes none`)
+    return
+  }
+  const agentType = A.agents[REPORT_AGENT]
+  if (!agentType || agentType === '—') {
+    result.notes.push(`No agent implements the "${REPORT_AGENT}" role on this platform, so the report was not written.`)
+    return
+  }
+  const links = stage === 'Done'
+    ? `
+
+Then apply the skill's ## Links section, steps 1 and 2 only. If ${DIR}/Validation.md or ${DIR}/Review.md changed a number, add it to the report by ## Updating. If the decision is not-needed and a criterion of ## When turned out to hold, rewrite the fields to needed or update with the reason, and write the report. If the decision is unplaced and ${DIR}/Questions.md holds an answer naming the place, write the fields and the report there. Steps 3 to 6 belong to the Done agent after you. When there is nothing to change, change nothing and return changed false: on a repeat Done that is the expected answer, not a failure.`
+    : `
+
+Do not run scripts/lint-report-links.sh: ${DIR}/Done.md does not exist yet, and Done runs it.`
+  let r = null
+  try {
+    r = await agent(
+      brief(
+        stage,
+        `Report: apply the spine-toolkit:task-report skill. Read [REPORT_DECISION] and [REPORT_PATH] in ${DIR}/Plan.md, else in ${DIR}/Research.md. On needed or update, write or update the report at that path by the skill's ## The document or ## Updating section, mark the component's row in ${DIR}/Docs.md Applicable with the file name in Note, and commit it as docs(<scope>): … in the repository that holds the file. On not-needed, on unplaced and when no field exists, change nothing.${links}
+
+Return decision as the field stands after you, changed true when you wrote or updated a file, false otherwise, and artifact_path as the report's path.${extra ? `
+
+${extra}` : ''}
+
+Change no production code and no tests.`,
+      ),
+      { label: 'report', phase: stage, agentType, schema: REPORT_ARTIFACT, ...tuning(REPORT_AGENT, 'stage') },
+    )
+  } catch {
+    r = null
+  }
+  if (!r) {
+    result.notes.push('The report agent returned nothing, so the report may be missing or stale.')
+    return
+  }
+  log(`report: ${r.decision || 'no decision'}${r.changed === false ? ', nothing to change' : ` — ${r.artifact_path || 'written'}`}`)
+  if (r.lint) result.notes.push(`Report: ${r.lint}`)
+  return r
 }
 
 // The security lens (spine-toolkit:security-lens): a light triage decides whether the task touches
