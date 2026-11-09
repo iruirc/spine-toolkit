@@ -98,6 +98,12 @@ dispatched: a task raised to `full` mid-run is checked from the next run on, onc
 stands in its `Task.md`. An explicit `on` or `off` stands at either scale. Where the value
 came from `auto`, the source reads `scale` and `show` names the scale it followed.
 
+`report` follows the profile. Its chain is the ordinary one and ends at `auto`. `auto` leaves the resolver
+as `auto` for `TEST`, `FEATURE`, `RESEARCH` and `EPIC`, and the Plan stage decides by `task-report` →
+`## When`. For `QUICK`, `BUG` and `REFACTOR` an `auto` becomes `off`; an explicit `on` or `off` stands.
+`REVIEW` is always `off`: it has no Plan to decide a report, so a chosen `on` is ignored with one stderr
+line. Where the profile changed the value, the source reads `type` and `show` names the type.
+
 **A missing field is the default, not an error.** A task file that never names the field, a config
 that does not name it either — each is a link that contributes nothing and hands the question to
 the next. Nothing stops because a setting was left unwritten, and a project that has never opened
@@ -127,6 +133,7 @@ answers.
 | `walkthrough` | `[WALKTHROUGH]` | `[WALKTHROUGH]` | `brief` `deep` `off` | `off` when `scale` is `lite`, else `deep` |
 | `walkthrough_check` | `[WALKTHROUGH_CHECK]` | `[WALKTHROUGH_CHECK]` | `auto` `on` `off` | `auto`: `on` at `deep`, `off` at `brief`; `off` wherever `walkthrough` is `off` |
 | `artifact_check` | `[ARTIFACT_CHECK]` | `[ARTIFACT_CHECK]` | `auto` `on` `off` | `auto`: `on` at `full`, `off` at `lite` |
+| `report` | `[REPORT]` | `[REPORT]` | `auto` `on` `off` | `auto`: stays `auto` for `TEST`, `FEATURE`, `RESEARCH`, `EPIC`; `off` for `QUICK`, `BUG`, `REFACTOR`; always `off` for `REVIEW` |
 | `drive_app` | `[DRIVE_APP]` | `[DRIVE_APP]` | `auto` `off` | `auto` |
 | `manual_checks` | `[MANUAL_CHECKS]` | `[MANUAL_CHECKS]` | `auto` `always` | `auto` |
 | `manual_checks_check` | `[MANUAL_CHECKS_CHECK]` | `[MANUAL_CHECKS_CHECK]` | `on` `off` | `on` |

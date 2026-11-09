@@ -521,6 +521,17 @@ section() {
   [ "$(printf '%s' "$para" | wc -c)" -le "$own" ] || { echo "the paragraph outgrew the walkthrough_check one"; return 1; }
 }
 
+@test "the outbound contract carries report, auto on or off" {
+  grep -qxF 'report=auto|on|off' "$SKILL" || { echo "no report= line in the contract block"; return 1; }
+  para="$(awk '/^`report` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`report\` paragraph in the Outbound Contract"; return 1; }
+  for token in 'resolve-settings.sh json' 'Always filled' '`auto`' '`task-report`' 'Plan'; do
+    grep -qF "$token" <<<"$para" || { echo "the report paragraph does not say $token"; return 1; }
+  done
+  own="$(awk '/^`walkthrough_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL" | wc -c)"
+  [ "$(printf '%s' "$para" | wc -c)" -le "$own" ] || { echo "the paragraph outgrew the walkthrough_check one"; return 1; }
+}
+
 @test "the outbound contract carries walkthrough_current, measured by the lint's --current" {
   grep -qxF 'walkthrough_current=true|false' "$SKILL" || { echo "no walkthrough_current= line in the contract block"; return 1; }
   para="$(awk '/^`walkthrough_current` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"

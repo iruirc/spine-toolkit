@@ -193,6 +193,16 @@ only that file, and revised once from what it could not execute. It runs after a
 passed and wrote or changed one holding a case; there is no `auto`. It costs one `light` dispatch,
 and one more validator dispatch when it finds something.
 
+### [REPORT]
+
+**Values:** `auto` `on` `off` · **Default:** `auto` — stays `auto` for `TEST`, `FEATURE`, `RESEARCH` and `EPIC`, `off` for `QUICK`, `BUG` and `REFACTOR`, always `off` for `REVIEW` ·
+**Task override:** `[REPORT] = [auto|on|off]` · **Defined by:** the `task-report` skill
+
+Whether the task leaves one topic document, the report, in a documentation component's places, with
+the numbers in it and links to it from `Done.md`, `Research.md` and `Plan.md`. `auto` lets the Plan
+stage decide whether the results spread over enough artifacts to need one; `on` asks for it; `off`
+writes none. A `REVIEW` task has no Plan, so an `on` there is ignored.
+
 ### [DRIVER]
 
 **Values:** a driver-plugin name, `auto`, `—` · **Default:** `auto` · **Task override:**

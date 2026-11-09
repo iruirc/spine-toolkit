@@ -498,6 +498,7 @@ device_source=—
 device_from=default
 manual_checks=auto|always
 manual_checks_check=on|off
+report=auto|on|off
 phase_verification=proportional|full
 security=auto|on|off
 budgets={Done.md: 80, Plan.md: 200, Reproduce.md: 120, Review.md: 120, Task.md: 100, Validation.md: 100, words-per-sentence: 30}
@@ -582,6 +583,8 @@ size belongs to the task, not to one dispatch.
 `manual_checks` — when the validator writes `ManualChecks.md`. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `auto` writes the file only for the checks the validator was told not to run itself; `always` writes it every time, even when the validator drove the app and covered the happy path.
 
 `manual_checks_check` — whether a reader with none of the task's context walks `ManualChecks.md` after a Validation that passed and wrote or changed one holding a case, and the validator revises once from what that reader could not execute. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile, `on` or `off`. The protocol is `manual-checks` → `## Check`. It travels in the contract for the reason `walkthrough` does — a Method A script gates on it and has no filesystem to read it from.
+
+`report` — whether the task leaves one topic report in a documentation component's places. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `auto` reaches the contract for TEST, FEATURE, RESEARCH and EPIC, because only the Plan stage can decide it, by `task-report` → `## When`; QUICK, BUG and REFACTOR resolve to `off` unless chosen, REVIEW always to `off`.
 
 `phase_verification` — how much each phase checks before it commits. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `proportional` leaves the full regression to Validation; `full` repeats it in every phase. The rungs themselves are `phase-verification`'s business, not this field's.
 

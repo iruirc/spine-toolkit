@@ -29,6 +29,7 @@ set -euo pipefail
 # resolved scale is lite, which beats the project and loses to the task's own [WALKTHROUGH].
 # walkthrough_check then follows it: auto is on at deep and off at brief, and off where no file is written.
 # artifact_check follows the final scale: auto is on at full and off at lite.
+# report follows the profile: auto is off for QUICK, BUG and REFACTOR, off always for REVIEW, and stays auto for the rest.
 ROLES="architect developer tester reviewer refactorer validator security diagnostics"
 # A `platform` left by 1.11.0 reads as if its line were absent, not as `session`,
 # so the validator keeps its `sonnet` default.
@@ -214,6 +215,7 @@ SCALARS = (
     ('walkthrough', 'WALKTHROUGH', ['brief', 'deep', 'off'], 'deep'),
     ('walkthrough_check', 'WALKTHROUGH_CHECK', ['auto', 'on', 'off'], 'auto'),
     ('artifact_check', 'ARTIFACT_CHECK', ['auto', 'on', 'off'], 'auto'),
+    ('report', 'REPORT', ['auto', 'on', 'off'], 'auto'),
     ('drive_app', 'DRIVE_APP', ['auto', 'off'], 'auto'),
     ('manual_checks', 'MANUAL_CHECKS', ['auto', 'always'], 'auto'),
     ('manual_checks_check', 'MANUAL_CHECKS_CHECK', ['on', 'off'], 'on'),
@@ -496,7 +498,8 @@ if resolved['scale'] == 'lite' and sources['walkthrough'] in ('default', 'projec
 
 # walkthrough_check follows the depth it checks. CHOSEN keeps what the chain picked, so show can
 # tell a value derived from auto from one somebody wrote down.
-CHOSEN = {'walkthrough_check': resolved['walkthrough_check'], 'artifact_check': resolved['artifact_check']}
+CHOSEN = {'walkthrough_check': resolved['walkthrough_check'], 'artifact_check': resolved['artifact_check'],
+          'report': resolved['report']}
 chosen, depth = CHOSEN['walkthrough_check'], resolved['walkthrough']
 check = 'off' if depth == 'off' else ('on' if depth == 'deep' else 'off') if chosen == 'auto' else chosen
 if check != chosen:
@@ -509,6 +512,21 @@ if CHOSEN['artifact_check'] == 'auto':
     resolved['artifact_check'] = 'on' if resolved['scale'] == 'full' else 'off'
     sources['artifact_check'] = 'scale'
     show_source['artifact_check'] = 'scale: %s' % resolved['scale']
+
+# report follows the profile. REVIEW has no Plan to decide a report, so it is off whatever was chosen;
+# QUICK, BUG and REFACTOR leave an auto at off; for the rest auto stays and the Plan stage decides
+# (skills/task-report -> ## When). An explicit on or off stands everywhere but REVIEW.
+task_type = (task_value(os.path.join(TARGET, 'Task.md'), 'TASK_TYPE') or '').upper()
+if task_type == 'REVIEW' and CHOSEN['report'] != 'off':
+    if CHOSEN['report'] == 'on':
+        label = {'run': '--set report', 'task': 'Task.md [REPORT]', 'epic': "the epic's Task.md [REPORT]"
+                 }.get(sources['report'], '%s [REPORT]' % CFG)
+        print("%s: 'on' ignored, a REVIEW task has no Plan to decide a report" % label, file=sys.stderr)
+    resolved['report'], sources['report'] = 'off', 'type'
+    show_source['report'] = 'type: REVIEW'
+elif task_type in ('QUICK', 'BUG', 'REFACTOR') and CHOSEN['report'] == 'auto':
+    resolved['report'], sources['report'] = 'off', 'type'
+    show_source['report'] = 'type: %s' % task_type
 
 for name, field, keys, values, unset, map_defaults in MAPS:
     out, decided = dict(map_defaults), set()
@@ -637,7 +655,7 @@ def show_rows(show_all):
                 continue
             text = ', '.join('%s: %s' % (k, value[k]) for k in keys)
         else:
-            # A value derived from the default (walkthrough_check's or artifact_check's auto) is nobody's choice either.
+            # A value derived from the default (walkthrough_check's, artifact_check's or report's auto) is nobody's choice either.
             if not show_all and sources[name] != 'run' and (sources[name] == 'default' or value == defaults[name]
                                                             or CHOSEN.get(name) == defaults[name]):
                 rest += 1

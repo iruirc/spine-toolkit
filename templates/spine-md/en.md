@@ -23,6 +23,7 @@
 [DRIVE_APP] = [auto]                   # auto | off
 [MANUAL_CHECKS] = [auto]               # auto | always
 [MANUAL_CHECKS_CHECK] = [on]           # on | off
+[REPORT] = [auto]                     # auto | on | off
 [DRIVER] = [auto]                      # <driver-plugin> | auto | —
 [DEVICE] = [auto]                      # auto | <device>
 [PHASE_VERIFICATION] = [proportional]  # proportional | full

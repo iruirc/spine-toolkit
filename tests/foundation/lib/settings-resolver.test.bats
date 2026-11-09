@@ -212,7 +212,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
     ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
   done
   [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
-  grep -qxF '# 23 more at their default' <<<"$out" || { echo "$out"; return 1; }
+  grep -qxF '# 24 more at their default' <<<"$out" || { echo "$out"; return 1; }
 }
 
 @test "a project budget equal to the default is not a diff, and --all still names it" {
@@ -450,6 +450,7 @@ artifact_check off
 drive_app auto
 manual_checks auto
 manual_checks_check on
+report off
 driver auto
 phase_verification proportional
 security auto
@@ -761,6 +762,74 @@ FIELDS
   grep -qF '`[ARTIFACT_CHECK] = [<auto|on|off>]`' "$ROOT/skills/task-new/SKILL.md" \
     || { echo "task-new does not offer the field"; return 1; }
   config_doc_offers ARTIFACT_CHECK || { echo "the doc does not let a task override the field"; return 1; }
+}
+
+@test "report is auto for TEST, FEATURE, RESEARCH and EPIC when nobody chose it" {
+  for type in TEST FEATURE RESEARCH EPIC; do
+    printf '[TASK_TYPE] = [%s]\n' "$type" >"$TASK/Task.md"
+    out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+    [ "$(field report <<<"$out")" = auto ] || { echo "$type: $out"; return 1; }
+    [ "$(source_of report <<<"$out")" = default ] || { echo "$type: $out"; return 1; }
+  done
+}
+
+@test "report auto is off for QUICK, BUG and REFACTOR, and show names the type" {
+  for type in QUICK BUG REFACTOR; do
+    printf '[TASK_TYPE] = [%s]\n' "$type" >"$TASK/Task.md"
+    out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+    [ "$(field report <<<"$out")" = off ] || { echo "$type: $out"; return 1; }
+    [ "$(source_of report <<<"$out")" = type ] || { echo "$type: $out"; return 1; }
+    run "$RESOLVE" show "$TASK" --all
+    grep -qE "^\[REPORT\] += \[off\] +# type: $type\$" <<<"$output" || { echo "$type: $output"; return 1; }
+  done
+}
+
+@test "an explicit report on stands for BUG" {
+  printf '[TASK_TYPE] = [BUG]\n[REPORT] = [on]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  [ "$(field report <<<"$out")" = on ] || { echo "$out"; return 1; }
+  [ "$(source_of report <<<"$out")" = task ] || { echo "$out"; return 1; }
+}
+
+@test "report on is off for REVIEW, with one stderr line" {
+  printf '[TASK_TYPE] = [REVIEW]\n[REPORT] = [on]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$status" -eq 0 ]
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(field report <<<"$out")" = off ] || { echo "$out"; return 1; }
+  [ "$(source_of report <<<"$out")" = type ] || { echo "$out"; return 1; }
+  [ "$(wc -l <"$ERR" | tr -d ' ')" = 1 ] || { cat "$ERR"; return 1; }
+  grep -qF 'a REVIEW task has no Plan' "$ERR" || { cat "$ERR"; return 1; }
+}
+
+@test "a REVIEW task is off for report and silent when nobody asked for on" {
+  printf '[TASK_TYPE] = [REVIEW]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  [ "$(field report <<<"$out")" = off ] || { echo "$out"; return 1; }
+}
+
+@test "a run can set report" {
+  out="$("$RESOLVE" json "$TASK" --set report=on 2>"$ERR")"
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+  [ "$(field report <<<"$out")" = on ] || { echo "$out"; return 1; }
+  [ "$(source_of report <<<"$out")" = run ] || { echo "$out"; return 1; }
+}
+
+@test "a step inherits the epic's report, and its own field wins" {
+  EPIC="$PROJ/Tasks/ACTIVE/050-an-epic"
+  STEP="$EPIC/01-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[REPORT] = [on]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  run "$RESOLVE" json "$STEP"
+  [ "$(field report <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(source_of report <<<"$output")" = epic ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [FEATURE]\n[REPORT] = [off]\n' >"$STEP/Task.md"
+  run "$RESOLVE" json "$STEP"
+  [ "$(field report <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(source_of report <<<"$output")" = task ] || { echo "$output"; return 1; }
 }
 
 @test "walkthrough is a key of both maps, at session until somebody names it" {
