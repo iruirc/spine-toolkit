@@ -24,6 +24,8 @@ en
   `ops-checklist`, `manual-checks`, `phase-verification`, `task-documents`, `artifact-reader`, `agent-status`, `lang`,
   `docs-route`, `task-report`
 - `workflows/` — one `profile-*.js` orchestration script per profile
+- `workflow-src/` — `prelude.js`, the prelude every `profile-*.js` shares; edit it here, then
+  `scripts/sync-workflow-prelude.sh`
 - `commands/` — `/task-*`, `/setup`, `/agent-status`, `/lang`
 - `conventions/` — `i18n.md`, `stage-dispatch.md`, `platform-contract.md`, `driver-contract.md`,
   `docs-components.md` and the rest

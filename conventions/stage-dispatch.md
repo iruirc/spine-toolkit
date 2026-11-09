@@ -58,6 +58,11 @@ A workflow script carries both in its prelude; a Method B skill puts the same wo
 prompt. `Run.json` in the task folder is the orchestrator's record of the run: a stage neither reads
 nor stages it.
 
+The prelude the Method A scripts share is edited in one place, `workflow-src/prelude.js`. A workflow
+script cannot import, so `scripts/sync-workflow-prelude.sh` copies that file into every
+`workflows/profile-*.js` between its prelude markers; `scripts/lint-workflows.sh` fails on a copy
+edited by hand, and its message names the script to run.
+
 ## Device
 
 The contract's `device` is the device every build, test and drive of a stage runs on, in the
