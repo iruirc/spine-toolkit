@@ -624,3 +624,14 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     done
   done
 }
+
+@test "Review names a case nobody needs and a plan line without needs:, not blocking" {
+  for p in $PROFILES; do
+    b="$(review_brief "$ROOT/workflows/profile-$p.js")"
+    grep -qF 'with no needs:' <<<"$b" && grep -qF 'Does this check need a person?' <<<"$b" \
+      || { echo "profile-$p.js: Review lacks the needs: and criterion findings"; return 1; }
+    m="$(bullet "$ROOT/skills/workflow-$p/SKILL.md" Review)"
+    grep -qF 'with no `needs:`' <<<"$m" && grep -qF 'Does this check need a person?' <<<"$m" \
+      || { echo "workflow-$p/SKILL.md: Review lacks the needs: and criterion findings"; return 1; }
+  done
+}
