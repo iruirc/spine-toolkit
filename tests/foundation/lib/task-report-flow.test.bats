@@ -217,5 +217,24 @@ run_stage() {
 @test "the Research brief lets the report past the one-file rule" {
   prompt="$(pick 'o.calls.find((c) => c.label === "research:architect").prompt' <<<"$(run_stage research Research auto)")"
   grep -qF 'write no file other than Research.md' <<<"$prompt"
-  grep -qF 'the one file besides Research.md this task lets you write' <<<"$prompt"
+  grep -qF 'the report is the one file besides Research.md you may write' <<<"$prompt"
+}
+
+@test "on RESEARCH the Research agent only writes the report and Done commits it" {
+  prompt="$(pick 'o.calls.find((c) => c.label === "research:architect").prompt' <<<"$(run_stage research Research auto)")"
+  grep -qF 'write the report file by the parts' <<<"$prompt"
+  grep -qF 'neither commit it nor touch Docs.md' <<<"$prompt"
+  prompt="$(pick 'o.calls.find((c) => c.label === "done").prompt' <<<"$(run_stage research Done auto)")"
+  grep -qF 'commit it as docs(<scope>): … in the repository that holds it' <<<"$prompt" || { echo "$prompt"; return 1; }
+  grep -qF "mark the component's row in /p/Tasks/ACTIVE/001-x/Docs.md Applicable with the file name in Note" <<<"$prompt"
+  # With a report agent, Done is not told to commit what that agent already committed.
+  ! grep -qF 'commit it as docs(<scope>)' <<<"$(pick 'o.calls.find((c) => c.label === "done").prompt' <<<"$(run_stage feature Done auto)")"
+}
+
+@test "under an experiment the report stays off the experiment branch" {
+  c="$(contract auto | sed 's/"start_stage": "Plan", "end_stage": "Done"/"start_stage": "Research", "end_stage": "Research", "research_experiment": "on"/')"
+  out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-research.js" "$c" '{"_": 0}')"
+  prompt="$(pick 'o.calls.find((c) => c.label === "research:architect").prompt' <<<"$out")"
+  grep -qF 'never part of an experiment-branch commit' <<<"$prompt" || { echo "$prompt" | tail -3; return 1; }
+  ! grep -qF 'the one file besides Research.md' <<<"$prompt"
 }
