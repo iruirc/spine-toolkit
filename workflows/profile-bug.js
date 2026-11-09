@@ -36,9 +36,9 @@ const WALKTHROUGH_AGENT = 'developer'
 const REPORT_AGENT = 'developer'
 
 // ── prelude ──────────────────────────────────────────────────────────────────
-// Byte-identical in every profile script; scripts/lint-workflows.sh enforces that. A workflow
-// script cannot import, so this block is copied rather than shared, and the lint is what keeps
-// N copies from quietly becoming N dialects. Edit it in one file and the others fail the lint.
+// generated from workflow-src/prelude.js — edit there, then run scripts/sync-workflow-prelude.sh
+// A workflow script cannot import, so this block is copied into every workflows/profile-*.js;
+// scripts/lint-workflows.sh fails on a copy that differs from this file.
 //
 // Issue #86156 (args not reaching the sandbox) did not reproduce on 2.1.235 but is still open
 // upstream. Guard rather than assume: a run that cannot read its contract has no task folder.
