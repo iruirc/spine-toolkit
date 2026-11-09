@@ -600,3 +600,14 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
   awk '/^### \[MANUAL_CHECKS\]$/{f=1;next} f&&/^### /{exit} f' "$ROOT/docs/configuration.md" | grep -qF 'needs a person' \
     || { echo "configuration.md: auto still means every deferred check"; return 1; }
 }
+
+@test "every Plan brief asks each line for what the person is needed for" {
+  for p in $PROFILES; do
+    b="$(plan_brief "$ROOT/workflows/profile-$p.js")"
+    grep -qF 'needs:' <<<"$b" || { echo "profile-$p.js: no needs: in the Plan brief"; return 1; }
+    grep -qF '## Not automated' <<<"$b" || { echo "profile-$p.js: no ## Not automated in the Plan brief"; return 1; }
+    m="$(bullet "$ROOT/skills/workflow-$p/SKILL.md" "$(plan_stage "$p")")"
+    grep -qF 'needs:' <<<"$m" || { echo "workflow-$p/SKILL.md: the Plan bullet has no needs:"; return 1; }
+    grep -qF '## Not automated' <<<"$m" || { echo "workflow-$p/SKILL.md: the Plan bullet has no ## Not automated"; return 1; }
+  done
+}
