@@ -635,3 +635,29 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
       || { echo "workflow-$p/SKILL.md: Review lacks the needs: and criterion findings"; return 1; }
   done
 }
+
+@test "a check deferred because nothing could drive the app needs a person, the BUG replay included" {
+  s="$(skill_section '## Does this check need a person?')"
+  grep -qF 'nothing could drive the app' <<<"$s" || { echo "the criterion does not settle a deferred drive step"; return 1; }
+  grep -qF 'replay' <<<"$s" || { echo "the criterion does not settle the BUG replay"; return 1; }
+}
+
+@test "always with no case left writes the file with ## Cases reading none" {
+  skill_section '## Two stages, two halves' | grep -qF '`## Cases` reads `none — <why>`' \
+    || { echo "the zero-case always file is not defined"; return 1; }
+}
+
+@test "the none line names what was covered and each automatable gap" {
+  skill_section '## Two stages, two halves' | grep -qF 'each automatable gap' || { echo "skill: gaps are lost with no file"; return 1; }
+  for p in $PROFILES; do
+    validation_brief "$ROOT/workflows/profile-$p.js" | grep -qF 'each automatable gap' \
+      || { echo "profile-$p.js: the none line does not carry the gaps"; return 1; }
+    bullet "$ROOT/skills/workflow-$p/SKILL.md" Validation | grep -qF 'each automatable gap' \
+      || { echo "workflow-$p/SKILL.md: the none line does not carry the gaps"; return 1; }
+  done
+}
+
+@test "a scriptable finding is repaired by routing the case, never by rewording it" {
+  skill_section '## The lint' | grep -qF 'rewording the steps is not a repair' \
+    || { echo "## The lint gives scriptable no repair rule"; return 1; }
+}

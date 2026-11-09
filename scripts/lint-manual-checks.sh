@@ -7,7 +7,7 @@ set -euo pipefail
 #
 #   case      every case under ## Cases is "### MC-<n>. <observable behaviour>", ids are unique, and
 #             the twelve labels are there; a ## Cases with no such case under it is named (a case
-#             at the wrong level, #### MC-1. or ## MC-1., is no case); a file of "### <n>." headings
+#             at the wrong level, #### MC-1. or ## MC-1., is no case), unless it reads "none — <why>"; a file of "### <n>." headings
 #             and no MC- heading is named once as the old format, and its cases are not read further;
 #   steps     **Steps:** is a table headed "| # | Action | Data | Expected | Actual |", and no row
 #             leaves Action or Expected empty ("—" is a value);
@@ -72,8 +72,14 @@ CHAIN = [re.compile(p, re.I) for p in (
 # A step that is a shell command: the whole Action a backticked command with at most a verb before it,
 # or a verb of running with the word command after it. The Russian stems: execute, launch, command.
 RUN_VERB = r'(?:run|execute|\u0432\u044b\u043f\u043e\u043b\u043d\w*|\u0437\u0430\u043f\u0443\u0441\u0442\w*)'
-CMD_CODE = re.compile(r'^(?:' + RUN_VERB + r'\s+)?`[^`]+`$', re.I)
-CMD_REF = re.compile(r'\b' + RUN_VERB + r'\b.*\b(?:commands?|\u043a\u043e\u043c\u0430\u043d\u0434\w*)', re.I)
+# The backticked text holds a space, a slash, a dot, a dash or an equals sign, so a screen label in
+# backticks (`Checkout`) is not one; the word command follows the verb with at most one word between,
+# so the Undo command of a menu and the Russian word for team are not one. Russian: script, and read
+# the output.
+CMD_CODE = re.compile(r'^(?:' + RUN_VERB + r'\s+)?(?:the\s+)?(?:script\s+|\u0441\u043a\u0440\u0438\u043f\u0442\s+)?'
+                      r'`[^`]*[\s/.=-][^`]*`'
+                      r'(?:\s+and\s+read\s+(?:the\s+)?output|\s+\u0438\s+\u043f\u0440\u043e\u0447\u0438\u0442\u0430\u0442\u044c\s+\u0432\u044b\u0432\u043e\u0434)?$', re.I)
+CMD_REF = re.compile(r'\b' + RUN_VERB + r'\s+(?:the\s+|\w+\s+)?(?:commands?|\u043a\u043e\u043c\u0430\u043d\u0434\w*)\b', re.I)
 # Code a tester cannot know. The CamelCase word starts upper case so that iPhone or eBay is not one;
 # a dotted name needs a letter at the start of every part, so 2.1.0 and 0.8 are not one.
 GLOSS = re.compile(r'\([^()]*[A-Za-z_][\w./-]*:\d+[^()]*\)')
@@ -203,7 +209,10 @@ else:
             m = OLD.match(h[1])
             found.append('case: heading is not ### MC-<n>. <observable behaviour> (%s)' % ('### %s.' % m.group(1) if m else h[1]))
     # A case one level off (#### MC-1., ## MC-1.) is not a case: the section reads as empty.
-    if under_cases == 0:
+    # Under [MANUAL_CHECKS] = always a run may leave no case: ## Cases then reads "none — <why>".
+    said_none = any(trimmed(section(i, 2))[:1] and trimmed(section(i, 2))[0].lower().startswith('none')
+                    for i, h in headings if h == (2, '## Cases'))
+    if under_cases == 0 and not said_none:
         found.append('case: no case under ## Cases (## Cases)')
 
 seen = set()

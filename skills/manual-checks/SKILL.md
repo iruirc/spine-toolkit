@@ -34,9 +34,9 @@ A check that needs no person is not listed. One worth automating (`automate`) is
 
 For BUG the reproduction replay is not listed: its steps are already in `Reproduce.md`, and Validation reads them from there.
 
-**Validation → `ManualChecks.md`.** That list is the input, and each line goes through `## Does this check need a person?` again: the plan may predate this rule, or may have missed it. A line that needs a person becomes a case. One this run checked itself, with evidence, is `covered`: a line in `## Scope` naming the evidence. Any other is a `## Not covered` line, "automatable, not automated by this task" — the validator writes no code. To it Validation adds what the plan could not know — what the automated pass actually covered, and what it could not reach at all; a check deferred because driving the app was suppressed goes through the same criterion. When the plan carries no such section, because the task entered mid-pipeline or predates this rule, say so in `## Scope` and derive the cases from the task file and the diff.
+**Validation → `ManualChecks.md`.** That list is the input, and each line goes through `## Does this check need a person?` again: the plan may predate this rule, or may have missed it. A line that needs a person becomes a case. One this run checked itself, with evidence, is `covered`: a line in `## Scope` naming the evidence. Any other is an automatable gap: a `## Not covered` line, "automatable, not automated by this task", or a part of the `manual checks: none —` line when there is no file — the validator writes no code. To it Validation adds what the plan could not know — what the automated pass actually covered, and what it could not reach at all; a check deferred because driving the app was suppressed goes through the same criterion. When the plan carries no such section, because the task entered mid-pipeline or predates this rule, say so in `## Scope` and derive the cases from the task file and the diff.
 
-**No case, no file.** Under `auto`, when no case is left, there is no `ManualChecks.md`. `Validation.md` carries the line `manual checks: none — <why>`, naming what was covered and what is a gap, and the Manual test pass item of `OpsChecklist.md` is N/A with that reason. `always` writes the file anyway.
+**No case, no file.** Under `auto`, when no case is left, there is no `ManualChecks.md`. `Validation.md` carries the line `manual checks: none — <why>`, naming what was covered and each automatable gap, and the Manual test pass item of `OpsChecklist.md` is N/A with that reason. `always` writes the file anyway; with no case left, its `## Cases` reads `none — <why>`.
 
 ## Does this check need a person?
 
@@ -55,6 +55,8 @@ A check that needs none of them is not a case. It gets one of three outcomes:
 | `automate` | a sequence of commands with a result that can be checked | at Plan: work for a phase — a script or a test in the repository, named in that phase's `**Verification:**` line; Validation runs it |
 | `covered` | Validation, or automation already run, checked it, and the evidence exists | `## Scope`, with a reference to the evidence; `Validation.md` when there is no file |
 | `drop` | it costs more than it is worth, or its outcome changes nothing | at Plan: a line in `## Not automated` with its reason |
+
+**A check deferred because nothing could drive the app in this run** — `drive_app` off, no driver, a driver that cannot reach the surface — is a device action: driving the app is exactly what the run could not do, so it needs a person. The BUG reproduction replay is one, and it stays a case. "Automatable, not automated" is for a check a script could make, never for one only a driver could.
 
 **A mixed check** — one or two actions of a person inside a check made of commands — is not written as a case of steps. Plan makes it work for a phase: a script that does everything itself, stops at a prompt where the person is needed ("turn on airplane mode, press Enter") and prints PASS or FAIL. It lives where the project keeps its scripts. In `ManualChecks.md` its launch is a `**dev-only:**` step in `## Preparation`; the case holds only the person's steps, and its `**Expected result:**` is the verdict the script prints.
 
@@ -185,7 +187,7 @@ Write a blank line before every field, list and table. Markdown joins consecutiv
 | `code` | code in `Action`, `Expected`, `**Preconditions:**` or `**What it checks:**`: a CamelCase word, a source file, a dotted name of three parts or more, a `(file:line)` |
 | `codeslot` | a `**Code:**` with no `file:line` in it |
 | `chain` | "after case N", "the state right after", or an edit history kept in the file |
-| `scriptable` | a case in which every step is a command — a backticked command, or "run the command…": nothing in it needs a person, so it is a script, not a case (`## Does this check need a person?`) |
+| `scriptable` | a case in which every step is a command — a backticked command, or "run the command…": nothing in it needs a person, so it is a script, not a case (`## Does this check need a person?`). The repair routes the case — `covered` in `## Scope`, or an automatable gap — and under `auto` the last one routed away takes the file with it; rewording the steps is not a repair |
 | `budget` | a case over 40 lines, `## Scope` over 8, `## Preparation` over 60 |
 | `file` | no `[COVERS]`, no `## Run record`, no `## On failure` |
 

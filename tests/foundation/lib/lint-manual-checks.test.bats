@@ -340,3 +340,33 @@ for line in sys.stdin.read().split("\n")[:-1]:
     'ManualChecks.md: scriptable: no step needs a person, run it as a script (### MC-2.)' \
     'ManualChecks.md: budget: case of 43 lines, more than 40 (### MC-2.)')" ] || { echo "$output"; return 1; }
 }
+
+@test "scriptable: a menu command and a team are not shell commands" {
+  # "Launch the app under the team captain's account", in Russian: the word for team is the word for command.
+  write "$(steps_case '| 1 | Execute the Undo command from the Edit menu | — | The last item comes back | |' \
+                      "| 2 | $(ru '\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0435 \u043f\u043e\u0434 \u0443\u0447\u0451\u0442\u043d\u043e\u0439 \u0437\u0430\u043f\u0438\u0441\u044c\u044e \u043a\u0430\u043f\u0438\u0442\u0430\u043d\u0430 \u043a\u043e\u043c\u0430\u043d\u0434\u044b') | — | The cart shows the captain's name | |")"
+  clean "$F"
+}
+
+@test "scriptable: a backticked screen label is not a command" {
+  write "$(steps_case '| 1 | Execute `Settings` | — | The settings screen opens | |' \
+                      '| 2 | Run `Checkout` | — | The payment screen opens | |')"
+  clean "$F"
+}
+
+@test "scriptable: rewording a command step does not hide it" {
+  write "$(steps_case '| 1 | Run `git status --short` and read the output | — | Prints nothing | |' \
+                      '| 2 | Run the script `./check-tables.sh` | — | Prints PASS | |')"
+  expect 'ManualChecks.md: scriptable: no step needs a person, run it as a script (### MC-1.)'
+}
+
+@test "case: under always, a ## Cases that says none with its reason is not an empty section" {
+  write
+  python3 - "$F" <<'PY'
+import re, sys
+p = sys.argv[1]; s = open(p).read()
+s = re.sub(r'## Cases\n\n.*?(?=## On failure)', '## Cases\n\nnone — every check was covered by the automated pass.\n\n', s, flags=re.S)
+open(p, 'w').write(s)
+PY
+  clean "$F"
+}
