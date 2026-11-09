@@ -92,6 +92,36 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   grep -qF 'codex-permissions.sh check' "$ROOT/runtimes/codex-cli.md" || { echo "the map does not name the check"; false; }
 }
 
+# A field project: one line "settings are missing or out of date" for five items, one of them a root the
+# session could already write. Each item now says its fact and what follows from it for this run,
+# and the report says the check reads only Spine's own settings.
+@test "the orchestrator names each item of the check with its own line" {
+  ORCH="$ROOT/skills/orchestrator/SKILL.md"
+  para="$(grep -F 'codex-permissions.sh check' "$ORCH")"
+  for k in codex_perm_rules codex_perm_rules_outdated codex_perm_menu codex_perm_mcp codex_perm_root_missing codex_perm_root_unlisted codex_perm_root_stale; do
+    grep -qF -- "$k" <<<"$para" || { echo "SKILL.md does not map $k"; false; }
+    for l in en ru; do
+      grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "no $k in $l"; false; }
+    done
+  done
+  for l in en ru; do
+    awk '/^## codex_permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/$l.md" \
+      | grep -qF '{items}' || { echo "$l report lacks the items"; false; }
+  done
+  awk '/^## codex_permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/en.md" \
+    | grep -qF "only Spine's" || { echo "en report does not say what the check cannot see"; false; }
+  awk '/^## codex_permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/ru.md" \
+    | grep -qF 'Spine' || { echo "ru report does not say what the check cannot see"; false; }
+  grep -qiF 'not escalated' <<<"$para" || { echo "the check may be escalated"; false; }
+}
+
+@test "the setup question has a line for an unlisted root" {
+  grep -qF '`root <path> unlisted`' "$ROOT/skills/setup/SKILL.md" || { echo "SKILL.md does not map it"; false; }
+  for l in en ru; do
+    grep -qx '## codex_item_root_unlisted' "$ROOT/skills/setup/locales/$l.md" || { echo "no key in $l"; false; }
+  done
+}
+
 @test "the SPINE.md template says External packages are writable in Codex and Roots are not" {
   T="$ROOT/templates/spine-md/en.md"
   awk '/^`External packages` may repeat/{on=1} on && /^$/{exit} on' "$T" | grep -qF 'writable_roots' || { echo "External packages paragraph lacks writable_roots"; false; }

@@ -402,6 +402,7 @@ paragraph (**Agent Tooling**).
     | `menu off` | `codex_item_menu` | {config_path} |
     | `mcp <server> prompts` | `codex_item_mcp` | {server}, {config_path} |
     | `root <path> missing` | `codex_item_root_missing` | {path} |
+    | `root <path> unlisted` | `codex_item_root_unlisted` | {path} |
     | `root <path> stale` | `codex_item_root_stale` | {path} |
 
     - First option (apply all) → `codex-permissions.sh apply` with the same flags and every item

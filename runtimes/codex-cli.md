@@ -93,9 +93,13 @@ platform, whatever the sandbox refuses the same way — goes the same way.
 ## Spine's Codex settings
 
 When a task starts, the orchestrator runs `codex-permissions.sh check` (see its **Runtime**
-paragraph); lines on its output mean the rules, the question menu, the approval of the platform's
-MCP server or the project's writable roots are missing or stale. Say so in one line and carry on:
-`setup` writes them, after the user agrees.
+paragraph); each line on its output is a fact about Spine's own settings — the rules file is not
+there, the question menu flag or the MCP server's approval mode is not set, a writable root is not
+listed — not proof that a step will ask: the check does not see the session's approvals or the
+user's own rules. A root this session can write but no `writable_roots` lists is `unlisted`: nothing
+changes for this run. The check learns that by creating and removing a dotfile there, so it runs inside
+the sandbox, never escalated: outside it every root would read as writable. Report them, one line each, and carry on: `setup` writes them, after the user
+agrees.
 
 ## Git
 

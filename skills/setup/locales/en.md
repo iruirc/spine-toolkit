@@ -173,10 +173,13 @@ Write | Skip
 - The question menu: Spine's questions come as a menu you pick from with the arrow keys instead of numbered text. Adds `default_mode_request_user_input = true` under `[features]` in `{config_path}`; it applies to every Codex session, and Codex warns the feature is "under development".
 
 ## codex_item_mcp
-- The MCP server `{server}`: Codex stops asking before each of its calls — a validation makes dozens. Adds `default_tools_approval_mode = "approve"` to its section in `{config_path}`.
+- The MCP server `{server}` has no approval mode, so Codex may ask before each of its calls — a validation makes dozens. With it set, Codex does not ask. Adds `default_tools_approval_mode = "approve"` to its section in `{config_path}`.
 
 ## codex_item_root_missing
-- `{path}`: the external packages the project config lists; Spine's stages may write there without a question. Goes into `writable_roots` of the project's `.codex/config.toml`.
+- `{path}`: the external packages the project config lists; `writable_roots` does not cover it and this session cannot write there. With it, Spine's stages may write there without a question. Goes into `writable_roots` of the project's `.codex/config.toml`.
+
+## codex_item_root_unlisted
+- `{path}`: the external packages the project config lists; this session can already write there, but `writable_roots` does not cover it, so in a session started from another folder Codex may ask. Goes into `writable_roots` of the project's `.codex/config.toml`.
 
 ## codex_item_root_stale
 - `{path}`: no longer in the project config; removed from `writable_roots` of the project's `.codex/config.toml`.

@@ -173,10 +173,13 @@ DocsMap.md: {docs_map_status}
 - Меню вопросов: вопросы Spine придут меню, где вариант выбирается стрелками, а не нумерованным текстом. В `{config_path}` в раздел `[features]` добавится `default_mode_request_user_input = true`; действует во всех сессиях Codex, и Codex предупредит, что функция «under development».
 
 ## codex_item_mcp
-- MCP-сервер `{server}`: Codex перестанет спрашивать перед каждым его вызовом — валидация делает их десятки. В его раздел в `{config_path}` добавится `default_tools_approval_mode = "approve"`.
+- У MCP-сервера `{server}` нет режима одобрения, поэтому Codex может спрашивать перед каждым его вызовом — валидация делает их десятки. С ним Codex спрашивать не будет. В его раздел в `{config_path}` добавится `default_tools_approval_mode = "approve"`.
 
 ## codex_item_root_missing
-- `{path}`: внешние пакеты из конфига проекта; стадии Spine смогут писать туда без вопроса. Путь добавится в `writable_roots` файла `.codex/config.toml` проекта.
+- `{path}`: внешние пакеты из конфига проекта; `writable_roots` его не покрывает, и эта сессия не может туда писать. С ним стадии Spine смогут писать туда без вопроса. Путь добавится в `writable_roots` файла `.codex/config.toml` проекта.
+
+## codex_item_root_unlisted
+- `{path}`: внешние пакеты из конфига проекта; эта сессия уже может туда писать, но `writable_roots` его не покрывает, поэтому в сессии, запущенной из другой папки, Codex может спросить. Путь добавится в `writable_roots` файла `.codex/config.toml` проекта.
 
 ## codex_item_root_stale
 - `{path}`: больше нет в конфиге проекта; путь уберётся из `writable_roots` файла `.codex/config.toml` проекта.

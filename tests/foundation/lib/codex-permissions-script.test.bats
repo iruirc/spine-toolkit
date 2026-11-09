@@ -178,13 +178,13 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
 @test "External packages become writable roots, the folder before the glob" {
   spine_md '- External packages: /../pkgs/*'
   chk_rest
-  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs missing" ] || { echo "$output"; false; }
+  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs unlisted" ] || { echo "$output"; false; }
 }
 
 @test "each External packages line is its own root" {
   spine_md $'- External packages: /../pkgs/*\n- External packages: /vendor/Kit'
   chk_rest
-  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs missing"$'\n'"root $PROJ/vendor/Kit missing" ] || { echo "$output"; false; }
+  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs unlisted"$'\n'"root $PROJ/vendor/Kit unlisted" ] || { echo "$output"; false; }
 }
 
 @test "the template's example line is not a path" {
@@ -202,7 +202,7 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
 @test "CLAUDE-spine-toolkit.md is read when SPINE.md is absent" {
   spine_md '- External packages: /../pkgs/*' CLAUDE-spine-toolkit.md
   chk_rest
-  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs missing" ] || { echo "$output"; false; }
+  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs unlisted" ] || { echo "$output"; false; }
 }
 
 @test "no .codex folder: apply creates config.toml with the root" {
@@ -243,6 +243,106 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
   printf '[sandbox_workspace_write]\nwritable_roots = ["/u/own", "%s"]\n' "$root" >"$PROJ/.codex/config.toml"
   chk_rest
   [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+# A field project: the session could write the whole project folder, packages inside it, yet check
+# said the packages root was missing — it compared the exact path in one file and nothing else.
+@test "a root under a folder the project's config lists is not named" {
+  spine_md '- External packages: /../pkgs/*'
+  mkdir -p "$PROJ/.codex"
+  printf '[sandbox_workspace_write]\nwritable_roots = ["%s"]\n' "$(cd "$PROJ/.." && pwd)" >"$PROJ/.codex/config.toml"
+  chk_rest
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "a root the user's config.toml covers is not named" {
+  spine_md '- External packages: /../pkgs/*'
+  printf '[features]\ndefault_mode_request_user_input = true\n\n[sandbox_workspace_write]\nwritable_roots = ["%s/"]\n' \
+    "$(cd "$PROJ/.." && pwd)" >"$CH/config.toml"
+  chk_rest
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "a sibling folder with a shared prefix does not cover a root" {
+  spine_md '- External packages: /../pkgs/*'
+  mkdir -p "$PROJ/.codex"
+  printf '[sandbox_workspace_write]\nwritable_roots = ["%s/pk"]\n' "$(cd "$PROJ/.." && pwd)" >"$PROJ/.codex/config.toml"
+  chk_rest
+  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs unlisted" ] || { echo "$output"; false; }
+}
+
+@test "a root this run can write but no config lists is unlisted, and the probe leaves nothing" {
+  spine_md '- External packages: /../pkgs/*'
+  mkdir -p "$PROJ/../pkgs"
+  chk_rest
+  [ "$status" -eq 1 ]
+  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs unlisted" ] || { echo "$output"; false; }
+  [ -z "$(ls -A "$PROJ/../pkgs")" ] || { ls -A "$PROJ/../pkgs"; false; }
+}
+
+@test "a root that exists and this run cannot write is missing" {
+  [ "$(id -u)" -ne 0 ] || skip "root writes anywhere"
+  spine_md '- External packages: /../pkgs/*'
+  mkdir -p "$PROJ/../pkgs"; chmod 555 "$PROJ/../pkgs"
+  chk_rest
+  chmod 755 "$PROJ/../pkgs"
+  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs missing" ] || { echo "$output"; false; }
+}
+
+@test "a root not created yet under a folder this run can write is unlisted" {
+  spine_md '- External packages: /../w/new/*'
+  mkdir -p "$PROJ/../w"
+  chk_rest
+  [ "$output" = "root $(cd "$PROJ/.." && pwd)/w/new unlisted" ] || { echo "$output"; false; }
+  [ -z "$(ls -A "$PROJ/../w")" ] || { ls -A "$PROJ/../w"; false; }
+}
+
+# Codex lays the project's config.toml over the user's, and an array replaces the one below it:
+# a project that sets writable_roots at all makes the user's list void.
+@test "the user's roots do not count once the project's config sets writable_roots" {
+  [ "$(id -u)" -ne 0 ] || skip "root writes anywhere"
+  spine_md '- External packages: /../pkgs/*'
+  mkdir -p "$PROJ/../pkgs" "$PROJ/.codex"; chmod 555 "$PROJ/../pkgs"
+  printf '[features]\ndefault_mode_request_user_input = true\n\n[sandbox_workspace_write]\nwritable_roots = ["%s"]\n' \
+    "$(cd "$PROJ/.." && pwd)" >"$CH/config.toml"
+  printf '[sandbox_workspace_write]\nwritable_roots = []\n' >"$PROJ/.codex/config.toml"
+  chk_rest
+  chmod 755 "$PROJ/../pkgs"
+  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs missing" ] || { echo "$output"; false; }
+}
+
+@test "a ~/ root in the user's config covers what lies under it" {
+  spine_md '- External packages: /../pkgs/*'
+  mkdir -p "$BATS_TEST_TMPDIR/home"
+  ln -s "$(cd "$PROJ/.." && pwd)" "$BATS_TEST_TMPDIR/home/work"
+  printf '[features]\ndefault_mode_request_user_input = true\n\n[sandbox_workspace_write]\nwritable_roots = ["~/work"]\n' >"$CH/config.toml"
+  rules_in_place
+  HOME="$BATS_TEST_TMPDIR/home" run "$CP" check --project "$PROJ" --platform-root "$PLAT" --config-home "$CH"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "a relative entry in writable_roots covers nothing" {
+  spine_md '- External packages: /../pkgs/*'
+  mkdir -p "$PROJ/.codex"
+  printf '[sandbox_workspace_write]\nwritable_roots = ["."]\n' >"$PROJ/.codex/config.toml"
+  chk_rest
+  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs unlisted" ] || { echo "$output"; false; }
+}
+
+@test "usage prints the whole usage block" {
+  run "$CP"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'--config-home defaults to'* ]] || { echo "$output"; false; }
+}
+
+@test "apply writes an unlisted root like a missing one" {
+  spine_md '- External packages: /../pkgs/*'
+  mkdir -p "$PROJ/../pkgs"
+  root="$(cd "$PROJ/.." && pwd)/pkgs"
+  app "root $root unlisted"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  grep -qF "\"$root\", # spine" "$PROJ/.codex/config.toml" || { cat "$PROJ/.codex/config.toml"; false; }
+  chk_rest; [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
 # --- final review of milestone 5 -----------------------------------------------------------------

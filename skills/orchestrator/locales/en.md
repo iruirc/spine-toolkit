@@ -363,4 +363,27 @@ The task's `Task.md` already says `[SCALE] = [full]`, so "lite for this run" is 
 `{path}` is tracked by git, so it is not your word for this run but a file anyone could have written: it is ignored. Say the settings and the directive again if you meant them.
 
 ## codex_permissions_outdated
-Spine's Codex settings are missing or out of date, so Codex will ask before some steps. To set them up, run `$spine-toolkit:setup`.
+Spine's Codex settings are incomplete. The check reads only Spine's own settings, not what this session was allowed otherwise, so a step an item names may still run without a question:
+{items}
+The task carries on. To write the settings, run `$spine-toolkit:setup`.
+
+## codex_perm_rules
+- `.codex/rules/{file}` is not in the project: Codex may ask before the commands it lets through — commits, builds, test runs.
+
+## codex_perm_rules_outdated
+- `.codex/rules/{file}` differs from the installed Spine's: Codex may ask before the commands only the new version lets through.
+
+## codex_perm_menu
+- The question menu flag is not set: Spine's questions come as numbered text. Nothing stops.
+
+## codex_perm_mcp
+- The MCP server `{server}` has no approval mode in the config: Codex may ask before its calls, unless this session already approves them.
+
+## codex_perm_root_missing
+- `{path}` (external packages) is not covered by `writable_roots`, and this session cannot write there: Codex may ask before a write to it.
+
+## codex_perm_root_unlisted
+- `{path}` (external packages) is not covered by `writable_roots`, but this session can write there: nothing changes in this run; in a session started from another folder Codex may ask.
+
+## codex_perm_root_stale
+- `{path}` is in Spine's `writable_roots` but no longer in the project config. Nothing stops.

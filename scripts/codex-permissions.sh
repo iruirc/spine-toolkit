@@ -5,15 +5,21 @@
 # Usage: scripts/codex-permissions.sh check --project <dir> [--platform-root <dir>] [--config-home <dir>]
 #        scripts/codex-permissions.sh apply --project <dir> [--platform-root <dir>] [--config-home <dir>] <item>…
 # check prints one item per line — rules <file> missing|outdated, menu off, mcp <server> prompts,
-# root <path> missing|stale — and exits 0 when it printed none, 1 when it did. apply takes those
-# lines as items and writes only them. 2: usage, either.
+# root <path> missing|unlisted|stale — and exits 0 when it printed none, 1 when it did. apply takes
+# those lines as items and writes only them. 2: usage, either.
 # --config-home defaults to ${CODEX_HOME:-~/.codex}.
+#
+# Each item is a fact about Spine's settings, not about what Codex will do: rules missing — the file is
+# not there; menu off — the flag is not set; mcp prompts — the server has no approval mode. A root is
+# missing when the writable_roots Codex uses do not cover it and this process cannot write there,
+# unlisted when they do not cover it but this process can: check creates and removes a dotfile in it, or
+# in its nearest existing folder. That is the session's own access only when check runs in its sandbox.
 set -uo pipefail
 
 [ $# -ge 1 ] || { sed -n '5,10p' "$0" >&2; exit 2; }
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 exec python3 - "$HERE" "$@" <<'PY'
-import argparse, glob, json, os, re, sys
+import argparse, glob, json, os, re, sys, tempfile
 
 HERE = sys.argv[1]
 CORE_RULES = os.path.join(HERE, "..", "templates", "codex-rules", "spine.rules")
@@ -261,6 +267,41 @@ def wanted_roots(project):
 ROOTS = ("sandbox_workspace_write",)
 
 
+def covers(roots, path):
+    # A listed root covers itself and every folder under it; a relative entry covers nothing.
+    path = os.path.realpath(path)
+    for r in roots:
+        r = os.path.expanduser(r)
+        if not os.path.isabs(r):
+            continue
+        r = os.path.realpath(r)
+        if path == r or path.startswith(r.rstrip(os.sep) + os.sep):
+            return True
+    return False
+
+
+def writable(path):
+    # Whether this process may create a file there, or in the nearest folder that exists when it does
+    # not: inside the sandbox, the session's own access. A path that is a file is not writable.
+    while not os.path.exists(path):
+        parent = os.path.dirname(path)
+        if parent == path:
+            return False
+        path = parent
+    if not os.path.isdir(path):
+        return False
+    try:
+        fd, probe = tempfile.mkstemp(prefix=".spine-write-probe-", dir=path)
+    except OSError:
+        return False
+    os.close(fd)
+    try:
+        os.unlink(probe)
+    except OSError:
+        pass
+    return True
+
+
 def listed_roots(conf):
     # writable_roots as (the user's, Spine's): an element on a line ending in `# spine` is Spine's.
     t = conf.tables.get(ROOTS)
@@ -298,6 +339,11 @@ class State:
                 self.servers[path[1]] = path
         self.wanted = wanted_roots(a.project)
         self.listed, self.own = listed_roots(self.conf)
+        # Codex lays the project's config over the user's, and an array replaces the one below it.
+        layer = self.conf if self.conf.has(ROOTS, "writable_roots") else self.user
+        self.covering = sum(listed_roots(layer), [])
+        self.uncovered = [r for r in self.wanted if not covers(self.covering, r)]
+        self.can_write = {r: writable(r) for r in self.uncovered}
 
     def items(self):
         out = []
@@ -313,7 +359,7 @@ class State:
             out.append("menu off")
         out += ["mcp %s prompts" % k for k, path in self.servers.items()
                 if not self.user.has(path, "default_tools_approval_mode")]
-        out += ["root %s missing" % r for r in self.wanted if r not in self.listed + self.own]
+        out += ["root %s %s" % (r, "unlisted" if self.can_write[r] else "missing") for r in self.uncovered]
         out += ["root %s stale" % r for r in self.own if r not in self.wanted]
         return out
 
@@ -324,9 +370,9 @@ class State:
         m = re.match(r"^mcp (.+) prompts$", item)
         if m:
             return m.group(1) in self.servers
-        m = re.match(r"^root (.+) (missing|stale)$", item)
+        m = re.match(r"^root (.+) (missing|unlisted|stale)$", item)
         if m:
-            return m.group(1) in (self.wanted if m.group(2) == "missing" else self.own)
+            return m.group(1) in (self.own if m.group(2) == "stale" else self.wanted)
         return item == "menu off"
 
 
@@ -375,7 +421,7 @@ def apply(a, wanted):
                 st.user.save()
         else:
             root, what = rest.rsplit(" ", 1)
-            if what == "missing" and root not in own + st.listed:
+            if what in ("missing", "unlisted") and root not in own + st.listed:
                 own.append(root)
             elif what == "stale" and root in own:
                 own.remove(root)
