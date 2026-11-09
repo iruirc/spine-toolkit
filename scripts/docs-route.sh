@@ -493,7 +493,9 @@ if CMD == 'audit':
                   % (c['name'], ' and '.join(sorted(h or '<project>' for h in homes)),
                      ' and '.join(sorted(v or '<project>' for v in covered))))
     _changed, created = read_change_set()
-    pats = [matcher(pat) for c in comps for pat in c['covers']]
+    # A path under any component's places is where documentation lives, not a subsystem being
+    # born; progress components' places count as well.
+    pats = [matcher(pat) for c in comps for pat in c['covers'] + c['places']]
     loose = [p for p in created if not any(m(p) for m in pats)]
     if loose:
         print('files created outside every covers — candidate for a new component: %s'

@@ -576,6 +576,23 @@ EOF
   case "$output" in *"Sources/Stock/Graph.txt"*) ;; *) echo "$output"; return 1 ;; esac
 }
 
+@test "a file created under a component's places is not a candidate for a new component" {
+  mkdir -p "$PROJ/.git"
+  map <<'EOF'
+## Ledger
+
+genre: state
+places:
+  - Documents/Ledger/
+covers:
+  - Sources/Ledger/**
+EOF
+  run bash -c "printf 'A\tDocuments/Ledger/PerfBaseline.md\nA\tSources/Stock/Graph.txt\n' | '$DR' audit '$PROJ'"
+  [ "$status" -eq 0 ]
+  case "$output" in *PerfBaseline.md*) echo "$output"; return 1 ;; esac
+  case "$output" in *"Sources/Stock/Graph.txt"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
 @test "a modified file outside every covers is not reported — coverage is knowingly partial" {
   mkdir -p "$PROJ/.git"
   map <<'EOF'
