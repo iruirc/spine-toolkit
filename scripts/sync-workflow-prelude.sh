@@ -65,7 +65,10 @@ for path in scripts:
         errors.append(f'{path}: expected one opening and one closing prelude marker, found {opens} and {closes}')
         continue
     m = BLOCK.search(text)
-    new = text[:m.start()] + block + text[m.end():]
+    if not m:
+        errors.append(f'{path}: the closing prelude marker comes before the opening one')
+        continue
+    new =text[:m.start()] + block + text[m.end():]
     if new != text:
         plan.append((path, new))
 if errors:

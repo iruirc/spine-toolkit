@@ -130,3 +130,20 @@ DRIFT='workflows/profile-feature.js: prelude differs from workflow-src/prelude.j
   run "$T/scripts/sync-workflow-prelude.sh" --check
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }
+
+@test "an end marker above the opening marker is a structure error" {
+  python3 - "$T/workflows/profile-quick.js" <<'PY'
+import re, sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8', newline='').read()
+end = re.search(r'^// ── end prelude ─.*\n', s, flags=re.M)
+s = s[:end.start()] + s[end.end():]
+s, n = re.subn(r'^(// ── prelude ─)', end.group(0).replace('\\', r'\\') + r'\1', s, count=1, flags=re.M)
+assert n == 1
+open(p, 'w', encoding='utf-8', newline='').write(s)
+PY
+  sync --check
+  [ "$status" -eq 2 ] || { echo "status $status: $output"; return 1; }
+  [[ "$output" == *"workflows/profile-quick.js"* ]] || { echo "$output"; return 1; }
+  [[ "$output" != *"Traceback"* ]] || { echo "$output"; return 1; }
+}
