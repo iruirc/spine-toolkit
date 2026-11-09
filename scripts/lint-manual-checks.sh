@@ -18,6 +18,9 @@ set -euo pipefail
 #             decimal is not one), a (file:line) gloss;
 #   codeslot  a **Code:** field with no file:line;
 #   chain     a case that starts from another case's end state, or a file that keeps its edit history;
+#   scriptable a case whose every step is a shell command: a backticked command with at most a verb
+#             before it, or "run the command ..." and its Russian forms; nothing in it needs a person,
+#             so it is a script, not a case; a case with one step a person takes is not named;
 #   budget    a case over 40 lines, heading to last line; ## Scope over 8; ## Preparation over 60
 #             (blank lines inside count, the ones at either end do not);
 #   file      [COVERS], ## Run record and ## On failure are there.
@@ -66,6 +69,11 @@ CHAIN = [re.compile(p, re.I) for p in (
     r'\u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\w*\s+\u0441\u0440\u0430\u0437\u0443\s+\u043f\u043e\u0441\u043b\u0435',  # state right after
     r'\u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\w*\s+(?:\u0432\s+)?\u044d\u0442\u043e\u0439\s+\u0440\u0435\u0434\u0430\u043a\u0446\u0438\w*',  # changes in this revision
 )]
+# A step that is a shell command: the whole Action a backticked command with at most a verb before it,
+# or a verb of running with the word command after it. The Russian stems: execute, launch, command.
+RUN_VERB = r'(?:run|execute|\u0432\u044b\u043f\u043e\u043b\u043d\w*|\u0437\u0430\u043f\u0443\u0441\u0442\w*)'
+CMD_CODE = re.compile(r'^(?:' + RUN_VERB + r'\s+)?`[^`]+`$', re.I)
+CMD_REF = re.compile(r'\b' + RUN_VERB + r'\b.*\b(?:commands?|\u043a\u043e\u043c\u0430\u043d\u0434\w*)', re.I)
 # Code a tester cannot know. The CamelCase word starts upper case so that iPhone or eBay is not one;
 # a dotted name needs a letter at the start of every part, so 2.1.0 and 0.8 are not one.
 GLOSS = re.compile(r'\([^()]*[A-Za-z_][\w./-]*:\d+[^()]*\)')
@@ -237,6 +245,9 @@ for i, h in cases:
         hit = next((p.search(text) for p in COMPOUND if p.search(text)), None)
         if hit:
             found.append('compound: "%s" in the Action of step %s (%s)' % (hit.group(), step, where))
+
+    if actions and all(CMD_CODE.match(t.strip()) or CMD_REF.search(t) for _, t in actions):
+        found.append('scriptable: no step needs a person, run it as a script (%s)' % where)
 
     places = [('the Action of step %s' % s, t) for s, t in actions] + \
              [('the Expected of step %s' % s, t) for s, t in expects]

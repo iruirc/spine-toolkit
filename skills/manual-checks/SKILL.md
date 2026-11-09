@@ -159,6 +159,7 @@ Write a blank line before every field, list and table. Markdown joins consecutiv
 | `code` | code in `Action`, `Expected`, `**Preconditions:**` or `**What it checks:**`: a CamelCase word, a source file, a dotted name of three parts or more, a `(file:line)` |
 | `codeslot` | a `**Code:**` with no `file:line` in it |
 | `chain` | "after case N", "the state right after", or an edit history kept in the file |
+| `scriptable` | a case in which every step is a command — a backticked command, or "run the command…": nothing in it needs a person, so it is a script, not a case (`## Does this check need a person?`) |
 | `budget` | a case over 40 lines, `## Scope` over 8, `## Preparation` over 60 |
 | `file` | no `[COVERS]`, no `## Run record`, no `## On failure` |
 

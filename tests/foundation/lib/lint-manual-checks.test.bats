@@ -2,7 +2,7 @@
 # ManualChecks.md is a hand-run script for a tester who knows the product but not the code. A case
 # that leaned on code, on another case's end state or on a step holding two actions passed the
 # cold reader often enough that the format needed a measurement. This lint is that measurement:
-# its eight checks are the executable definition of the case format the manual-checks skill
+# its nine checks are the executable definition of the case format the manual-checks skill
 # describes, and its fixtures are cases that format accepts.
 
 setup() {
@@ -298,4 +298,45 @@ PY
   write
   printf '\n**Run:** drive_app=off; directive: «leave the cart package alone»\n**Device:** Phone B, set by this run\n' >>"$F"
   clean "$F"
+}
+
+# A case with its two step rows replaced: $1 and $2 are whole table rows.
+steps_case() {
+  case_md 1 | python3 -c 'import sys
+r1, r2 = sys.argv[1], sys.argv[2]
+for line in sys.stdin.read().split("\n")[:-1]:
+    print(r1 if line.startswith("| 1 |") else r2 if line.startswith("| 2 |") else line)' "$1" "$2"
+}
+
+@test "scriptable: a case whose every step is a command in backticks is named" {
+  write "$(steps_case '| 1 | Run `git status --short` | — | Prints nothing | |' \
+                      '| 2 | Execute `git log -1 --format=%h` | — | Prints the sha from Run record | |')"
+  expect 'ManualChecks.md: scriptable: no step needs a person, run it as a script (### MC-1.)'
+}
+
+@test "scriptable: the Russian forms of run the command are named" {
+  # "Run the command of step 1" and "Launch `git status --short`", in the imperative.
+  write "$(steps_case "| 1 | $(ru '\u0412\u044b\u043f\u043e\u043b\u043d\u0438\u0442\u0435 \u043a\u043e\u043c\u0430\u043d\u0434\u0443 \u0448\u0430\u0433\u0430 1') | — | Prints nothing | |" \
+                      "| 2 | $(ru '\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435') \`git status --short\` | — | Prints nothing | |")"
+  expect 'ManualChecks.md: scriptable: no step needs a person, run it as a script (### MC-1.)'
+}
+
+@test "scriptable: a mixed case, a device step and a command, is not named" {
+  write "$(steps_case '| 1 | Turn on airplane mode in Control Center | — | The plane icon shows in the status bar | |' \
+                      '| 2 | Run `git status --short` | — | Prints nothing | |')"
+  clean "$F"
+}
+
+@test "scriptable: a case with no steps table gives no scriptable finding" {
+  write "$(case_md 1 | grep -v '^|')"
+  expect 'ManualChecks.md: steps: no steps table (### MC-1.)'
+}
+
+@test "scriptable: MC-2 of the field sample is named, next to its budget" {
+  # The sample's thirteen command steps also overrun the case budget, as the original did.
+  run "$LINT" "$FIX/scriptable.ru.md"
+  [ "$status" -eq 1 ] || { echo "status $status: $output"; return 1; }
+  [ "$output" = "$(printf '%s\n%s' \
+    'ManualChecks.md: scriptable: no step needs a person, run it as a script (### MC-2.)' \
+    'ManualChecks.md: budget: case of 43 lines, more than 40 (### MC-2.)')" ] || { echo "$output"; return 1; }
 }
