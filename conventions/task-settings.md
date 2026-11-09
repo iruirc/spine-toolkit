@@ -33,6 +33,19 @@ nearest directory holding either name. The resolver's `json` carries the selecte
 from it — takes the path from there rather than looking the name up a second time. `raw` reads the
 same file `json` selects.
 
+A task reached through a symlink — a `Tasks` link from a checkout into a shared task repository,
+or a chain of them — is looked up along the path as given: the walk upward passes the link, not
+its target, and `project_config` names the file under the link. So a shared task repository with
+no config of its own takes the config of whichever checkout the task was opened through, and
+settles nothing when opened directly: give it its own `SPINE.md` and the settings stop depending on
+the way in. The relative paths of
+`## Paths` are another matter. They are resolved from the directory holding the config, the way the
+filesystem resolves them: through a link, then `..`. Every folder `roots` names is one that exists,
+and the same folder whichever way the task was reached — written without `..` where that names the
+same folder, as its physical path where it would not. A `SPINE.md` that is itself a link keeps the
+directory it sits in as the base: resolving the file does not move every relative path of the
+project to wherever the file is stored.
+
 ## Runtime
 
 The runtime is the host the toolkit runs in — Claude Code, or another CLI that loads the same

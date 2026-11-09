@@ -600,6 +600,21 @@ sources['budgets'] = min(budget_decided.values(), key=order.index, default=budge
 
 
 
+def tidy(found):
+    """A folder the filesystem found, written without its `..`. The filesystem follows a link
+    before it reads the `..` after it, and a lexical normpath deletes `Tasks/..` instead: through a
+    linked Tasks folder that names a folder that does not exist. The lexical form is kept where it
+    names the same folder, so a project with no links reads as it always did; elsewhere, the
+    physical one."""
+    lexical = os.path.normpath(found)
+    try:
+        if os.path.isdir(lexical) and os.path.samefile(lexical, found):
+            return lexical
+    except OSError:
+        pass
+    return os.path.realpath(found)
+
+
 def search_roots():
     """Not a setting either: where a stage may look for a file, the core root aside
     (conventions/agent-tooling.md → Finding files). The project root, then every folder
@@ -608,6 +623,9 @@ def search_roots():
         return []
     home = os.path.dirname(CFG)
     roots = [home]
+    # Nesting is judged on the physical folders: through a link, the project root keeps its
+    # logical spelling while a hit is spelled physically, and the same folder must not count twice.
+    seen = [os.path.realpath(home)]
     for line in block(CFG, 'Paths'):
         m = re.match(r'^-\s*(External packages|Roots):\s*(.+?)\s*$', line)
         if not m:
@@ -616,12 +634,14 @@ def search_roots():
         # External packages is written from the project root, as docs-route.sh reads it; Roots
         # names folders outside it, so an absolute path there means what it says.
         rel = pat.lstrip('/') if key == 'External packages' else os.path.expanduser(pat)
-        hits = [os.path.normpath(p) for p in sorted(glob.glob(os.path.join(home, rel))) if os.path.isdir(p)]
+        hits = [tidy(p) for p in sorted(glob.glob(os.path.join(home, rel))) if os.path.isdir(p)]
         if not hits and key == 'Roots':
             print("%s ## Paths: Roots '%s' names no folder, skipped" % (CFG, pat), file=sys.stderr)
         for p in hits:
-            if not any(p == r or p.startswith(r + os.sep) for r in roots):
+            real = os.path.realpath(p)
+            if not any(real == r or real.startswith(r.rstrip(os.sep) + os.sep) for r in seen):
                 roots.append(p)
+                seen.append(real)
     return roots
 
 
