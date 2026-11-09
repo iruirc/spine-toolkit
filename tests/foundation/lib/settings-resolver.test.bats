@@ -208,11 +208,14 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   # follows it; everything else the template writes is the default written down.
   grep -qE '^\[SCALE\] += \[lite\] +# project$' <<<"$out" || { echo "$out"; return 1; }
   grep -q '^\[WALKTHROUGH\]' <<<"$out" || { echo "$out"; return 1; }
-  for f in WORKFLOW_MODE DOCS DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION FIX_ROUNDS SECURITY LANG MODELS EFFORT; do
+  for f in WORKFLOW_MODE DOCS DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION FIX_ROUNDS SECURITY LANG EFFORT; do
     ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
   done
-  [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
-  grep -qxF '# 24 more at their default' <<<"$out" || { echo "$out"; return 1; }
+  # The template still writes sonnet for light and validator, and the built-in default is fast now:
+  # [MODELS] is the third line until the template moves to fast.
+  grep -qE '^\[MODELS\] += \[validator: sonnet, light: sonnet\] +# project$' <<<"$out" || { echo "$out"; return 1; }
+  [ "$(grep -c '^\[' <<<"$out")" -eq 3 ] || { echo "$out"; return 1; }
+  grep -qxF '# 23 more at their default' <<<"$out" || { echo "$out"; return 1; }
 }
 
 @test "a project budget equal to the default is not a diff, and --all still names it" {
@@ -315,11 +318,12 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   [ "$(source_of models <<<"$output")" = task ] || { echo "$output"; return 1; }
 }
 
-@test "a project that says nothing resolves models and effort to their defaults, light and validator at sonnet" {
+@test "a project that says nothing resolves models and effort to their defaults, light and validator at fast, read as session" {
   run "$RESOLVE" json "$TASK"
   [ "$status" -eq 0 ]
-  [ "$(map_value models light <<<"$output")" = sonnet ] || { echo "$output"; return 1; }
-  [ "$(map_value models validator <<<"$output")" = sonnet ] || { echo "$output"; return 1; }
+  [ "$(map_value models light <<<"$output")" = session ] || { echo "$output"; return 1; }
+  [ "$(map_value models validator <<<"$output")" = session ] || { echo "$output"; return 1; }
+  [ "$(python3 -c 'import json,sys; print(json.load(sys.stdin)["model_tiers"]["light"]["source"])' <<<"$output")" = unset ] || { echo "$output"; return 1; }
   [ "$(map_value models architect <<<"$output")" = session ] || { echo "$output"; return 1; }
   [ "$(map_value effort architect <<<"$output")" = session ] || { echo "$output"; return 1; }
   [ "$(map_value effort validator <<<"$output")" = session ] || { echo "$output"; return 1; }
@@ -327,11 +331,11 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   [ "$(source_of effort <<<"$output")" = default ] || { echo "$output"; return 1; }
 }
 
-@test "light: platform reads as absent, so light keeps its sonnet default" {
+@test "light: platform reads as absent, so light keeps its fast default" {
   printf '## Task defaults\n\n[MODELS] = [light: platform]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
   [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
-  [ "$(map_value models light <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
+  [ "$(map_value models light <<<"$out")" = session ] || { echo "$out"; return 1; }
 }
 
 @test "a config still carrying 1.11.0's platform keeps every model it had and reports nothing" {
@@ -343,7 +347,8 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
   [ ! -s "$ERR" ] || { echo "platform was reported:"; cat "$ERR"; return 1; }
   [ "$(map_value models light <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
-  [ "$(map_value models validator <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
+  # validator: platform reads as absent, so it keeps its default, which is fast, read as session.
+  [ "$(map_value models validator <<<"$out")" = session ] || { echo "$out"; return 1; }
   for role in architect developer tester reviewer refactorer security diagnostics; do
     [ "$(map_value models "$role" <<<"$out")" = session ] || { echo "$role: $out"; return 1; }
   done

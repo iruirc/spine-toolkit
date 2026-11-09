@@ -30,8 +30,8 @@ for f in files:
     defaults = rt.get('model_defaults')
     if not isinstance(defaults, dict) or set(defaults) - KEYS:
         print('%s: model_defaults keys must be tuning keys' % name); raise SystemExit
-    if models != 'any' and set(defaults.values()) - set(models):
-        print('%s: model_defaults values must be in models' % name); raise SystemExit
+    if models != 'any' and set(defaults.values()) - set(models) - {'fast'}:
+        print('%s: model_defaults values must be in models or fast' % name); raise SystemExit
     if models == 'any' and any(not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:/+-]*', v) for v in defaults.values()):
         print('%s: model_defaults values must be tokens' % name); raise SystemExit
 print('ok %d' % len(files))
@@ -41,7 +41,8 @@ PY
 }
 
 @test "the two first-iteration runtimes exist with the presets the spec names" {
-  [ "$(python3 -c 'import json; print(json.load(open("'"$ROOT"'/runtimes/claude-code.json"))["model_defaults"]["light"])')" = "sonnet" ]
+  [ "$(python3 -c 'import json; print(json.load(open("'"$ROOT"'/runtimes/claude-code.json"))["model_defaults"]["light"])')" = "fast" ]
+  [ "$(python3 -c 'import json; print(json.load(open("'"$ROOT"'/runtimes/claude-code.json"))["model_defaults"]["validator"])')" = "fast" ]
   [ "$(python3 -c 'import json; print(json.load(open("'"$ROOT"'/runtimes/codex-cli.json"))["models"])')" = "any" ]
   [ "$(python3 -c 'import json; print(json.load(open("'"$ROOT"'/runtimes/codex-cli.json"))["model_defaults"])')" = "{}" ]
 }
