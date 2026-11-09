@@ -320,7 +320,8 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   printf '[MODELS] = [reviewer: opus, light: haiku]\n' >> "$t/Task.md"
   run "$ROOT/scripts/resolve-settings.sh" show "$t"
   [ "$status" -eq 0 ]
-  grep -qF '[MODELS] = [reviewer: opus, light: haiku]' <<<"$output" || { echo "$output"; return 1; }
+  # validator is the shipped fast default with no line for the runtime, so the column names it too.
+  grep -qF '[MODELS] = [reviewer: opus, validator: fast → session, no fast@claude-code, light: haiku]' <<<"$output" || { echo "$output"; return 1; }
 }
 
 @test "an open vocabulary still folds session to lowercase" {
@@ -515,4 +516,33 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
   [ "$status" -eq 0 ]; [ -z "$stderr" ]
   [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "second" ]
+}
+
+# --- Model tiers in the settings column ---
+
+@test "show names a tier and what it became" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODEL_TIERS] = [fast@claude-code: sonnet]\n[MODELS] = [reviewer: fast]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" show "$t"
+  [ "$status" -eq 0 ]
+  grep -qF 'reviewer: fast → sonnet' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "show always names a tier with no line for the runtime" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  : > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" show "$t" --runtime claude-code
+  [ "$status" -eq 0 ]
+  grep -qF 'light: fast → session, no fast@claude-code' <<<"$output" || { echo "$output"; return 1; }
+  grep -qF 'validator: fast → session, no fast@claude-code' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "show leaves a set default tier out of the diff" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODEL_TIERS] = [fast@claude-code: sonnet]\n[MODELS] = [light: fast, validator: fast]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" show "$t"
+  [ "$status" -eq 0 ]
+  ! grep -q '^\[MODELS\]' <<<"$output" || { echo "$output"; return 1; }
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" show "$t" --all
+  grep -qF 'validator: fast → sonnet' <<<"$output" || { echo "$output"; return 1; }
 }

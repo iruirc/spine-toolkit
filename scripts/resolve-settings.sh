@@ -732,14 +732,26 @@ def show_rows(show_all):
     for name in [s[0] for s in SCALARS] + ['models', 'effort', 'long_run', 'budgets']:
         value = resolved[name]
         if isinstance(value, dict):
+            # A models key whose chain ended at a tier is compared by what was written (the tier),
+            # not by what it became: defaults[] holds the raw default, resolved[] the final model.
+            tiers = MODEL_TIER_OF if name == 'models' else {}
+            raw = lambda k: tiers[k]['tier'] if k in tiers else value[k]
             chosen = [k for k in value
                       if sources.get('%s.%s' % (name, k)) == 'run'
-                      or (sources.get('%s.%s' % (name, k)) and value[k] != defaults[name][k])]
+                      or (sources.get('%s.%s' % (name, k)) and raw(k) != defaults[name][k])
+                      or tiers.get(k, {}).get('source') == 'unset']
             keys = list(value) if show_all else chosen
+
+            def spell(k):
+                if k not in tiers:
+                    return '%s: %s' % (k, value[k])
+                if tiers[k]['source'] == 'unset':
+                    return '%s: %s → session, no %s@%s' % (k, tiers[k]['tier'], tiers[k]['tier'], RUNTIME)
+                return '%s: %s → %s' % (k, tiers[k]['tier'], tiers[k]['model'])
             if not keys:
                 rest += 1
                 continue
-            text = ', '.join('%s: %s' % (k, value[k]) for k in keys)
+            text = ', '.join(spell(k) for k in keys)
         else:
             # A value derived from the default (walkthrough_check's, artifact_check's or report's auto) is nobody's choice either.
             if not show_all and sources[name] != 'run' and (sources[name] == 'default' or value == defaults[name]

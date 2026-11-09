@@ -1147,7 +1147,8 @@ $BATS_TEST_TMPDIR/assets"
   printf '[TASK_TYPE] = [BUG]\n[FIX_ROUNDS] = [2]\n' >"$TASK/Task.md"
   run "$RESOLVE" show "$TASK" --set drive_app=auto --set models.validator=sonnet
   grep -qE '^\[DRIVE_APP\] += \[auto\] +# run$' <<<"$output" || { echo "$output"; return 1; }
-  grep -qE '^\[MODELS\] += \[validator: sonnet\] +# run$' <<<"$output" || { echo "$output"; return 1; }
+  # light is the shipped fast default with no line for the runtime, so the column names it too.
+  grep -qE '^\[MODELS\] += \[validator: sonnet, light: fast → session, no fast@claude-code\] +# run$' <<<"$output" || { echo "$output"; return 1; }
   ! grep -q '^\[FIX_ROUNDS\]' <<<"$output" || { echo "$output"; return 1; }
 }
 
