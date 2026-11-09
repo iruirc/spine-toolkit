@@ -22,7 +22,7 @@ en
 
 - `skills/` — `orchestrator`, `stack-detect`, `setup`, `workflow-*`, `task-*`, `feature-*`,
   `ops-checklist`, `manual-checks`, `phase-verification`, `task-documents`, `artifact-reader`, `agent-status`, `lang`,
-  `docs-route`
+  `docs-route`, `task-report`
 - `workflows/` — one `profile-*.js` orchestration script per profile
 - `commands/` — `/task-*`, `/setup`, `/agent-status`, `/lang`
 - `conventions/` — `i18n.md`, `stage-dispatch.md`, `platform-contract.md`, `driver-contract.md`,
