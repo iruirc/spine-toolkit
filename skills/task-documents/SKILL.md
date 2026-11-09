@@ -72,8 +72,9 @@ Written by the epic's planner from the epic's `Task.md`, `Research.md` and `Ques
 - the risks, each written as what a user would see, next to the phase that removes it;
 - the decisions the owner must take, each an open question with its options and a recommendation, as rule 5 says.
 
-`## For the implementer` is everything below its heading: the detail section of each phase with its checkboxes and its `**Verification:**` line, the files, the commands, `## Estimation` and `## Manual acceptance`.
+`## For the implementer` is everything below its heading: the detail section of each phase with its checkboxes and its `**Verification:**` line, the files, the commands, `## Estimation` and `## Manual acceptance`. A check a machine could make, knowingly left undone, goes in `## Not automated`.
 
+- Each `## Manual acceptance` line ends with `needs:` and what the person is needed for, by the `manual-checks` skill.
 - For each phase: what it waits for, what is true after it, and what happens when it fails.
 - Say why the order is what it is.
 - A decision is stated in words, its label in brackets: "the cart keeps its items after sign-out (`u3`)", never "per `u3`".

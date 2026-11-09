@@ -177,8 +177,9 @@ the deferred check is the reproduction replay itself.
 **Values:** `auto` `always` · **Default:** `auto` · **Task override:**
 `[MANUAL_CHECKS] = [auto|always]` · **Defined by:** the `manual-checks` skill
 
-When the validator writes `ManualChecks.md`, the hand-run script for a human: `auto` — only for
-checks it was told not to run itself; `always` — every time, so a UI-bearing task ships a manual pass
+When the validator writes `ManualChecks.md`, the hand-run script for a human: `auto` — only when a
+check it did not run itself needs a person: a device action, a visual judgment or an external
+service; with no such case there is no file; `always` — every time, so a UI-bearing task ships a manual pass
 even when the validator drove the app and covered the happy path. What goes inside that file is
 fixed by the `manual-checks` skill, not by this field.
 

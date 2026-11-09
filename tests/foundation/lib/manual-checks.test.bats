@@ -584,3 +584,19 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
   grep -qF 'needs:' <<<"$s" || { echo "## Review does not name a plan line without needs:"; return 1; }
   grep -qF 'Does this check need a person?' <<<"$s" || { echo "## Review does not name a case nobody needs"; return 1; }
 }
+
+@test "the Plan template lists the section for checks nobody automates" {
+  p="$(awk '/^## Plan\.md$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/task-documents/SKILL.md")"
+  grep -qF '## Not automated' <<<"$p" || { echo "task-documents: ## Plan.md lacks ## Not automated"; return 1; }
+  grep -qF 'needs:' <<<"$p" || { echo "task-documents: ## Plan.md has no needs: tag"; return 1; }
+}
+
+@test "the manual test pass is N/A when no case needs a person" {
+  grep -qiF 'no case that needs a person' "$ROOT/skills/ops-checklist/SKILL.md" \
+    || { echo "ops-checklist: no N/A rule for the manual test pass"; return 1; }
+}
+
+@test "auto writes the file only when a case needs a person" {
+  awk '/^### \[MANUAL_CHECKS\]$/{f=1;next} f&&/^### /{exit} f' "$ROOT/docs/configuration.md" | grep -qF 'needs a person' \
+    || { echo "configuration.md: auto still means every deferred check"; return 1; }
+}

@@ -36,6 +36,8 @@ For each item, choose one of:
 - **N/A (reason)** — write a short reason: "no UI layer", "CLI tool", "internal-only feature", "feature flag not introduced"
 - **Pending** — work not yet done; surfaces as a blocker for the Review stage
 
+**Manual test pass** follows `ManualChecks.md`: Pending while a case there waits for a person; N/A, with the reason from `Validation.md`'s `manual checks: none —` line, when the run left no case that needs a person (`manual-checks` → `## Does this check need a person?`).
+
 Default an item to **Applicable** unless you have a concrete reason to mark it N/A. Conservative bias is intentional — the cost of false-Applicable is a small extra check; the cost of false-N/A is a production incident.
 
 ## Inputs
