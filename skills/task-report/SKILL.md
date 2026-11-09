@@ -107,7 +107,7 @@ What Done does. Under Method A the profile script runs steps 1–2 as one call t
 3. `Done.md` links to the report by a relative path and takes its conclusions from it. `ACTIVE/` and `DONE/` sit at the same depth, so the link survives the move. A number in `Done.md`, if there is one, matches the report.
 4. The first line under the title of `Research.md` and of `Plan.md` is a link to the report.
 5. Run `scripts/lint-report-links.sh <task-dir>`. Fix each finding once and run it again; name what is left in the run's summary.
-6. `unplaced` with no answer in `Questions.md`: no report is written and the lint is not run. `Done.md` and the run's summary carry the line "report not written: no place — question Q<n>".
+6. `unplaced`. With no answer in `Questions.md`: no report is written and the lint is not run; `Done.md` and the run's summary carry the line "report not written: no place — question Q<n>". Once `Questions.md` holds an answer that names the place: the fields are rewritten to `needed` or `update` with the path, the implementing role's agent writes the report there as in step 2, and steps 3–5 run as for any other report.
 
 ## Review
 

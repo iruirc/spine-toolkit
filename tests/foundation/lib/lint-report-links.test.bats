@@ -203,6 +203,44 @@ build() {
   [ -z "$output" ]
 }
 
+@test "fields written as list items are read, and a defect in them is found" {
+  printf '# Plan\n\n- [REPORT_DECISION] = needed\n* [REPORT_PATH] = %s\n\nSee [the report](%s).\n' "$REPORT_REL" "$LINK" > "$T/Plan.md"
+  run "$LINT" "$T"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  rm "$P/$REPORT_REL"
+  run "$LINT" "$T"
+  [ "$status" -eq 1 ]
+  [ "$output" = "report: $REPORT_REL: missing" ]
+}
+
+@test "bold field names are read, and a defect in them is found" {
+  printf '# Plan\n\n**[REPORT_DECISION]** = needed\n**[REPORT_PATH]** = %s\n\nSee [the report](%s).\n' "$REPORT_REL" "$LINK" > "$T/Plan.md"
+  run "$LINT" "$T"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  rm "$T/Done.md"
+  run "$LINT" "$T"
+  [ "$status" -eq 1 ]
+  [ "$output" = "report: Done.md: missing" ]
+}
+
+@test "a value in backticks works" {
+  printf '# Plan\n\n- [REPORT_DECISION] = `needed`\n- [REPORT_PATH] = `%s`\n\nSee [the report](%s).\n' "$REPORT_REL" "$LINK" > "$T/Plan.md"
+  run "$LINT" "$T"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "a Plan.md with no fields falls through to Research.md" {
+  printf '# Plan\n\nNo report fields here.\n' > "$T/Plan.md"
+  printf '# Research\n\n[REPORT_DECISION] = needed\n[REPORT_PATH] = %s\n' "$REPORT_REL" > "$T/Research.md"
+  run "$LINT" "$T"
+  [ "$status" -eq 1 ]
+  [ "$output" = "report: Plan.md: no link to $REPORT_REL
+report: Research.md: no link to $REPORT_REL" ]
+}
+
 @test "an unknown decision or a missing path is a usage error" {
   printf '# Plan\n\n[REPORT_DECISION] = maybe\n' > "$T/Plan.md"
   run "$LINT" "$T"
