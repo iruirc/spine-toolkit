@@ -225,7 +225,7 @@ Write it by applying the spine-toolkit:task-documents skill, its Done.md section
 
 ${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}${REPORT === 'off' ? '' : `
 
-Report: apply the spine-toolkit:task-report skill, its ## Links section, steps 3 to 6; steps 1 and 2 ran before you. Unless step 6 applies, run "${core('scripts/lint-report-links.sh')}" ${DIR}. Fix each finding once, run it again, and name what is left in your summary.`}
+Report: apply the spine-toolkit:task-report skill, its ## Links section, ${REPORT_AGENT ? 'steps 3 to 6; steps 1 and 2 ran before you' : 'steps 1 and 2 yourself, then steps 3 to 6'}. Unless step 6 applies, run "${core('scripts/lint-report-links.sh')}" ${DIR}. Fix each finding once, run it again, and name what is left in your summary.`}
 
 Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Done.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
 )
@@ -757,7 +757,8 @@ Change no production code and no tests.`,
       ),
       { label: 'report', phase: stage, agentType, schema: REPORT_ARTIFACT, ...tuning(REPORT_AGENT, 'stage') },
     )
-  } catch {
+  } catch (e) {
+    log(`report: ${e && e.message}`)
     r = null
   }
   if (!r) {
@@ -939,6 +940,7 @@ const EDIT = {
   ...PHASE,
   properties: {
     ...PHASE.properties,
+    report_decision: PLAN.properties.report_decision,
     quick_escalation: {
       type: 'object',
       additionalProperties: false,
@@ -976,7 +978,7 @@ Then make the change. Per item: complete it, then tick its checkbox "- [ ]" → 
 
 ${EDIT_COMMIT} The message is Conventional Commits: "<type>(<scope>): <imperative subject>", plus an optional body explaining WHY. NEVER put the task id or a ticket number in it — provenance lives in Plan.md, the branch name, and the PR. Full spec in ${core('conventions/commit-messages.md')}; if git log shows this project uses a different convention, follow the project. The same rule governs code comments.
 
-The phase is not done until every checkbox is ticked AND it is committed. If you cannot get it green, leave the row at 🔄, set committed to false, and say plainly what blocks it.${cap('Plan.md')}`,
+The phase is not done until every checkbox is ticked AND it is committed. If you cannot get it green, leave the row at 🔄, set committed to false, and say plainly what blocks it.${cap('Plan.md')}${reportPlan()}`,
       ),
       { label: 'edit', phase: 'Edit', agentType: A.agents.developer, schema: EDIT, ...tuning('developer', 'stage') },
     )
@@ -991,6 +993,7 @@ The phase is not done until every checkbox is ticked AND it is committed. If you
     }
     record('Edit', { artifact_path: `${DIR}/Plan.md`, summary: edit.summary })
   }
+  await writeReport('Edit')
   await writeWalkthrough('Edit')
 }
 
@@ -1040,7 +1043,7 @@ if (runs('Review') && A.need_review !== false) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-Judge the change against Task.md and Plan.md: does it do what Task.md asks and nothing more, and is it still a QUICK change — at most two production files, no public API or package boundary crossed, nothing on the security perimeter? No security lens ran on this task, because its entry check kept the perimeter out: a diff that touches the perimeter anyway is a blocking finding. When ${DIR}/ManualChecks.md exists, read it too: a case a tester cannot execute as written is an ordinary finding, judged by the rules of the manual-checks skill's ## The case and ## Grounding — an empty case, whose failure looks the same as its success, and a claim about behaviour with no code reference are findings too. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. A case that needs no person by the manual-checks skill's ## Does this check need a person?, and a ## Manual acceptance line with no needs:, are findings too; neither goes into blocking_findings. Judge the phase's **Verification:** line the way the phase-verification skill's ## Review section does: a missing line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does, every finding it lists — a name that does not say what broke included. Unlike the plan findings above, these are defects in what was delivered: an assertion that cannot fail and a double standing in for the behaviour under test always go into blocking_findings, and the rest may block. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${cap('Review.md')}
+Judge the change against Task.md and Plan.md: does it do what Task.md asks and nothing more, and is it still a QUICK change — at most two production files, no public API or package boundary crossed, nothing on the security perimeter? No security lens ran on this task, because its entry check kept the perimeter out: a diff that touches the perimeter anyway is a blocking finding. When ${DIR}/ManualChecks.md exists, read it too: a case a tester cannot execute as written is an ordinary finding, judged by the rules of the manual-checks skill's ## The case and ## Grounding — an empty case, whose failure looks the same as its success, and a claim about behaviour with no code reference are findings too. Read ${DIR}/Plan.md as well: a plan is required to carry a ## Manual acceptance section, carrying the single line "Fully automatable." when nothing qualifies, and a plan with neither is a finding — it means nobody decided what this task's automation could not check. A case that needs no person by the manual-checks skill's ## Does this check need a person?, and a ## Manual acceptance line with no needs:, are findings too; neither goes into blocking_findings. Judge the phase's **Verification:** line the way the phase-verification skill's ## Review section does: a missing line, a rung lower than its diff calls for, and — at proportional — a phase repeating the full regression are findings; none of them blocks, and none goes into blocking_findings, since Validation has already passed. Judge the tests this task added or changed the way the test-authoring skill's ## Review section does, every finding it lists — a name that does not say what broke included. Unlike the plan findings above, these are defects in what was delivered: an assertion that cannot fail and a double standing in for the behaviour under test always go into blocking_findings, and the rest may block. Modify nothing. Return the same status you wrote on the first line.${REVIEW_RECORD}${reportReview()}${cap('Review.md')}
 
 Write it by applying the spine-toolkit:task-documents skill, its Review.md section, whose Impact rule gives every finding an **Impact:** line; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body. Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Review.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
     ),
@@ -1058,6 +1061,7 @@ Write it by applying the spine-toolkit:task-documents skill, its Review.md secti
 // ── Done ────────────────────────────────────────────────────────────────────
 if (runs('Done')) {
   if (!need('Done', 'developer')) return finish('ask_user')
+  await writeReport('Done')
   const done = await agent(
     doneBrief(
       `Write the final report ${DIR}/Done.md: what changed, and whether it repaired a defect or added a small behaviour; ${A.need_test === false ? 'that no test was written because the task owes none (need_test=false)' : 'which test was added'}; the validation status; and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries. Keep it short enough to be read.${cap('Done.md')}`,

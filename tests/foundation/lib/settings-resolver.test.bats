@@ -526,7 +526,7 @@ FIELDS
   # The depth and its check fall back along the chain, not to the epic's: quick-surfaces.test.bats.
   grep -qF 'walkthrough: stepWalkthrough(st),' "$E" && grep -qF 'walkthrough_check: stepWalkthroughCheck(st),' "$E" \
     || { echo "profile-epic.js does not forward walkthrough to a step"; return 1; }
-  grep -qF 'return its drive_app, device, manual_checks, manual_checks_check, phase_verification, security, walkthrough, walkthrough_check, artifact_check and long_run values' "$E" \
+  grep -qF 'return its drive_app, device, manual_checks, manual_checks_check, phase_verification, security, walkthrough, walkthrough_check, artifact_check, report and long_run values' "$E" \
     || { echo "read-steps never asks for the step's own depth and check"; return 1; }
   grep -qF "device: st.device === undefined ? DEVICE || 'auto' : st.device," "$E" && grep -qF "device_source: DEVICE_SOURCE || '—'," "$E" \
     || { echo "profile-epic.js does not forward the device to a step"; return 1; }
@@ -536,6 +536,10 @@ FIELDS
     || { echo "the step record has no artifact_check"; return 1; }
   grep -qF "artifact_check: st.artifact_check === undefined ? ARTIFACT_CHECK : st.artifact_check" "$E" \
     || { echo "profile-epic.js does not forward artifact_check to a step"; return 1; }
+  grep -qF "report: { type: 'string', enum: ['auto', 'on', 'off'], description: \"the step folder's own resolve-settings.sh report value\" }" "$E" \
+    || { echo "the step record has no report"; return 1; }
+  grep -qF "report: st.report === undefined ? REPORT : st.report," "$E" \
+    || { echo "profile-epic.js does not forward report to a step"; return 1; }
   grep -qF "manual_checks_check: { type: 'string', enum: ['on', 'off']" "$E" \
     || { echo "the step record has no manual_checks_check"; return 1; }
   grep -qF "security: { type: 'string', enum: ['auto', 'on', 'off']" "$E" \

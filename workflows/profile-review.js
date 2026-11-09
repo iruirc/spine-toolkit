@@ -222,7 +222,7 @@ Write it by applying the spine-toolkit:task-documents skill, its Done.md section
 
 ${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}${REPORT === 'off' ? '' : `
 
-Report: apply the spine-toolkit:task-report skill, its ## Links section, steps 3 to 6; steps 1 and 2 ran before you. Unless step 6 applies, run "${core('scripts/lint-report-links.sh')}" ${DIR}. Fix each finding once, run it again, and name what is left in your summary.`}
+Report: apply the spine-toolkit:task-report skill, its ## Links section, ${REPORT_AGENT ? 'steps 3 to 6; steps 1 and 2 ran before you' : 'steps 1 and 2 yourself, then steps 3 to 6'}. Unless step 6 applies, run "${core('scripts/lint-report-links.sh')}" ${DIR}. Fix each finding once, run it again, and name what is left in your summary.`}
 
 Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Done.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
 )
@@ -754,7 +754,8 @@ Change no production code and no tests.`,
       ),
       { label: 'report', phase: stage, agentType, schema: REPORT_ARTIFACT, ...tuning(REPORT_AGENT, 'stage') },
     )
-  } catch {
+  } catch (e) {
+    log(`report: ${e && e.message}`)
     r = null
   }
   if (!r) {

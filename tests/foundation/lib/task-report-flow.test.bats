@@ -124,3 +124,98 @@ pick() { node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8")); c
   grep -qx "const REPORT_AGENT = null" "$ROOT/workflows/profile-review.js"
   grep -qx "const REPORT_AGENT = null" "$ROOT/workflows/profile-research.js"
 }
+
+# The other profiles: $1 profile, $2 stage run alone, $3 report, $4 extra replies, $5 walkthrough.
+run_stage() {
+  local c
+  c="$(contract "$3" "${5:-off}" | sed "s/\"start_stage\": \"Plan\", \"end_stage\": \"Done\"/\"start_stage\": \"$2\", \"end_stage\": \"$2\"/")"
+  node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" "$c" "{${4:-\"_\": 0}}"
+}
+
+@test "every planning brief carries the decision" {
+  for ps in feature:Plan:plan bug:Plan:plan refactor:Plan:plan quick:Edit:edit epic:Plan:plan research:Research:research:architect; do
+    IFS=: read -r p s label <<<"$ps"
+    out="$(run_stage "$p" "$s" auto)"
+    prompt="$(pick "o.calls.find((c) => c.label === \"$label\").prompt" <<<"$out")"
+    grep -qF '## The decision' <<<"$prompt" || { echo "profile-$p.js: the $s brief does not decide the report"; return 1; }
+    grep -qF 'report_decision' <<<"$(pick "o.calls.find((c) => c.label === \"$label\").schema" <<<"$out")" \
+      || { echo "profile-$p.js: the $s reply has no report_decision"; return 1; }
+    out="$(run_stage "$p" "$s" off)"
+    ! grep -qF 'task-report' <<<"$(pick "o.calls.find((c) => c.label === \"$label\").prompt" <<<"$out")" \
+      || { echo "profile-$p.js: the $s brief decides the report under off"; return 1; }
+  done
+}
+
+@test "the Research agent writes the fields and the report itself" {
+  prompt="$(pick 'o.calls.find((c) => c.label === "research:architect").prompt' <<<"$(run_stage research Research auto)")"
+  grep -qF 'top of Research.md' <<<"$prompt"
+  grep -qF '## The document' <<<"$prompt"
+  ! grep -qF 'top of Research.md' <<<"$(pick 'o.calls.find((c) => c.label === "research:architect").prompt' <<<"$(run_stage research Research off)")"
+}
+
+@test "every implementing stage writes the report before its walkthrough" {
+  for ps in feature:Execute bug:Fix refactor:Refactor quick:Edit; do
+    p="${ps%%:*}"; s="${ps#*:}"
+    out="$(run_stage "$p" "$s" auto '"edit": {"ok": true, "phase_id": "1", "committed": true, "summary": "s"}' brief)"
+    order="$(pick "o.calls.filter((c) => c.phase === \"$s\" && [\"report\", \"walkthrough\"].includes(c.label)).map((c) => c.label).join(\" \")" <<<"$out")"
+    [ "$order" = "report walkthrough" ] || { echo "profile-$p.js $s: $order"; return 1; }
+  done
+}
+
+@test "every profile with a Review stage checks the numbers there, but the epic" {
+  for p in feature bug refactor quick research; do
+    out="$(run_stage "$p" Review auto)"
+    grep -qF 'task-report skill, its ## Review section' <<<"$(pick 'o.calls.find((c) => c.label === "review").prompt' <<<"$out")" \
+      || { echo "profile-$p.js: the Review brief does not check the report"; return 1; }
+  done
+}
+
+@test "every profile with an implementing role writes the report before Done" {
+  for p in feature bug refactor quick epic; do
+    out="$(run_stage "$p" Done auto)"
+    order="$(pick 'o.calls.filter((c) => ["report", "done"].includes(c.label)).map((c) => c.label + "/" + c.phase).join(" ")' <<<"$out")"
+    [ "$order" = "report/Done done/Done" ] || { echo "profile-$p.js: $order"; return 1; }
+  done
+}
+
+@test "epic writes the report only before Done" {
+  E="$ROOT/workflows/profile-epic.js"
+  [ "$(grep -c 'await writeReport(' "$E")" = 1 ] || { grep -n 'writeReport(' "$E"; return 1; }
+  grep -qF "await writeReport('Done')" "$E"
+  ! grep -qF 'reportReview()}' "$E"
+}
+
+@test "RESEARCH dispatches no report agent" {
+  [ "$(grep -c 'await writeReport(' "$ROOT/workflows/profile-research.js")" = 0 ]
+  out="$(run_stage research Done auto)"
+  [ "$(pick 'o.calls.filter((c) => c.label === "report").length' <<<"$out")" = 0 ]
+}
+
+@test "with no report agent the Done agent runs the Links steps 1 and 2 itself" {
+  prompt="$(pick 'o.calls.find((c) => c.label === "done").prompt' <<<"$(run_stage research Done auto)")"
+  ! grep -qF 'steps 1 and 2 ran before you' <<<"$prompt" || { echo "$prompt"; return 1; }
+  grep -qF 'steps 1 and 2 yourself' <<<"$prompt"
+  grep -qF 'then steps 3 to 6' <<<"$prompt"
+  prompt="$(pick 'o.calls.find((c) => c.label === "done").prompt' <<<"$(run_stage feature Done auto)")"
+  grep -qF 'steps 1 and 2 ran before you' <<<"$prompt"
+}
+
+@test "a report agent that throws is logged before it is noted" {
+  out="$(node -e '
+    const fs = require("fs")
+    const body = fs.readFileSync(process.argv[1], "utf8").replace(/^export const meta/m, "const meta")
+    const cut = body.split("// ── end prelude")[0] + "\nreturn writeReport(\"Done\").then(() => result.notes)\n"
+    globalThis.agent = async () => { throw new Error("socket hang up") }
+    const logged = []
+    const run = new (Object.getPrototypeOf(async function () {}).constructor)("args", "log", cut)
+    run(JSON.parse(process.argv[2]), (m) => logged.push(m)).then((n) => console.log(JSON.stringify({ n, logged })))
+  ' "$ROOT/workflows/profile-test.js" '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "agents": {"tester": "t"}, "report": "on"}')"
+  grep -qF 'report: socket hang up' <<<"$out" || { echo "$out"; return 1; }
+  grep -qF 'report agent returned nothing' <<<"$out"
+}
+
+@test "the Research brief lets the report past the one-file rule" {
+  prompt="$(pick 'o.calls.find((c) => c.label === "research:architect").prompt' <<<"$(run_stage research Research auto)")"
+  grep -qF 'write no file other than Research.md' <<<"$prompt"
+  grep -qF 'the one file besides Research.md this task lets you write' <<<"$prompt"
+}

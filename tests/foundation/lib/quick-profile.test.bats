@@ -12,8 +12,9 @@ setup() {
   DONE='"done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": []}'
 }
 
+# report off: the resolver's auto for QUICK (task-report-flow.test.bats drives the report itself).
 contract() { # $1 extra JSON members (leading comma)
-  printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "Edit", "stage_scope": "forward", "scale": "lite", "walkthrough": "off", "need_test": false, "review_ranges": %s%s}' "$AGENTS" "$RANGES" "$1"
+  printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "Edit", "stage_scope": "forward", "scale": "lite", "walkthrough": "off", "report": "off", "need_test": false, "review_ranges": %s%s}' "$AGENTS" "$RANGES" "$1"
 }
 
 run_quick() { node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-quick.js" "$1" "$2"; }

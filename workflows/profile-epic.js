@@ -225,7 +225,7 @@ Write it by applying the spine-toolkit:task-documents skill, its Done.md section
 
 ${DIR}/Done.md may already hold the report of an earlier Done of this task${PRIOR_DONE ? ` — its copy from before this run is ${PRIOR_DONE}` : ''}. If it does, every claim in it is unverified: check each one against the task's current artifacts and the git log of every repository the task touched, and rewrite whatever does not hold; in your summary, say how many claims you corrected and name the weightiest, or say that every claim held. Never confirm a claim you did not check.${RANGED ? doneRecord(handed) : ''}${REPORT === 'off' ? '' : `
 
-Report: apply the spine-toolkit:task-report skill, its ## Links section, steps 3 to 6; steps 1 and 2 ran before you. Unless step 6 applies, run "${core('scripts/lint-report-links.sh')}" ${DIR}. Fix each finding once, run it again, and name what is left in your summary.`}
+Report: apply the spine-toolkit:task-report skill, its ## Links section, ${REPORT_AGENT ? 'steps 3 to 6; steps 1 and 2 ran before you' : 'steps 1 and 2 yourself, then steps 3 to 6'}. Unless step 6 applies, run "${core('scripts/lint-report-links.sh')}" ${DIR}. Fix each finding once, run it again, and name what is left in your summary.`}
 
 Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Done.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
 )
@@ -757,7 +757,8 @@ Change no production code and no tests.`,
       ),
       { label: 'report', phase: stage, agentType, schema: REPORT_ARTIFACT, ...tuning(REPORT_AGENT, 'stage') },
     )
-  } catch {
+  } catch (e) {
+    log(`report: ${e && e.message}`)
     r = null
   }
   if (!r) {
@@ -956,6 +957,7 @@ const STEP = {
     manual_checks: { type: 'string', enum: ['auto', 'always'], description: "the step folder's own resolve-settings.sh manual_checks value" },
     manual_checks_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh manual_checks_check value" },
     artifact_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh artifact_check value" },
+    report: { type: 'string', enum: ['auto', 'on', 'off'], description: "the step folder's own resolve-settings.sh report value" },
     phase_verification: { type: 'string', enum: ['proportional', 'full'], description: "the step folder's own resolve-settings.sh phase_verification value" },
     walkthrough: { type: 'string', enum: ['brief', 'deep', 'off'], description: "the step folder's own resolve-settings.sh walkthrough value" },
     walkthrough_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh walkthrough_check value" },
@@ -976,6 +978,7 @@ const EPIC_PLAN = {
     ...ARTIFACT.properties,
     branch: { type: 'string', enum: ['decomposition', 'pure_research'] },
     steps: { type: 'array', items: STEP, description: 'empty on the pure_research branch' },
+    report_decision: PLAN.properties.report_decision,
   },
 }
 
@@ -1056,7 +1059,7 @@ Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUD
 
 If the verdict is PURE_RESEARCH:
 Finalize ${DIR}/Research.md. Plan.md is optional here and, if you write one, it is a research roadmap — what else needs investigating — with no executable steps, written by the same Plan.md section of the task-documents skill. Return branch pure_research and an empty steps array. Create no step folders.
-If you wrote Plan.md: Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Plan.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
+If you wrote Plan.md: Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Plan.md once. Fix each finding once; do not run it again; name what is left in your summary.${reportPlan()}`,
     ),
     { label: 'plan', phase: 'Plan', agentType: A.agents.architect, schema: EPIC_PLAN, ...tuning('architect', 'stage') },
   )
@@ -1158,7 +1161,7 @@ if (runs('Execute')) {
     const read = await agent(
       brief(
         'Execute',
-        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, device, manual_checks, manual_checks_check, phase_verification, security, walkthrough, walkthrough_check, artifact_check and long_run values, and its sources.device as device_from. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
+        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, device, manual_checks, manual_checks_check, phase_verification, security, walkthrough, walkthrough_check, artifact_check, report and long_run values, and its sources.device as device_from. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
       { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'mechanical') },
     )
@@ -1212,6 +1215,7 @@ if (runs('Execute')) {
       manual_checks: st.manual_checks === undefined ? MANUAL_CHECKS : st.manual_checks,
       manual_checks_check: st.manual_checks_check === undefined ? MANUAL_CHECKS_CHECK : st.manual_checks_check,
       artifact_check: st.artifact_check === undefined ? ARTIFACT_CHECK : st.artifact_check,
+      report: st.report === undefined ? REPORT : st.report,
       phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
       walkthrough: stepWalkthrough(st),
       walkthrough_check: stepWalkthroughCheck(st),
@@ -1363,6 +1367,7 @@ if (runs('Done') && branch === null) {
 // Done reports a finished epic. A walk that stopped early has not finished one, so the report
 // waits until the orchestrator has taken the pending steps somewhere.
 if (runs('Done') && !failed_steps.length && !cancelled && !pending_steps.length) {
+  await writeReport('Done')
   const done = await agent(
     doneBrief(
       branch === 'pure_research'
