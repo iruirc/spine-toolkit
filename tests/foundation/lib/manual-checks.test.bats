@@ -611,3 +611,16 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     grep -qF '## Not automated' <<<"$m" || { echo "workflow-$p/SKILL.md: the Plan bullet has no ## Not automated"; return 1; }
   done
 }
+
+@test "Validation makes a case only of a check that needs a person, and writes no file without one" {
+  for p in $PROFILES; do
+    b="$(validation_brief "$ROOT/workflows/profile-$p.js")"
+    for t in 'Does this check need a person?' 'manual checks: none —' 'always writes the file regardless'; do
+      grep -qF -- "$t" <<<"$b" || { echo "profile-$p.js: the Validation brief lacks $t"; return 1; }
+    done
+    m="$(bullet "$ROOT/skills/workflow-$p/SKILL.md" Validation)"
+    for t in 'Does this check need a person?' 'manual checks: none —'; do
+      grep -qF -- "$t" <<<"$m" || { echo "workflow-$p/SKILL.md: the Validation bullet lacks $t"; return 1; }
+    done
+  done
+}
