@@ -392,3 +392,127 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "gpt-6-luna" ]
   ! grep -qF 'read as session' <<<"$stderr" || { echo "$stderr"; false; }
 }
+
+# --- Model tiers: fast resolves through [MODEL_TIERS] (docs/superpowers/specs/2026-11-10-model-tiers-design.md) ---
+
+@test "fast resolves through the project's MODEL_TIERS in each runtime" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODEL_TIERS] = [fast@claude-code: sonnet, fast@codex-cli: gpt-6-mini]\n[MODELS] = [validator: fast]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 0 ]; [ -z "$stderr" ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "sonnet" ]
+  [ "$(json_field 'd["model_tiers"]["validator"]["source"]' <<<"$output")" = "project" ]
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "gpt-6-mini" ]
+}
+
+@test "fast without a line for the runtime reads as session and says so" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODEL_TIERS] = [fast@claude-code: sonnet]\n[MODELS] = [validator: fast]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+  [ "$(json_field 'd["model_tiers"]["validator"]["source"]' <<<"$output")" = "unset" ]
+  grep -qF "'validator: fast' has no fast@codex-cli in [MODEL_TIERS], read as session" <<<"$stderr"
+}
+
+@test "claude-code defaults light and validator to fast" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  : > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 0 ]; [ -z "$stderr" ]
+  [ "$(json_field 'd["models"]["light"]' <<<"$output")" = "session" ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+  [ "$(json_field 'd["model_tiers"]["light"]["source"]' <<<"$output")" = "unset" ]
+  [ "$(json_field 'sorted(d["model_tiers"])' <<<"$output")" = "['light', 'validator']" ]
+}
+
+@test "codex-cli has no fast default, so model_tiers is empty" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  : > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]; [ -z "$stderr" ]
+  [ "$(json_field 'd["model_tiers"]' <<<"$output")" = "{}" ]
+}
+
+@test "explicit session in MODEL_TIERS is session, silently" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODEL_TIERS] = [fast@codex-cli: session]\n[MODELS] = [validator: fast]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]; [ -z "$stderr" ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+  [ "$(json_field 'd["model_tiers"]["validator"]["source"]' <<<"$output")" = "project" ]
+}
+
+@test "MODEL_TIERS in a Task.md is not read" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  : > "$p/SPINE.md"
+  printf '[MODEL_TIERS] = [fast@claude-code: sonnet]\n[MODELS] = [validator: fast]\n' >> "$t/Task.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+}
+
+@test "a run-level fast resolves through the project's tiers" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODEL_TIERS] = [fast@claude-code: haiku]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --set models.validator=fast
+  [ "$status" -eq 0 ]; [ -z "$stderr" ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "haiku" ]
+  [ "$(json_field 'd["sources"]["models.validator"]' <<<"$output")" = "run" ]
+  printf '[MODEL_TIERS] = [fast@claude-code: haiku]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli --set models.validator=fast
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+  grep -qF -- "--set models: 'validator: fast' has no fast@codex-cli in [MODEL_TIERS], read as session" <<<"$stderr"
+}
+
+@test "a Task.md fast names its source in the unset line" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  : > "$p/SPINE.md"
+  printf '[MODELS] = [tester: fast]\n' >> "$t/Task.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["sources"]["models.tester"]' <<<"$output")" = "task" ]
+  grep -qF "Task.md [MODELS]: 'tester: fast' has no fast@codex-cli in [MODEL_TIERS], read as session" <<<"$stderr"
+}
+
+@test "tier keys are case-insensitive, malformed ones are skipped" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODEL_TIERS] = [FAST@Codex-CLI: GPT-X]\n[MODELS] = [Validator: FAST]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]; [ -z "$stderr" ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "GPT-X" ]
+  printf '[MODEL_TIERS] = [fast @ codex-cli: x]\n[MODELS] = [validator: fast]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+  grep -qF "[MODEL_TIERS]: 'fast @ codex-cli: x' not recognized, skipped" <<<"$stderr"
+}
+
+@test "bad MODEL_TIERS entries are skipped by name" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  for entry in 'slow@codex-cli: x' 'fast@nope: x' 'fast@claude-code: gpt-6-mini' 'fast@codex-cli: opus'; do
+    printf '[MODEL_TIERS] = [%s]\n[MODELS] = [validator: fast]\n' "$entry" > "$p/SPINE.md"
+    run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+    [ "$status" -eq 0 ]
+    grep -qF "[MODEL_TIERS]: '$entry' not recognized, skipped" <<<"$stderr" || { echo "$entry: $stderr"; return 1; }
+    [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+  done
+}
+
+@test "a good entry survives a bad neighbour, and a line for another runtime is checked too" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODEL_TIERS] = [fast@claude-code: gpt-6-mini, fast@codex-cli: gpt-6-mini]\n[MODELS] = [validator: fast]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "gpt-6-mini" ]
+  grep -qF "[MODEL_TIERS]: 'fast@claude-code: gpt-6-mini' not recognized, skipped" <<<"$stderr"
+}
+
+@test "the later of two lines for a tier wins" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODEL_TIERS] = [fast@codex-cli: first]\n[MODEL_TIERS] = [fast@codex-cli: second]\n[MODELS] = [validator: fast]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]; [ -z "$stderr" ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "second" ]
+}

@@ -11,7 +11,9 @@ set -euo pipefail
 #                                                  # a stage may search, project_config, the file
 #                                                  # the settings came from, and runtime, the id
 #                                                  # whose runtimes/<id>.json gave the model and
-#                                                  # effort vocabulary (default claude-code)
+#                                                  # effort vocabulary (default claude-code), and
+#                                                  # model_tiers, the keys that resolved through a
+#                                                  # tier (fast) and what [MODEL_TIERS] made of it
 #        scripts/resolve-settings.sh show <task-dir> [--all] [--set ...]
 #                                                  # Task.md lines, with sources
 #                                                  # --all: every field, defaults included
@@ -68,6 +70,9 @@ MINUTES = 'minutes'
 # (a runtime file's `"models": "any"`).
 ANY = 'any'
 TOKEN = re.compile(r'[A-Za-z0-9][A-Za-z0-9._:/+-]*')
+# The model tiers: a [MODELS] value that stands for a model the project's [MODEL_TIERS] names
+# for the runtime, so one config serves every runtime. fast is the only one.
+TIERS = ('fast',)
 
 
 # The value one map entry contributes, or None when the entry is not one of the map's values.
@@ -184,9 +189,9 @@ def load_runtime(runtime_id):
             raise ValueError('effort must be a list holding session')
         if not isinstance(defaults, dict) or set(defaults) - set(keys):
             raise ValueError('model_defaults keys must be tuning keys')
-        if any(not isinstance(v, str) or (models != ANY and v not in models) or not TOKEN.fullmatch(v)
+        if any(not isinstance(v, str) or (models != ANY and v not in models and v not in TIERS) or not TOKEN.fullmatch(v)
                for v in defaults.values()):
-            raise ValueError('model_defaults values must be values of models')
+            raise ValueError('model_defaults values must be values of models or tiers')
         # A name ending in * reads every model that starts with it: claude-* covers claude-sonnet-4-6.
         as_session = rt.get('as_session', [])
         if not isinstance(as_session, list) or any(not isinstance(v, str) or not TOKEN.fullmatch(v[:-1] if v.endswith('*') else v)
@@ -200,8 +205,27 @@ def load_runtime(runtime_id):
 MODEL_VALUES, EFFORT_VALUES, MODEL_DEFAULTS, AS_SESSION = load_runtime(RUNTIME)
 
 
-def read_as_session(model):
-    return any(model.startswith(v[:-1]) if v.endswith('*') else model == v for v in AS_SESSION)
+def runtime_vocab(runtime_id):
+    """(models, as_session) of runtimes/<id>.json, or None when the file is missing or not a
+    runtime file. [MODEL_TIERS] holds lines for every runtime, so another runtime's file is
+    read here without the usage error load_runtime raises for the --runtime one."""
+    path = os.path.join(os.environ['SPINE_CORE_ROOT'], 'runtimes', runtime_id + '.json')
+    try:
+        with open(path, encoding='utf-8') as fh:
+            rt = json.load(fh)
+        models, as_session = rt['models'], rt.get('as_session', [])
+        if models != ANY and not (isinstance(models, list) and all(isinstance(v, str) for v in models)):
+            return None
+        if not isinstance(as_session, list) or any(not isinstance(v, str) for v in as_session):
+            return None
+        return models, [v.lower() for v in as_session]
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def read_as_session(model, names=None):
+    return any(model.startswith(v[:-1]) if v.endswith('*') else model == v
+               for v in (AS_SESSION if names is None else names))
 
 # field, config/Task.md field name, values (None = open), default
 # A SCALARS values slot for a whole number >= 0, taken as an int.
@@ -528,19 +552,46 @@ elif task_type in ('QUICK', 'BUG', 'REFACTOR') and CHOSEN['report'] == 'auto':
     resolved['report'], sources['report'] = 'off', 'type'
     show_source['report'] = 'type: %s' % task_type
 
+# [MODEL_TIERS]: what a tier is in each runtime. The project config alone says it: a Task.md, an
+# epic and --set never do. Every line is checked against its own runtime's file, whichever runtime
+# this run is for, so a bad line for another runtime is reported on every run. A later line for
+# the same tier and runtime wins, as a map entry does.
+MODEL_TIERS = {}
+for entry in config_entries('MODEL_TIERS'):
+    m = re.fullmatch(r'([A-Za-z]+)@([A-Za-z0-9-]+)\s*:\s*(\S+)', entry)
+    vocab = runtime_vocab(m.group(2).lower()) if m and m.group(1).lower() in TIERS else None
+    if vocab is None:
+        warn('%s [MODEL_TIERS]' % CFG, entry)
+        continue
+    tier, runtime, models = m.group(1).lower(), m.group(2).lower(), vocab[0]
+    # An open vocabulary keeps the token as written; session is this script's own word.
+    model = m.group(3) if models == ANY and m.group(3).lower() != 'session' else m.group(3).lower()
+    if model != 'session' and (model.lower() in TIERS or read_as_session(model.lower(), vocab[1])
+                               or map_value(models, model) is None):
+        warn('%s [MODEL_TIERS]' % CFG, entry)
+        continue
+    MODEL_TIERS[(tier, runtime)] = model
+# Every models key whose chain ended at a tier, and what it came to: the final model, and whether
+# a project line gave it ('project') or none did, so it reads as session ('unset').
+MODEL_TIER_OF = {}
+
 for name, field, keys, values, unset, map_defaults in MAPS:
     out, decided = dict(map_defaults), set()
     found = [('--set %s' % name, 'run', ['%s: %s' % kv for kv in RUN_MAPS.get(name, {}).items()])]
     found += [(('Task.md [%s]' % field), label, task_map_entries(path, field))
               for label, path in task_files()]
     found.append((('%s [%s]' % (CFG, field)), 'project', config_entries(field)))
-    key_source = {}
+    key_source, tier_said = {}, {}
     for label, source, entries in found:
-        seen, as_session_entries = {}, {}
+        seen, as_session_entries, tier_entries = {}, {}, {}
         for entry in entries:
             m = re.fullmatch(r'([A-Za-z]+)\s*:\s*(\S+)', entry)
             k, raw = (m.group(1).lower(), m.group(2).lower()) if m else (None, None)
             if k in keys and raw in unset:
+                continue
+            if name == 'models' and k in keys and raw in TIERS:
+                seen[k] = raw
+                tier_entries[k] = entry
                 continue
             if name == 'models' and k in keys and read_as_session(raw):
                 seen[k] = 'session'
@@ -559,9 +610,23 @@ for name, field, keys, values, unset, map_defaults in MAPS:
                 if k in as_session_entries:
                     print("%s: '%s' is not a %s model, read as session"
                           % (label, as_session_entries[k], RUNTIME), file=sys.stderr)
+                if k in tier_entries:
+                    tier_said[k] = (label, tier_entries[k])
                 out[k], decided = v, decided | {k}
                 key_source[k] = source
                 sources.setdefault('%s.%s' % (name, k), source)
+    if name == 'models':
+        for k in [k for k, v in out.items() if v in TIERS]:
+            tier = out[k]
+            if (tier, RUNTIME) in MODEL_TIERS:
+                out[k], tier_source = MODEL_TIERS[(tier, RUNTIME)], 'project'
+            else:
+                out[k], tier_source = 'session', 'unset'
+                # Said only by the source that decides the key; a default is nobody's entry.
+                if k in tier_said:
+                    print("%s: '%s' has no %s@%s in [MODEL_TIERS], read as session"
+                          % (tier_said[k] + (tier, RUNTIME)), file=sys.stderr)
+            MODEL_TIER_OF[k] = {'tier': tier, 'model': out[k], 'source': tier_source}
     resolved[name], defaults[name] = out, dict(map_defaults)
     # The map's own source is the nearest label among the keys that were actually decided:
     # run beats task beats epic beats project, so a task-chosen key is never reported as the project's.
@@ -647,7 +712,8 @@ def search_roots():
 
 if CMD == 'json':
     print(json.dumps(dict(resolved, sources=sources, plugin_root=os.environ['SPINE_CORE_ROOT'],
-                          roots=search_roots(), project_config=CFG, runtime=RUNTIME),
+                          roots=search_roots(), project_config=CFG, runtime=RUNTIME,
+                          model_tiers=MODEL_TIER_OF),
                      ensure_ascii=False, sort_keys=True))
     sys.exit(0)
 
