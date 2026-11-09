@@ -9,13 +9,17 @@ setup() {
   T="$BATS_TEST_TMPDIR/tree"
   mkdir -p "$T/scripts"
   cp "$ROOT/scripts/lint-workflows.sh" "$T/scripts/"
-  cp -R "$ROOT/workflows" "$ROOT/skills" "$T/"
+  cp -R "$ROOT/workflows" "$ROOT/workflow-src" "$ROOT/skills" "$T/"
 }
 
 # Replaces one exact string in one script and fails when it is not there exactly once, so no test
 # passes by mutating nothing.
 mutate() { # $1 = script under workflows/, $2 = old, $3 = new
-  python3 - "$T/workflows/$1" "$2" "$3" <<'PY'
+  mutate_at "workflows/$1" "$2" "$3"
+}
+
+mutate_at() { # $1 = path under the tree, $2 = old, $3 = new
+  python3 - "$T/$1" "$2" "$3" <<'PY'
 import sys
 path, old, new = sys.argv[1:4]
 src = open(path, encoding='utf-8').read()
@@ -91,7 +95,30 @@ REVIEW_LINE="{ label: 'review', phase: 'Review', agentType: A.agents.reviewer, s
 
 @test "a walk that drifts in one profile fails the prelude check" {
   mutate profile-feature.js "ManualChecks.md check: nothing unclear." "ManualChecks.md check: all clear."
-  expect_violation 'workflows/profile-feature.js: prelude differs'
+  expect_violation 'workflows/profile-feature.js: prelude differs from workflow-src/prelude.js — run scripts/sync-workflow-prelude.sh'
+}
+
+@test "the source drifting from the copies fails every copy" {
+  mutate_at workflow-src/prelude.js "ManualChecks.md check: nothing unclear." "ManualChecks.md check: all clear."
+  expect_violation 'workflows/profile-bug.js: prelude differs from workflow-src/prelude.js — run scripts/sync-workflow-prelude.sh'
+  expect_violation 'workflows/profile-test.js: prelude differs from workflow-src/prelude.js — run scripts/sync-workflow-prelude.sh'
+}
+
+@test "a missing source fails" {
+  rm "$T/workflow-src/prelude.js"
+  expect_violation 'workflow-src/prelude.js: missing — the source every workflows/profile-*.js prelude is generated from'
+}
+
+@test "a source without the Task id line fails" {
+  python3 - "$T/workflow-src/prelude.js" <<'PY'
+import re, sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+s, n = re.subn(r'^.*Task id: \$\{[^}]*\} — profile \$\{[^}]*\}, stage \$\{[^}]*\}\..*\n', '', s, flags=re.M)
+assert n == 1, n
+open(p, 'w', encoding='utf-8').write(s)
+PY
+  expect_violation 'workflow-src/prelude.js: prelude lost the'
 }
 
 @test "the artifact read tuned as a stage fails" {

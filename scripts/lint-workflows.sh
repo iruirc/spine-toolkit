@@ -18,8 +18,8 @@ set -euo pipefail
 #   - every agent() call carries one tuning(<role>, <kind>) beside its agentType, on the role that
 #     agentType reads, of the kind conventions/stage-dispatch.md → Model and effort gives its label;
 #     no literal model or effort anywhere
-#   - the prelude block is byte-identical in every script (a script cannot import,
-#     so the shared skeleton is copied; this is what keeps the copies one thing)
+#   - every script's prelude block equals workflow-src/prelude.js (a script cannot import, so
+#     scripts/sync-workflow-prelude.sh copies the source into each one; this keeps hand edits out)
 #   - none of the sandbox-forbidden globals, and no worktree isolation (decision D5)
 
 cd "$(dirname "$0")/.."
@@ -125,6 +125,30 @@ def skill_stages(profile):
             roles_of[name] = named
     return stages, roles_of
 
+PRELUDE_SOURCE = 'workflow-src/prelude.js'
+PRELUDE_BLOCK = r'^// ── prelude ─.*?^// ── end prelude ─.*?$'
+# scripts/agent-metrics.sh's recover_from_prompt() parses this exact line out of an agent's
+# transcript to recover task/profile/stage when no state file exists yet.
+TASK_ID_LINE = r'Task id: \$\{[^}]*\} — profile \$\{[^}]*\}, stage \$\{[^}]*\}\.'
+
+def check_task_id_line(path, block):
+    if not re.search(TASK_ID_LINE, block):
+        violations.append(
+            f'{path}: prelude lost the `Task id: ... — profile ..., stage ....` line that '
+            'scripts/agent-metrics.sh\'s recover_from_prompt() depends on'
+        )
+
+source_prelude = None
+if os.path.isfile(PRELUDE_SOURCE):
+    pre = re.search(PRELUDE_BLOCK, open(PRELUDE_SOURCE, encoding='utf-8').read(), flags=re.M | re.S)
+    if pre:
+        source_prelude = pre.group(0)
+        check_task_id_line(PRELUDE_SOURCE, source_prelude)
+if source_prelude is None:
+    violations.append(
+        f'{PRELUDE_SOURCE}: missing — the source every workflows/profile-*.js prelude is generated from'
+    )
+
 preludes = {}
 files = sorted(f for f in os.listdir('workflows') if f.endswith('.js'))
 if len(files) < 8:
@@ -136,16 +160,10 @@ for fname in files:
     raw = open(path, encoding='utf-8').read()
     src = strip_comments(raw)
 
-    pre = re.search(r'^// ── prelude ─.*?^// ── end prelude ─.*?$', raw, flags=re.M | re.S)
+    pre = re.search(PRELUDE_BLOCK, raw, flags=re.M | re.S)
     if pre:
         preludes[fname] = pre.group(0)
-        # scripts/agent-metrics.sh's recover_from_prompt() parses this exact line out of
-        # an agent's transcript to recover task/profile/stage when no state file exists yet.
-        if not re.search(r'Task id: \$\{[^}]*\} — profile \$\{[^}]*\}, stage \$\{[^}]*\}\.', pre.group(0)):
-            violations.append(
-                f'{path}: prelude lost the `Task id: ... — profile ..., stage ....` line that '
-                'scripts/agent-metrics.sh\'s recover_from_prompt() depends on'
-            )
+        check_task_id_line(path, pre.group(0))
     else:
         violations.append(f'{path}: no prelude block — expected `// ── prelude ─` … `// ── end prelude ─`')
 
@@ -349,14 +367,11 @@ for fname in files:
         if token in src:
             violations.append(f'{path}: contains `{token}` — {why}')
 
-if len(preludes) > 1:
-    reference_name = sorted(preludes)[0]
-    reference = preludes[reference_name]
+if source_prelude is not None:
     for name in sorted(preludes):
-        if preludes[name] != reference:
+        if preludes[name] != source_prelude:
             violations.append(
-                f'workflows/{name}: prelude differs from workflows/{reference_name}. '
-                'The skeleton is copied because a workflow script cannot import; the copies have to stay one text.'
+                f'workflows/{name}: prelude differs from {PRELUDE_SOURCE} — run scripts/sync-workflow-prelude.sh'
             )
 
 for v in violations:
@@ -367,5 +382,5 @@ if violations:
     print(f'workflow lint failed: {len(violations)} violation(s)')
     sys.exit(1)
 
-print(f'workflow lint passed: {len(files)} script(s), stages in sync with their skills, every dispatch gated and tuned, preludes identical')
+print(f'workflow lint passed: {len(files)} script(s), stages in sync with their skills, every dispatch gated and tuned, preludes match workflow-src/prelude.js')
 PY
