@@ -547,3 +547,40 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
       || { echo "workflow-$p: Method B leaves the diff command to the validator"; return 1; }
   done
 }
+
+# ── A case only for a check that needs a person ─────────────────────────────
+
+@test "the skill decides whether a check needs a person before it becomes a case" {
+  s="$(skill_section '## Does this check need a person?')"
+  [ -n "$s" ] || { echo "no ## Does this check need a person?"; return 1; }
+  for t in 'device action' 'visual judgment' 'external service' '`automate`' '`covered`' '`drop`' '**dev-only:**'; do
+    grep -qF -- "$t" <<<"$s" || { echo "the criterion does not name $t"; return 1; }
+  done
+  awk '/^## Does this check need a person\?$/{a=NR} /^## Structure$/{b=NR} END{exit !(a && b && a<b)}' "$SKILL" \
+    || { echo "the criterion does not come before ## Structure"; return 1; }
+}
+
+@test "a plan line names what the person is needed for, and the rest has a home" {
+  s="$(skill_section '## Two stages, two halves')"
+  for t in 'needs: device action | visual judgment | external service' '## Not automated' 'Fully automatable.'; do
+    grep -qF -- "$t" <<<"$s" || { echo "## Two stages does not carry $t"; return 1; }
+  done
+}
+
+@test "no case left means no file under auto, and always still writes it" {
+  s="$(skill_section '## Two stages, two halves')"
+  for t in 'manual checks: none —' 'N/A' '`always`'; do
+    grep -qF -- "$t" <<<"$s" || { echo "## Two stages does not say $t"; return 1; }
+  done
+}
+
+@test "a refresh routes a new plan line through the criterion" {
+  skill_section '## Refreshing' | grep -qF 'Does this check need a person?' \
+    || { echo "## Refreshing step 3 makes a case directly"; return 1; }
+}
+
+@test "Review names a case nobody needs and a plan line without needs:" {
+  s="$(skill_section '## Review')"
+  grep -qF 'needs:' <<<"$s" || { echo "## Review does not name a plan line without needs:"; return 1; }
+  grep -qF 'Does this check need a person?' <<<"$s" || { echo "## Review does not name a case nobody needs"; return 1; }
+}

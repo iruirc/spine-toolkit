@@ -1,6 +1,6 @@
 ---
 name: manual-checks
-description: "Use at Plan to enumerate what a task's automation will not be able to check, and at Validation to turn that list into `ManualChecks.md` — the QA test cases a tester runs by hand after the run: a state they can reach, steps they can follow in the words of the screen, and a verdict they can settle. Governed by `[MANUAL_CHECKS]` and `[MANUAL_CHECKS_CHECK]` in Task.md and the project config."
+description: "Use at Plan to decide which checks need a person and route the rest into automation, and at Validation to turn the ones left into `ManualChecks.md` — the QA test cases a tester runs by hand after the run: a state they can reach, steps they can follow in the words of the screen, and a verdict they can settle. Governed by `[MANUAL_CHECKS]` and `[MANUAL_CHECKS_CHECK]` in Task.md and the project config."
 ---
 
 # Manual Checks
@@ -28,11 +28,37 @@ Before writing, read the example for the project's language: `examples/manual-ch
 
 ## Two stages, two halves
 
-**Plan → `## Manual acceptance`.** A list, not procedures: one line per check this task's automation will not be able to make, stated as *what must be true — what changed*, never as *what to press*: "the cart icon's badge follows every quantity change — the badge now reads the cart's item count instead of its row count". The second half is the intent a case is built from; without it Validation guesses. It belongs here because here the task's acceptance criteria are still in front of the author. Nothing qualifies → the single line `Fully automatable.`
+**Plan → `## Manual acceptance`.** A list, not procedures: one line per check that needs a person by `## Does this check need a person?`, stated as *what must be true — what changed*, never as *what to press*: "the cart icon's badge follows every quantity change — the badge now reads the cart's item count instead of its row count — needs: visual judgment". The middle part is the intent a case is built from; without it Validation guesses. Each line ends with `needs:` and which of the three it needs — the tag is `needs: device action | visual judgment | external service`, one value or several. A line with no tag is not allowed: either the author can name why a person is needed, or no person is. It belongs here because here the task's acceptance criteria are still in front of the author. Nothing qualifies → the single line `Fully automatable.`
+
+A check that needs no person is not listed. One worth automating (`automate`) is work for a phase: the script or the test that phase writes, named in its `**Verification:**` line. One not worth it (`drop`) is a line in `## Not automated`, under `## For the implementer`, with its reason — the gap the task accepts knowingly, and one `ManualChecks.md` never sees.
 
 For BUG the reproduction replay is not listed: its steps are already in `Reproduce.md`, and Validation reads them from there.
 
-**Validation → `ManualChecks.md`.** That list is the input; each line becomes a case. To it Validation adds what the plan could not know — what the automated pass actually covered, and what it could not reach at all. When the plan carries no such section, because the task entered mid-pipeline or predates this rule, say so in `## Scope` and derive the cases from the task file and the diff.
+**Validation → `ManualChecks.md`.** That list is the input, and each line goes through `## Does this check need a person?` again: the plan may predate this rule, or may have missed it. A line that needs a person becomes a case. One this run checked itself, with evidence, is `covered`: a line in `## Scope` naming the evidence. Any other is a `## Not covered` line, "automatable, not automated by this task" — the validator writes no code. To it Validation adds what the plan could not know — what the automated pass actually covered, and what it could not reach at all; a check deferred because driving the app was suppressed goes through the same criterion. When the plan carries no such section, because the task entered mid-pipeline or predates this rule, say so in `## Scope` and derive the cases from the task file and the diff.
+
+**No case, no file.** Under `auto`, when no case is left, there is no `ManualChecks.md`. `Validation.md` carries the line `manual checks: none — <why>`, naming what was covered and what is a gap, and the Manual test pass item of `OpsChecklist.md` is N/A with that reason. `always` writes the file anyway.
+
+## Does this check need a person?
+
+A check needs a person only when it requires at least one of three things:
+
+| Needs | Examples |
+|---|---|
+| device action — an action on a device or a system that a machine will not take | airplane mode, unplugging a cable, answering a system prompt, rotating the phone |
+| visual judgment — a judgement by eye | "smooth", "readable", "not clipped", "matches the mockup" |
+| external service — an account or a service outside the repository | a sandbox purchase, signing in with a real account |
+
+A check that needs none of them is not a case. It gets one of three outcomes:
+
+| Outcome | When | Where it is decided and recorded |
+|---|---|---|
+| `automate` | a sequence of commands with a result that can be checked | at Plan: work for a phase — a script or a test in the repository, named in that phase's `**Verification:**` line; Validation runs it |
+| `covered` | Validation, or automation already run, checked it, and the evidence exists | `## Scope`, with a reference to the evidence; `Validation.md` when there is no file |
+| `drop` | it costs more than it is worth, or its outcome changes nothing | at Plan: a line in `## Not automated` with its reason |
+
+**A mixed check** — one or two actions of a person inside a check made of commands — is not written as a case of steps. Plan makes it work for a phase: a script that does everything itself, stops at a prompt where the person is needed ("turn on airplane mode, press Enter") and prints PASS or FAIL. It lives where the project keeps its scripts. In `ManualChecks.md` its launch is a `**dev-only:**` step in `## Preparation`; the case holds only the person's steps, and its `**Expected result:**` is the verdict the script prints.
+
+The lint's `scriptable` check is the backstop: a case whose every step is a command is named, whatever the plan said.
 
 ## Structure
 
@@ -183,7 +209,7 @@ A Validation that finds `ManualChecks.md` with a `[COVERS]` behind HEAD refreshe
 
 1. `git diff --name-only <COVERS>..HEAD` names the changed files.
 2. A case with a code reference into one of them is checked again, and so is a case with no code reference at all; the others are left alone.
-3. A new `## Manual acceptance` line becomes a case with the next unused id; a case automation now covers moves to `## Scope` with a reference to that evidence, and its id is not reused.
+3. A new `## Manual acceptance` line goes through `## Does this check need a person?`; one that needs a person becomes a case with the next unused id; a case automation now covers moves to `## Scope` with a reference to that evidence, and its id is not reused.
 4. `[COVERS]` becomes HEAD.
 
 ## The instrument rule
@@ -220,8 +246,8 @@ Neither `**Preconditions:**`, a cell of `**Steps:**`, nor `**Expected result:**`
 
 The axis decides depth, not existence: whether this file appears at all is `manual_checks`. The value arrives in the contract as `manual_checks`; `conventions/task-settings.md` holds the chain it was resolved along. At either value of `scale` it is written when that switch says so — it is the only record of ground nothing verified, and `conventions/task-scale.md ## The floor` keeps what carries a guarantee.
 
-`lite` halves `## Preparation` and `## Reading the verdict`, drops `## Troubleshooting`, and cuts no required field of a case; a case, `## Scope` and `## Charter` keep theirs. Twelve fields with two steps already fill about 32 lines, so a case keeps its 40 lines at `lite` too: a case missing its `**Failure looks like:**` is not shorter, it is unusable. `## Manual acceptance` at `lite` runs to about three lines, one when there is nothing to list — an expected size, not a ceiling: a task with five checks nothing can automate lists five.
+`lite` halves `## Preparation` and `## Reading the verdict`, drops `## Troubleshooting`, and cuts no required field of a case; a case, `## Scope` and `## Charter` keep theirs. Twelve fields with two steps already fill about 32 lines, so a case keeps its 40 lines at `lite` too: a case missing its `**Failure looks like:**` is not shorter, it is unusable. `## Manual acceptance` at `lite` runs to about three lines, one when there is nothing to list — an expected size, not a ceiling: a task with five checks that need a person lists five.
 
 ## Review
 
-This artifact is read at Review like any other the task produced. A case a tester cannot execute as written is an ordinary finding, judged by `## The case` and `## Grounding`; an empty case and a claim about behaviour with no code reference in `**Code:**` are findings too. Review and `## Check` are the only checks that run against a real task: a test can hold the spec, never the artifact made from it.
+This artifact is read at Review like any other the task produced. A case a tester cannot execute as written is an ordinary finding, judged by `## The case` and `## Grounding`; an empty case and a claim about behaviour with no code reference in `**Code:**` are findings too. So are a case that needs no person by `## Does this check need a person?` and a `## Manual acceptance` line with no `needs:`; neither blocks. Review and `## Check` are the only checks that run against a real task: a test can hold the spec, never the artifact made from it.
