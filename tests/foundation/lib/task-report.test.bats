@@ -163,6 +163,13 @@ bullet() { # $1 = profile, $2 = stage
   done
 }
 
+@test "the epic Done bullet writes, marks and commits the report before linking it" {
+  d="$(bullet epic Done)"
+  for token in '## The document' '## Updating' 'Docs.md' 'docs(<scope>)' '## Links'; do
+    grep -qF -- "$token" <<<"$d" || { echo "workflow-epic Done does not say: $token"; return 1; }
+  done
+}
+
 @test "the research Done bullet commits the report and marks Docs.md, and the experiment never carries it" {
   d="$(bullet research Done)"
   for token in 'commit the report' 'Docs.md' 'Applicable'; do
