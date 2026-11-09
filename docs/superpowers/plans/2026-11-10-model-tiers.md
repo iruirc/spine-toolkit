@@ -153,11 +153,11 @@ git commit -m "feat(settings): the settings column names a model tier and its re
 ### Task 3: Template and reference docs
 
 **Files:**
-- Modify: `templates/spine-md/en.md:36`
+- Modify: `templates/spine-md/en.md` (l.36)
 - Modify: `docs/configuration.md` (`### [MODELS]` ~l.349; new `### [MODEL_TIERS]` right after it)
 - Modify: `conventions/task-settings.md` (Runtime table l.59–62; field table row `models` l.164; new `model_tiers` row)
-- Modify: `skills/orchestrator/SKILL.md:595` (the `models` paragraph: defaults are `fast` for `light` and `validator`, resolved through `[MODEL_TIERS]`, and the map carries final models). The example `models=` line at l.505 stays as is: it is what the template resolves to in Claude Code.
-- Modify: `skills/task-new/SKILL.md:129` (`fast` is a value a task may write)
+- Modify: `skills/orchestrator/SKILL.md` (l.595) (the `models` paragraph: defaults are `fast` for `light` and `validator`, resolved through `[MODEL_TIERS]`, and the map carries final models). The example `models=` line at l.505 stays as is: it is what the template resolves to in Claude Code.
+- Modify: `skills/task-new/SKILL.md` (l.129) (`fast` is a value a task may write)
 - Test: `tests/foundation/lib/model-and-effort.test.bats`, `tests/foundation/lib/orchestrator-contract.test.bats`
 
 - [ ] **Step 1: Write the failing tests**

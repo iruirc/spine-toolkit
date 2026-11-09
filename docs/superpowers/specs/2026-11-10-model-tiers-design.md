@@ -128,7 +128,7 @@ not by hand, so they are tested and idempotent.
 - This question replaces the current `report_models_read_as_session` report.
 - `opus`, `haiku`, `fable` and full Claude ids are not migrated.
 - An existing `[MODEL_TIERS]` is never overwritten; only the current runtime's missing line is added.
-- The 1.x migration (`CLAUDE-spine-toolkit.md`, states D–F) copies values as written.
+- The 1.x migration (the pre-2.0 config name, states D–F) copies values as written.
 
 ## 4. Documentation and tests
 
