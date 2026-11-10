@@ -64,8 +64,11 @@ working as today; `setup` offers to move `sonnet` entries to `fast`.
   `model_tiers`: for each key resolved through `fast`, `{"tier": "fast", "model": <final>,
   "source": "project" | "unset"}`.
 - `show` and the opening block: `validator: fast → sonnet`, or
-  `validator: fast → session, no fast@codex-cli`. Config syntax, not prose, so not localized. A key
-  whose tier has no line is always in the column, chosen or not.
+  `validator: fast → session, no fast@codex-cli`. A key decided through `as_session` reads
+  `<key>: <entry value> → session` (`light: sonnet → session`). Config syntax, not prose, so not
+  localized. A key whose tier has no line, and a key read through `as_session`, are always in the
+  column, chosen or not: `session` is also the Codex default, and the column is where a project-config
+  entry that lost its model shows (section 2).
 
 ## 2. Messages
 

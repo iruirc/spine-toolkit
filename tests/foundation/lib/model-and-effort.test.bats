@@ -600,5 +600,47 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
   grep -qF "'light: sonnet' is not a codex-cli model, read as session" <<<"$stderr"
   grep -qF "'validator: sonnet' is not a codex-cli model, read as session" <<<"$stderr"
-  ! grep -qF 'has no fast@' <<<"$stderr" || { echo "stderr should not have 'has no fast@'"; return 1; }
+  [ -z "$(grep -F 'has no fast@' <<<"$stderr")" ] || { echo "stderr should not have 'has no fast@'"; return 1; }
+
+  # The opening block is where a project-config entry read as session is shown (spec, section 2):
+  # session is also the Codex default, so the column names the key with what was written.
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" show "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  grep -qF '[MODELS] = [validator: sonnet → session, light: sonnet → session]  # project' <<<"$output" \
+    || { echo "$output"; return 1; }
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" open "$t" --runtime codex-cli --method A \
+    --profile feature --range Research:Done
+  [ "$status" -eq 0 ]
+  grep -qF '[MODELS] = [validator: sonnet → session, light: sonnet → session]' <<<"$output" \
+    || { echo "$output"; return 1; }
+
+  # claude-code: sonnet is a model there, and the shipped default's tier is not what was written.
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" show "$t"
+  [ "$status" -eq 0 ]
+  grep -qF '[MODELS] = [validator: sonnet, light: sonnet]  # project' <<<"$output" || { echo "$output"; return 1; }
+  [ -z "$(grep -F '→' <<<"$output")" ] || { echo "$output"; return 1; }
+}
+
+@test "a later entry for the same key in one source takes the earlier one's line with it" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODEL_TIERS] = [fast@codex-cli: gpt-5-mini]\n[MODELS] = [validator: sonnet, validator: fast]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ] || { echo "$stderr"; return 1; }
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "gpt-5-mini" ]
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" show "$t" --runtime codex-cli
+  grep -qF '[MODELS] = [validator: fast → gpt-5-mini]' <<<"$output" || { echo "$output"; return 1; }
+
+  printf '[MODELS] = [validator: fast, validator: sonnet]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ "$stderr" = "$p/SPINE.md [MODELS]: 'validator: sonnet' is not a codex-cli model, read as session" ] \
+    || { echo "$stderr"; return 1; }
+
+  printf '[MODELS] = [validator: sonnet, validator: gpt-5]\n' > "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ -z "$stderr" ] || { echo "$stderr"; return 1; }
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "gpt-5" ]
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" show "$t" --runtime codex-cli
+  grep -qF '[MODELS] = [validator: gpt-5]' <<<"$output" || { echo "$output"; return 1; }
 }

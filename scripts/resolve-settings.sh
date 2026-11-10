@@ -574,6 +574,9 @@ for entry in config_entries('MODEL_TIERS'):
 # Every models key whose chain ended at a tier, and what it came to: the final model, and whether
 # a project line gave it ('project') or none did, so it reads as session ('unset').
 MODEL_TIER_OF = {}
+# Every models key decided by a name this runtime reads as session (as_session), and the value as
+# written: the settings column always names such a key, as it names a tier with no line.
+AS_SESSION_OF = {}
 
 for name, field, keys, values, unset, map_defaults in MAPS:
     out, decided = dict(map_defaults), set()
@@ -589,13 +592,17 @@ for name, field, keys, values, unset, map_defaults in MAPS:
             k, raw = (m.group(1).lower(), m.group(2).lower()) if m else (None, None)
             if k in keys and raw in unset:
                 continue
+            # A later entry for the same key in the same source wins, and takes the earlier one's
+            # tier or read-as-session line with it: only what decided the key is reported.
             if name == 'models' and k in keys and raw in TIERS:
                 seen[k] = raw
+                as_session_entries.pop(k, None)
                 tier_entries[k] = entry
                 continue
             if name == 'models' and k in keys and read_as_session(raw):
                 seen[k] = 'session'
-                as_session_entries[k] = entry
+                tier_entries.pop(k, None)
+                as_session_entries[k] = (entry, m.group(2))
                 continue
             # An open vocabulary keeps the token as written — the runtime reads it, not this script —
             # except session, which is this script's own word in every runtime.
@@ -604,12 +611,15 @@ for name, field, keys, values, unset, map_defaults in MAPS:
                 warn(label, entry)
                 continue
             seen[k] = v
+            as_session_entries.pop(k, None)
+            tier_entries.pop(k, None)
         for k, v in seen.items():
             if k not in decided:
                 # Said only by the source that decides the key: a farther one changed nothing.
                 if k in as_session_entries:
                     print("%s: '%s' is not a %s model, read as session"
-                          % (label, as_session_entries[k], RUNTIME), file=sys.stderr)
+                          % (label, as_session_entries[k][0], RUNTIME), file=sys.stderr)
+                    AS_SESSION_OF[k] = as_session_entries[k][1]
                 if k in tier_entries:
                     tier_said[k] = (label, tier_entries[k])
                 out[k], decided = v, decided | {k}
@@ -739,10 +749,13 @@ def show_rows(show_all):
             chosen = [k for k in value
                       if sources.get('%s.%s' % (name, k)) == 'run'
                       or (sources.get('%s.%s' % (name, k)) and raw(k) != defaults[name][k])
-                      or tiers.get(k, {}).get('source') == 'unset']
+                      or tiers.get(k, {}).get('source') == 'unset'
+                      or (name == 'models' and k in AS_SESSION_OF)]
             keys = list(value) if show_all else chosen
 
             def spell(k):
+                if name == 'models' and k in AS_SESSION_OF:
+                    return '%s: %s → session' % (k, AS_SESSION_OF[k])
                 if k not in tiers:
                     return '%s: %s' % (k, value[k])
                 if tiers[k]['source'] == 'unset':
