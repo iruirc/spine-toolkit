@@ -174,3 +174,19 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
     cmp "$CFG" "$BATS_TEST_TMPDIR/before"
   done
 }
+
+# What setup's step 6e relies on for a project it has just created: the template's own config.
+@test "a config made from the template asks the Codex question and no Claude Code one" {
+  cp "$ROOT/templates/spine-md/en.md" "$CFG"
+  run "$MT" check "$CFG" --runtime claude-code
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  run "$MT" check "$CFG" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ "$output" = "tier-missing fast@codex-cli" ]
+  run "$MT" apply "$CFG" --set fast@codex-cli=gpt-5.1-codex-mini
+  [ "$status" -eq 0 ]
+  run "$MT" check "$CFG" --runtime codex-cli
+  [ -z "$output" ]
+  grep -qE '^\[MODEL_TIERS\] = \[fast@claude-code: sonnet, fast@codex-cli: gpt-5.1-codex-mini\]' "$CFG"
+}

@@ -190,8 +190,20 @@ DocsMap.md: {docs_map_status}
 ## report_codex_permissions_declined
 Настройки Codex не изменены: Codex продолжит спрашивать перед этими шагами.
 
-## report_models_read_as_session
-В Codex {entries} из конфига работают на модели сессии: это модели Claude Code, а конфиг общий с Claude Code, поэтому оставь их как есть. При запуске задач это больше не повторяется.
+## auq_models_migrate
+В `[MODELS]` конфига проекта для {keys} указан `sonnet`. Этим ролям можно дать уровень `fast`: в Claude Code это `sonnet`, а в Codex — модель, которую выберешь ты, так что один конфиг подходит обоим. Заменить их на `fast` и добавить `fast@claude-code: sonnet` в `[MODEL_TIERS]`?
+
+## auq_models_migrate_options
+Да | Нет, оставить как есть
+
+## auq_models_codex_tier
+Какую модель использовать для уровня `fast` в Codex? Напиши её имя так, как его пишет твой аккаунт Codex, или оставь модель сессии. Имя попадёт в `[MODEL_TIERS]` как `fast@codex-cli: <model>`, и там его можно поменять в любой момент.
+
+## auq_models_codex_tier_options
+Оставить модель сессии | Указать модель
+
+## report_models_migrated
+Уровни моделей: роли переведены на `fast`: {keys}. Добавлено в `[MODEL_TIERS]`: {tiers}. Модель для `fast` задаёт эта строка: чтобы её сменить, отредактируй строку.
 
 ## warn_config_platform_not_installed
 В конфиге проекта указана платформа `{platform}`, но она здесь не установлена. Её агенты, правила и проверки в этот запуск не входят: установи её и запусти `/setup` снова или выбери Overwrite, чтобы выбрать другую.

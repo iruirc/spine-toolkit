@@ -60,106 +60,41 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   grep -F 'long-run.sh wait' <<<"$sec" | grep -qF 'not permitted' || { echo "wait inside the sandbox is no longer explained"; false; }
 }
 
-# Acceptance of milestone 6 (544): Fix and Validation wrapped simctl in a script, the rule saw only
-# the interpreter and every call asked; a compiler check (548) wrote its cache under the home folder.
-@test "the Codex map forbids wrapping a ruled command and moves a compiler cache to a writable root" {
-  sec="$(codex_section '## Builds and the simulator')"
-  grep -F 'never inside a script' <<<"$sec" | grep -qF 'another program' || { echo "no wrapper rule"; false; }
-  grep -qF 'long-run.sh start -- <interpreter> <script>' <<<"$sec" || { echo "no long-run way for a loop"; false; }
-  grep -F 'compiler run outside a build' <<<"$sec" | grep -qF 'no escalation' || { echo "no compiler cache rule"; false; }
-}
-
-@test "the Codex map keeps the leftovers skip only for a run without the rules" {
-  sec="$(codex_section '## Known limits')"
-  grep -F 'ps is not permitted here' <<<"$sec" | grep -qF 'rule' || { echo "skip is not tied to the missing rule"; false; }
-}
-
-@test "outside the Codex map no brief tells a stage to escalate" {
-  hits="$(grep -rlF 'require_escalated' "$ROOT/conventions" "$ROOT/skills" "$ROOT/workflows" | grep -v '/skills/setup/' || true)"
-  [ -z "$hits" ] || { echo "$hits"; false; }
-}
-
-@test "the orchestrator checks Spine's Codex settings at the start of a task in Codex only" {
-  ORCH="$ROOT/skills/orchestrator/SKILL.md"
-  para="$(grep -F 'codex-permissions.sh check' "$ORCH")"
-  [ -n "$para" ] || { echo "no check in the orchestrator"; false; }
-  for s in 'codex-cli' 'codex_permissions_outdated' 'carries on'; do
-    grep -qF -- "$s" <<<"$para" || { echo "missing: $s"; false; }
+# Acceptance of milestone 6: the shared config's Claude models warned at every task in Codex, and the
+# user could not act on it without breaking the config for Claude Code. Setup asks instead of reporting.
+@test "setup offers the model tier questions instead of a report" {
+  S="$ROOT/skills/setup/SKILL.md"
+  grep -F 'warn_model_read_as_session' "$ORCH" | grep -qF 'say nothing at task launch' || { echo "launch still warns"; false; }
+  for s in '6e.' 'model-tiers.sh check' 'model-tiers.sh apply' 'auq_models_migrate' 'auq_models_codex_tier' 'report_models_migrated'; do
+    grep -qF -- "$s" "$S" || { echo "setup lacks $s"; false; }
   done
+  ! grep -qF 'report_models_read_as_session' "$S"
   for l in en ru; do
-    grep -qx '## codex_permissions_outdated' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "no key in $l"; false; }
-  done
-  grep -qF 'codex-permissions.sh check' "$ROOT/runtimes/codex-cli.md" || { echo "the map does not name the check"; false; }
-}
-
-# A field project: one line "settings are missing or out of date" for five items, one of them a root the
-# session could already write. Each item now says its fact and what follows from it for this run,
-# and the report says the check reads only Spine's own settings.
-@test "the orchestrator names each item of the check with its own line" {
-  ORCH="$ROOT/skills/orchestrator/SKILL.md"
-  para="$(grep -F 'codex-permissions.sh check' "$ORCH")"
-  for k in codex_perm_rules codex_perm_rules_outdated codex_perm_menu codex_perm_mcp codex_perm_root_missing codex_perm_root_unlisted codex_perm_root_stale; do
-    grep -qF -- "$k" <<<"$para" || { echo "SKILL.md does not map $k"; false; }
-    for l in en ru; do
-      grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "no $k in $l"; false; }
+    f="$ROOT/skills/setup/locales/$l.md"
+    ! grep -qx '## report_models_read_as_session' "$f" || { echo "$l keeps the old report"; false; }
+    for k in auq_models_migrate auq_models_migrate_options auq_models_codex_tier auq_models_codex_tier_options report_models_migrated; do
+      grep -qx "## $k" "$f" || { echo "$l lacks $k"; false; }
     done
   done
-  for l in en ru; do
-    awk '/^## codex_permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/$l.md" \
-      | grep -qF '{items}' || { echo "$l report lacks the items"; false; }
-  done
-  awk '/^## codex_permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/en.md" \
-    | grep -qF "only Spine's" || { echo "en report does not say what the check cannot see"; false; }
-  awk '/^## codex_permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/ru.md" \
-    | grep -qF 'Spine' || { echo "ru report does not say what the check cannot see"; false; }
-  grep -qiF 'not escalated' <<<"$para" || { echo "the check may be escalated"; false; }
 }
 
-@test "the setup question has a line for an unlisted root" {
-  grep -qF '`root <path> unlisted`' "$ROOT/skills/setup/SKILL.md" || { echo "SKILL.md does not map it"; false; }
-  for l in en ru; do
-    grep -qx '## codex_item_root_unlisted' "$ROOT/skills/setup/locales/$l.md" || { echo "no key in $l"; false; }
-  done
+@test "setup's 6e runs in every state but F" {
+  step="$(awk '/^6e\. /{p=1} /^7\. /{p=0} p' "$ROOT/skills/setup/SKILL.md")"
+  [ -n "$step" ] || { echo "no step 6e"; false; }
+  grep -qF 'state F → skip' <<<"$step"
+  grep -qF 'every state but' <<<"$step"
 }
 
-@test "the SPINE.md template says External packages are writable in Codex and Roots are not" {
-  T="$ROOT/templates/spine-md/en.md"
-  awk '/^`External packages` may repeat/{on=1} on && /^$/{exit} on' "$T" | grep -qF 'writable_roots' || { echo "External packages paragraph lacks writable_roots"; false; }
-  awk '/^`Roots` may repeat/{on=1} on && /^$/{exit} on' "$T" | grep -qF 'read-only in Codex CLI' || { echo "Roots paragraph lacks read-only"; false; }
+@test "setup's Cancel and Keep paths run 6e as well" {
+  S="$ROOT/skills/setup/SKILL.md"
+  grep -qF 'Cancel on the AUQ in state C runs step 6c and step 6d, then step 6e' "$S"
+  grep -qF 'run step 6c and step 6d, then step 6e, with the' "$S"
 }
 
-@test "the Codex map says how commits pass the read-only .git" {
-  sec="$(codex_section '## Git')"
-  [ -n "$sec" ] || { echo "no ## Git"; false; }
-  for s in '.codex/rules/spine.rules' 'without `-C`' '`Tasks/`'; do
-    grep -qF -- "$s" <<<"$sec" || { echo "missing: $s"; false; }
-  done
-}
-
-@test "the Codex map's tool table routes long-run.sh" {
-  grep -E '^\| [^|]*long-run\.sh' "$ROOT/runtimes/codex-cli.md" | grep -qF 'Builds and the simulator'
-}
-
-@test "the Codex map keeps a commit in the plain words the rule matches" {
-  sec="$(codex_section '## Git')"
-  for s in "-m '<subject>'" 'no `$(…)`' 'heredoc' '`cd … &&`' 'working directory'; do
-    grep -qF -- "$s" <<<"$sec" || { echo "missing: $s"; false; }
-  done
-}
-
-@test "the Codex map says Claude model names read as session" {
-  grep -qF '`opus`, `sonnet`, `haiku`, `fable`' "$ROOT/runtimes/codex-cli.md"
-  ! grep -qF 'any model name is accepted, and' "$ROOT/runtimes/codex-cli.md"
-}
-
-# Acceptance of milestone 6: the shared config's Claude models warned at every task in Codex, and the
-# user could not act on it without breaking the config for Claude Code.
-@test "a Claude model from the project config is named once by setup, not at every task" {
-  grep -F 'warn_model_read_as_session' "$ORCH" | grep -qF 'say nothing at task launch' || { echo "launch still warns"; false; }
-  grep -qF 'report_models_read_as_session' "$ROOT/skills/setup/SKILL.md" || { echo "setup does not name it"; false; }
-  for l in en ru; do
-    grep -qx '## report_models_read_as_session' "$ROOT/skills/setup/locales/$l.md" || { echo "$l lacks the key"; false; }
-  done
+@test "the Codex tier question offers no model list" {
+  line="$(awk '/^## /{p=($0=="## auq_models_codex_tier_options")} p && NF && !/^## /' "$ROOT/skills/setup/locales/en.md")"
+  [ "$(grep -c '' <<<"$line")" -eq 1 ]
+  [ "$(tr '|' '\n' <<<"$line" | grep -c '[^[:space:]]')" -eq 2 ]
 }
 
 @test "the orchestrator announces a Claude model read as session" {

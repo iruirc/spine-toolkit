@@ -190,8 +190,20 @@ Codex settings written. They take effect after a restart: exit Codex, run `codex
 ## report_codex_permissions_declined
 Codex settings left as they were: Codex will keep asking before those steps.
 
-## report_models_read_as_session
-In Codex the config's {entries} run on the session's model: those are Claude Code models, and the config is shared with Claude Code, so leave them as they are. Tasks will not mention this again.
+## auq_models_migrate
+`[MODELS]` in the project config names `sonnet` for {keys}. Those roles can use the `fast` tier instead: it is `sonnet` in Claude Code and a model you choose in Codex, so one config serves both. Replace them with `fast` and add `fast@claude-code: sonnet` to `[MODEL_TIERS]`?
+
+## auq_models_migrate_options
+Yes | No, keep as is
+
+## auq_models_codex_tier
+Which model should the `fast` tier use in Codex? Type its name exactly as your Codex account spells it, or keep the session's model. It goes into `[MODEL_TIERS]` as `fast@codex-cli: <model>`, and you can change it there at any time.
+
+## auq_models_codex_tier_options
+Keep the session's model | Name a model
+
+## report_models_migrated
+Model tiers: roles moved to `fast`: {keys}. Added to `[MODEL_TIERS]`: {tiers}. The model behind `fast` is that line: edit it to change the model.
 
 ## warn_config_platform_not_installed
 The project config names the platform `{platform}`, which is not installed here. Its agents, rules and checks are left out of this run; install it and run `/setup` again, or choose Overwrite to pick another.

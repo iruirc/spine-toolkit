@@ -178,7 +178,7 @@ anything — which is what lets F, G and C take the language and the platform fr
         (Cancel / Backup-and-overwrite / Overwrite). Cancel comes first: the first option is
         the menu's default, so Enter alone never rewrites the config, and a rerun for the
         Codex settings below needs nothing else.
-        - Cancel → no change to the config or CLAUDE.md; run step 6c and step 6d with the
+        - Cancel → no change to the config or CLAUDE.md; run step 6c and step 6d, then step 6e, with the
           language and platform from the config, then stop.
         - Backup-and-overwrite or Overwrite → continue.
      b. Ask the language (q0, as in step 0) and resolve the platform (Platform Discovery) —
@@ -260,7 +260,7 @@ anything — which is what lets F, G and C take the language and the platform fr
    STATE G (legacy_name):
      a. AUQ `auq_migrate_spine_name` with options `auq_migrate_spine_name_options`
         (Rename / Keep the old name).
-        - Keep the old name → no change to the config or CLAUDE.md; run step 6c and step 6d, then report
+        - Keep the old name → no change to the config or CLAUDE.md; run step 6c and step 6d, then step 6e, and report
           `report_spine_name_kept`. Every reader
           keeps accepting the file under that name.
         - Rename → continue.
@@ -273,9 +273,9 @@ anything — which is what lets F, G and C take the language and the platform fr
         carries `@./SPINE.md`, in which case leave it alone. A CLAUDE.md that does not exist is
         created from the stub as in the edge sub-state above, whichever answer was given: with
         Keep the old name the stub imports `@./CLAUDE-spine-toolkit.md`, the file the project has.
-     e. Run step 6c (**AGENTS.md (Codex CLI)**) and step 6d (**Codex permissions (Codex CLI)**). Report `report_spine_name_migrated`, whose rollback hint is
+     e. Run step 6c (**AGENTS.md (Codex CLI)**), step 6d (**Codex permissions (Codex CLI)**) and step 6e (**Model tiers**). Report `report_spine_name_migrated`, whose rollback hint is
         `mv SPINE.md CLAUDE-spine-toolkit.md` plus restoring the import line. Stop. Every value
-        is already in the file, so steps 5, 6 and 6b have nothing to ask; run `/setup` again
+        is already in the file, so steps 5, 6 and 6b have nothing to ask (step 6e asks only about a tier); run `/setup` again
         (state C) to reconfigure.
 
 5. Hand the platform its own blocks:
@@ -323,6 +323,11 @@ anything — which is what lets F, G and C take the language and the platform fr
    6c in every state but state F, which asks nothing: there it is left for the next run of `/setup`.
    It asks only when a setting is missing or stale.
 
+6e. Model tiers — see **Model tiers** below. Runs after 6d, in every state but F, on the config
+   this run wrote or found, in both runtimes. It asks before it changes anything, and only when
+   the config needs a tier.
+   ↓ state F → skip; that state asks nothing (step 4(e)).
+
 7. Render the report:
    - States A/B/C/E → key `setup_done` with placeholders {platform}, {stack}, {mode},
      {progress}, {lang}, {tasks_status}, {docs_map_status}, {notes}.
@@ -339,7 +344,8 @@ anything — which is what lets F, G and C take the language and the platform fr
    The migration never writes `off` itself: a field the source did not answer is written at the
    template default `auto`, so the line appears only for a project that chose `off` on its own.
    Then, when step 6c changed or found `AGENTS.md`, the line it names, on a line of its own;
-   then each line step 6d names, on a line of its own.
+   then each line step 6d names, on a line of its own; then, when step 6e applied anything,
+   `report_models_migrated` on a line of its own.
    {notes} is the platform half's returned notes, one per line, already rendered in <lang>;
    empty when it reconciled nothing. It is the only place those lines surface, so a rewrite
    the platform performed silently would be a rewrite the user never sees.
@@ -414,17 +420,53 @@ paragraph (**Agent Tooling**).
       as above, with the items the user chose to write. None chosen → as the third option.
     - Third option → write nothing; report `report_codex_permissions_declined`.
 
-In Codex CLI, whatever the menu's answer, also read the project config's `[MODELS]`: the entries
-whose value is in `as_session` of `<core root>/runtimes/codex-cli.json` — a name there ending in `*`
-covers every value that starts with it — are Claude Code models that
-Codex runs on the session's model. When there are any, report `report_models_read_as_session` once,
-{entries} = those entries as written, comma-separated. This is the one place it is said: a task
-launch stays silent about the project config's models.
-
 Codex reads rules and its config when a session starts, so what was written applies after a
 restart — the report says how. This skill does not commit `.codex/`: whether it goes into the
 repository is the user's call. The orchestrator runs the same `check` when a task starts and points
 the user back here when it prints anything.
+
+## Model tiers
+
+Step 6e. `[MODELS]` names what runs each role, and since the `fast` tier a role can say `fast` instead
+of a Claude model, with the model for `fast` named per runtime in `[MODEL_TIERS]`
+(`conventions/task-settings.md` → Fields, `model_tiers`). A project written before that names
+`sonnet` outright, which Codex cannot run, and a project created in Codex has no model for `fast`
+there. This step offers both fixes; the file is edited by `<core root>/scripts/model-tiers.sh`, never
+by hand. Which runtime you are in is this skill's Runtime paragraph (**Agent Tooling**); the config
+is the file this run wrote, or found.
+
+State F skips it (step 6e). Every other state runs it, including a Cancel in state C and Keep the
+old name in state G.
+
+1. Run `<core root>/scripts/model-tiers.sh check <config> --runtime <runtime>`. It exits 0 and prints,
+   each line only when true and in this order: `sonnet <key>[,<key>…]` — the `[MODELS]` keys whose
+   value is `sonnet` — and `tier-missing fast@<runtime>`. Exit 2 or any other failure → say nothing,
+   change nothing, carry on: this step is an offer, never a gate.
+2. A `sonnet …` line → AUQ `auq_models_migrate` with {keys} = the keys it printed, comma-separated,
+   options `auq_models_migrate_options` (Yes / No). Yes → `<core root>/scripts/model-tiers.sh apply
+   <config> --migrate`; it turns those entries into `fast` and ensures `fast@claude-code: sonnet`.
+   No → write nothing. Call `apply --migrate` only after a Yes: it also ensures
+   `fast@claude-code: sonnet`.
+3. In Codex CLI only: a `tier-missing fast@codex-cli` line (the one `check` printed in step 1), and
+   either a config this run created from the template (states A and B, and state C after Overwrite or
+   Backup-and-overwrite) or an answer Yes in step 2 → AUQ `auq_models_codex_tier`, options
+   `auq_models_codex_tier_options`. The question names no model: Spine cannot know what the account
+   offers, and the answer is the user's own words.
+   - A reply that is one model name, as `[A-Za-z0-9][A-Za-z0-9._:/+-]*` allows it → `<core root>/scripts/model-tiers.sh
+     apply <config> --set fast@codex-cli=<model>`. It adds the entry when absent and never overwrites one.
+   - A reply that is not one such token (spaces, a list, a sentence) → ask the same question again;
+     never pass it to `apply`.
+   - The first option, keep the session's model → write nothing.
+   - The second option alone, with no name → ask the same question again, the name to come as the
+     user's own words.
+   In Claude Code the config a new project gets already holds `fast@claude-code: sonnet`, so `check`
+   prints no `tier-missing` and nothing is asked.
+4. Anything `apply` wrote → `report_models_migrated` in step 7: {keys} = the keys step 2 migrated,
+   comma-separated, `—` when step 2 was not answered Yes; {tiers} = the `[MODEL_TIERS]` entries `apply`
+   added, as written and comma-separated. Nothing written → no line.
+
+Nothing else of the config is touched, and an existing `[MODEL_TIERS]` entry is never overwritten:
+a project that chose its model keeps it.
 
 ## Migration Algorithm (states D, E and F)
 
@@ -598,9 +640,9 @@ In `templates/claude-md-stub/<lang>.md`:
 - **Templates not found** → `error_template_not_found`. Stop.
 - **AUQ unavailable** → text fallback with numbered options.
 - **User cancels** (Cancel on the AUQ in state D or E) → exit, no disk changes.
-  Cancel on the AUQ in state C runs step 6c and step 6d and changes nothing else: in Claude Code
-  that is no change at all. Keep the old name in
-  state G is not a cancel: the config and CLAUDE.md stay as they are, and steps 6c and 6d still run.
+  Cancel on the AUQ in state C runs step 6c and step 6d, then step 6e, and changes nothing else: in Claude Code
+  that is no change at all unless step 6e is answered Yes (it asks before it changes anything). Keep the old name in
+  state G is not a cancel: the config and CLAUDE.md stay as they are, and steps 6c, 6d and 6e still run.
 - **Tasks/ already exists** → no overwrite; report `tasks_status_already_existed`.
 - **The registry already exists** → no overwrite; report `docs_map_status_already_existed`.
 
