@@ -245,6 +245,9 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
       grep -qF -- "$s" <<<"$body" || { echo "$l lacks $s"; false; }
     done
   done
+  # A Task.md [MODEL_TIERS] is ignored, so the text names the file that is read.
+  grep -qF "the project config's \`[MODEL_TIERS]\`" <<<"$(awk '/^## /{p=($0=="## warn_model_tier_unset")} p' "$ROOT/skills/orchestrator/locales/en.md")"
+  grep -qF 'в `[MODEL_TIERS]` конфига проекта' <<<"$(awk '/^## /{p=($0=="## warn_model_tier_unset")} p' "$ROOT/skills/orchestrator/locales/ru.md")"
 }
 
 @test "the Claude-model text says what to do" {
@@ -254,6 +257,13 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
       grep -qF -- "$s" <<<"$body" || { echo "$l lacks $s"; false; }
     done
   done
+  # setup migrates the project config only, never a Task.md or a --set: it can add the line, no more.
+  en="$(awk '/^## /{p=($0=="## warn_model_read_as_session")} p' "$ROOT/skills/orchestrator/locales/en.md")"
+  ru="$(awk '/^## /{p=($0=="## warn_model_read_as_session")} p' "$ROOT/skills/orchestrator/locales/ru.md")"
+  grep -qF '`/setup` can add the `[MODEL_TIERS]` line' <<<"$en" || { echo "$en"; false; }
+  grep -qF '`/setup` может добавить строку `[MODEL_TIERS]`' <<<"$ru" || { echo "$ru"; false; }
+  [ -z "$(grep -F 'offers to do it' <<<"$en")" ] || { echo "$en"; false; }
+  [ -z "$(grep -F 'предложит сделать' <<<"$ru")" ] || { echo "$ru"; false; }
 }
 
 @test "the tuning warning lists fast" {

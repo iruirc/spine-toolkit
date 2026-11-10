@@ -87,11 +87,13 @@ next to `is not a <runtime> model`). Each text names the source, the reason, the
 
 - New key `warn_model_tier_unset` (en/ru). English sense: "`{entry}` in {source}: `[MODEL_TIERS]` has
   no `fast@{runtime}` line, so that role runs on the session's model. To choose a model, add
-  `fast@{runtime}: <model>` to `[MODEL_TIERS]`."
+  `fast@{runtime}: <model>` to the project config's `[MODEL_TIERS]`: a `[MODEL_TIERS]` in a `Task.md`
+  is not read."
 - `warn_model_read_as_session` rewritten: "`{entry}` in {source} names a Claude Code model, which
   {runtime} does not have, so that role runs on the session's model. To choose a model for this
-  runtime, set the value to `fast` and add `fast@{runtime}: <model>` to `[MODEL_TIERS]`; `setup`
-  offers to do it."
+  runtime, set the value to `fast` there and add `fast@{runtime}: <model>` to the project config's
+  `[MODEL_TIERS]`; `/setup` can add the `[MODEL_TIERS]` line." The source is a `Task.md` or `--set`,
+  which `setup` never edits, so the text does not promise that it changes the entry.
 - `warn_tuning_unrecognised` (which lists the valid model values) gains `fast`.
 
 ### Where they show

@@ -260,10 +260,10 @@ Method B ({skill}): {why}
 `{entry}` в {source} — не ключ и значение, которые этот прогон умеет применить, поэтому запись пропущена и действует следующая настройка. Ключи моделей — `light`, `walkthrough`, `done` и восемь ролей, со значениями `opus`, `sonnet`, `haiku`, `fable`, `fast` или `session`; ключи effort — `walkthrough`, `done` и восемь ролей, со значениями `low`, `medium`, `high`, `xhigh`, `max` или `session`.
 
 ## warn_model_read_as_session
-`{entry}` в {source} называет модель Claude Code, которой в {runtime} нет, поэтому эта роль работает на модели сессии. Чтобы выбрать модель для этого runtime, задайте значение `fast` и добавьте `fast@{runtime}: <модель>` в `[MODEL_TIERS]`; `/setup` предложит сделать это за вас.
+`{entry}` в {source} называет модель Claude Code, которой в {runtime} нет, поэтому эта роль работает на модели сессии. Чтобы выбрать модель для этого runtime, задайте там значение `fast` и добавьте `fast@{runtime}: <модель>` в `[MODEL_TIERS]` конфига проекта; `/setup` может добавить строку `[MODEL_TIERS]`.
 
 ## warn_model_tier_unset
-`{entry}` в {source}: в `[MODEL_TIERS]` нет строки `fast@{runtime}`, поэтому эта роль работает на модели сессии. Чтобы выбрать модель, добавьте `fast@{runtime}: <модель>` в `[MODEL_TIERS]`.
+`{entry}` в {source}: в `[MODEL_TIERS]` нет строки `fast@{runtime}`, поэтому эта роль работает на модели сессии. Чтобы выбрать модель, добавьте `fast@{runtime}: <модель>` в `[MODEL_TIERS]` конфига проекта: `[MODEL_TIERS]` в `Task.md` не читается.
 
 ## warn_effort_method_b
 Effort, заданный для {roles}, в этом прогоне не действует: профиль идёт через свой скилл, а вызов агента из скилла не передаёт effort, поэтому все стадии работают на effort этой сессии. Выбор моделей по-прежнему действует.
