@@ -157,6 +157,10 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
 @test "setup offers the model tier questions instead of a report" {
   S="$ROOT/skills/setup/SKILL.md"
   grep -F 'warn_model_read_as_session' "$ORCH" | grep -qF 'say nothing at task launch' || { echo "launch still warns"; false; }
+  # From the project config the opening block shows the key, and setup offers the migration.
+  row="$(grep -F '| `is not a <runtime> model, read as session`' "$ORCH")"
+  grep -qF '`<key>: <value> → session`' <<<"$row" || { echo "the row does not point at the opening block: $row"; false; }
+  [ -z "$(grep -F 'names it once' <<<"$row")" ] || { echo "the row still says setup names it once"; false; }
   for s in '6e.' 'model-tiers.sh check' 'model-tiers.sh apply' 'auq_models_migrate' 'auq_models_codex_tier' 'report_models_migrated'; do
     grep -qF -- "$s" "$S" || { echo "setup lacks $s"; false; }
   done

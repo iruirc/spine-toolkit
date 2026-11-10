@@ -752,7 +752,7 @@ says which field, the text after the quotes which key:
 | `not recognized, skipped` | `[WALKTHROUGH]` | `warn_walkthrough_unrecognised` (`{value}`) |
 | `not recognized, skipped` | `[BUDGETS]`, in a `Task.md` or the project config | `warn_budget_unrecognised` (`{line}`) |
 | `not recognized, skipped` | `[MODELS]` or `[EFFORT]` | `warn_tuning_unrecognised` (`{source}`, `{entry}`) |
-| `is not a <runtime> model, read as session` | `[MODELS]` | `warn_model_read_as_session` (`{source}`, `{entry}`, `{runtime}`) — only when `{source}` is a `Task.md` or `--set`; from the project config it is the Claude Code default the file shares, and `setup` names it once: say nothing at task launch |
+| `is not a <runtime> model, read as session` | `[MODELS]` | `warn_model_read_as_session` (`{source}`, `{entry}`, `{runtime}`) — only when `{source}` is a `Task.md` or `--set`; from the project config the opening block's model line already reads `<key>: <value> → session`, and `setup` offers to migrate the entry to `fast`: say nothing at task launch |
 | `has no fast@<runtime> in [MODEL_TIERS], read as session` | `[MODELS]` | `warn_model_tier_unset` (`{source}`, `{entry}`, `{runtime}`) — only when `{source}` is a `Task.md` or `--set`; from the project config the opening block's model line already reads `fast → session, no fast@<runtime>`, and `setup` explains it: say nothing at task launch |
 | `does not lower … [SCALE] = [full], kept` | `--set scale` | `warn_run_scale_kept` |
 | `not recognized, skipped`, or no quotes and `not a field a run can set, skipped` | `--set <field>` | `warn_run_setting_refused` (`{line}`) |

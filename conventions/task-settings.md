@@ -180,9 +180,11 @@ loop is in the orchestrator's Gating.
 `models` holds the model that came out, `session` when the project has no `fast@<runtime>` line, and
 `model_tiers` in the JSON records, per key that resolved through a tier, the tier, the model and
 whether a project line gave it (`project`) or none did (`unset`). `show` names such a key as
-`<key>: fast → <model>`, or `<key>: fast → session, no fast@<runtime>`. A key is named when the run
-set it or it differs from its default, and always when its tier has no line; a key at its default
-`fast` with a project line is left out, and `--all` names every key.
+`<key>: fast → <model>`, or `<key>: fast → session, no fast@<runtime>`. A key decided by a name the
+runtime reads as `session` (its `as_session`) is named as `<key>: <value as written> → session`, as
+`light: sonnet → session` in Codex CLI. A key is named when the run set it or it differs from its
+default, and always when its tier has no line or its value was read as `session`; a key at its
+default `fast` with a project line is left out, and `--all` names every key.
 
 ## Two decisions
 

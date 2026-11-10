@@ -391,6 +391,12 @@ with `[MODEL_TIERS] = [fast@claude-code: sonnet]`. What one value becomes in eac
 
 `sonnet` stands for any Claude name, `gpt-…` for any Codex name; an entry skipped as not recognized leaves the key to the next source down.
 
+The settings column — `resolve-settings.sh show` and the opening block of a run — spells a tier as
+`validator: fast → sonnet`, or `validator: fast → session, no fast@codex-cli` when the runtime has no
+line, and a Claude name the runtime reads as `session` as `validator: sonnet → session`. Both of the
+last two are always in the column, even where `session` is also the runtime's default, so a role that
+lost its model in Codex is never hidden among the keys at their default.
+
 The eight roles are `architect`, `developer`, `tester`, `reviewer`, `refactorer`, `validator`, `security` and `diagnostics`.
 
 ### [MODEL_TIERS]
