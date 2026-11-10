@@ -275,7 +275,7 @@ anything — which is what lets F, G and C take the language and the platform fr
         Keep the old name the stub imports `@./CLAUDE-spine-toolkit.md`, the file the project has.
      e. Run step 6c (**AGENTS.md (Codex CLI)**), step 6d (**Codex permissions (Codex CLI)**) and step 6e (**Model tiers**). Report `report_spine_name_migrated`, whose rollback hint is
         `mv SPINE.md CLAUDE-spine-toolkit.md` plus restoring the import line. Stop. Every value
-        is already in the file, so steps 5, 6 and 6b have nothing to ask (step 6e asks only about a tier); run `/setup` again
+        is already in the file, so steps 5, 6 and 6b have nothing to ask (step 6e may still ask about models and tiers); run `/setup` again
         (state C) to reconfigure.
 
 5. Hand the platform its own blocks:
@@ -468,12 +468,16 @@ old name in state G.
      role runs on the session's model and the settings column shows it. A Yes in step 2 adds the line
      through `--migrate`. A new project's config already holds `fast@claude-code: sonnet`, so `check`
      prints nothing for it.
-   An `apply` that exits 2 → report nothing about it, carry on.
+   Any `apply` in steps 2 and 3 that exits 2 → report nothing about it, carry on as if that answer
+   had not been given.
 4. Read the `[MODEL_TIERS]` line again. {tiers} = the entries it holds now that the before-state of
-   step 1 did not, as written and comma-separated; none → no report line, whatever was answered.
-   Otherwise, in step 7: step 2 answered Yes → `report_models_migrated` with {keys} = the keys step 2
-   migrated, comma-separated, and {tiers}; step 2 not answered Yes → `report_models_tier_added` with
-   {tiers}.
+   step 1 did not, as written and comma-separated; it may be empty. In step 7:
+   - step 2 answered Yes and its `apply --migrate` succeeded → always `report_models_migrated`, even
+     when {tiers} is empty: {keys} = the keys step 2 migrated, comma-separated, and {tiers}. With
+     {tiers} empty (`fast@claude-code` was already there and no Codex line was added) →
+     `report_models_migrated_keys_only` with {keys} instead;
+   - otherwise {tiers} not empty → `report_models_tier_added` with {tiers};
+   - otherwise nothing changed → no report line.
 
 Nothing else of the config is touched, and an existing `[MODEL_TIERS]` entry is never overwritten:
 a project that chose its model keeps it.
