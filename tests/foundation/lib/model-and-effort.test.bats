@@ -581,3 +581,24 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
   grep -qF "has no fast@codex-cli in [MODEL_TIERS], read as session" <<<"$stderr"
 }
+
+@test "the field config gives the documented result in both runtimes" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  printf '[MODELS] = [light: sonnet, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session]\n' > "$p/SPINE.md"
+
+  # claude-code: light and validator are sonnet, stderr empty
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$(json_field 'd["models"]["light"]' <<<"$output")" = "sonnet" ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "sonnet" ]
+
+  # codex-cli: both session; stderr has two "is not a codex-cli model" lines, no "has no fast@"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["light"]' <<<"$output")" = "session" ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+  grep -qF "'light: sonnet' is not a codex-cli model, read as session" <<<"$stderr"
+  grep -qF "'validator: sonnet' is not a codex-cli model, read as session" <<<"$stderr"
+  ! grep -qF 'has no fast@' <<<"$stderr" || { echo "stderr should not have 'has no fast@'"; return 1; }
+}
