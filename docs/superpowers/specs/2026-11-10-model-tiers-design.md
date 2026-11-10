@@ -49,6 +49,12 @@ working as today; `setup` offers to move `sonnet` entries to `fast`.
    a stderr line (section 2).
 4. `session` is always `session`. A plain model name passes as today. A name in `as_session` →
    `session`, as today.
+5. An epic's step is dispatched on the models its own `resolve-settings.sh json` run returns
+   (`workflows/profile-epic.js`, `stepModels`): the step reader returns that run's `models` as
+   `resolved_models`, so a step's `validator: fast` and a run's `--set models.X=fast` arrive as the
+   tier's model, never as the word `fast`. Without that map the epic's own overlay stands in: it
+   recognizes `fast` without dispatching it — a step's own `fast` keeps the epic's model with a note,
+   a run's `fast` takes the epic's already-resolved value.
 
 ### Defaults
 
