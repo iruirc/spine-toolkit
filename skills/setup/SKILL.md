@@ -345,7 +345,8 @@ anything — which is what lets F, G and C take the language and the platform fr
    template default `auto`, so the line appears only for a project that chose `off` on its own.
    Then, when step 6c changed or found `AGENTS.md`, the line it names, on a line of its own;
    then each line step 6d names, on a line of its own; then, when step 6e applied anything,
-   `report_models_migrated` on a line of its own.
+   `report_models_migrated` or `report_models_tier_added` (whichever step 6e names) on a line of
+   its own.
    {notes} is the platform half's returned notes, one per line, already rendered in <lang>;
    empty when it reconciled nothing. It is the only place those lines surface, so a rewrite
    the platform performed silently would be a rewrite the user never sees.
@@ -438,32 +439,41 @@ is the file this run wrote, or found.
 State F skips it (step 6e). Every other state runs it, including a Cancel in state C and Keep the
 old name in state G.
 
-1. Run `<core root>/scripts/model-tiers.sh check <config> --runtime <runtime>`. It exits 0 and prints,
+1. Read the config's `[MODEL_TIERS]` line (none → empty) and keep it as the before-state. Run
+   `<core root>/scripts/model-tiers.sh check <config> --runtime <runtime>`. It exits 0 and prints,
    each line only when true and in this order: `sonnet <key>[,<key>…]` — the `[MODELS]` keys whose
-   value is `sonnet` — and `tier-missing fast@<runtime>`. Exit 2 or any other failure → say nothing,
-   change nothing, carry on: this step is an offer, never a gate.
+   value is `sonnet` — and `tier-missing fast@<runtime>`. Any other exit → say nothing, change
+   nothing, carry on: this step is an offer, never a gate.
 2. A `sonnet …` line → AUQ `auq_models_migrate` with {keys} = the keys it printed, comma-separated,
    options `auq_models_migrate_options` (Yes / No). Yes → `<core root>/scripts/model-tiers.sh apply
    <config> --migrate`; it turns those entries into `fast` and ensures `fast@claude-code: sonnet`.
    No → write nothing. Call `apply --migrate` only after a Yes: it also ensures
    `fast@claude-code: sonnet`.
-3. In Codex CLI only: a `tier-missing fast@codex-cli` line (the one `check` printed in step 1), and
-   either a config this run created from the template (states A and B, and state C after Overwrite or
-   Backup-and-overwrite) or an answer Yes in step 2 → AUQ `auq_models_codex_tier`, options
-   `auq_models_codex_tier_options`. The question names no model: Spine cannot know what the account
-   offers, and the answer is the user's own words.
-   - A reply that is one model name, as `[A-Za-z0-9][A-Za-z0-9._:/+-]*` allows it → `<core root>/scripts/model-tiers.sh
-     apply <config> --set fast@codex-cli=<model>`. It adds the entry when absent and never overwrites one.
-   - A reply that is not one such token (spaces, a list, a sentence) → ask the same question again;
-     never pass it to `apply`.
-   - The first option, keep the session's model → write nothing.
-   - The second option alone, with no name → ask the same question again, the name to come as the
-     user's own words.
-   In Claude Code the config a new project gets already holds `fast@claude-code: sonnet`, so `check`
-   prints no `tier-missing` and nothing is asked.
-4. Anything `apply` wrote → `report_models_migrated` in step 7: {keys} = the keys step 2 migrated,
-   comma-separated, `—` when step 2 was not answered Yes; {tiers} = the `[MODEL_TIERS]` entries `apply`
-   added, as written and comma-separated. Nothing written → no line.
+3. A `tier-missing fast@<runtime>` line:
+   - In Codex CLI (`tier-missing fast@codex-cli`), whatever the state and whatever step 2 was
+     answered, so a rerun that cancelled, a project that was migrated earlier and a config made by
+     states D and E are all covered → AUQ `auq_models_codex_tier`, options
+     `auq_models_codex_tier_options`. The question names no model: Spine cannot know what the
+     account offers, and the answer is the user's own words.
+     - A reply that is one model name, as `[A-Za-z0-9][A-Za-z0-9._:/+-]*` allows it →
+       `<core root>/scripts/model-tiers.sh apply <config> --set fast@codex-cli=<model>`. It adds the
+       entry when absent and never overwrites one.
+     - A reply that is not one such token (spaces, a list, a sentence) → ask the same question again;
+       never pass it to `apply`.
+     - The first option, keep the session's model → write nothing.
+     - The second option alone, with no name → ask the same question again, the name to come as the
+       user's own words.
+   - In Claude Code (`tier-missing fast@claude-code`: `fast` roles and no line for it) → nothing is
+     asked. A config that names `fast` and no `fast@claude-code` is the owner's explicit choice: the
+     role runs on the session's model and the settings column shows it. A Yes in step 2 adds the line
+     through `--migrate`. A new project's config already holds `fast@claude-code: sonnet`, so `check`
+     prints nothing for it.
+   An `apply` that exits 2 → report nothing about it, carry on.
+4. Read the `[MODEL_TIERS]` line again. {tiers} = the entries it holds now that the before-state of
+   step 1 did not, as written and comma-separated; none → no report line, whatever was answered.
+   Otherwise, in step 7: step 2 answered Yes → `report_models_migrated` with {keys} = the keys step 2
+   migrated, comma-separated, and {tiers}; step 2 not answered Yes → `report_models_tier_added` with
+   {tiers}.
 
 Nothing else of the config is touched, and an existing `[MODEL_TIERS]` entry is never overwritten:
 a project that chose its model keeps it.
