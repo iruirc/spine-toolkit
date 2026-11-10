@@ -23,12 +23,43 @@ old_config() {
 
 json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(sys.argv[1], {"d": d}))' "$1"; }
 
-@test "check names sonnet keys and a missing tier line" {
+@test "check names sonnet keys, and a missing tier line only where a key says fast" {
   old_config
   run --separate-stderr "$MT" check "$CFG" --runtime codex-cli
   [ "$status" -eq 0 ]
-  [ "$output" = $'sonnet light,validator\ntier-missing fast@codex-cli' ] || { echo "$output"; false; }
+  [ "$output" = 'sonnet light,validator' ] || { echo "$output"; false; }
   [ -z "$stderr" ]
+  printf '%s\n' '[MODELS] = [light: sonnet, validator: fast]' >"$CFG"
+  run --separate-stderr "$MT" check "$CFG" --runtime codex-cli
+  [ "$output" = $'sonnet light\ntier-missing fast@codex-cli' ] || { echo "$output"; false; }
+}
+
+# A tier nobody uses needs no model: a rerun of setup must not ask about it every time.
+@test "check asks for no tier line in a config with no fast entry" {
+  printf '%s\n' '[MODELS] = [light: session, architect: session, validator: session, tester: opus]' >"$CFG"
+  for rt in codex-cli claude-code; do
+    run --separate-stderr "$MT" check "$CFG" --runtime "$rt"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ] || { echo "$rt: $output"; false; }
+  done
+  printf '%s\n' '# [MODELS] = [light: fast]' '[MODELS] = [light: session]' >"$CFG"
+  run "$MT" check "$CFG" --runtime codex-cli
+  [ -z "$output" ] || { echo "a commented-out fast counted: $output"; false; }
+}
+
+# "Keep the session's model" in setup writes this, so the question is not asked again.
+@test "apply --set takes session as the tier's model, and check is then quiet" {
+  cp "$ROOT/templates/spine-md/en.md" "$CFG"
+  run --separate-stderr "$MT" apply "$CFG" --set fast@codex-cli=session
+  [ "$status" -eq 0 ]
+  grep -qE '^\[MODEL_TIERS\] = \[fast@claude-code: sonnet, fast@codex-cli: session\]' "$CFG" || { cat "$CFG"; false; }
+  run "$MT" check "$CFG" --runtime codex-cli
+  [ -z "$output" ] || { echo "$output"; false; }
+  t="$P/Tasks/ACTIVE/001-x"; mkdir -p "$t"; cp "$ROOT/templates/task-md/task-root.md" "$t/Task.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" show "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]; [ -z "$stderr" ] || { echo "$stderr"; false; }
+  grep -qF 'validator: fast → session, light: fast → session]' <<<"$output" || { echo "$output"; false; }
+  [ -z "$(grep -F 'no fast@' <<<"$output")" ] || { echo "$output"; false; }
 }
 
 @test "check on the new template prints nothing for claude-code" {
@@ -46,7 +77,7 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
 }
 
 @test "check does not read a commented-out line" {
-  printf '%s\n' '# [MODELS] = [light: sonnet]' '  [MODELS] = [validator: sonnet]' \
+  printf '%s\n' '# [MODELS] = [light: sonnet]' '  [MODELS] = [validator: sonnet]' '[MODELS] = [tester: fast]' \
     '# [MODEL_TIERS] = [fast@claude-code: sonnet]' >"$CFG"
   run "$MT" check "$CFG" --runtime claude-code
   [ "$output" = $'tier-missing fast@claude-code' ] || { echo "$output"; false; }
@@ -79,7 +110,7 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   run "$MT" apply "$CFG" --set fast@codex-cli=other
   [ "$status" -eq 0 ]
   grep -qF 'fast@codex-cli: gpt-6-mini' "$CFG"
-  ! grep -qF other "$CFG"
+  [ -z "$(grep -F 'fast@codex-cli: other' "$CFG")" ] || { grep -F MODEL_TIERS "$CFG"; false; }
   [ "$(grep -c 'fast@codex-cli' "$CFG")" -eq 1 ]
 }
 
@@ -115,7 +146,7 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   run "$MT" apply "$CFG" --migrate
   [ "$status" -eq 0 ]
   cp "$CFG" "$BATS_TEST_TMPDIR/first"
-  ! grep '^\[MODELS\]' "$CFG" | grep -qi sonnet
+  [ -z "$(grep '^\[MODELS\]' "$CFG" | grep -i sonnet)" ] || { cat "$CFG"; false; }
   run "$MT" apply "$CFG" --migrate
   [ "$status" -eq 0 ]
   cmp "$CFG" "$BATS_TEST_TMPDIR/first"
@@ -136,7 +167,8 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   chmod 640 "$CFG"
   run "$MT" apply "$CFG" --migrate
   [ "$status" -eq 0 ]
-  [ "$(stat -f %Lp "$CFG" 2>/dev/null || stat -c %a "$CFG")" = "640" ]
+  # GNU first, as scripts/long-run.sh reads a file: BSD stat has no -c, and GNU stat -f reads the filesystem.
+  [ "$(stat -c %a "$CFG" 2>/dev/null || stat -f %Lp "$CFG")" = "640" ]
   [ "$(ls -A "$P")" = "SPINE.md" ]
 }
 
@@ -173,6 +205,23 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
     [ -z "$output" ]
     cmp "$CFG" "$BATS_TEST_TMPDIR/before"
   done
+}
+
+# setup's step 6e reports an apply that could not write, and carries on: not a usage error.
+@test "apply that cannot write exits 1 with one line, and leaves the config as it was" {
+  [ "$(id -u)" -ne 0 ] || skip "root writes into a read-only folder"
+  old_config
+  cp "$CFG" "$BATS_TEST_TMPDIR/before"
+  chmod 555 "$P"
+  run --separate-stderr "$MT" apply "$CFG" --migrate
+  chmod 755 "$P"
+  [ "$status" -eq 1 ] || { echo "status $status: $stderr"; false; }
+  [ -z "$output" ]
+  [ "$(printf '%s\n' "$stderr" | wc -l | tr -d ' ')" -eq 1 ] || { echo "$stderr"; false; }
+  grep -q '^model-tiers: ' <<<"$stderr" || { echo "$stderr"; false; }
+  [ -z "$(grep '^usage:' <<<"$stderr")" ] || { echo "$stderr"; false; }
+  cmp "$CFG" "$BATS_TEST_TMPDIR/before"
+  [ "$(ls -A "$P")" = "SPINE.md" ]
 }
 
 # What setup's step 6e relies on for a project it has just created: the template's own config.

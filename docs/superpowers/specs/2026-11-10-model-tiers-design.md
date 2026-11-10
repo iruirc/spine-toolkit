@@ -30,7 +30,8 @@ working as today; `setup` offers to move `sonnet` entries to `fast`.
 
 - Key `<tier>@<runtime id>`. The only tier is `fast`.
 - Value: a value of that runtime's `models` in `runtimes/<id>.json`, or `session`. Under `"any"`
-  (Codex), any `TOKEN`, kept as written.
+  (Codex), any `TOKEN`, kept as written. `session` is a choice written down: the key runs on the
+  session's model, no stderr line is printed, and `setup` does not ask again.
 - Project-only: Task.md, an epic and `--set` do not set it (like the `PROJECT_ONLY` fields).
 - Lines for every runtime are checked against their own runtime file on every run. A bad entry is
   skipped with the usual `'<entry>' not recognized, skipped`:
@@ -119,8 +120,13 @@ next to `is not a <runtime> model`). Each text names the source, the reason, the
 
 - Claude Code: writes only `fast@claude-code: sonnet`, asks nothing about Codex.
 - Codex: one question, the model for `fast` in Codex — "keep the session's model" / free-form answer.
-  The answer is written as `fast@codex-cli: <model>`. No list of models is offered: Spine cannot know
+  The answer is written as `fast@codex-cli: <model>`; "keep the session's model" writes
+  `fast@codex-cli: session` (the resolver accepts it, the column reads `fast → session`), so the
+  question is not asked again on the next `setup`. No list of models is offered: Spine cannot know
   what the account has.
+- `model-tiers.sh check` reports `tier-missing fast@<runtime>` only when `[MODELS]` has at least one
+  `fast` entry: a tier no key uses needs no model. After a migration "Yes", `check` runs again, so the
+  keys just moved to `fast` count.
 
 The edits to `SPINE.md` are made by a small script, `scripts/model-tiers.sh` (`check`, `apply`),
 not by hand, so they are tested and idempotent.
@@ -133,6 +139,12 @@ not by hand, so they are tested and idempotent.
 - This question replaces the current `report_models_read_as_session` report.
 - `opus`, `haiku`, `fable` and full Claude ids are not migrated.
 - An existing `[MODEL_TIERS]` is never overwritten; only the current runtime's missing line is added.
+- `model-tiers.sh` exits 1, with one stderr line, when it cannot read or write the config; `setup`
+  reports that with `report_models_not_written` and carries on. Exit 2 stays a usage error, which
+  `setup` does not report. A path that stops before the report (Cancel in state C, Keep the old name
+  in state G) prints the model-tier line before it stops.
+- In Claude Code nothing is asked about a missing `fast@claude-code`; the settings column shows the key
+  as `fast → session`.
 - The 1.x migration (the pre-2.0 config name, states D–F) copies values as written.
 
 ## 4. Documentation and tests

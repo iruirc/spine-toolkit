@@ -402,7 +402,7 @@ The eight roles are `architect`, `developer`, `tester`, `reviewer`, `refactorer`
 ### [MODEL_TIERS]
 
 **Values:** `fast@<runtime>: <model>` entries, comma-separated; the tier is `fast`, the runtime an id
-from `runtimes/` (`claude-code`, `codex-cli`), the model a name that runtime accepts · **Default:**
+from `runtimes/` (`claude-code`, `codex-cli`), the model a name that runtime accepts, or `session` · **Default:**
 none · **Task override:** no, project config only · **Defined by:**
 [`../conventions/stage-dispatch.md`](../conventions/stage-dispatch.md) → Model and effort
 
@@ -414,6 +414,12 @@ says `fast` takes the model of the line for the runtime the run is in. With no s
 reads as `session`: the toolkit never picks a model for you, and the resolver says
 `'<entry>' has no fast@<runtime> in [MODEL_TIERS], read as session` on stderr for each key a source
 set to `fast`. A key left at its built-in default says nothing.
+
+`fast@<runtime>: session` is accepted and says the tier runs on the session's model in that runtime,
+as a missing line would, except that it is written down: the resolver says nothing about it, the
+settings column reads `fast → session`, and `/setup` does not ask for that runtime's model again. It
+is what `/setup` writes in Codex CLI when you keep the session's model. `/setup` asks for a runtime's
+line only when at least one `[MODELS]` entry says `fast`.
 
 A line is reported as `not recognized, skipped`, on every run and whichever runtime it names, when:
 

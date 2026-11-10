@@ -179,7 +179,7 @@ anything — which is what lets F, G and C take the language and the platform fr
         the menu's default, so Enter alone never rewrites the config, and a rerun for the
         Codex settings below needs nothing else.
         - Cancel → no change to the config or CLAUDE.md; run step 6c and step 6d, then step 6e, with the
-          language and platform from the config, then stop.
+          language and platform from the config; print the line step 6e names, then stop.
         - Backup-and-overwrite or Overwrite → continue.
      b. Ask the language (q0, as in step 0) and resolve the platform (Platform Discovery) —
         each only if neither the input nor step 0 or step 1 asked it in this run. A
@@ -261,7 +261,7 @@ anything — which is what lets F, G and C take the language and the platform fr
      a. AUQ `auq_migrate_spine_name` with options `auq_migrate_spine_name_options`
         (Rename / Keep the old name).
         - Keep the old name → no change to the config or CLAUDE.md; run step 6c and step 6d, then step 6e, and report
-          `report_spine_name_kept`. Every reader
+          `report_spine_name_kept`; print the line step 6e names, then stop. Every reader
           keeps accepting the file under that name.
         - Rename → continue.
      b. `mv CLAUDE-spine-toolkit.md SPINE.md`. No backup: the rename is reversible by one `mv`,
@@ -344,9 +344,11 @@ anything — which is what lets F, G and C take the language and the platform fr
    The migration never writes `off` itself: a field the source did not answer is written at the
    template default `auto`, so the line appears only for a project that chose `off` on its own.
    Then, when step 6c changed or found `AGENTS.md`, the line it names, on a line of its own;
-   then each line step 6d names, on a line of its own; then, when step 6e applied anything,
-   `report_models_migrated` or `report_models_tier_added` (whichever step 6e names) on a line of
-   its own.
+   then each line step 6d names, on a line of its own; then, when step 6e names a line,
+   `report_models_migrated`, `report_models_migrated_keys_only`, `report_models_tier_added` or
+   `report_models_not_written` (whichever step 6e names) on a line of its own. A path that stops
+   before this step — Cancel in state C, Keep the old name in state G — prints that 6e line itself
+   before it stops, so a change 6e made is never left unreported.
    {notes} is the platform half's returned notes, one per line, already rendered in <lang>;
    empty when it reconciled nothing. It is the only place those lines surface, so a rewrite
    the platform performed silently would be a rewrite the user never sees.
@@ -442,13 +444,15 @@ old name in state G.
 1. Read the config's `[MODEL_TIERS]` line (none → empty) and keep it as the before-state. Run
    `<core root>/scripts/model-tiers.sh check <config> --runtime <runtime>`. It exits 0 and prints,
    each line only when true and in this order: `sonnet <key>[,<key>…]` — the `[MODELS]` keys whose
-   value is `sonnet` — and `tier-missing fast@<runtime>`. Any other exit → say nothing, change
-   nothing, carry on: this step is an offer, never a gate.
+   value is `sonnet` — and `tier-missing fast@<runtime>`, only when `[MODELS]` has
+   at least one `fast` entry and `[MODEL_TIERS]` has no line for the runtime: a tier no key uses
+   needs no model. Any other exit → say nothing, change nothing, carry on: this step is an offer, never a gate.
 2. A `sonnet …` line → AUQ `auq_models_migrate` with {keys} = the keys it printed, comma-separated,
    options `auq_models_migrate_options` (Yes / No). Yes → `<core root>/scripts/model-tiers.sh apply
    <config> --migrate`; it turns those entries into `fast` and ensures `fast@claude-code: sonnet`.
    No → write nothing. Call `apply --migrate` only after a Yes: it also ensures
-   `fast@claude-code: sonnet`.
+   `fast@claude-code: sonnet`. After a Yes that succeeded, run `check` again and take its
+   `tier-missing` line for step 3: the keys just moved to `fast` count now.
 3. A `tier-missing fast@<runtime>` line:
    - In Codex CLI (`tier-missing fast@codex-cli`), whatever the state and whatever step 2 was
      answered, so a rerun that cancelled, a project that was migrated earlier and a config made by
@@ -460,16 +464,20 @@ old name in state G.
        entry when absent and never overwrites one.
      - A reply that is not one such token (spaces, a list, a sentence) → ask the same question again;
        never pass it to `apply`.
-     - The first option, keep the session's model → write nothing.
+     - The first option, keep the session's model →
+       `<core root>/scripts/model-tiers.sh apply <config> --set fast@codex-cli=session`. The line says
+       the tier runs on the session's model, the settings column shows `fast → session`, and `check`
+       stops asking: the answer was a choice, and a rerun of setup does not repeat the question.
      - The second option alone, with no name → ask the same question again, the name to come as the
        user's own words.
    - In Claude Code (`tier-missing fast@claude-code`: `fast` roles and no line for it) → nothing is
-     asked. A config that names `fast` and no `fast@claude-code` is the owner's explicit choice: the
-     role runs on the session's model and the settings column shows it. A Yes in step 2 adds the line
-     through `--migrate`. A new project's config already holds `fast@claude-code: sonnet`, so `check`
-     prints nothing for it.
+     asked in Claude Code: the role runs on the session's model, and the settings column shows the key
+     as `fast → session, no fast@claude-code`. A Yes in step 2 adds the line through `--migrate`. A new
+     project's config already holds `fast@claude-code: sonnet`, so `check` prints nothing for it.
    Any `apply` in steps 2 and 3 that exits 2 → report nothing about it, carry on as if that answer
-   had not been given.
+   had not been given. One that exits 1 could not read or write the config, which that apply left as
+   it was → step 4 names `report_models_not_written` for it; carry on with the rest of setup, never
+   stop on it.
 4. Read the `[MODEL_TIERS]` line again. {tiers} = the entries it holds now that the before-state of
    step 1 did not, as written and comma-separated; it may be empty. In step 7:
    - step 2 answered Yes and its `apply --migrate` succeeded → always `report_models_migrated`, even
@@ -478,6 +486,9 @@ old name in state G.
      `report_models_migrated_keys_only` with {keys} instead;
    - otherwise {tiers} not empty → `report_models_tier_added` with {tiers};
    - otherwise nothing changed → no report line.
+   And when an `apply` in steps 2 or 3 exited 1, `report_models_not_written` on a line of its own
+   after the line above (or alone): {config} = the config's path, {reason} = that apply's stderr line
+   without the leading `model-tiers: `.
 
 Nothing else of the config is touched, and an existing `[MODEL_TIERS]` entry is never overwritten:
 a project that chose its model keeps it.

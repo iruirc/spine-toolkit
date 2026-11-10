@@ -162,7 +162,7 @@ answers.
 | `device_source` | — | `[DEVICE_SOURCE]` | a command run from the project root, `—` | `—` |
 | `budgets` | `[BUDGETS]`, entries `<key>: <n>` | `[BUDGETS]`, entries `<key>: <n>` | keys `Task.md` `Reproduce.md` `Plan.md` `Validation.md` `Review.md` `Done.md` (lines) and `words-per-sentence` (words); a positive integer | the `CAPS` table; `words-per-sentence: 30` |
 | `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | the runtime's `models` list (`runtimes/<id>.json`); `session` always | the runtime's `model_defaults`, `session` elsewhere: in Claude Code `fast` for `light` and `validator`, which `[MODEL_TIERS]` turns into a model |
-| `model_tiers` | — | `[MODEL_TIERS]`, entries `fast@<runtime>: <model>`; the project config only | tier `fast`; a runtime with a `runtimes/<id>.json`; a model of that runtime's `models`, not one it reads as `session` | none: a `fast` with no line for the runtime reads as `session` |
+| `model_tiers` | — | `[MODEL_TIERS]`, entries `fast@<runtime>: <model>`; the project config only | tier `fast`; a runtime with a `runtimes/<id>.json`; a model of that runtime's `models`, not one it reads as `session`, or `session` itself | none: a `fast` with no line for the runtime reads as `session` |
 | `effort` | `[EFFORT]` | `[EFFORT]`, entries `<key>: <value>` | the runtime's `effort` list (`runtimes/<id>.json`); `session` always | `session` |
 | `long_run` | `[LONG_RUN]` | `[LONG_RUN]`, entries `<key>: <minutes>` | keys `stall` `max`, a whole number of minutes > 0 | `stall: 5, max: 30` |
 

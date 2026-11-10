@@ -10,6 +10,9 @@ setup() {
   ORCH="$ROOT/skills/orchestrator/SKILL.md"
 }
 
+# A Russian phrase written as \uXXXX escapes: this file is not a locale, so it carries no Cyrillic.
+unescape() { python3 -c 'import sys; print(sys.argv[1].encode("ascii").decode("unicode_escape"))' "$1"; }
+
 @test "the orchestrator states the runtime once" {
   ! grep -q -- '--runtime claude-code' "$ORCH" || { grep -n -- '--runtime claude-code' "$ORCH"; false; }
   grep -qE 'resolve-settings\.sh"? json .*--runtime <runtime>' "$ORCH"
@@ -164,7 +167,7 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   for s in '6e.' 'model-tiers.sh check' 'model-tiers.sh apply' 'auq_models_migrate' 'auq_models_codex_tier' 'report_models_migrated'; do
     grep -qF -- "$s" "$S" || { echo "setup lacks $s"; false; }
   done
-  ! grep -qF 'report_models_read_as_session' "$S"
+  [ -z "$(grep -F 'report_models_read_as_session' "$S")" ] || { echo "setup keeps the old report"; false; }
   for l in en ru; do
     f="$ROOT/skills/setup/locales/$l.md"
     ! grep -qx '## report_models_read_as_session' "$f" || { echo "$l keeps the old report"; false; }
@@ -192,8 +195,49 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   [ -n "$sec" ] || { echo "no ## Model tiers"; false; }
   grep -qF 'tier-missing fast@codex-cli' <<<"$sec"
   grep -qF 'whatever the state and whatever step 2 was' <<<"$sec"
-  ! grep -qF 'created from the template' <<<"$sec"
-  ! grep -qF 'Gap left' <<<"$sec"
+  [ -z "$(grep -F 'created from the template' <<<"$sec")" ] || { echo "the question is limited to a new config"; false; }
+  [ -z "$(grep -F 'Gap left' <<<"$sec")" ] || { echo "the section keeps the gap note"; false; }
+}
+
+# A tier no key uses needs no model, and keeping the session's model is an answer: written down,
+# so a rerun of setup does not ask again.
+@test "the Codex tier question is asked only for a fast key, and its answers are written" {
+  sec="$(awk '/^## Model tiers/{p=1} /^## Migration Algorithm/{p=0} p' "$ROOT/skills/setup/SKILL.md")"
+  grep -qF 'at least one `fast` entry' <<<"$sec" || { echo "check's condition is not named"; false; }
+  grep -qF 'run `check` again' <<<"$sec" || { echo "a Yes does not re-run check"; false; }
+  grep -qF -- '--set fast@codex-cli=session' <<<"$sec" || { echo "keep writes nothing"; false; }
+  [ -z "$(grep -F 'keep the session'"'"'s model → write nothing' <<<"$sec")" ] || { echo "keep still writes nothing"; false; }
+  # In Claude Code a fast with no line may be a default or a 1.11.0 platform, not a choice.
+  [ -z "$(grep -F "explicit choice" <<<"$sec")" ] || { echo "the Claude Code case calls the gap a choice"; false; }
+  grep -qF '`fast → session`' <<<"$sec" || { echo "the Claude Code case does not name the column"; false; }
+  head="$(sed -n '2,20p' "$ROOT/scripts/model-tiers.sh")"
+  grep -qF 'at least one [MODELS] entry' <<<"$head" || { echo "model-tiers.sh header: $head"; false; }
+  for l in en ru; do
+    grep -qF 'fast@codex-cli: session' "$ROOT/skills/setup/locales/$l.md" || { echo "$l: the question does not say what keep writes"; false; }
+  done
+  grep -qF 'fast@<runtime>: session' "$ROOT/docs/configuration.md" || { echo "docs do not name a session tier line"; false; }
+}
+
+# A config setup could not write is reported, never silently left as it was.
+@test "an apply that could not write is reported and setup carries on" {
+  sec="$(awk '/^## Model tiers/{p=1} /^## Migration Algorithm/{p=0} p' "$ROOT/skills/setup/SKILL.md")"
+  grep -qF 'exits 1' <<<"$sec" || { echo "no exit 1 rule"; false; }
+  grep -qF 'report_models_not_written' <<<"$sec" || { echo "no report key"; false; }
+  for l in en ru; do
+    body="$(awk '/^## /{p=($0=="## report_models_not_written")} p' "$ROOT/skills/setup/locales/$l.md")"
+    [ -n "$body" ] || { echo "$l lacks report_models_not_written"; false; }
+    for s in '{config}' '{reason}'; do grep -qF "$s" <<<"$body" || { echo "$l lacks $s"; false; }; done
+  done
+}
+
+# Step 7 names every line 6e can leave, and a path that stops before step 7 still prints it.
+@test "step 7 names every 6e report, and the stop paths print it first" {
+  S="$ROOT/skills/setup/SKILL.md"
+  step7="$(awk '/^7\. Render the report/{p=1} /^```$/{p=0} p' "$S")"
+  for k in report_models_migrated report_models_tier_added report_models_migrated_keys_only report_models_not_written; do
+    grep -qF "\`$k\`" <<<"$step7" || { echo "step 7 lacks $k"; false; }
+  done
+  [ "$(grep -cF "print the line step 6e names, then stop" "$S")" -ge 2 ] || { echo "a stop path drops 6e's line"; false; }
 }
 
 @test "setup derives {tiers} from the line before and after, and names the Claude Code case" {
@@ -247,7 +291,7 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   done
   # A Task.md [MODEL_TIERS] is ignored, so the text names the file that is read.
   grep -qF "the project config's \`[MODEL_TIERS]\`" <<<"$(awk '/^## /{p=($0=="## warn_model_tier_unset")} p' "$ROOT/skills/orchestrator/locales/en.md")"
-  grep -qF 'в `[MODEL_TIERS]` конфига проекта' <<<"$(awk '/^## /{p=($0=="## warn_model_tier_unset")} p' "$ROOT/skills/orchestrator/locales/ru.md")"
+  grep -qF "$(unescape '\u0432 `[MODEL_TIERS]` \u043a\u043e\u043d\u0444\u0438\u0433\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u0430')" <<<"$(awk '/^## /{p=($0=="## warn_model_tier_unset")} p' "$ROOT/skills/orchestrator/locales/ru.md")"
 }
 
 @test "the Claude-model text says what to do" {
@@ -261,9 +305,9 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   en="$(awk '/^## /{p=($0=="## warn_model_read_as_session")} p' "$ROOT/skills/orchestrator/locales/en.md")"
   ru="$(awk '/^## /{p=($0=="## warn_model_read_as_session")} p' "$ROOT/skills/orchestrator/locales/ru.md")"
   grep -qF '`/setup` can add the `[MODEL_TIERS]` line' <<<"$en" || { echo "$en"; false; }
-  grep -qF '`/setup` может добавить строку `[MODEL_TIERS]`' <<<"$ru" || { echo "$ru"; false; }
+  grep -qF "$(unescape '`/setup` \u043c\u043e\u0436\u0435\u0442 \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0441\u0442\u0440\u043e\u043a\u0443 `[MODEL_TIERS]`')" <<<"$ru" || { echo "$ru"; false; }
   [ -z "$(grep -F 'offers to do it' <<<"$en")" ] || { echo "$en"; false; }
-  [ -z "$(grep -F 'предложит сделать' <<<"$ru")" ] || { echo "$ru"; false; }
+  [ -z "$(grep -F "$(unescape '\u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0438\u0442 \u0441\u0434\u0435\u043b\u0430\u0442\u044c')" <<<"$ru")" ] || { echo "$ru"; false; }
 }
 
 @test "the tuning warning lists fast" {
