@@ -350,9 +350,10 @@ it.
 
 **Values:** `<key>: <value>` entries, comma-separated; keys `light`, `walkthrough`, `done` and the
 eight role names, values the runtime's `models` list in `runtimes/<id>.json` (Claude Code: `opus` `sonnet`
-`haiku` `fable` `session`) · **Default:** the runtime's `model_defaults`, `session` elsewhere (Claude Code:
-`sonnet` for `light` and `validator`, `session` for `walkthrough`, `done` and the other seven roles; Codex CLI:
-any name, with the Claude Code names and `claude-*` read as `session`) · **Task override:**
+`haiku` `fable` `session`), or `fast`, a tier [`[MODEL_TIERS]`](#model_tiers) resolves · **Default:**
+the runtime's `model_defaults`, `session` elsewhere (Claude Code: `fast` for `light` and `validator`,
+`session` for `walkthrough`, `done` and the other seven roles; Codex CLI: `session` throughout, and it
+takes any name, with the Claude Code names and `claude-*` read as `session`) · **Task override:**
 `[MODELS] = [<key>: <value>, …]` ·
 **Defined by:** [`../conventions/stage-dispatch.md`](../conventions/stage-dispatch.md) → Model and
 effort
@@ -367,14 +368,61 @@ check, and falls back to the writer's role — not to `light` — when it says `
 `walkthrough`. `done` covers writing `Done.md`, and falls back to the writer's role — not to `light` —
 when it says `session`: a Done checks its report against the task, and `done: sonnet` runs that check
 on its own model without moving the role's other stages. Under Method B, Done is written in the main
-context, on the session's model. `session` passes no model, so `CLAUDE_CODE_SUBAGENT_MODEL`, then the session's model decide. `validator` starts on
-`sonnet`: building, running the tests and reading their logs need no heavier model. A `platform` left
+context, on the session's model. `session` passes no model, so `CLAUDE_CODE_SUBAGENT_MODEL`, then the session's model decide. `validator`
+starts on `fast`: building, running the tests and reading their logs need no heavier model. A `platform` left
 from 1.11.0 reads as if its line were absent. `haiku` has a 200k context and no effort setting, too
 small for a phase or a walkthrough. On Amazon Bedrock, Google Cloud's Agent Platform and Microsoft
 Foundry `sonnet` means Sonnet 4.5. The orchestrator and any stage it runs in the main context stay on
 the session's model. An epic's keys reach its steps.
 
+`fast` is a tier, not a model: it names the cheap model of the runtime the run is in, and
+`[MODEL_TIERS]` says which, so one `[MODELS]` serves Claude Code and Codex CLI alike. A project with
+neither `[MODELS]` entries for `light` or `validator` nor a `[MODEL_TIERS]` line now runs them on the
+session's model, where they used to run on `sonnet`; the shipped template keeps `sonnet` in Claude Code
+with `[MODEL_TIERS] = [fast@claude-code: sonnet]`. What one value becomes in each runtime:
+
+| `[MODELS]` value | Claude Code | Codex CLI |
+|---|---|---|
+| `session` | session's model | session's model |
+| `fast`, with `fast@<runtime>` | that line's model | that line's model |
+| `fast`, no line | session's model | session's model |
+| `sonnet` | Sonnet | session's model |
+| `gpt-…` | skipped, next source down | as written |
+
+`sonnet` stands for any Claude name, `gpt-…` for any Codex name; an entry skipped as not recognized leaves the key to the next source down.
+
 The eight roles are `architect`, `developer`, `tester`, `reviewer`, `refactorer`, `validator`, `security` and `diagnostics`.
+
+### [MODEL_TIERS]
+
+**Values:** `fast@<runtime>: <model>` entries, comma-separated; the tier is `fast`, the runtime an id
+from `runtimes/` (`claude-code`, `codex-cli`), the model a name that runtime accepts · **Default:**
+none · **Task override:** no, project config only · **Defined by:**
+[`../conventions/stage-dispatch.md`](../conventions/stage-dispatch.md) → Model and effort
+
+Which model `fast` means, per runtime. The line is read from the project config only: `Task.md`, an
+epic's `Task.md` and `--set` never set it, so a task cannot move a tier the project fixed. Tier and
+runtime are matched without regard to case; the model keeps its spelling. A `[MODELS]` entry that
+says `fast` takes the model of the line for the runtime the run is in. With no such line the entry
+reads as `session`: the toolkit never picks a model for you, and the resolver says
+`'<entry>' has no fast@<runtime> in [MODEL_TIERS], read as session` on stderr for each key a source
+set to `fast`. A key left at its built-in default says nothing.
+
+A line is reported as `not recognized, skipped`, on every run and whichever runtime it names, when:
+
+- the tier is not `fast`;
+- no `runtimes/<id>.json` exists for the runtime;
+- the model is outside that runtime's `models` list (`fast@claude-code: gpt-6-mini`);
+- the model is one the runtime reads as `session` (`fast@codex-cli: sonnet`), or is a tier name
+  (`fast@codex-cli: fast`).
+
+```
+[MODEL_TIERS] = [fast@claude-code: sonnet]
+[MODEL_TIERS] = [fast@claude-code: sonnet, fast@codex-cli: gpt-6-mini]
+```
+
+The first line is the shipped template's. The second serves a project that opens both runtimes with
+the same `[MODELS] = [light: fast, validator: fast]`.
 
 ### [EFFORT]
 

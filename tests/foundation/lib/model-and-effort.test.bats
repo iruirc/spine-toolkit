@@ -68,10 +68,14 @@ section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
 @test "the config template ships every Models key at its default, and no init" {
   field="$(grep -F '[MODELS] = [' "$TPL")"
-  for entry in 'light: sonnet' 'walkthrough: session' 'done: session' 'architect: session' 'developer: session' 'tester: session' 'reviewer: session' \
-               'refactorer: session' 'validator: sonnet' 'security: session' 'diagnostics: session'; do
+  for entry in 'light: fast' 'walkthrough: session' 'done: session' 'architect: session' 'developer: session' 'tester: session' 'reviewer: session' \
+               'refactorer: session' 'validator: fast' 'security: session' 'diagnostics: session'; do
     grep -qF "$entry" <<<"$field" || { echo "[MODELS] lacks '$entry'"; return 1; }
   done
+  grep -qxF '[MODEL_TIERS] = [fast@claude-code: sonnet]' <<<"$(grep -E '^\[MODEL_TIERS\] = ' "$TPL" | sed -E 's/ +#.*//')" \
+    || { echo "the template lacks the [MODEL_TIERS] line"; return 1; }
+  [ "$(grep -n '^\[MODEL_TIERS\] = ' "$TPL" | cut -d: -f1)" -lt "$(grep -n '^\[MODELS\] = ' "$TPL" | cut -d: -f1)" ] \
+    || { echo "[MODEL_TIERS] does not come before [MODELS]"; return 1; }
   ! grep -qF 'init:' <<<"$field" || { echo "[MODELS] names init, which no profile dispatches"; return 1; }
   ! grep -qE ': platform(,|\])' <<<"$field" || { echo "[MODELS] still writes platform"; return 1; }
 }
@@ -545,4 +549,35 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   ! grep -q '^\[MODELS\]' <<<"$output" || { echo "$output"; return 1; }
   run --separate-stderr "$ROOT/scripts/resolve-settings.sh" show "$t" --all
   grep -qF 'validator: fast → sonnet' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "the doc explains MODEL_TIERS and a shared config across runtimes" {
+  doc="$ROOT/docs/configuration.md"
+  grep -qxF '### [MODEL_TIERS]' "$doc" || { echo "no ### [MODEL_TIERS] section"; return 1; }
+  sec="$(config_doc_section MODEL_TIERS)"
+  for token in 'fast@claude-code' 'fast@codex-cli' '`session`' 'project config only'; do
+    grep -qF "$token" <<<"$sec" || { echo "the MODEL_TIERS section lacks $token"; return 1; }
+  done
+  sec="$(config_doc_section MODELS)"
+  grep -qF '`fast`' <<<"$sec" || { echo "the MODELS section never names fast"; return 1; }
+  grep -qF '| `sonnet` |' <<<"$sec" || { echo "the MODELS section has no table row for sonnet"; return 1; }
+}
+
+@test "task-settings names model_tiers and the tier defaults" {
+  f="$ROOT/conventions/task-settings.md"
+  grep -qF '`model_tiers`' "$f" || { echo "task-settings never names model_tiers"; return 1; }
+  grep -qF '`fast` for `light` and `validator`' "$f" || { echo "task-settings never names the tier defaults"; return 1; }
+}
+
+@test "the template resolves to sonnet in Claude Code and session in Codex" {
+  p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
+  cp "$TPL" "$p/SPINE.md"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 0 ]; [ -z "$stderr" ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "sonnet" ]
+  [ "$(json_field 'd["models"]["light"]' <<<"$output")" = "sonnet" ]
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t" --runtime codex-cli
+  [ "$status" -eq 0 ]
+  [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "session" ]
+  grep -qF "has no fast@codex-cli in [MODEL_TIERS], read as session" <<<"$stderr"
 }

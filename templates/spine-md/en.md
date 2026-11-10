@@ -33,7 +33,8 @@
 [ARTIFACT_CHECK] = [auto]              # auto | on | off
 [SECURITY] = [auto]                    # auto | on | off
 [DOCS] = [on]                          # on | off
-[MODELS] = [light: sonnet, walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: sonnet, security: session, diagnostics: session]
+[MODEL_TIERS] = [fast@claude-code: sonnet]  # fast@<runtime>: <model>, project config only
+[MODELS] = [light: fast, walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: fast, security: session, diagnostics: session]
 [EFFORT] = [walkthrough: session, done: session, architect: session, developer: session, tester: session, reviewer: session, refactorer: session, validator: session, security: session, diagnostics: session]
 [LONG_RUN] = [stall: 5, max: 30]       # minutes: stall | max
 [BUDGETS] = []                         # <key>: <n>, comma-separated; keys: artifact names (lines), words-per-sentence (words)

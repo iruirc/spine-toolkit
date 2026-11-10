@@ -208,14 +208,11 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   # follows it; everything else the template writes is the default written down.
   grep -qE '^\[SCALE\] += \[lite\] +# project$' <<<"$out" || { echo "$out"; return 1; }
   grep -q '^\[WALKTHROUGH\]' <<<"$out" || { echo "$out"; return 1; }
-  for f in WORKFLOW_MODE DOCS DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION FIX_ROUNDS SECURITY LANG EFFORT; do
+  for f in WORKFLOW_MODE DOCS DRIVE_APP MANUAL_CHECKS DRIVER PHASE_VERIFICATION FIX_ROUNDS SECURITY LANG MODELS EFFORT; do
     ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
   done
-  # The template still writes sonnet for light and validator, and the built-in default is fast now:
-  # [MODELS] is the third line until the template moves to fast.
-  grep -qE '^\[MODELS\] += \[validator: sonnet, light: sonnet\] +# project$' <<<"$out" || { echo "$out"; return 1; }
-  [ "$(grep -c '^\[' <<<"$out")" -eq 3 ] || { echo "$out"; return 1; }
-  grep -qxF '# 23 more at their default' <<<"$out" || { echo "$out"; return 1; }
+  [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
+  grep -qxF '# 24 more at their default' <<<"$out" || { echo "$out"; return 1; }
 }
 
 @test "a project budget equal to the default is not a diff, and --all still names it" {
