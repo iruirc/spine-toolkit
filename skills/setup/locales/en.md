@@ -197,7 +197,7 @@ Codex settings left as they were: Codex will keep asking before those steps.
 Yes | No, keep as is
 
 ## auq_models_codex_tier
-Which model should the `fast` tier use in Codex? Type its name exactly as your Codex account spells it, or keep the session's model. It goes into `[MODEL_TIERS]` as `fast@codex-cli: <model>`, and you can change it there at any time.
+Which model should the `fast` tier use in Codex? Type its name exactly as your Codex account spells it, or keep the session's model. The answer goes into `[MODEL_TIERS]` as `fast@codex-cli: <model>`, or `fast@codex-cli: session` to keep the session's model, and you can change it there at any time.
 
 ## auq_models_codex_tier_options
 Keep the session's model | Name a model
@@ -210,6 +210,9 @@ Model tiers: added to `[MODEL_TIERS]`: {tiers}. The model behind `fast` is that 
 
 ## report_models_migrated_keys_only
 Model tiers: roles moved to `fast`: {keys}. `[MODEL_TIERS]` already had the model behind `fast`; edit that line to change the model.
+
+## report_models_not_written
+Model tiers: could not write {config} ({reason}), so that answer is not in the file. Check that the file and its folder are writable, then run `/setup` again.
 
 ## warn_config_platform_not_installed
 The project config names the platform `{platform}`, which is not installed here. Its agents, rules and checks are left out of this run; install it and run `/setup` again, or choose Overwrite to pick another.

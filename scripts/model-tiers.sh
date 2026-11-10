@@ -5,12 +5,17 @@
 # Usage: scripts/model-tiers.sh check <config> --runtime <id>
 #        scripts/model-tiers.sh apply <config> [--migrate] [--set fast@<id>=<model>]…
 # check prints, each only when true and in this order: `sonnet <key>[,<key>…]` — the [MODELS] keys
-# whose value is sonnet, in file order — and `tier-missing fast@<id>` — [MODEL_TIERS] has no line for
-# that runtime. It exits 0 either way. apply edits the config in place: --migrate turns every
-# `: sonnet` of [MODELS] into `: fast` and ensures `fast@claude-code: sonnet`; --set adds that entry
-# when its fast@<id> is absent and never overwrites one. A missing [MODEL_TIERS] line goes directly
-# above the first [MODELS] line (at the end of the file when there is none); otherwise entries are
-# appended inside the existing brackets, and a trailing # comment stays. 2: usage, either.
+# whose value is sonnet, in file order — and `tier-missing fast@<id>` — at least one [MODELS] entry
+# says fast and [MODEL_TIERS] has no line for that runtime; a tier no key uses needs no model, so a
+# config with no fast entry never asks for one. It exits 0 either way. apply edits the config in
+# place: --migrate turns every `: sonnet` of [MODELS] into `: fast` and ensures
+# `fast@claude-code: sonnet`; --set adds that entry when its fast@<id> is absent and never overwrites
+# one. <model> may be `session`: the tier then runs on the session's model, which is a choice, so
+# check stops asking for that runtime. A missing [MODEL_TIERS] line goes directly above the first
+# [MODELS] line (at the end of the file when there is none); otherwise entries are appended inside
+# the existing brackets, and a trailing # comment stays.
+# Exit: 0; 1 when the config cannot be read or written (one `model-tiers: ` line on stderr, the file
+# as it was); 2 on a usage error, with the usage line.
 #
 # Lines are read as resolve-settings.sh reads them: `[FIELD] = [value]` at column 0, so a
 # commented-out line is never edited.
@@ -94,6 +99,14 @@ class Config:
                     keys.append(key.strip())
         return keys
 
+    def uses_tier(self):
+        for _, m in self.fields("MODELS"):
+            for e in entries(m.group(2)):
+                key, sep, val = e.partition(":")
+                if sep and val.strip().lower() == "fast":
+                    return True
+        return False
+
     def has_tier(self, runtime):
         for _, m in self.fields("MODEL_TIERS"):
             for e in entries(m.group(2)):
@@ -166,7 +179,7 @@ def main():
         keys = cfg.sonnet_keys()
         if keys:
             print("sonnet " + ",".join(keys))
-        if not cfg.has_tier(runtime):
+        if cfg.uses_tier() and not cfg.has_tier(runtime):
             print("tier-missing fast@" + runtime)
         return
     before = "".join(cfg.lines)
@@ -181,5 +194,7 @@ def main():
 try:
     main()
 except (OSError, UnicodeDecodeError) as e:
-    usage(str(e))
+    # Not a usage error: setup reports an apply that could not write, and says nothing on a usage one.
+    print("model-tiers: %s" % e, file=sys.stderr)
+    sys.exit(1)
 PY
