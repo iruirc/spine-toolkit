@@ -260,10 +260,10 @@ Stop the stage
 `{entry}` in {source} is not a key and value this run can use, so it was skipped and the next setting down applies. Model keys are `light`, `walkthrough`, `done` and the eight roles, with `opus`, `sonnet`, `haiku`, `fable`, `fast` or `session`; effort keys are `walkthrough`, `done` and the eight roles, with `low`, `medium`, `high`, `xhigh`, `max` or `session`.
 
 ## warn_model_read_as_session
-`{entry}` in {source} names a Claude Code model, which {runtime} does not have, so that role runs on the session's model. To choose a model for this runtime, set the value to `fast` and add `fast@{runtime}: <model>` to `[MODEL_TIERS]`; `/setup` offers to do it.
+`{entry}` in {source} names a Claude Code model, which {runtime} does not have, so that role runs on the session's model. To choose a model for this runtime, set the value to `fast` there and add `fast@{runtime}: <model>` to the project config's `[MODEL_TIERS]`; `/setup` can add the `[MODEL_TIERS]` line.
 
 ## warn_model_tier_unset
-`{entry}` in {source}: `[MODEL_TIERS]` has no `fast@{runtime}` line, so that role runs on the session's model. To choose a model, add `fast@{runtime}: <model>` to `[MODEL_TIERS]`.
+`{entry}` in {source}: `[MODEL_TIERS]` has no `fast@{runtime}` line, so that role runs on the session's model. To choose a model, add `fast@{runtime}: <model>` to the project config's `[MODEL_TIERS]`: a `[MODEL_TIERS]` in a `Task.md` is not read.
 
 ## warn_effort_method_b
 The effort set for {roles} does not apply on this run: the profile runs through its skill, and a dispatch from a skill cannot carry an effort, so every stage runs at this session's effort. The model choices still apply.
