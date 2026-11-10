@@ -9,7 +9,9 @@ carries each step.
 `<runtime>` is `codex-cli`. Settings resolve with `--runtime codex-cli`, which selects
 `runtimes/codex-cli.json`: a model name is passed to Codex as written, except the Claude Code names
 `opus`, `sonnet`, `haiku`, `fable` and any full Claude id (`claude-sonnet-4-6`), which read as
-`session`; every role defaults to `session`.
+`session`; every role defaults to `session`. The value `fast` is a tier, not a model: it resolves through
+the project config's `[MODEL_TIERS]` line `fast@codex-cli: <model>`, and with no such line it reads as `session`
+(`docs/configuration.md`).
 
 ## Tools
 
@@ -38,6 +40,9 @@ The user reads the same reports as in Claude Code, and nothing about the plumbin
 - A stage report says what the stage found or changed, its artifact and its checks — nothing else.
 - Runtime `codex-cli`, Method B, and a leftovers check skipped because `ps` is refused are named
   only in the final report, once each; stale Codex settings, in one line when the task starts.
+- The resolver's stderr lines (`<source>: '<entry>' has no fast@codex-cli in [MODEL_TIERS], read as session`,
+  `… is not a codex-cli model, read as session`, …) are a protocol for the orchestrator, never relayed to the
+  user as they are: the user reads only the locale texts the orchestrator's table names.
 - A question is the question and its options. Never paraphrase this file, a `SKILL.md`, a locale
   key or a path to a skill to the user, and never explain how the question is being asked.
 - A locale text that names a command for the user to type — `/setup`, `/task-new <description>`,

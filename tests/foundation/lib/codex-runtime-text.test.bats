@@ -170,6 +170,51 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   done
 }
 
+# Model tiers: the orchestrator says what a tier or a Claude model became, and how to change it.
+@test "the orchestrator announces a fast tier with no line" {
+  row="$(grep -F 'has no fast@<runtime> in [MODEL_TIERS], read as session' "$ORCH")"
+  [ -n "$row" ] || { echo "no row"; false; }
+  grep -qF 'warn_model_tier_unset' <<<"$row"
+  grep -qF 'say nothing at task launch' <<<"$row"
+  for l in en ru; do
+    f="$ROOT/skills/orchestrator/locales/$l.md"
+    grep -qx '## warn_model_tier_unset' "$f" || { echo "no key in $l"; false; }
+    body="$(awk '/^## /{p=($0=="## warn_model_tier_unset")} p' "$f")"
+    for s in '{source}' '{entry}' '{runtime}' '`fast@{runtime}: '; do
+      grep -qF -- "$s" <<<"$body" || { echo "$l lacks $s"; false; }
+    done
+  done
+}
+
+@test "the Claude-model text says what to do" {
+  for l in en ru; do
+    body="$(awk '/^## /{p=($0=="## warn_model_read_as_session")} p' "$ROOT/skills/orchestrator/locales/$l.md")"
+    for s in '`fast`' '[MODEL_TIERS]' '{runtime}'; do
+      grep -qF -- "$s" <<<"$body" || { echo "$l lacks $s"; false; }
+    done
+  done
+}
+
+@test "the tuning warning lists fast" {
+  for l in en ru; do
+    body="$(awk '/^## /{p=($0=="## warn_tuning_unrecognised")} p' "$ROOT/skills/orchestrator/locales/$l.md")"
+    grep -qF '`fast`' <<<"$body" || { echo "$l lacks fast"; false; }
+  done
+}
+
+@test "the Codex map keeps resolver stderr from the user" {
+  sec="$(awk '/^## /{p=($0=="## What the user sees")} p' "$ROOT/runtimes/codex-cli.md")"
+  grep -qF "resolver's stderr" <<<"$sec"
+  top="$(sed -n '1,/^## Tools/p' "$ROOT/runtimes/codex-cli.md")"
+  grep -qF '`fast`' <<<"$top"
+  grep -qF '[MODEL_TIERS]' <<<"$top"
+}
+
+@test "the orchestrator locales keep the same keys" {
+  d="$ROOT/skills/orchestrator/locales"
+  diff <(grep '^## ' "$d/en.md" | sort) <(grep '^## ' "$d/ru.md" | sort)
+}
+
 # Codex hides every platform's manifest from its skill list (allow_implicit_invocation: false), so
 # setup's Platform Discovery found no platform in state C (milestone 3 acceptance, first run).
 @test "the Codex map finds installed platforms by their manifest files" {
