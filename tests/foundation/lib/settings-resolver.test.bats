@@ -335,7 +335,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   [ "$(map_value models light <<<"$out")" = session ] || { echo "$out"; return 1; }
 }
 
-@test "a config still carrying 1.11.0's platform keeps every model it had and reports nothing" {
+@test "a config still carrying 1.11.0's platform reads it as absent and reports nothing" {
   printf '## Task defaults\n\n[MODELS] = [light: sonnet' >"$PROJ/CLAUDE-spine-toolkit.md"
   for role in architect developer tester reviewer refactorer validator security diagnostics; do
     printf ', %s: platform' "$role" >>"$PROJ/CLAUDE-spine-toolkit.md"
@@ -344,8 +344,11 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
   [ ! -s "$ERR" ] || { echo "platform was reported:"; cat "$ERR"; return 1; }
   [ "$(map_value models light <<<"$out")" = sonnet ] || { echo "$out"; return 1; }
-  # validator: platform reads as absent, so it keeps its default, which is fast, read as session.
+  # validator: platform reads as absent, so it takes its default, fast, which is session with no
+  # fast@claude-code line: 1.11.0 ran it on sonnet.
   [ "$(map_value models validator <<<"$out")" = session ] || { echo "$out"; return 1; }
+  [ "$(python3 -c 'import json,sys; t = json.load(sys.stdin)["model_tiers"]["validator"]; print(t["tier"], t["source"])' <<<"$out")" \
+    = "fast unset" ] || { echo "$out"; return 1; }
   for role in architect developer tester reviewer refactorer security diagnostics; do
     [ "$(map_value models "$role" <<<"$out")" = session ] || { echo "$role: $out"; return 1; }
   done

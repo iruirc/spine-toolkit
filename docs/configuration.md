@@ -370,7 +370,9 @@ when it says `session`: a Done checks its report against the task, and `done: so
 on its own model without moving the role's other stages. Under Method B, Done is written in the main
 context, on the session's model. `session` passes no model, so `CLAUDE_CODE_SUBAGENT_MODEL`, then the session's model decide. `validator`
 starts on `fast`: building, running the tests and reading their logs need no heavier model. A `platform` left
-from 1.11.0 reads as if its line were absent. `haiku` has a 200k context and no effort setting, too
+from 1.11.0 reads as if its line were absent, so a 1.11.0 `validator: platform` now resolves to the
+default `fast`: it runs on the session's model, where 1.11.0 ran it on `sonnet`, until `[MODEL_TIERS]`
+has `fast@claude-code: sonnet` — which `/setup`'s migration adds when the file also names `sonnet`. `haiku` has a 200k context and no effort setting, too
 small for a phase or a walkthrough. On Amazon Bedrock, Google Cloud's Agent Platform and Microsoft
 Foundry `sonnet` means Sonnet 4.5. The orchestrator and any stage it runs in the main context stay on
 the session's model. An epic's keys reach its steps.
