@@ -33,8 +33,8 @@ set -euo pipefail
 # artifact_check follows the final scale: auto is on at full and off at lite.
 # report follows the profile: auto is off for QUICK, BUG and REFACTOR, off always for REVIEW, and stays auto for the rest.
 ROLES="architect developer tester reviewer refactorer validator security diagnostics"
-# A `platform` left by 1.11.0 reads as if its line were absent, not as `session`,
-# so the validator keeps its `sonnet` default.
+# A `platform` left by 1.11.0 reads as if its line were absent, not as `session`, so the key takes
+# its runtime default: for the validator in Claude Code that is the `fast` tier.
 UNSET_MODELS="platform"
 # The per-artifact line ceilings and words-per-sentence, the one key counted in words. workflows/profile-*.js
 # carries the same table as its prelude CAP map, and tests/foundation/lib/artifact-budget.test.bats fails
