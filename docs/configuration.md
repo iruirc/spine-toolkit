@@ -402,7 +402,8 @@ none · **Task override:** no, project config only · **Defined by:**
 
 Which model `fast` means, per runtime. The line is read from the project config only: `Task.md`, an
 epic's `Task.md` and `--set` never set it, so a task cannot move a tier the project fixed. Tier and
-runtime are matched without regard to case; the model keeps its spelling. A `[MODELS]` entry that
+runtime are matched without regard to case; the model is lowercased too, except where the runtime's
+`models` is `"any"` (Codex CLI), which keeps its spelling. A `[MODELS]` entry that
 says `fast` takes the model of the line for the runtime the run is in. With no such line the entry
 reads as `session`: the toolkit never picks a model for you, and the resolver says
 `'<entry>' has no fast@<runtime> in [MODEL_TIERS], read as session` on stderr for each key a source
