@@ -57,7 +57,7 @@ skills. What differs between runtimes, as far as settings go, is the vocabulary 
 |---|---|
 | `id` | the runtime id, equal to the file's name |
 | `models` | the list of values `[MODELS]` may take, or the string `"any"`: any token matching `[A-Za-z0-9][A-Za-z0-9._:/+-]*` passes through as written, for the runtime to check when it spawns |
-| `model_defaults` | the keys whose default is not `session`; every key absent here defaults to `session` |
+| `model_defaults` | the keys whose default is not `session`, as a value of `models` or a tier (`fast`); every key absent here defaults to `session` |
 | `effort` | the list of values `[EFFORT]` may take; the default is always `session` |
 | `as_session` | optional: model names another runtime uses, read here as `session` so one project config serves both — a name ending in `*` covers every value that starts with it (`claude-*`); the resolver says so on stderr, `'<entry>' is not a <id> model, read as session` |
 
@@ -161,7 +161,8 @@ answers.
 | `docs_freshness` | — | `[DOCS_FRESHNESS]` | `on` `off` | `on` |
 | `device_source` | — | `[DEVICE_SOURCE]` | a command run from the project root, `—` | `—` |
 | `budgets` | `[BUDGETS]`, entries `<key>: <n>` | `[BUDGETS]`, entries `<key>: <n>` | keys `Task.md` `Reproduce.md` `Plan.md` `Validation.md` `Review.md` `Done.md` (lines) and `words-per-sentence` (words); a positive integer | the `CAPS` table; `words-per-sentence: 30` |
-| `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | the runtime's `models` list (`runtimes/<id>.json`); `session` always | the runtime's `model_defaults`, `session` elsewhere: in Claude Code `sonnet` for `light` and `validator` |
+| `models` | `[MODELS]` | `[MODELS]`, entries `<key>: <value>` | the runtime's `models` list (`runtimes/<id>.json`); `session` always | the runtime's `model_defaults`, `session` elsewhere: in Claude Code `fast` for `light` and `validator`, which `[MODEL_TIERS]` turns into a model |
+| `model_tiers` | — | `[MODEL_TIERS]`, entries `fast@<runtime>: <model>`; the project config only | tier `fast`; a runtime with a `runtimes/<id>.json`; a model of that runtime's `models`, not one it reads as `session` | none: a `fast` with no line for the runtime reads as `session` |
 | `effort` | `[EFFORT]` | `[EFFORT]`, entries `<key>: <value>` | the runtime's `effort` list (`runtimes/<id>.json`); `session` always | `session` |
 | `long_run` | `[LONG_RUN]` | `[LONG_RUN]`, entries `<key>: <minutes>` | keys `stall` `max`, a whole number of minutes > 0 | `stall: 5, max: 30` |
 
@@ -173,6 +174,14 @@ driver does not travel").
 `fix_rounds` is the orchestrator's alone too: how many `fix-review` rounds `auto` runs by itself
 after Review returns `CHANGES_REQUESTED`, `0` for none. It never rides the Outbound Contract; the
 loop is in the orchestrator's Gating.
+
+`model_tiers` is not a chain of its own. The project config alone writes it, so no `Task.md`, epic or
+`--set` reaches it. A `models` value of `fast` is looked up in it for the runtime the call is for:
+`models` holds the model that came out, `session` when the project has no `fast@<runtime>` line, and
+`model_tiers` in the JSON records, per key that resolved through a tier, the tier, the model and
+whether a project line gave it (`project`) or none did (`unset`). `show` names such a key as
+`<key>: fast → <model>`, or `<key>: fast → session, no fast@<runtime>`, whatever the key's built-in
+default is.
 
 ## Two decisions
 

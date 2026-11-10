@@ -367,7 +367,7 @@ section() {
   para="$(awk '/^`models` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`models\` paragraph in the Outbound Contract"; return 1; }
   for token in 'resolve-settings.sh' "→ the project config's \`[MODELS]\` →" '[MODELS]' '.step/' 'warn_tuning_unrecognised' 'Always filled' 'real JSON' 'Model and effort' \
-              '`sonnet` for `light` and `validator`, `session` for every other role'; do
+              '`fast` for `light` and `validator`, `session` for every other role' '[MODEL_TIERS]'; do
     grep -qF "$token" <<<"$para" || { echo "the models paragraph does not name $token"; return 1; }
   done
   para="$(awk '/^`effort` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
