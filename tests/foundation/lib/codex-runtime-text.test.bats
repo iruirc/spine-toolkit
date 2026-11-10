@@ -164,7 +164,7 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   for l in en ru; do
     f="$ROOT/skills/setup/locales/$l.md"
     ! grep -qx '## report_models_read_as_session' "$f" || { echo "$l keeps the old report"; false; }
-    for k in auq_models_migrate auq_models_migrate_options auq_models_codex_tier auq_models_codex_tier_options report_models_migrated report_models_tier_added; do
+    for k in auq_models_migrate auq_models_migrate_options auq_models_codex_tier auq_models_codex_tier_options report_models_migrated report_models_tier_added report_models_migrated_keys_only; do
       grep -qx "## $k" "$f" || { echo "$l lacks $k"; false; }
     done
   done
@@ -198,6 +198,19 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   grep -qF 'tier-missing fast@claude-code' <<<"$sec"
   grep -qF 'exits 2' <<<"$sec"
   grep -qF 'report_models_tier_added' <<<"$sec"
+}
+
+@test "a Yes to the migration always reports, with or without tiers; an exit 2 covers both applies" {
+  sec="$(awk '/^## Model tiers/{p=1} /^## Migration Algorithm/{p=0} p' "$ROOT/skills/setup/SKILL.md")"
+  grep -qF 'always `report_models_migrated`' <<<"$sec"
+  grep -qF '`report_models_migrated_keys_only`' <<<"$sec"
+  grep -qF 'nothing changed → no report line' <<<"$sec"
+  grep -qF 'Any `apply` in steps 2 and 3 that exits 2' <<<"$sec"
+  for l in en ru; do
+    body="$(awk '/^## /{p=($0=="## report_models_migrated_keys_only")} p' "$ROOT/skills/setup/locales/$l.md")"
+    grep -qF '{keys}' <<<"$body" || { echo "$l lacks {keys}"; false; }
+    ! grep -qF '{tiers}' <<<"$body" || { echo "$l names tiers"; false; }
+  done
 }
 
 @test "the Codex tier question offers no model list" {

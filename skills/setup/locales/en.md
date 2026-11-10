@@ -208,6 +208,9 @@ Model tiers: roles moved to `fast`: {keys}. Added to `[MODEL_TIERS]`: {tiers}. T
 ## report_models_tier_added
 Model tiers: added to `[MODEL_TIERS]`: {tiers}. The model behind `fast` is that line: edit it to change the model.
 
+## report_models_migrated_keys_only
+Model tiers: roles moved to `fast`: {keys}. `[MODEL_TIERS]` already had the model behind `fast`; edit that line to change the model.
+
 ## warn_config_platform_not_installed
 The project config names the platform `{platform}`, which is not installed here. Its agents, rules and checks are left out of this run; install it and run `/setup` again, or choose Overwrite to pick another.
 
