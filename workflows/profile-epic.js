@@ -964,6 +964,7 @@ const STEP = {
     security: { type: 'string', enum: ['auto', 'on', 'off'], description: "the step folder's own resolve-settings.sh security value" },
     long_run: { type: 'object', required: ['stall', 'max'], properties: { stall: { type: 'integer' }, max: { type: 'integer' } }, description: "the step folder's own resolve-settings.sh long_run value" },
     models: { type: 'string', description: 'only when the step declares its own [MODELS]: the text between its brackets' },
+    resolved_models: { type: 'object', additionalProperties: { type: 'string' }, description: "the step folder's own resolve-settings.sh models value, every key as it came out" },
     effort: { type: 'string', description: 'only when the step declares its own [EFFORT]: the text between its brackets' },
     research_agent: { type: 'string', description: 'only for a RESEARCH step whose Task.md carries [RESEARCH_AGENT]' },
     research_experiment: { type: 'string', description: 'only for a RESEARCH step whose Task.md carries [RESEARCH_EXPERIMENT]: the value between its brackets' },
@@ -1106,21 +1107,27 @@ const pending_steps = []
 let cancelled = false
 
 // A step's own [MODELS] and [EFFORT] keys over the epic's resolved maps: the chain
-// scripts/resolve-settings.sh walks for a step, whose vocabulary these three lines copy.
+// scripts/resolve-settings.sh walks for a step, whose vocabulary these four lines copy. A tier
+// (fast) is a [MODELS] value but never a model: only the resolver turns it into one, through the
+// project's [MODEL_TIERS], so a step's models come from its own resolver run (stepModels below).
 const TUNING_KEYS = { models: ['light', 'walkthrough', 'done', 'architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'], effort: ['walkthrough', 'done', 'architect', 'developer', 'tester', 'reviewer', 'refactorer', 'validator', 'security', 'diagnostics'] }
 const TUNING_VALUES = { models: ['opus', 'sonnet', 'haiku', 'fable', 'session'], effort: ['low', 'medium', 'high', 'xhigh', 'max', 'session'] }
 const TUNING_UNSET = { models: ['platform'], effort: [] }
+const TUNING_TIERS = { models: ['fast'], effort: [] }
 
 // This run's own settings, over whatever a step says for itself (conventions/task-settings.md →
 // The chain): the resolver takes them as --set, and a map key lands over the step's own.
 const RUN_ARGS = Object.entries(RUN_SETTINGS).map(([k, v]) => ` --set '${`${k}=${v}`.replace(/'/g, "'\\''")}'`).join('')
-// Only a key and a value a step's own Task.md could name, as overlay() below takes them.
+// Only a key and a value a step's own Task.md could name, as overlay() below takes them. A run's
+// tier is already resolved in the epic's own map — the run's word is first in the epic's chain too —
+// so it lands as that resolved model, never as the tier's name.
 const runKeys = (field) =>
   Object.fromEntries(
     Object.entries(RUN_SETTINGS)
       .filter(([k]) => k.startsWith(`${field}.`))
       .map(([k, v]) => [k.slice(field.length + 1).toLowerCase(), String(v).toLowerCase()])
-      .filter(([k, v]) => TUNING_KEYS[field].includes(k) && TUNING_VALUES[field].includes(v)),
+      .filter(([k, v]) => TUNING_KEYS[field].includes(k) && (TUNING_VALUES[field].includes(v) || (TUNING_TIERS[field].includes(v) && (A[field] || {})[k])))
+      .map(([k, v]) => [k, TUNING_TIERS[field].includes(v) ? A[field][k] : v]),
   )
 const overlay = (field, st) => {
   const out = { ...(A[field] || {}) }
@@ -1129,10 +1136,23 @@ const overlay = (field, st) => {
     const key = m && m[1].toLowerCase()
     const value = m && m[2].toLowerCase()
     if (m && TUNING_KEYS[field].includes(key) && TUNING_UNSET[field].includes(value)) continue
+    if (m && TUNING_KEYS[field].includes(key) && TUNING_TIERS[field].includes(value)) {
+      result.notes.push(`Step ${st.step_id}: "${entry}" in [${field.toUpperCase()}] names a tier, and the step reader returned no resolved models to say what it is, so the epic's ${key} model was kept.`)
+      continue
+    }
     if (m && TUNING_KEYS[field].includes(key) && TUNING_VALUES[field].includes(value)) out[key] = value
     else result.notes.push(`Step ${st.step_id}: "${entry}" in [${field.toUpperCase()}] is not recognized and was skipped.`)
   }
   return { ...out, ...runKeys(field) }
+}
+// A step's models as its own resolve-settings.sh run resolved them — the run's --set, the step's
+// Task.md, the epic's, the project config, the defaults, and every tier through [MODEL_TIERS] — so
+// each value is the model the step is dispatched on. A map missing a key, or still holding a tier,
+// is not that run's, and the overlay above stands in for it.
+const stepModels = (st) => {
+  const r = st.resolved_models
+  const whole = r && typeof r === 'object' && TUNING_KEYS.models.every((k) => typeof r[k] === 'string' && r[k] && !TUNING_TIERS.models.includes(r[k].toLowerCase()))
+  return whole ? Object.fromEntries(TUNING_KEYS.models.map((k) => [k, r[k]])) : overlay('models', st)
 }
 
 // A QUICK task is always lite, whatever the step or the epic says.
@@ -1161,7 +1181,7 @@ if (runs('Execute')) {
     const read = await agent(
       brief(
         'Execute',
-        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, device, manual_checks, manual_checks_check, phase_verification, security, walkthrough, walkthrough_check, artifact_check, report and long_run values, and its sources.device as device_from. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
+        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, device, manual_checks, manual_checks_check, phase_verification, security, walkthrough, walkthrough_check, artifact_check, report and long_run values, its models value as resolved_models, and its sources.device as device_from. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
       { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'mechanical') },
     )
@@ -1203,7 +1223,7 @@ if (runs('Execute')) {
       lang: LANG,
       agents: A.agents,
       budgets: A.budgets,
-      models: overlay('models', st),
+      models: stepModels(st),
       effort: overlay('effort', st),
       need_test: st.need_test === undefined ? A.need_test : st.need_test,
       need_review: st.need_review === undefined ? A.need_review : st.need_review,

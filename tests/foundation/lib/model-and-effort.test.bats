@@ -160,6 +160,14 @@ import json, re, sys
 sh = open(sys.argv[1], encoding='utf-8').read()
 js = open(sys.argv[2], encoding='utf-8').read()
 rt = json.load(open(sys.argv[3], encoding='utf-8'))
+# Every value [MODELS] accepts is either a model the epic may dispatch or a tier it must recognize
+# and never dispatch: a tier the epic does not know is an entry of a step [MODELS] skipped.
+tiers = [l for l in sh.splitlines() if l.startswith('TIERS = ')]
+epic_tiers = re.search(r'^const TUNING_TIERS = \{ models: \[([^\]]*)\], effort: \[([^\]]*)\] \}$', js, re.M)
+if not tiers or not epic_tiers:
+    print('no TIERS in the resolver or no TUNING_TIERS line in profile-epic.js'); raise SystemExit
+if re.findall(r"'([a-z]+)'", tiers[0]) != re.findall(r"'([a-z]+)'", epic_tiers.group(1)) or re.findall(r"'([a-z]+)'", epic_tiers.group(2)):
+    print('differ: tiers %s vs %s' % (tiers[0], epic_tiers.group(0))); raise SystemExit
 # ROLES and UNSET_MODELS stay in the resolver; the model and effort vocabulary belongs to the Claude runtime file.
 var = lambda name: rt['models'] if name == 'MODELS' else rt['effort'] if name == 'EFFORTS' else re.search(r'^%s="([^"]*)"' % name, sh, re.M).group(1).split()
 keys = re.search(r'^const TUNING_KEYS = \{ models: \[([^\]]*)\], effort: \[([^\]]*)\] \}$', js, re.M)
@@ -179,7 +187,7 @@ PY
 @test "a pushed step gets the epic's maps with its own keys over them" {
   E="$ROOT/workflows/profile-epic.js"
   block="$(sed -n '/const stepArgs/,/^    })$/p' "$E")"
-  grep -qF "models: overlay('models', st)," <<<"$block" || { echo "stepArgs does not hand the step its models"; return 1; }
+  grep -qF "models: stepModels(st)," <<<"$block" || { echo "stepArgs does not hand the step its models"; return 1; }
   grep -qF "effort: overlay('effort', st)," <<<"$block" || { echo "stepArgs does not hand the step its effort"; return 1; }
   grep -qF "models: { type: 'string', description: 'only when the step declares its own [MODELS]" "$E" || { echo "the step record has no models"; return 1; }
   grep -qF "effort: { type: 'string', description: 'only when the step declares its own [EFFORT]" "$E" || { echo "the step record has no effort"; return 1; }
@@ -643,4 +651,43 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   [ "$(json_field 'd["models"]["validator"]' <<<"$output")" = "gpt-5" ]
   run --separate-stderr "$ROOT/scripts/resolve-settings.sh" show "$t" --runtime codex-cli
   grep -qF '[MODELS] = [validator: gpt-5]' <<<"$output" || { echo "$output"; return 1; }
+}
+
+# A step's own [MODELS] may say fast, and so may the run's --set; the step must be dispatched on what
+# the tier resolves to, never on the literal "fast". The step's resolve-settings.sh run is what resolves it.
+epic_project() {
+  P="$BATS_TEST_TMPDIR/p"; E="$P/Tasks/ACTIVE/050-e"; S="$E/01-x.step"
+  mkdir -p "$S"
+  printf '[MODEL_TIERS] = [fast@claude-code: haiku]\n[MODELS] = [light: session, validator: session, reviewer: session]\n' >"$P/SPINE.md"
+  printf '[TASK_TYPE] = [EPIC]\n' >"$E/Task.md"
+  printf '[TASK_TYPE] = [BUG]\n[MODELS] = [validator: fast]\n' >"$S/Task.md"
+}
+epic_walk() {
+  AGENTS='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"—","diagnostics":"g","init":"—"}'
+  MODELS='{"light":"session","walkthrough":"session","done":"session","architect":"session","developer":"session","tester":"session","reviewer":"haiku","refactorer":"session","validator":"session","security":"session","diagnostics":"session"}'
+  CONTRACT='{"task_id": "050", "task_dir": "'"$E"'", "plugin_root": "'"$ROOT"'", "lang": "en", "mode": "auto", "agents": '"$AGENTS"', "models": '"$MODELS"', "run_settings": {"models.reviewer": "fast"}, "start_stage": "Execute", "stage_scope": "single"}'
+  node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-epic.js" "$CONTRACT" \
+    '{"execute:read-steps": {"ok": true, "branch": "decomposition", "steps": ['"$1"']}, "workflow:spine-toolkit:profile-bug": {"status": "ok", "next_recommended_action": "stop", "validation_status": "PASSED", "review_status": "APPROVED"}}'
+}
+
+@test "a step's own fast and the run's fast reach the step resolved" {
+  epic_project
+  json="$("$ROOT/scripts/resolve-settings.sh" json "$S" --set models.reviewer=fast)"
+  resolved="$(python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["models"]))' <<<"$json")"
+  out="$(epic_walk '{"step_id": "01-x.step", "task_id": "050.1", "task_type": "BUG", "status": "PENDING", "models": "validator: fast", "resolved_models": '"$resolved"'}')"
+  node -e 'const o = JSON.parse(process.argv[1]); const c = o.calls.find((c) => c.label === "workflow:spine-toolkit:profile-bug")
+    const m = c && c.args.models
+    if (!m || m.validator !== "haiku" || m.reviewer !== "haiku" || Object.values(m).includes("fast")) { console.log(JSON.stringify(c ? c.args : o)); process.exit(1) }' "$out"
+  # The reader asks the step's own resolve-settings.sh run for its models.
+  grep -qF 'its models value as resolved_models' "$ROOT/workflows/profile-epic.js"
+}
+
+@test "without the resolved map a step's fast is never dispatched as a model name" {
+  epic_project
+  out="$(epic_walk '{"step_id": "01-x.step", "task_id": "050.1", "task_type": "BUG", "status": "PENDING", "models": "validator: fast, reviewer: opus"}')"
+  node -e 'const o = JSON.parse(process.argv[1]); const c = o.calls.find((c) => c.label === "workflow:spine-toolkit:profile-bug")
+    const m = c && c.args.models
+    // the run said reviewer: fast, which the epic`s own map already resolved; the step`s opus does not beat the run
+    if (!m || Object.values(m).includes("fast") || m.reviewer !== "haiku" || m.validator !== "session") { console.log(JSON.stringify(c ? c.args : o)); process.exit(1) }
+    if (!/validator: fast/.test(o.result.notes || "")) { console.log(o.result.notes); process.exit(1) }' "$out"
 }
