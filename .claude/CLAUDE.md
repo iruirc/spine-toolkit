@@ -77,3 +77,7 @@ en
   the contract's only executable copy. `docs/building-a-driver.md` is the third copy, and the one
   driver authors read first. The capability vocabulary exists in three places (convention, lint,
   fixture) and `tests/foundation/lib/driver-contract.test.bats` is what holds them together.
+- This repository is public, and `spine-ops: leak-guard` checks every commit, commit message, tag
+  and push for absolute local paths and the owner's real project names. Never pass `--no-verify`
+  and never change `core.hooksPath`. When the check stops you, replace the data with a neutral
+  placeholder (`/Users/foo`, `com.example.app`, `MyApp`) instead of working around it.
