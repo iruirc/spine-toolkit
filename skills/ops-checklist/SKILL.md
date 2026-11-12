@@ -24,7 +24,7 @@ A cross-cutting checklist for shippable-feature operational concerns. It is *not
 ## When to use
 
 - Validation stage of `workflow-feature` / `workflow-bug` / `workflow-refactor`
-- Review stage — cross-check that items marked Applicable in this artifact were actually implemented
+- Review stage — cross-check that items marked Applicable in this artifact were actually implemented, and that each N/A reason citing the diff matches it
 - Pre-release readiness review
 - Direct invocation when the user asks "is this ready to ship?" / "did we cover everything?"
 
@@ -38,7 +38,7 @@ For each item, choose one of:
 
 **Manual test pass** follows `ManualChecks.md`: Pending while a case there waits for a person; N/A, with the reason from `Validation.md`'s `manual checks: none —` line, when the run left no case that needs a person (`manual-checks` → `## Does this check need a person?`).
 
-An item is judged against this task's diff, not against the product. Behaviour the diff does not touch is **N/A**, with the reason `not changed by this task: the diff touches <X>`, where `<X>` names what the diff does touch, so that Review can check the reason against the diff. Such an item does not become a case in `ManualChecks.md` (`manual-checks` → `## What a case must prove`). Below, the conservative default applies to behaviour the diff touches.
+When the checklist is written for a task, an item is judged against this task's diff, not against the product. The diff touches a behaviour when it changes that behaviour directly or through code on its path: code the behaviour calls, or code that calls it. When in doubt, it touches. Behaviour the diff does not touch is **N/A**, with the reason `not changed by this task: the diff touches <X>`, where `<X>` names what the diff does touch, so that Review can check the reason against the diff. Such an item does not become a case in `ManualChecks.md` (`manual-checks` → `## What a case must prove`). Below, the conservative default applies to behaviour the diff touches. A pre-release readiness review and "is this ready to ship?" have no task diff and judge the product.
 
 Default an item to **Applicable** unless you have a concrete reason to mark it N/A. Conservative bias is intentional — the cost of false-Applicable is a small extra check; the cost of false-N/A is a production incident.
 
@@ -227,13 +227,13 @@ as in the Structure above:
 - **Library / package** — Most categories N/A: deep links, push, release review, accessibility (no UI), analytics (library should not emit), localization (consumer's job). Applicable: error handling, performance, testing, third-party SDKs, CI/CD, security (if handling secrets).
 - **CLI tool** — Push / deep links / accessibility / localization N/A. Crash reporting may be N/A (stderr is the report). Privacy still applies if reading user files.
 - **Desktop app distributed outside a store** — release-review items N/A; the OS's notarization / signing requirements still apply.
-- **Mobile app** — All categories typically Applicable.
+- **Mobile app** — All categories typically Applicable; when the checklist is written for a task, only for the categories the diff touches.
 
 ## Anti-patterns to avoid
 
 - **Marking everything Applicable to be safe.** Forces noise. Each Applicable needs a verification step — if you can't write evidence, downgrade to Pending.
 - **Marking N/A without reason.** Future reviewer can't tell if N/A is correct or a cop-out. Always write the reason.
-- **Filing OpsChecklist.md and moving on.** The checklist is a Review-stage input — the reviewer agent reads it and cross-checks Applicable items against the actual diff.
+- **Filing OpsChecklist.md and moving on.** The checklist is a Review-stage input — the reviewer agent reads it and cross-checks Applicable items and N/A reasons against the actual diff.
 - **Seeding this checklist at Plan and carrying it through Execute.** Design-time coverage of the same concerns is `feature-requirements`' job — its Secondary enumeration reaches `Research.md ## Requirements` and becomes work items in `Plan.md`. This artifact is the verification-time counterpart, written once at Validation; spreading it across stages gives those concerns a second source of truth that drifts from the first.
 - **Hiding pending items by deleting them.** Pending = blocker. Either resolve it, get explicit N/A approval, or push the release.
 

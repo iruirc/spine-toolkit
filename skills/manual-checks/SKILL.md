@@ -171,11 +171,13 @@ A case earns a tester's time only when its verdict says something about this cha
 
 **It tells the build before the change from the build after.** On the build before the change the case fails; on the build after it passes. Checks that pass the same on both fold into one case, "nothing broke", whose `**What it checks:**` says it is not a check of the fix. When automated tests or the driver already cover that regression, there is no such case, and `## Scope` names the evidence.
 
-**It checks what the diff changed.** An item of `OpsChecklist.md` becomes a case only when the diff changes that behaviour. Otherwise the item is N/A, with its reason, by the `ops-checklist` skill. The one nothing-broke case is the only case not built on changed code.
+**It checks what the diff touches.** An item of `OpsChecklist.md` becomes a case only when the diff touches that behaviour, as the `ops-checklist` skill defines touches. Otherwise the item is N/A, with its reason, by that skill. The one nothing-broke case is the only case not built on changed code. Its row in `## Code references` names the code of the behaviour it guards.
 
 **It is settled by eye when the difference shows at normal speed.** That is so when the defect was found by eye, or when the check is tagged `visual judgment`. A recording is the fallback: "if unsure, record the screen and send it". The person never reads frames, traces or logs. An instrument is the main path only when no eye can see the difference at all, and then an agent or a developer settles the verdict by `**By instrument:**`.
 
 **It holds no line for a developer.** Outside `**By instrument:**`, `## Reading the verdict`, `**dev-only:**` steps and `## Code references`, no line is for a developer. Measurements, internal terms and the history of edits go to `Validation.md` or `Walkthrough.md`. Code references go to `## Code references`.
+
+The first two rules hold for a task that changes product behaviour. On a task whose diff changes no product behaviour — a TEST task, a change to docs or tests only — the first rule does not apply. There a case checks the behaviour the task targets that automation could not reach, which is what `[MANUAL_CHECKS]` `always` asks of such a run.
 
 ## Step rules
 

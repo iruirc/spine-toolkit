@@ -726,3 +726,57 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     grep -qF -- "$token" "$O" || { echo "ops-checklist does not say: $token"; return 1; }
   done
 }
+
+@test "Review judges each case by what it must prove, and each N/A reason against the diff" {
+  for p in $PROFILES; do
+    b="$(review_brief "$ROOT/workflows/profile-$p.js")"
+    grep -qF "the manual-checks skill's ## What a case must prove" <<<"$b" \
+      || { echo "profile-$p.js: Review does not judge a case by ## What a case must prove"; return 1; }
+    grep -qF 'each N/A reason of OpsChecklist.md that cites the diff' <<<"$b" \
+      || { echo "profile-$p.js: Review does not check N/A reasons against the diff"; return 1; }
+    m="$(bullet "$ROOT/skills/workflow-$p/SKILL.md" Review)"
+    grep -qF '`## What a case must prove`' <<<"$m" \
+      || { echo "workflow-$p/SKILL.md: Review does not judge a case by ## What a case must prove"; return 1; }
+    grep -qF 'each N/A reason of `OpsChecklist.md` that cites the diff' <<<"$m" \
+      || { echo "workflow-$p/SKILL.md: Review does not check N/A reasons against the diff"; return 1; }
+  done
+  grep -qF 'cross-checks Applicable items and N/A reasons against the actual diff' "$ROOT/skills/ops-checklist/SKILL.md" \
+    || { echo "ops-checklist: the reviewer does not check N/A reasons"; return 1; }
+}
+
+@test "the diff rule holds for a task's checklist, and touches reaches the behaviour's path" {
+  O="$ROOT/skills/ops-checklist/SKILL.md"
+  for token in "When the checklist is written for a task, an item is judged against this task's diff" \
+               'directly or through code on its path' 'When in doubt, it touches.' \
+               'have no task diff and judge the product' 'for the categories the diff touches'; do
+    grep -qF -- "$token" "$O" || { echo "ops-checklist does not say: $token"; return 1; }
+  done
+  skill_section '## What a case must prove' | grep -qF 'only when the diff touches that behaviour, as the `ops-checklist` skill defines touches' \
+    || { echo "## What a case must prove uses another verb than ops-checklist"; return 1; }
+}
+
+@test "a task that changes no product behaviour still has cases worth a tester's time" {
+  s="$(skill_section '## What a case must prove')"
+  for token in 'On a task whose diff changes no product behaviour' 'the first rule does not apply' \
+               'the behaviour the task targets that automation could not reach'; do
+    grep -qF -- "$token" <<<"$s" || { echo "## What a case must prove does not say: $token"; return 1; }
+  done
+  validation_brief "$ROOT/workflows/profile-test.js" | grep -qF "## What a case must prove says for a task whose diff changes no product behaviour" \
+    || { echo "profile-test.js: always does not point at the rule for such a task"; return 1; }
+  bullet "$ROOT/skills/workflow-test/SKILL.md" Validation | grep -qF '`## What a case must prove` says for a task whose diff changes no product behaviour' \
+    || { echo "workflow-test/SKILL.md: always does not point at the rule for such a task"; return 1; }
+}
+
+@test "the nothing-broke case is grounded in the code of what it guards" {
+  skill_section '## What a case must prove' | grep -qF 'Its row in `## Code references` names the code of the behaviour it guards.' \
+    || { echo "the nothing-broke case has no rule for its references row"; return 1; }
+}
+
+@test "the examples' Scope does not claim automation covered what a case checks by hand" {
+  for lang in en ru; do
+    ex="$ROOT/skills/manual-checks/examples/manual-checks.$lang.md"
+    awk '/^## Scope$/{f=1;next} f&&/^## /{exit} f' "$ex" | grep -qE "limit of 10|$(ru '\u043f\u0440\u0435\u0434\u0435\u043b \u0432 10')" \
+      && { echo "manual-checks.$lang.md: Scope says automation covered the limit MC-2 checks"; return 1; }
+  done
+  return 0
+}

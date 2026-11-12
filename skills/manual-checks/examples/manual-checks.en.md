@@ -15,8 +15,8 @@
 
 A shopper can now change how many of an item they buy without leaving the cart.
 The total and the badge on the cart icon follow every change at once, and the cart says so when it is empty.
-Automated tests covered the arithmetic of the total and the limit of 10 per item.
-This file checks what a person sees: three cases, about fifteen minutes.
+Automated tests covered the arithmetic of the total and the per-item limit in the model.
+This file checks what a person sees, the plus button that greys out at the limit and the limit text included: three cases, about fifteen minutes.
 
 ## Preparation
 
