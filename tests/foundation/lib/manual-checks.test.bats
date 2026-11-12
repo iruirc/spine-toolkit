@@ -17,9 +17,11 @@ setup() {
 
 @test "the skill carries every required field of a case" {
   for field in '**Priority:**' '**Traces to:**' '**What it checks:**' '**Preconditions:**' '**Test data:**' '**Steps:**' \
-               '**Expected result:**' '**Failure looks like:**' '**Cleanup:**' '**Code:**' '**Status:**' '**Notes / attachments:**'; do
+               '**Expected result:**' '**Failure looks like:**' '**Cleanup:**' '**Status:**' '**Notes / attachments:**'; do
     grep -qF "$field" "$SKILL" || { echo "the skill never names the field $field"; return 1; }
   done
+  # Code references left the case for one section at the end of the file.
+  grep -qF '## Code references' "$SKILL" || { echo "the skill never names ## Code references"; return 1; }
   grep -qF '### MC-<n>.' "$SKILL" || { echo "the case heading is not ### MC-<n>."; return 1; }
   grep -qxF '| # | Action | Data | Expected | Actual |' "$SKILL" || { echo "the skill has no steps header"; return 1; }
   # The instrument stays, as an optional field for a verdict a developer reads from an attachment.
@@ -29,7 +31,7 @@ setup() {
 @test "the reader is a tester who knows the product but not the code" {
   r="$(skill_section '## The reader')"
   [ -n "$r" ] || { echo "no ## The reader"; return 1; }
-  for token in 'a tester who knows the product but not the code' 'only words from the screen' '`**Code:**`' '`artifact-reader`'; do
+  for token in 'a tester who knows the product but not the code' 'only words from the screen' '`## Code references`' '`artifact-reader`'; do
     grep -qF -- "$token" <<<"$r" || { echo "## The reader does not name $token"; return 1; }
   done
   ! grep -qiE 'month later|codebase' <<<"$r" || { echo "## The reader is still the author a month later"; return 1; }
@@ -57,7 +59,7 @@ setup() {
   for id in case steps compound code codeslot chain budget file; do
     grep -qF -- "| \`$id\` |" <<<"$l" || { echo "## The lint does not list the check $id"; return 1; }
   done
-  for token in '`scripts/lint-manual-checks.sh`' 'blank lines inside it count' 'about 32 lines' 'about ten steps' \
+  for token in '`scripts/lint-manual-checks.sh`' 'blank lines inside it count' 'about 30 lines' 'about twelve steps' \
                '`YouTube`' '`shop.example.com`' 'no allow-list' 'runs it again'; do
     grep -qF -- "$token" <<<"$l" || { echo "## The lint does not say $token"; return 1; }
   done
@@ -278,7 +280,7 @@ skill_section() { awk -v h="$1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
   grep -qF '| `## Cases` | `### MC-<n>.`, one per check | ≤ 40 lines each |' "$SKILL" || { echo "a case is not budgeted at 40 lines"; return 1; }
   grep -qE '^\| `## Scope` \|.*\| ≤ 8 lines \|$' "$SKILL" || { echo "## Scope is not budgeted at 8 lines"; return 1; }
   grep -qE '^\| `## Preparation` \|.*\| ≤ 60 lines \|$' "$SKILL" || { echo "## Preparation is not budgeted at 60 lines"; return 1; }
-  grep -qF 'a case keeps its 40 lines' "$SKILL" || { echo "lite cuts a case below what twelve fields need"; return 1; }
+  grep -qF 'a case keeps its 40 lines' "$SKILL" || { echo "lite cuts a case below what eleven fields need"; return 1; }
 }
 
 @test "Preparation maps the screen and its words, marks dev-only steps, and the file has its frame" {
@@ -302,6 +304,8 @@ skill_section() { awk -v h="$1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
     [ "$(grep -c '^### MC-[0-9]*\. ' "$ex")" -ge 3 ] || { echo "manual-checks.$lang.md: fewer than three cases"; return 1; }
     grep -qF '**dev-only:**' <<<"$prep" || { echo "manual-checks.$lang.md: no dev-only preparation step"; return 1; }
     grep -qF '**By instrument:**' "$ex" || { echo "manual-checks.$lang.md: no case with the instrument field"; return 1; }
+    grep -qxF '## Code references' "$ex" || { echo "manual-checks.$lang.md: no ## Code references"; return 1; }
+    ! grep -qF '**Code:**' "$ex" || { echo "manual-checks.$lang.md: a **Code:** field is still inside a case"; return 1; }
     fail="$(awk '/^## On failure/{f=1;next} f&&/^## /{exit} f' "$ex")"
     for label in '**Title:**' '**Build / device:**' '**Steps to reproduce:**' '**Actual:**' '**Expected:**' '**Attachments:**'; do
       grep -qF -- "$label" <<<"$fail" || { echo "manual-checks.$lang.md: the bug-report template has no $label"; return 1; }
@@ -325,6 +329,20 @@ PY
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }
 
+@test "a case proves the change: before and after, the diff, the eye, no developer lines" {
+  s="$(skill_section '## What a case must prove')"
+  [ -n "$s" ] || { echo "no ## What a case must prove"; return 1; }
+  for token in 'before the change' 'nothing broke' 'not a check of the fix' 'the diff' '`OpsChecklist.md`' \
+               'at normal speed' 'never reads frames, traces or logs' '`Validation.md`' '`Walkthrough.md`'; do
+    grep -qF -- "$token" <<<"$s" || { echo "## What a case must prove does not name $token"; return 1; }
+  done
+}
+
+@test "a refresh moves an old file's code fields into the references section" {
+  r="$(skill_section '## Refreshing')"
+  grep -qF '`**Code:**`' <<<"$r" && grep -qF '`## Code references`' <<<"$r" || { echo "no migration on refresh"; return 1; }
+}
+
 @test "a plan line carries its intent" {
   skill_section '## Two stages, two halves' | grep -qF 'what must be true — what changed' \
     || { echo "## Manual acceptance lines carry no intent"; return 1; }
@@ -333,7 +351,7 @@ PY
 @test "claims are grounded in the code, and an empty case is deleted" {
   g="$(skill_section '## Grounding')"
   [ -n "$g" ] || { echo "no ## Grounding"; return 1; }
-  for token in 'checked against the code' '`Review.md`' '`[COVERS]`' '**The empty case.**' '`## Not covered`' '`**Code:**`'; do
+  for token in 'checked against the code' '`Review.md`' '`[COVERS]`' '**The empty case.**' '`## Not covered`' '`## Code references`'; do
     grep -qF -- "$token" <<<"$g" || { echo "## Grounding does not name $token"; return 1; }
   done
   [ "$(grep -c . <<<"$g")" -le 10 ] || { echo "## Grounding outgrew ten lines"; return 1; }
@@ -345,7 +363,7 @@ PY
   for token in 'git diff --name-only <COVERS>..HEAD' 'the others are left alone' 'and so is a case with no code reference' '`[COVERS]` becomes HEAD'; do
     grep -qF -- "$token" <<<"$r" || { echo "## Refreshing does not name $token"; return 1; }
   done
-  [ "$(grep -c . <<<"$r")" -le 6 ] || { echo "## Refreshing outgrew six lines"; return 1; }
+  [ "$(grep -c . <<<"$r")" -le 7 ] || { echo "## Refreshing outgrew seven lines"; return 1; }
 }
 
 @test "the check walks the file cold and names each smell by kind" {
@@ -354,7 +372,8 @@ PY
   for token in '`[MANUAL_CHECKS_CHECK]`' '`manual_checks_check`' '`PASSED`' "validator's role" '`light`' 'nothing else' \
                '`walk`' '`smells`' '`ambiguous`' '`unverified`' '`precondition`' '`tacit`' '`oracle`' 'one pass' \
                '`access`' '`twofold`' '`chained`' 'a tester with no access to the code' \
-               '`ManualChecks.md check: N place(s), revised.`' '`ManualChecks.md check: nothing unclear.`' \
+               '`redundant`' 'deletes' '`ManualChecks.md check: N place(s), revised, A → B lines.`' \
+               'The revision lengthened the file.' '`ManualChecks.md check: nothing unclear.`' \
                'moving `[COVERS]` alone is no change'; do
     grep -qF -- "$token" <<<"$c" || { echo "## Check does not name $token"; return 1; }
   done
