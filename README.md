@@ -44,6 +44,11 @@ same name to catch them;
 `/task-run`, `/task-continue`, `/task-redo` and `/task-restart` are commands with no matching skill,
 and bare they resolve to nothing — verified in both an interactive and a headless session.
 
+The plugin's hooks run in every session where it is enabled, inside a task or not. One of them,
+`long-sleep-guard`, refuses a foreground `sleep` over 60 s: it would wait its whole length after the
+job it waits for has finished, and in Claude Code it holds back that job's completion notification
+until it ends. Set `SPINE_SLEEP_LIMIT` (seconds) in the environment to raise the limit.
+
 ### Codex CLI
 
 ```bash

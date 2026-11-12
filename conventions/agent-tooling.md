@@ -84,3 +84,10 @@ above its `--for`, or pass a `--for` your tool's limit allows. `start` also reco
 for the orchestrator, which shows the user every job still running after the stage: `stop` what
 you started. `stop` exits 2 and says so when the host refuses the signal — a sandbox looking at a
 command started outside it; run it again where the command was started (`runtimes/<runtime>.md`).
+
+Never wait on a running job with a bare `sleep`: it waits its whole length even when the job has
+already finished, and on a host that delivers completion notifications between tool calls it
+hides that notification too. Wait with `long-run.sh wait`, which returns when the job exits, or —
+where the host wakes the session on a background job's exit — end the turn and act on the
+notification. The plugin's `hooks/long-sleep-guard` refuses a foreground `sleep` over 60 s;
+`SPINE_SLEEP_LIMIT`, in seconds, raises the limit.
