@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# PreToolUse hook: refuses a foreground `sleep` longer than the limit (conventions/agent-tooling.md
+# → Long-running commands). Such a sleep waits its whole length even when the job it waits for has
+# already finished, and a host that delivers completion notifications between tool calls holds the
+# job's notification back until the sleep ends.
+#
+# Fires on every Bash call of a session. Only a refusal exits 2; a call it does not refuse, input it
+# cannot read, and any failure of the hook itself exit 0 in silence. SPINE_SLEEP_LIMIT, in seconds,
+# raises the limit of 60.
+
+input="$(cat 2>/dev/null)"
+# Most calls never mention sleep: answer them without starting python3.
+case "$input" in *sleep*) ;; *) exit 0 ;; esac
+
+reason="$(SPINE_HOOK_INPUT="$input" python3 - 2>/dev/null <<'PY'
+import json, os, re, sys
+
+hook = json.loads(os.environ.get('SPINE_HOOK_INPUT') or 'null')
+if not isinstance(hook, dict) or hook.get('tool_name') != 'Bash':
+    sys.exit(0)
+given = hook.get('tool_input')
+if not isinstance(given, dict) or given.get('run_in_background') is True:
+    sys.exit(0)
+command = given.get('command')
+if not isinstance(command, str):
+    sys.exit(0)
+
+try:
+    limit = float(os.environ.get('SPINE_SLEEP_LIMIT') or 60)
+except ValueError:
+    limit = 60.0
+if limit <= 0:
+    limit = 60.0
+
+# `sleep` in command position: the start of a line, or after an operator, a subshell, a command
+# substitution or a keyword that opens a command. A `sleep` inside an argument — a commit message,
+# an echo, a grep pattern — follows a quote or a word and is left alone.
+starts = r'(?:^|[;&|(`\n]|\$\(|\bdo|\bthen|\belse)'
+units = {'': 1, 's': 1, 'm': 60, 'h': 3600, 'd': 86400}
+longest = 0.0
+for found in re.finditer(starts + r'[ \t]*sleep((?:[ \t]+\d+(?:\.\d+)?[smhd]?)+)(?![\w.])', command):
+    # GNU sleep adds its arguments up.
+    total = sum(float(n) * units[u] for n, u in re.findall(r'(\d+(?:\.\d+)?)([smhd]?)', found.group(1)))
+    longest = max(longest, total)
+if longest <= limit:
+    sys.exit(0)
+
+fmt = lambda s: ('%d' % s) if s == int(s) else ('%g' % s)
+print('Refused: a foreground sleep of %s s, over the limit of %s s. It waits its whole length even '
+      'when the job it waits for has already finished, and on Claude Code it also holds back the '
+      'notification that the job ended until the sleep is over. Wait with scripts/long-run.sh wait, '
+      'which returns as soon as the job exits; on Claude Code you can instead start the job with '
+      'run_in_background and end the turn, and act on the notification. For a progress peek, read '
+      'the log once. SPINE_SLEEP_LIMIT (seconds) raises the limit.' % (fmt(longest), fmt(limit)))
+PY
+)" || exit 0
+
+[ -n "$reason" ] || exit 0
+printf '%s\n' "$reason" >&2
+exit 2
