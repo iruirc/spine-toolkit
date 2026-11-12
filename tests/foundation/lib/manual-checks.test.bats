@@ -333,7 +333,8 @@ PY
   s="$(skill_section '## What a case must prove')"
   [ -n "$s" ] || { echo "no ## What a case must prove"; return 1; }
   for token in 'before the change' 'nothing broke' 'not a check of the fix' 'the diff' '`OpsChecklist.md`' \
-               'at normal speed' 'never reads frames, traces or logs' '`Validation.md`' '`Walkthrough.md`'; do
+               'at normal speed' 'never reads frames, traces or logs' '`Validation.md`' '`Walkthrough.md`' \
+               'Outside `**By instrument:**`, `## Reading the verdict`, `**dev-only:**` steps and `## Code references`, no line is for a developer'; do
     grep -qF -- "$token" <<<"$s" || { echo "## What a case must prove does not name $token"; return 1; }
   done
 }
@@ -374,7 +375,8 @@ PY
                '`access`' '`twofold`' '`chained`' 'a tester with no access to the code' \
                '`redundant`' 'deletes' '`ManualChecks.md check: N place(s), revised, A → B lines.`' \
                'The revision lengthened the file.' '`ManualChecks.md check: nothing unclear.`' \
-               'moving `[COVERS]` alone is no change'; do
+               'moving `[COVERS]` alone is no change' 'except its `## Code references`' \
+               'none of them is ever a `redundant` place'; do
     grep -qF -- "$token" <<<"$c" || { echo "## Check does not name $token"; return 1; }
   done
   ! grep -qiE 'second round|two rounds' <<<"$c" || { echo "## Check grew a second round"; return 1; }
