@@ -80,8 +80,6 @@ Sign in with the test account from Test data. The cart must be empty before each
 
 **Cleanup:** tap the minus button until the row disappears.
 
-**Code:** (cart/quantity_stepper.src:41)
-
 **Status:** ☐ PASS ☐ FAIL ☐ BLOCKED — reason: ______
 
 **Notes / attachments:** ______
@@ -115,8 +113,6 @@ Sign in with the test account from Test data. The cart must be empty before each
 
 **Cleanup:** tap the minus button until the row disappears.
 
-**Code:** (cart/quantity_limit.src:17)
-
 **Status:** ☐ PASS ☐ FAIL ☐ BLOCKED — reason: ______
 
 **Notes / attachments:** ______
@@ -142,3 +138,10 @@ Sign in with the test account from Test data. The cart must be empty before each
 ## Troubleshooting
 
 - The cart icon shows no badge: sign out and sign in again with the test account.
+
+## Code references
+
+| Case | Code |
+|---|---|
+| MC-1 | (cart/quantity_stepper.src:41) |
+| MC-2 | (cart/quantity_limit.src:17) |

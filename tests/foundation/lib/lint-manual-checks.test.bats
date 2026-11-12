@@ -50,8 +50,6 @@ $PRE
 
 **Cleanup:** tap the minus button until the row disappears.
 
-**Code:** $CODE
-
 **Status:** ☐ PASS ☐ FAIL ☐ BLOCKED — reason: ______
 
 **Notes / attachments:** ______
@@ -61,10 +59,32 @@ EOF
 
 write() { # $@ cases, each a whole case text; none given means one case built by case_md
   [ "$#" -gt 0 ] || set -- "$(case_md 1)"
+  local c id
   { printf '# Manual Checks — Cart\n\n[COVERS] = a1b2c3d\n\n## Run record\n\n| Field | Value |\n|---|---|\n| Build | ______ |\n\n'
     printf '## Scope\n\nThe cart lets a shopper change a quantity.\n\n## Preparation\n\nSign in with the test account.\n\n## Cases\n\n'
     for c in "$@"; do printf '%s\n\n' "$c"; done
-    printf '## On failure — bug report\n\n**Title:** MC-N: what broke\n\n## Not covered\n\nnone\n'; } >"$F"
+    printf '## On failure — bug report\n\n**Title:** MC-N: what broke\n\n## Not covered\n\nnone\n\n'
+    printf '## Code references\n\n| Case | Code |\n|---|---|\n'
+    for c in "$@"; do
+      id="$(printf '%s\n' "$c" | sed -n 's/^### MC-\([0-9][0-9]*\)\..*/\1/p' | head -n 1)"
+      [ -z "$id" ] || printf '| MC-%s | %s |\n' "$id" "$CODE"
+    done; } >"$F"
+}
+
+# $F without its ## Code references section, which is the last one the helper writes. A plain
+# grep -v on the table separator would take the steps table's too.
+cut_refs() {
+  python3 - "$F" <<'PY'
+import re, sys
+p = sys.argv[1]
+t = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(re.sub(r'\n*## Code references.*', '\n', t, flags=re.S))
+PY
+}
+
+# A case in the old format: its **Code:** field sits inside it, above **Status:**.
+old_case() { # $1 id
+  case_md "$1" | awk -v id="$1" '/^\*\*Status:\*\*/ { print "**Code:** (a.src:" id ")"; print "" } { print }'
 }
 
 drop() { # $1 a fixed string; removes every line of $F holding it
@@ -214,10 +234,47 @@ clean() { # $1 a path; the lint must exit 0 with no output
   clean "$F"
 }
 
-@test "codeslot: a **Code:** field with no file:line is named" {
-  CODE='the stepper'
+@test "codeslot: a case with no row, a row with no file:line, and a row for no case are named" {
+  write; drop '| MC-1 |'
+  expect 'ManualChecks.md: codeslot: no row in ## Code references (### MC-1.)'
+  CODE='the stepper'; write
+  expect 'ManualChecks.md: codeslot: no file:line in ## Code references (### MC-1.)'
+  CODE='(cart/quantity_stepper.src:41)'; write
+  printf '| MC-9 | (cart/x.src:1) |\n' >>"$F"
+  expect 'ManualChecks.md: codeslot: row for a case not in ## Cases (MC-9)'
+}
+
+@test "file: cases with no ## Code references are named once" {
+  write "$(case_md 1)" "$(case_md 2)"
+  cut_refs
+  expect 'ManualChecks.md: file: missing ## Code references (file)'
+}
+
+@test "case: **Code:** inside a case is named once as the old format" {
+  write "$(old_case 1)" "$(old_case 2)"
+  cut_refs
+  expect 'ManualChecks.md: case: old format, **Code:** inside a case instead of ## Code references (### MC-1.)'
+  # The section may be there too: the old format is still named once, and no codeslot is added.
+  write "$(old_case 1)" "$(old_case 2)"
+  expect 'ManualChecks.md: case: old format, **Code:** inside a case instead of ## Code references (### MC-1.)'
+}
+
+@test "a file whose ## Cases reads none needs no ## Code references" {
   write
-  expect 'ManualChecks.md: codeslot: no file:line in **Code:** (### MC-1.)'
+  python3 - "$F" <<'PY'
+import sys, re
+p = sys.argv[1]; t = open(p, encoding='utf-8').read()
+t = re.sub(r'## Cases\n.*?## On failure', '## Cases\n\nnone — nothing needs a person.\n\n## On failure', t, flags=re.S)
+t = re.sub(r'## Code references.*', '', t, flags=re.S)
+open(p, 'w', encoding='utf-8').write(t)
+PY
+  clean "$F"
+}
+
+@test "a file:line in ## Code references is not code leaking out" {
+  CODE='(cart/QuantityStepper.src:41), cart.view.model.update'
+  write
+  clean "$F"
 }
 
 @test "chain: after case N, state right after and Changes in this revision are named" {
@@ -245,13 +302,13 @@ clean() { # $1 a path; the lint must exit 0 with no output
 }
 
 @test "budget: a case over 40 lines, ## Scope over 8 and ## Preparation over 60 are named" {
-  # The helper's case is 32 lines, heading to the last field: eight more steps make 40, nine make 41.
+  # The helper's case is 30 lines, heading to the last field: ten more steps make 40, eleven make 41.
   long() { local rows='' i
     for i in $(seq 3 $((2 + $1))); do rows="$rows| $i | Tap plus | — | Quantity $i | |\\n"; done
     write "$(case_md 1 | awk -v rows="$rows" '{ print } /^\| 2 \|/ { printf "%s", rows }')"; }
-  long 8
+  long 10
   clean "$F"
-  long 9
+  long 11
   expect 'ManualChecks.md: budget: case of 41 lines, more than 40 (### MC-1.)'
   write
   python3 - "$F" <<'PY'
@@ -278,7 +335,7 @@ PY
   write
   run "$LINT" "$BATS_TEST_TMPDIR"
   [ "$status" -eq 1 ] || { echo "status $status: $output"; return 1; }
-  [ "$output" = 'ManualChecks.md: codeslot: no file:line in **Code:** (### MC-1.)' ] || { echo "$output"; return 1; }
+  [ "$output" = 'ManualChecks.md: codeslot: no file:line in ## Code references (### MC-1.)' ] || { echo "$output"; return 1; }
   mkdir "$BATS_TEST_TMPDIR/empty"
   clean "$BATS_TEST_TMPDIR/empty"
 }
@@ -338,7 +395,7 @@ for line in sys.stdin.read().split("\n")[:-1]:
   [ "$status" -eq 1 ] || { echo "status $status: $output"; return 1; }
   [ "$output" = "$(printf '%s\n%s' \
     'ManualChecks.md: scriptable: no step needs a person, run it as a script (### MC-2.)' \
-    'ManualChecks.md: budget: case of 43 lines, more than 40 (### MC-2.)')" ] || { echo "$output"; return 1; }
+    'ManualChecks.md: budget: case of 41 lines, more than 40 (### MC-2.)')" ] || { echo "$output"; return 1; }
 }
 
 @test "scriptable: a menu command and a team are not shell commands" {
@@ -368,5 +425,6 @@ p = sys.argv[1]; s = open(p).read()
 s = re.sub(r'## Cases\n\n.*?(?=## On failure)', '## Cases\n\nnone — every check was covered by the automated pass.\n\n', s, flags=re.S)
 open(p, 'w').write(s)
 PY
+  cut_refs
   clean "$F"
 }

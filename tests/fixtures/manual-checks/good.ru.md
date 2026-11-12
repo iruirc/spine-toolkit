@@ -80,8 +80,6 @@
 
 **Cleanup:** нажимать минус, пока строка не исчезнет.
 
-**Code:** (cart/quantity_stepper.src:41)
-
 **Status:** ☐ PASS ☐ FAIL ☐ BLOCKED — причина: ______
 
 **Notes / attachments:** ______
@@ -115,8 +113,6 @@
 
 **Cleanup:** нажимать минус, пока строка не исчезнет.
 
-**Code:** (cart/quantity_limit.src:17)
-
 **Status:** ☐ PASS ☐ FAIL ☐ BLOCKED — причина: ______
 
 **Notes / attachments:** ______
@@ -142,3 +138,10 @@
 ## Troubleshooting
 
 - На иконке корзины нет значка: выйти и снова войти тестовой учётной записью.
+
+## Code references
+
+| Case | Code |
+|---|---|
+| MC-1 | (cart/quantity_stepper.src:41) |
+| MC-2 | (cart/quantity_limit.src:17) |

@@ -103,8 +103,6 @@ If the badge shows a number before step 6, the account's cart is not empty: reco
 
 **Cleanup:** tap the minus button in the Green tea row until the row disappears.
 
-**Code:** (cart/quantity_stepper.src:41), (cart/badge_counter.src:18)
-
 **Status:** ☐ PASS ☐ FAIL ☐ BLOCKED — reason: ______
 
 **Notes / attachments:** ______
@@ -137,8 +135,6 @@ If the badge shows a number before step 6, the account's cart is not empty: reco
 **Failure looks like:** the quantity reads 11, or the plus button stays blue at 10.
 
 **Cleanup:** tap the minus button in the Green tea row until the row disappears.
-
-**Code:** (cart/quantity_limit.src:17)
 
 **Status:** ☐ PASS ☐ FAIL ☐ BLOCKED — reason: ______
 
@@ -174,8 +170,6 @@ If the badge shows a number before step 6, the account's cart is not empty: reco
 
 **Cleanup:** —
 
-**Code:** (cart/quantity_stepper.src:58), (cart/empty_state.src:9)
-
 **Status:** ☐ PASS ☐ FAIL ☐ BLOCKED — reason: ______
 
 **Notes / attachments:** ______
@@ -205,3 +199,11 @@ If the badge shows a number before step 6, the account's cart is not empty: reco
 |---|---|---|
 | The badge shows a number before P2 starts | The test account kept a cart from an earlier run | Empty the cart with the minus buttons, then start P2 again |
 | Green tea is not in the search results | The device is offline, or the catalogue is still loading | Check the connection, wait ten seconds and search again |
+
+## Code references
+
+| Case | Code |
+|---|---|
+| MC-1 | (cart/quantity_stepper.src:41), (cart/badge_counter.src:18) |
+| MC-2 | (cart/quantity_limit.src:17) |
+| MC-3 | (cart/quantity_stepper.src:58), (cart/empty_state.src:9) |

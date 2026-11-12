@@ -77,8 +77,6 @@ grep -n 'Library/Caches' Testing.md
 
 **Cleanup:** —
 
-**Code:** (Testing.md:881)
-
 **Status:** ☐ PASS ☐ FAIL ☐ BLOCKED — reason: ______
 
 **Notes / attachments:** ______
@@ -90,3 +88,9 @@ grep -n 'Library/Caches' Testing.md
 ## Not covered
 
 none
+
+## Code references
+
+| Case | Code |
+|---|---|
+| MC-2 | (Testing.md:881) |

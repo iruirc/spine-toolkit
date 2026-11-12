@@ -103,8 +103,6 @@
 
 **Cleanup:** нажимать минус в строке «Зелёный чай», пока строка не исчезнет.
 
-**Code:** (cart/quantity_stepper.src:41), (cart/badge_counter.src:18)
-
 **Status:** ☐ PASS ☐ FAIL ☐ BLOCKED — причина: ______
 
 **Notes / attachments:** ______
@@ -137,8 +135,6 @@
 **Failure looks like:** количество 11, или плюс остаётся синим при 10.
 
 **Cleanup:** нажимать минус в строке «Зелёный чай», пока строка не исчезнет.
-
-**Code:** (cart/quantity_limit.src:17)
 
 **Status:** ☐ PASS ☐ FAIL ☐ BLOCKED — причина: ______
 
@@ -174,8 +170,6 @@
 
 **Cleanup:** —
 
-**Code:** (cart/quantity_stepper.src:58), (cart/empty_state.src:9)
-
 **Status:** ☐ PASS ☐ FAIL ☐ BLOCKED — причина: ______
 
 **Notes / attachments:** ______
@@ -205,3 +199,11 @@
 |---|---|---|
 | На значке есть число ещё до P2 | В тестовой учётной записи осталась корзина от прошлого прогона | Опустошить корзину минусами и начать P2 заново |
 | В поиске нет «Зелёный чай» | Устройство без сети, или каталог ещё загружается | Проверить сеть, подождать десять секунд и повторить поиск |
+
+## Code references
+
+| Case | Code |
+|---|---|
+| MC-1 | (cart/quantity_stepper.src:41), (cart/badge_counter.src:18) |
+| MC-2 | (cart/quantity_limit.src:17) |
+| MC-3 | (cart/quantity_stepper.src:58), (cart/empty_state.src:9) |

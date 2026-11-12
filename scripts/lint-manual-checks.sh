@@ -3,12 +3,14 @@ set -euo pipefail
 
 # Checks a ManualChecks.md against the QA test-case format of the manual-checks skill. The reader is
 # a tester who knows the product but not the code: every case starts from its own preconditions,
-# every step row holds one action, and code lives only in the **Code:** field. Its checks:
+# every step row holds one action, and code lives only in the ## Code references section. Its checks:
 #
 #   case      every case under ## Cases is "### MC-<n>. <observable behaviour>", ids are unique, and
-#             the twelve labels are there; a ## Cases with no such case under it is named (a case
+#             the eleven labels are there; a ## Cases with no such case under it is named (a case
 #             at the wrong level, #### MC-1. or ## MC-1., is no case), unless it reads "none — <why>"; a file of "### <n>." headings
 #             and no MC- heading is named once as the old format, and its cases are not read further;
+#             a case with a **Code:** field inside it is named once as the old format too: the
+#             references moved out of the case into ## Code references;
 #   steps     **Steps:** is a table headed "| # | Action | Data | Expected | Actual |", and no row
 #             leaves Action or Expected empty ("—" is a value);
 #   compound  an Action that holds two steps: then, and then, afterwards, repeat steps, a semicolon,
@@ -16,14 +18,16 @@ set -euo pipefail
 #   code      code in Action, Expected, **Preconditions:** or **What it checks:** — a CamelCase word of
 #             two or more humps, a source file, a dotted name of three or more parts (a version or a
 #             decimal is not one), a (file:line) gloss;
-#   codeslot  a **Code:** field with no file:line;
+#   codeslot  a case with no row in ## Code references (a table "| Case | Code |", one "| MC-<n> | ... |"
+#             row per case), a row with no file:line, a row for an id that is no case under ## Cases;
 #   chain     a case that starts from another case's end state, or a file that keeps its edit history;
 #   scriptable a case whose every step is a shell command: a backticked command with at most a verb
 #             before it, or "run the command ..." and its Russian forms; nothing in it needs a person,
 #             so it is a script, not a case; a case with one step a person takes is not named;
 #   budget    a case over 40 lines, heading to last line; ## Scope over 8; ## Preparation over 60
 #             (blank lines inside count, the ones at either end do not);
-#   file      [COVERS], ## Run record and ## On failure are there.
+#   file      [COVERS], ## Run record and ## On failure are there, and ## Code references when there is
+#             a case.
 #
 # Known limit: a product name in CamelCase (YouTube, PayPal) reads as code. There is no allow-list.
 #
@@ -42,7 +46,7 @@ python3 - "$path" <<'PY'
 import re, sys
 
 LABELS = ['Priority', 'Traces to', 'What it checks', 'Preconditions', 'Test data', 'Steps',
-          'Expected result', 'Failure looks like', 'Cleanup', 'Code', 'Status', 'Notes / attachments']
+          'Expected result', 'Failure looks like', 'Cleanup', 'Status', 'Notes / attachments']
 STEPS_HEADER = ['#', 'Action', 'Data', 'Expected', 'Actual']
 BUDGET_CASE, BUDGET_SCOPE, BUDGET_PREPARATION = 40, 8, 60
 
@@ -194,6 +198,26 @@ if not any(t.startswith('## On failure') for t in titles):
 cases = [(i, h) for i, h in headings if MC.match(h[1])]
 old = [(i, h) for i, h in headings if OLD.match(h[1])]
 
+# ## Code references: the table's rows, "MC-<n>" to the text of the Code cell.
+refs, has_refs = {}, False
+for i, h in headings:
+    if h == (2, '## Code references'):
+        has_refs = True
+        for line in section(i, 2):
+            if not line.lstrip().startswith('|') or set(line.strip()) <= set('|-: '):
+                continue
+            c = cells(line)
+            r = re.match(r'^MC-(\d+)$', c[0])
+            if r and len(c) > 1 and r.group(1) not in refs:
+                refs[r.group(1)] = c[1]
+
+# The old format keeps the references in the case, as a **Code:** field.
+old_code = next((i for i, h in cases
+                 if any('**Code:**' in line for line in section(i, 3) if not line.lstrip().startswith('|'))), None)
+
+if cases and not has_refs and old_code is None:
+    found.append('file: missing ## Code references (file)')
+
 if not cases and old:
     found.append('case: old format, ### <n>. headings instead of ### MC-<n>. (### %s.)' % OLD.match(old[0][1][1]).group(1))
 else:
@@ -229,6 +253,8 @@ for i, h in cases:
     for label in LABELS:
         if not any('**%s:**' % label in line for line in plain):
             found.append('case: missing **%s:** (%s)' % (label, where))
+    if i == old_code:
+        found.append('case: old format, **Code:** inside a case instead of ## Code references (%s)' % where)
 
     table = steps_table(body)
     actions, expects = [], []
@@ -269,13 +295,19 @@ for i, h in cases:
         for word in code_in(text):
             found.append('code: "%s" in %s (%s)' % (word, name, where))
 
-    code = field(plain, 'Code')
-    if code is not None and not FILE_LINE.search(code):
-        found.append('codeslot: no file:line in **Code:** (%s)' % where)
+    if has_refs and old_code is None:
+        if m.group(1) not in refs:
+            found.append('codeslot: no row in ## Code references (%s)' % where)
+        elif not FILE_LINE.search(refs[m.group(1)]):
+            found.append('codeslot: no file:line in ## Code references (%s)' % where)
 
     span = trimmed([h[1]] + body)
     if len(span) > BUDGET_CASE:
         found.append('budget: case of %d lines, more than %d (%s)' % (len(span), BUDGET_CASE, where))
+
+for n in refs:
+    if n not in seen:
+        found.append('codeslot: row for a case not in ## Cases (MC-%s)' % n)
 
 for name, limit in (('Scope', BUDGET_SCOPE), ('Preparation', BUDGET_PREPARATION)):
     for i, h in headings:
