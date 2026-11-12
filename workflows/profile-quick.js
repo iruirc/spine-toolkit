@@ -524,7 +524,7 @@ const MANUAL_CHECKS_READ = {
         properties: {
           case: { type: 'string' },
           step: { type: 'string' },
-          kind: { type: 'string', enum: ['ambiguous', 'unverified', 'precondition', 'tacit', 'oracle', 'access', 'twofold', 'chained'] },
+          kind: { type: 'string', enum: ['ambiguous', 'unverified', 'precondition', 'tacit', 'oracle', 'access', 'twofold', 'chained', 'redundant'] },
           quote: { type: 'string' },
           missing: { type: 'string' },
         },
@@ -539,6 +539,8 @@ const MANUAL_CHECKS_REVISED = {
   properties: {
     changed: { type: 'boolean', description: 'false when the revision found nothing to change' },
     artifact_path: { type: 'string' },
+    lines_before: { type: 'integer', description: "the whole file's line count (wc -l) before the revision touched it" },
+    lines_after: { type: 'integer', description: "the whole file's line count (wc -l) after the revision" },
   },
 }
 
@@ -609,7 +611,7 @@ const checkManualChecks = async (stage, role, agentType, path) => {
   const read = await agent(
     brief(
       stage,
-      `Apply the spine-toolkit:manual-checks skill, its ## Check section, as the reader it describes: a tester with no access to the code, who knows the product but was not on this task. Of the task and the repository, read ${file} and nothing else — open no other file of the task and no source file, and run no git command. Return walk, one line per step of every case: the action you would take and what you expect to see; and smells, every place you could not execute as written: its case and step, its kind as that section names them — a step that needs the code or a terminal, an expectation that can be counted two ways and a case that cannot be run alone included — a quote of at most one line, and what was missing. Change nothing on disk.`,
+      `Apply the spine-toolkit:manual-checks skill, its ## Check section, as the reader it describes: a tester with no access to the code, who knows the product but was not on this task. Of the task and the repository, read ${file}, except its ## Code references section, and nothing else — open no other file of the task and no source file, and run no git command. Return walk, one line per step of every case: the action you would take and what you expect to see; and smells, every place you could not execute as written: its case and step, its kind as that section names them — a step that needs the code or a terminal, an expectation that can be counted two ways, a case that cannot be run alone and text that is redundant included — a quote of at most one line, and what was missing. Change nothing on disk.`,
     ),
     { label: 'manual-checks:check', phase: stage, agentType, schema: MANUAL_CHECKS_READ, ...tuning(role, 'light') },
   )
@@ -627,7 +629,7 @@ const checkManualChecks = async (stage, role, agentType, path) => {
   const fix = await agent(
     brief(
       stage,
-      `A reader who was not on this task read ${file} and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. What you change is checked against the code, as its ## Grounding section requires. Then read each case's **Preconditions:** against its first step and its steps against each other, fix what disagrees, run "${core('scripts/lint-manual-checks.sh')}" on the file once more, and repair every finding it prints. [COVERS] stays as it is.
+      `A reader who was not on this task read ${file}, except its ## Code references section, and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. A redundant place is deleted, never rewritten; a place where something is missing is closed by rewording first, and by adding text only when rewording cannot close it. Count the lines of the whole file with wc -l before you touch it and again when you are done. What you change is checked against the code, as its ## Grounding section requires. Then read each case's **Preconditions:** against its first step and its steps against each other, fix what disagrees, run "${core('scripts/lint-manual-checks.sh')}" on the file once more, and repair every finding it prints. [COVERS] stays as it is.
 
 Places the reader could not execute as written:
 ${places}
@@ -637,7 +639,7 @@ ${walked}
 
 The reader's notes above may be in another language; the file's prose stays ${LANG_NAME}.
 
-Return changed true once the file is revised. Change no production code and no tests.`,
+Return changed true once the file is revised, with lines_before and lines_after, the two counts. Change no production code and no tests.`,
     ),
     { label: 'manual-checks:revise', phase: stage, agentType, schema: MANUAL_CHECKS_REVISED, ...tuning(role, 'stage') },
   )
@@ -645,7 +647,9 @@ Return changed true once the file is revised. Change no production code and no t
     fix && fix.artifact_path
       ? fix.changed === false
         ? `ManualChecks.md check: ${smells.length} place(s); the revision found nothing to change.`
-        : `ManualChecks.md check: ${smells.length} place(s), revised.`
+        : Number.isInteger(fix.lines_before) && Number.isInteger(fix.lines_after)
+          ? `ManualChecks.md check: ${smells.length} place(s), revised, ${fix.lines_before} → ${fix.lines_after} lines.${fix.lines_after > fix.lines_before ? ' The revision lengthened the file.' : ''}`
+          : `ManualChecks.md check: ${smells.length} place(s), revised.`
       : `ManualChecks.md check: ${smells.length} place(s); the revision returned nothing, so the file stands as written.`,
   )
 }
@@ -1008,7 +1012,7 @@ if (runs('Validation')) {
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
-For QUICK a build and a full test run are both mandatory, through this platform's own build and test tooling. There is no reproduction scenario to replay: the task had no Reproduce stage. The checks a person makes come from Plan.md ## Manual acceptance: drive a running instance of the app for them where this run can — drive_app is ${DRIVE_APP} — and otherwise put them into ${DIR}/ManualChecks.md and their titles into manual_checks. Each becomes a case only when it needs a person, by the manual-checks skill's ## Does this check need a person?; one this run checked itself is covered, named in ## Scope with its evidence, and any other goes to ## Not covered as automatable, not automated — you write no code. With manual_checks auto and no case left, write no ManualChecks.md: put the line "manual checks: none — <why>", naming what was covered and each automatable gap, in Validation.md and return manual_checks empty; always writes the file regardless, its ## Cases reading "none — <why>" when no case is left. Which driver condition applied comes back in driver_status, as ${core('conventions/driver-contract.md')} defines it. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure — QA test cases for a tester who knows the product but not the code, each an ### MC-<n>. case with the twelve fields that skill names — and the rules that decide whether a case can be executed at all. When the file is already there with a [COVERS] behind HEAD, refresh it by that skill's ## Refreshing section — the changed files are what git diff --name-only <the file's [COVERS]>..HEAD prints, never one commit's — and return manual_checks_changed false when no case was added, removed or rewritten — moving [COVERS] alone is no change. Then run "${core('scripts/lint-manual-checks.sh')}" on the file, repair every finding it prints, and run it again, as that skill's ## The lint and ## Grounding require.
+For QUICK a build and a full test run are both mandatory, through this platform's own build and test tooling. There is no reproduction scenario to replay: the task had no Reproduce stage. The checks a person makes come from Plan.md ## Manual acceptance: drive a running instance of the app for them where this run can — drive_app is ${DRIVE_APP} — and otherwise put them into ${DIR}/ManualChecks.md and their titles into manual_checks. Each becomes a case only when it needs a person, by the manual-checks skill's ## Does this check need a person?; one this run checked itself is covered, named in ## Scope with its evidence, and any other goes to ## Not covered as automatable, not automated — you write no code. With manual_checks auto and no case left, write no ManualChecks.md: put the line "manual checks: none — <why>", naming what was covered and each automatable gap, in Validation.md and return manual_checks empty; always writes the file regardless, its ## Cases reading "none — <why>" when no case is left. Which driver condition applied comes back in driver_status, as ${core('conventions/driver-contract.md')} defines it. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure — QA test cases for a tester who knows the product but not the code, each an ### MC-<n>. case with the eleven fields that skill names — and the rules that decide whether a case can be executed at all. When the file is already there with a [COVERS] behind HEAD, refresh it by that skill's ## Refreshing section — the changed files are what git diff --name-only <the file's [COVERS]>..HEAD prints, never one commit's — and return manual_checks_changed false when no case was added, removed or rewritten — moving [COVERS] alone is no change. Then run "${core('scripts/lint-manual-checks.sh')}" on the file, repair every finding it prints, and run it again, as that skill's ## The lint and ## Grounding require.
 
 Change no production code and no tests. Return the same status you wrote on the first line.${CATCH_UP_VALIDATION}${cap('Validation.md')}`,
     ),

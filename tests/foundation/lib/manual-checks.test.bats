@@ -410,7 +410,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     out="$(walk_run "$p")"
     [ "$(labels <<<"$out")" = "validation manual-checks:check" ] || { echo "profile-$p: $(labels <<<"$out")"; return 1; }
     pr="$(pick 'o.calls[1].prompt' <<<"$out")"
-    for f in 'spine-toolkit:manual-checks skill, its ## Check section' 'a tester with no access to the code' '/p/Tasks/ACTIVE/001-x/ManualChecks.md and nothing else' 'run no git command'; do
+    for f in 'spine-toolkit:manual-checks skill, its ## Check section' 'a tester with no access to the code' '/p/Tasks/ACTIVE/001-x/ManualChecks.md, except its ## Code references section, and nothing else' 'run no git command'; do
       grep -qF -- "$f" <<<"$pr" || { echo "profile-$p: the reader brief lost: $f"; return 1; }
     done
     grep -qF 'ManualChecks.md check: nothing unclear.' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: no note"; return 1; }
@@ -426,6 +426,42 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
       grep -qF -- "$f" <<<"$pr" || { echo "profile-$p: the revision brief lost: $f"; return 1; }
     done
     grep -qF 'ManualChecks.md check: 1 place(s), revised.' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: no note"; return 1; }
+  done
+}
+
+@test "the revision reports the file's length before and after, and a longer file is flagged" {
+  for p in $PROFILES; do
+    out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$p.js" \
+      "{\"task_id\": \"001\", \"task_dir\": \"/p/Tasks/ACTIVE/001-x\", \"plugin_root\": \"/core\", \"lang\": \"en\", \"agents\": $AGENTS, \"start_stage\": \"Validation\", \"end_stage\": \"Validation\", \"stage_scope\": \"forward\"}" \
+      "{\"validation\": {\"validation_status\": \"PASSED\", \"reproduction_status\": \"fixed\", \"artifact_path\": \"v\", \"summary\": \"s\", \"manual_checks\": [\"a\"], \"manual_checks_path\": \"/p/Tasks/ACTIVE/001-x/ManualChecks.md\"}, \"manual-checks:check\": $SMELL, \"manual-checks:revise\": {\"changed\": true, \"artifact_path\": \"m\", \"lines_before\": 120, \"lines_after\": 98}}")"
+    grep -qF 'ManualChecks.md check: 1 place(s), revised, 120 → 98 lines.' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: $(pick 'o.result.notes' <<<"$out")"; return 1; }
+    ! grep -qF 'lengthened' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: flagged a shorter file"; return 1; }
+    pr="$(pick 'o.calls[2].prompt' <<<"$out")"
+    for f in 'redundant' 'lines_before' 'lines_after' 'wc -l'; do
+      grep -qF -- "$f" <<<"$pr" || { echo "profile-$p: the revision brief lost: $f"; return 1; }
+    done
+    out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$p.js" \
+      "{\"task_id\": \"001\", \"task_dir\": \"/p/Tasks/ACTIVE/001-x\", \"plugin_root\": \"/core\", \"lang\": \"en\", \"agents\": $AGENTS, \"start_stage\": \"Validation\", \"end_stage\": \"Validation\", \"stage_scope\": \"forward\"}" \
+      "{\"validation\": {\"validation_status\": \"PASSED\", \"reproduction_status\": \"fixed\", \"artifact_path\": \"v\", \"summary\": \"s\", \"manual_checks\": [\"a\"], \"manual_checks_path\": \"/p/Tasks/ACTIVE/001-x/ManualChecks.md\"}, \"manual-checks:check\": $SMELL, \"manual-checks:revise\": {\"changed\": true, \"artifact_path\": \"m\", \"lines_before\": 98, \"lines_after\": 120}}")"
+    grep -qF 'ManualChecks.md check: 1 place(s), revised, 98 → 120 lines. The revision lengthened the file.' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: $(pick 'o.result.notes' <<<"$out")"; return 1; }
+  done
+}
+
+@test "the schema lets the revision omit its line counts" {
+  for f in "$ROOT"/workflows/profile-*.js; do
+    for line in "lines_before: { type: 'integer'" "lines_after: { type: 'integer'"; do
+      grep -qF -- "$line" "$f" || { echo "$(basename "$f"): missing '$line'"; return 1; }
+    done
+    ! grep -qF "required: ['changed', 'artifact_path', 'lines_before'" "$f" || { echo "$(basename "$f"): the counts became required"; return 1; }
+  done
+}
+
+@test "no profile calls the case fields twelve, and five name the eleven" {
+  for f in "$ROOT"/workflows/profile-*.js; do
+    ! grep -qF 'twelve fields' "$f" || { echo "$(basename "$f"): still says twelve fields"; return 1; }
+  done
+  for p in $PROFILES; do
+    grep -qF 'the eleven fields that skill names' "$ROOT/workflows/profile-$p.js" || { echo "profile-$p.js: does not say the eleven fields that skill names"; return 1; }
   done
 }
 
@@ -450,7 +486,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     n=$((n + 1))
     for line in '// A reader with none of the task'"'"'s context, then one revision: manual-checks → ## Check.' \
                 "schema: MANUAL_CHECKS_READ, ...tuning(role, 'light')" \
-                "kind: { type: 'string', enum: ['ambiguous', 'unverified', 'precondition', 'tacit', 'oracle', 'access', 'twofold', 'chained'] }" \
+                "kind: { type: 'string', enum: ['ambiguous', 'unverified', 'precondition', 'tacit', 'oracle', 'access', 'twofold', 'chained', 'redundant'] }" \
                 "manual_checks_changed: { type: 'boolean', description: 'false when no case was added, removed or rewritten; moving [COVERS] alone is no change' }"; do
       grep -qF -- "$line" "$f" || { echo "$(basename "$f"): missing '$line'"; return 1; }
     done
