@@ -38,6 +38,8 @@ For each item, choose one of:
 
 **Manual test pass** follows `ManualChecks.md`: Pending while a case there waits for a person; N/A, with the reason from `Validation.md`'s `manual checks: none —` line, when the run left no case that needs a person (`manual-checks` → `## Does this check need a person?`).
 
+An item is judged against this task's diff, not against the product. Behaviour the diff does not touch is **N/A**, with the reason `not changed by this task: the diff touches <X>`, where `<X>` names what the diff does touch, so that Review can check the reason against the diff. Such an item does not become a case in `ManualChecks.md` (`manual-checks` → `## What a case must prove`). Below, the conservative default applies to behaviour the diff touches.
+
 Default an item to **Applicable** unless you have a concrete reason to mark it N/A. Conservative bias is intentional — the cost of false-Applicable is a small extra check; the cost of false-N/A is a production incident.
 
 ## Inputs

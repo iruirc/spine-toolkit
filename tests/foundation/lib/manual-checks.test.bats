@@ -718,3 +718,11 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
   skill_section '## The lint' | grep -qF 'rewording the steps is not a repair' \
     || { echo "## The lint gives scriptable no repair rule"; return 1; }
 }
+
+@test "an ops item is judged against the task's diff, and an untouched one is N/A, not a case" {
+  O="$ROOT/skills/ops-checklist/SKILL.md"
+  for token in "judged against this task's diff" '`not changed by this task: the diff touches <X>`' \
+               'the conservative default applies to behaviour the diff touches'; do
+    grep -qF -- "$token" "$O" || { echo "ops-checklist does not say: $token"; return 1; }
+  done
+}
