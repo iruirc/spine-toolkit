@@ -116,7 +116,7 @@ knowingly partial, and most of a mature tree is outside every component.
 | End of an implementing phase | `route … --phase <id>` with `git diff --name-status` for the phase | answer every row before the phase's commit |
 | Before the commit | `check … --phase <id>` with the same change set | exit 1 means a blocking question is still open and the phase does not close; exit 2 means the registry or the table itself is malformed — fix that, it is not a question anyone can answer |
 | Done | `audit …` with the task's change set | names the wrong homes and the new files outside every `covers` and every `places`; both advisory |
-| Done | `progress <project-root>` | regenerate every declared progress component's step table between its markers; a malformed marker pair is refused and left untouched, its name printed, while every other progress component still regenerates — exit 1 when at least one was refused |
+| Done | `progress <project-root>` | regenerate every declared progress component's step table between its markers; a malformed marker pair, or an existing file with none, is refused and left untouched, its name printed, while every other progress component still regenerates — exit 1 when at least one was refused; a file that does not exist yet is created with its markers |
 | Review | `check …` with no `--phase` | name every row still open across all phases; report, do not enforce |
 
 The core root is the directory holding `workflows/` (`conventions/agent-tooling.md` → Plugin

@@ -672,16 +672,47 @@ EOF
   diff "$BATS_TEST_TMPDIR/first" "$PROJ/Progress/Snapping.md"
 }
 
-@test "a progress file with no markers gets them appended, keeping what is already there" {
+@test "an existing progress file with no markers is refused, not appended to" {
   progress_map
   step DONE 351-a-snapping-step 2026-08-07
   mkdir -p "$PROJ/Progress"
   printf '# S\n\nHandwritten only.\n' >"$PROJ/Progress/Snapping.md"
+  cp "$PROJ/Progress/Snapping.md" "$BATS_TEST_TMPDIR/before"
+  run "$DR" progress "$PROJ"
+  [ "$status" -eq 1 ]
+  case "$output" in *"no marker pair"*) ;; *) echo "$output"; return 1 ;; esac
+  diff "$BATS_TEST_TMPDIR/before" "$PROJ/Progress/Snapping.md"
+}
+
+@test "a progress file that does not exist yet is created with its markers" {
+  progress_map
+  step DONE 351-a-snapping-step 2026-08-07
   run "$DR" progress "$PROJ"
   [ "$status" -eq 0 ]
-  grep -q 'Handwritten only' "$PROJ/Progress/Snapping.md"
   grep -q 'spine:steps:begin' "$PROJ/Progress/Snapping.md"
   grep -q '351-a-snapping-step' "$PROJ/Progress/Snapping.md"
+}
+
+@test "only numbered task folders under a visible status are steps — .git and _calibration are not" {
+  map <<'EOF'
+## Changelog
+
+genre: progress
+places:
+  - CHANGELOG.md
+fed_by:
+  - Tasks/*/*
+EOF
+  step DONE 182-ui-api 2026-11-01
+  step ACTIVE 183-contract 2026-11-05
+  mkdir -p "$PROJ/Tasks/.git/hooks" "$PROJ/Tasks/.git/objects" "$PROJ/Tasks/.git/refs" \
+    "$PROJ/Tasks/_calibration/runs" "$PROJ/Tasks/DONE/.cache" "$PROJ/Tasks/DONE/notes"
+  printf '# C\n\n<!-- spine:steps:begin -->\n<!-- spine:steps:end -->\n' >"$PROJ/CHANGELOG.md"
+  run "$DR" progress "$PROJ"
+  [ "$status" -eq 0 ]
+  case "$output" in *"regenerated 2 step(s)"*) ;; *) echo "$output"; return 1 ;; esac
+  [ "$(grep -c '^| [0-9]' "$PROJ/CHANGELOG.md")" -eq 2 ]
+  ! grep -Eq 'hooks|objects|refs|runs|\.cache|notes' "$PROJ/CHANGELOG.md"
 }
 
 @test "an unclosed marker is refused, not reshaped" {

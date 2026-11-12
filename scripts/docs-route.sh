@@ -378,16 +378,22 @@ BEGIN = '<!-- spine:steps:begin -->'
 END = '<!-- spine:steps:end -->'
 
 
+TASK_NAME = re.compile(r'^\d{3}(-|$)')
+
+
 def task_folders():
-    """Every task folder, as Tasks/<status>/<id>-<slug>, in sorted order."""
+    """Every task folder, as Tasks/<status>/<id>-<slug>, in sorted order. Tasks/ can be its own
+    repository, so a hidden or underscored folder (.git, _calibration) is never a status, and a
+    task is only a folder named the way task-new numbers one — a glob of Tasks/*/* matches the
+    rest just as readily."""
     base = os.path.join(ROOT, 'Tasks')
     out = []
     for status in sorted(os.listdir(base)) if os.path.isdir(base) else []:
         d = os.path.join(base, status)
-        if not os.path.isdir(d):
+        if status.startswith(('.', '_')) or not os.path.isdir(d):
             continue
         for name in sorted(os.listdir(d)):
-            if os.path.isdir(os.path.join(d, name)):
+            if TASK_NAME.match(name) and os.path.isdir(os.path.join(d, name)):
                 out.append('Tasks/%s/%s' % (status, name))
     return out
 
@@ -435,6 +441,10 @@ def regenerate(path, table):
         head, _, rest = text.partition(BEGIN)
         _, _, tail = rest.partition(END)
         new = head + block + tail
+    elif os.path.isfile(path):
+        # A file someone already writes by hand never asked for a generated table: where it
+        # goes is theirs to say, by placing the markers.
+        return 'unmarked'
     else:
         new = text.rstrip('\n') + '\n\n' + block + '\n'
     if not os.path.isfile(path) or new != text:
@@ -472,6 +482,10 @@ if CMD == 'progress':
                 print('%s: %s has a malformed marker pair — one %s above one %s is what the '
                       'format allows. Left untouched: regenerating it would reshape the '
                       'handwritten half.' % (c['name'], place, BEGIN, END))
+                refused = True
+            elif r == 'unmarked':
+                print('%s: %s has no marker pair. Left untouched: put %s and %s where the step '
+                      'table belongs.' % (c['name'], place, BEGIN, END))
                 refused = True
             elif r:
                 print('%s: regenerated %d step(s) in %s' % (c['name'], len(mine), place))
