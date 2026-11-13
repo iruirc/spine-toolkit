@@ -389,11 +389,51 @@ for line in sys.stdin.read().split("\n")[:-1]:
   expect 'ManualChecks.md: steps: no steps table (### MC-1.)'
 }
 
-@test "scriptable: MC-2 of the field sample is named, next to its budget" {
-  # The sample's thirteen command steps also overrun the case budget, as the original did.
+# The file a person walks holds no instrument: a verdict read from a trace, a log or a recording is not
+# the tester's, so it lives in Validation.md or in ## Not covered.
+@test "instrument: a **By instrument:** field in a case is named" {
+  write "$(case_md 1 | awk '/^\*\*Failure looks like:\*\*/ { print "**By instrument:** the log shows the update"; print "" } { print }')"
+  expect 'ManualChecks.md: instrument: **By instrument:** in a case (### MC-1.)'
+}
+
+@test "instrument: a ## Reading the verdict section in the file is named" {
+  write
+  awk '/^## Cases$/ { print "## Reading the verdict"; print ""; print "Read the field item_count of the output."; print "" } { print }' "$F" >"$F.tmp"
+  mv "$F.tmp" "$F"
+  expect 'ManualChecks.md: instrument: ## Reading the verdict in the file (## Reading the verdict)'
+}
+
+@test "instrument: a screen recording in a step is named, in English and in Russian" {
+  local action
+  for action in 'Record the screen while you tap the plus button' 'Start recording and tap the plus button' \
+                'Stop the screen recording' \
+                "$(ru '\u0417\u0430\u043f\u0438\u0448\u0438\u0442\u0435 \u044d\u043a\u0440\u0430\u043d, \u043f\u043e\u043a\u0430 \u043d\u0430\u0436\u0438\u043c\u0430\u0435\u0442\u0435 \u043f\u043b\u044e\u0441')" \
+                "$(ru '\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0437\u0430\u043f\u0438\u0441\u044c \u0438 \u043d\u0430\u0436\u0430\u0442\u044c \u043f\u043b\u044e\u0441')" \
+                "$(ru '\u0421\u0434\u0435\u043b\u0430\u0442\u044c \u0437\u0430\u043f\u0438\u0441\u044c \u044d\u043a\u0440\u0430\u043d\u0430')"; do
+    ACTION="$action"
+    write
+    run "$LINT" "$F"
+    [ "$status" -eq 1 ] || { echo "not named: $action"; return 1; }
+    [ "$output" = 'ManualChecks.md: instrument: a screen recording in a step (### MC-1., step 2)' ] \
+      || { printf 'action: %s\n got: %s\n' "$action" "$output"; return 1; }
+  done
+}
+
+@test "instrument: a file with none of them is clean, and a recording named in a field is not a step" {
+  write
+  clean "$F"
+  WHAT='the badge follows the quantity; a tester who is unsure sends a screen recording.'
+  write
+  clean "$F"
+}
+
+@test "scriptable: MC-2 of the field sample is named, next to its budget and its instrument section" {
+  # The sample's thirteen command steps also overrun the case budget, as the original did, and it
+  # keeps its commands in a ## Reading the verdict section, which the file a person walks no longer has.
   run "$LINT" "$FIX/scriptable.ru.md"
   [ "$status" -eq 1 ] || { echo "status $status: $output"; return 1; }
-  [ "$output" = "$(printf '%s\n%s' \
+  [ "$output" = "$(printf '%s\n%s\n%s' \
+    'ManualChecks.md: instrument: ## Reading the verdict in the file (## Reading the verdict)' \
     'ManualChecks.md: scriptable: no step needs a person, run it as a script (### MC-2.)' \
     'ManualChecks.md: budget: case of 41 lines, more than 40 (### MC-2.)')" ] || { echo "$output"; return 1; }
 }

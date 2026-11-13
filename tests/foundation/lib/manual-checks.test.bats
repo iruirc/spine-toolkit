@@ -24,8 +24,21 @@ setup() {
   grep -qF '## Code references' "$SKILL" || { echo "the skill never names ## Code references"; return 1; }
   grep -qF '### MC-<n>.' "$SKILL" || { echo "the case heading is not ### MC-<n>."; return 1; }
   grep -qxF '| # | Action | Data | Expected | Actual |' "$SKILL" || { echo "the skill has no steps header"; return 1; }
-  # The instrument stays, as an optional field for a verdict a developer reads from an attachment.
-  grep -qF '**By instrument:**' "$SKILL" || { echo "the optional instrument field is gone"; return 1; }
+  # The instrument left the file a person walks: it is no field of a case, and no section of the file.
+  case_tpl="$(awk '/^### MC-1\. /{f=1} f&&/^```$/{exit} f' "$SKILL")"
+  [ -n "$case_tpl" ] || { echo "no case template in the skill"; return 1; }
+  ! grep -qF 'By instrument' <<<"$case_tpl" || { echo "the case template still carries the instrument field"; return 1; }
+}
+
+@test "the instrument is not part of the file: a measurement goes to Validation.md or to ## Not covered" {
+  s="$(skill_section '## No instrument in the file')"
+  [ -n "$s" ] || { echo "no ## No instrument in the file"; return 1; }
+  for token in '`Validation.md`' '`## Not covered`' 'no instrument'; do
+    grep -qF -- "$token" <<<"$s" || { echo "## No instrument in the file does not name $token"; return 1; }
+  done
+  ! grep -q '^## The instrument rule$' "$SKILL" || { echo "the instrument rule is still there"; return 1; }
+  ! grep -qF 'Reading the verdict' "$SKILL" || { echo "the skill still names ## Reading the verdict"; return 1; }
+  ! grep -qF '**By instrument:**' "$SKILL" || { echo "the skill still names **By instrument:**"; return 1; }
 }
 
 @test "the reader is a tester who knows the product but not the code" {
@@ -86,8 +99,7 @@ setup() {
   done
 }
 
-@test "the skill carries both rules that decide whether a case is executable" {
-  grep -q '^## The instrument rule$' "$SKILL" || { echo "no instrument rule"; return 1; }
+@test "the skill carries the symbol rule that decides whether a case is executable" {
   grep -q '^## The symbol rule$' "$SKILL" || { echo "no symbol rule"; return 1; }
 }
 
@@ -97,11 +109,11 @@ setup() {
 }
 
 @test "the skill names the shared sections that keep a case from repeating its neighbours" {
-  for section in '## Preparation' '## Reading the verdict' '## Troubleshooting'; do
+  for section in '## Preparation' '## Troubleshooting'; do
     grep -qF "$section" "$SKILL" || { echo "the skill never names $section"; return 1; }
   done
   grep -qi 'conditional' "$SKILL" \
-    || { echo "the shared sections are not marked conditional, so a two-case task gets all three"; return 1; }
+    || { echo "the shared sections are not marked conditional, so a two-case task gets both"; return 1; }
 }
 
 @test "the skill states the floor that survives lite" {
@@ -303,7 +315,8 @@ skill_section() { awk -v h="$1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
     [ "$(grep -c '^```' <<<"$prep")" -ge 2 ] || { echo "manual-checks.$lang.md: ## Preparation has no screen-map sketch"; return 1; }
     [ "$(grep -c '^### MC-[0-9]*\. ' "$ex")" -ge 3 ] || { echo "manual-checks.$lang.md: fewer than three cases"; return 1; }
     grep -qF '**dev-only:**' <<<"$prep" || { echo "manual-checks.$lang.md: no dev-only preparation step"; return 1; }
-    grep -qF '**By instrument:**' "$ex" || { echo "manual-checks.$lang.md: no case with the instrument field"; return 1; }
+    ! grep -qF '**By instrument:**' "$ex" || { echo "manual-checks.$lang.md: a case still carries the instrument field"; return 1; }
+    ! grep -qF '## Reading the verdict' "$ex" || { echo "manual-checks.$lang.md: the file still carries ## Reading the verdict"; return 1; }
     grep -qxF '## Code references' "$ex" || { echo "manual-checks.$lang.md: no ## Code references"; return 1; }
     ! grep -qF '**Code:**' "$ex" || { echo "manual-checks.$lang.md: a **Code:** field is still inside a case"; return 1; }
     fail="$(awk '/^## On failure/{f=1;next} f&&/^## /{exit} f' "$ex")"
@@ -334,7 +347,7 @@ PY
   [ -n "$s" ] || { echo "no ## What a case must prove"; return 1; }
   for token in 'before the change' 'nothing broke' 'not a check of the fix' 'the diff' '`OpsChecklist.md`' \
                'at normal speed' 'never reads frames, traces or logs' '`Validation.md`' '`Walkthrough.md`' \
-               'Outside `**By instrument:**`, `## Reading the verdict`, `**dev-only:**` steps and `## Code references`, no line is for a developer'; do
+               'Outside `**dev-only:**` steps and `## Code references`, no line is for a developer'; do
     grep -qF -- "$token" <<<"$s" || { echo "## What a case must prove does not name $token"; return 1; }
   done
 }
@@ -376,7 +389,7 @@ PY
                '`redundant`' 'deletes' '`ManualChecks.md check: N place(s), revised, A → B lines.`' \
                'The revision lengthened the file.' '`ManualChecks.md check: nothing unclear.`' \
                'moving `[COVERS]` alone is no change' 'except its `## Code references`' \
-               'none of them is ever a `redundant` place'; do
+               'neither is ever a `redundant` place'; do
     grep -qF -- "$token" <<<"$c" || { echo "## Check does not name $token"; return 1; }
   done
   ! grep -qiE 'second round|two rounds' <<<"$c" || { echo "## Check grew a second round"; return 1; }

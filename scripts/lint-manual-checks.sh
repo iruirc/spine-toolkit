@@ -21,6 +21,10 @@ set -euo pipefail
 #   codeslot  a case with no row in ## Code references (a table "| Case | Code |", one "| MC-<n> | ... |"
 #             row per case), a row with no file:line, a row for an id that is no case under ## Cases;
 #   chain     a case that starts from another case's end state, or a file that keeps its edit history;
+#   instrument **By instrument:** in a case, a ## Reading the verdict section in the file, a screen
+#             recording in a step ("record the screen", "screen recording", "start recording" and
+#             their Russian forms): nothing a person walks is settled by an instrument, a measurement
+#             is Validation.md's or a line of ## Not covered;
 #   scriptable a case whose every step is a shell command: a backticked command with at most a verb
 #             before it, or "run the command ..." and its Russian forms; nothing in it needs a person,
 #             so it is a script, not a case; a case with one step a person takes is not named;
@@ -80,6 +84,12 @@ RUN_VERB = r'(?:run|execute|\u0432\u044b\u043f\u043e\u043b\u043d\w*|\u0437\u0430
 # backticks (`Checkout`) is not one; the word command follows the verb with at most one word between,
 # so the Undo command of a menu and the Russian word for team are not one. Russian: script, and read
 # the output.
+# A step that has the tester record the screen: the recording is an instrument's input, not a step.
+RECORD = [re.compile(p, re.I) for p in (
+    r'\brecord\s+the\s+screen\b', r'\bscreen\s+recording\b', r'\bstart\s+recording\b',
+    r'\u0437\u0430\u043f\u0438(?:\u0441|\u0448)\w*\s+\u044d\u043a\u0440\u0430\u043d',   # record the screen
+    r'\u0432\u043a\u043b\u044e\u0447(?:\u0438\u0442\u044c|\u0438\u0442\u0435)\s+\u0437\u0430\u043f\u0438\u0441\u044c',  # turn the recording on
+)]
 CMD_CODE = re.compile(r'^(?:' + RUN_VERB + r'\s+)?(?:the\s+)?(?:script\s+|\u0441\u043a\u0440\u0438\u043f\u0442\s+)?'
                       r'`[^`]*[\s/.=-][^`]*`'
                       r'(?:\s+and\s+read\s+(?:the\s+)?output|\s+\u0438\s+\u043f\u0440\u043e\u0447\u0438\u0442\u0430\u0442\u044c\s+\u0432\u044b\u0432\u043e\u0434)?$', re.I)
@@ -195,6 +205,10 @@ if not any(t == '## Run record' for t in titles):
 if not any(t.startswith('## On failure') for t in titles):
     found.append('file: missing ## On failure (file)')
 
+# instrument, at file level: the section an instrument's commands lived in.
+if any(t.startswith('## Reading the verdict') for t in titles):
+    found.append('instrument: ## Reading the verdict in the file (## Reading the verdict)')
+
 cases = [(i, h) for i, h in headings if MC.match(h[1])]
 old = [(i, h) for i, h in headings if OLD.match(h[1])]
 
@@ -253,6 +267,8 @@ for i, h in cases:
     for label in LABELS:
         if not any('**%s:**' % label in line for line in plain):
             found.append('case: missing **%s:** (%s)' % (label, where))
+    if any('**By instrument:**' in line for line in plain):
+        found.append('instrument: **By instrument:** in a case (%s)' % where)
     if i == old_code:
         found.append('case: old format, **Code:** inside a case instead of ## Code references (%s)' % where)
 
@@ -275,6 +291,10 @@ for i, h in cases:
                 found.append('steps: step %s has an empty Expected (%s)' % (step, where))
             actions.append((step, c[1]))
             expects.append((step, c[3]))
+
+    for step, text in actions:
+        if any(p.search(text) for p in RECORD):
+            found.append('instrument: a screen recording in a step (%s, step %s)' % (where, step))
 
     for step, text in actions:
         hit = next((p.search(text) for p in COMPOUND if p.search(text)), None)

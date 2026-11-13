@@ -526,9 +526,9 @@ cases move to `ManualChecks.md` for a human, and the run continues with nothing 
 The artifact's shape is core's, not yours: `skills/manual-checks/SKILL.md` holds the structure, the
 required fields of a case, and the rules that decide whether a case is executable. Your
 validator points at that skill instead of describing the file. What stays platform-side is when a
-check is deferred and what this ecosystem measures it with — a case whose verdict comes from an
-instrument is backed by that instrument's exact invocation, written where the `manual-checks`
-skill puts it, and only your agent knows what that invocation is.
+check is deferred and what this ecosystem measures it with — a measurement your validator can take
+goes to `Validation.md` with its exact invocation, and one it cannot take is a `## Not covered`
+line of `ManualChecks.md`; the file a person walks holds no instrument.
 
 ## 5. The smallest platform that is worth installing
 

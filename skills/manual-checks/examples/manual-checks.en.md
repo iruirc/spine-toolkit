@@ -97,8 +97,6 @@ If the badge shows a number before step 6, the account's cart is not empty: reco
 
 **Expected result:** the cart holds two Green tea, the total reads 9.00 and the badge shows 2.
 
-**By instrument:** the server's cart agrees with the screen. A developer runs `curl -s -H "Authorization: Bearer <token>" https://shop.example.com/api/cart`, with the test account's token, and reads `item_count`: it must be 2.
-
 **Failure looks like:** the quantity reads 2 while the total still reads 4.50, or the badge still shows 1.
 
 **Cleanup:** tap the minus button in the Green tea row until the row disappears.
@@ -190,6 +188,7 @@ If the badge shows a number before step 6, the account's cart is not empty: reco
 
 ## Not covered
 
+- The cart on the server agreeing with the screen: no person can read it, so no case checks it.
 - Paying for the order: the checkout screen did not change in this task.
 - A cart shared between two devices: the sync between devices is a later step of the epic.
 

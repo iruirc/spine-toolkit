@@ -72,7 +72,6 @@ The lint's `scriptable` check is the backstop: a case whose every step is a comm
 ## Run record
 ## Scope
 ## Preparation
-## Reading the verdict
 ## Cases
 ## On failure — bug report
 ## Not covered
@@ -88,7 +87,6 @@ The lint's `scriptable` check is the backstop: a case whose every step is a comm
 | `## Run record` | A table the tester fills in: Build (named from `[COVERS]`), Device / OS, Tester / date, and Summary as `PASS __ / FAIL __ / BLOCKED __` | 4 rows |
 | `## Scope` | Current state only, no history of edits: in two or three plain sentences what the change does for the user; what the automated pass already covered, so nothing green is re-walked by hand; the number of cases and how long a run takes | ≤ 8 lines |
 | `## Preparation` | The screen map and its word table, then the setup every case shares: the build (`**dev-only:**`), the device, and each shared scene | ≤ 60 lines |
-| `## Reading the verdict` | For a verdict a developer reads from an instrument: the commands in full, what the fields mean, what separates one run from the next | ≤ 40 lines |
 | `## Cases` | `### MC-<n>.`, one per check | ≤ 40 lines each |
 | `## On failure — bug report` | The template a tester fills in for a failed case: Title, Build / device, Steps to reproduce, Actual, Expected, Attachments | 6 fields |
 | `## Not covered` | Ground neither the automation nor these cases reach, one line each with its reason, or `none` | 1 line per item |
@@ -96,7 +94,7 @@ The lint's `scriptable` check is the backstop: a case whose every step is a comm
 | `## Charter` | A timebox and what to look at: "10 minutes: change quantities in a long cart; a total that lags, a badge that disagrees, a row that jumps" | ≤ 3 lines |
 | `## Code references` | A table headed `\| Case \| Code \|`, one row per case, `\| MC-<n> \| (file:line), … \|`; the tester never reads it | 1 row per case |
 
-**`[COVERS]`, `## Run record`, `## Scope`, `## Cases`, `## On failure` and `## Not covered` are always there, and so is `## Code references` whenever the file holds a case.** A file whose `## Cases` reads `none — <why>` has no references section. The others are conditional. `## Preparation` appears as soon as a step uses a product word or a shared scene, which is nearly always. `## Reading the verdict` appears when an instrument command would otherwise be repeated in more than one case. `## Troubleshooting` appears when a case has a known way to go wrong that is not a product defect: the wrong account, a setting left changed, a cached build. `## Charter` appears when the change carries a gesture or a look the cases do not cover whole.
+**`[COVERS]`, `## Run record`, `## Scope`, `## Cases`, `## On failure` and `## Not covered` are always there, and so is `## Code references` whenever the file holds a case.** A file whose `## Cases` reads `none — <why>` has no references section. The others are conditional. `## Preparation` appears as soon as a step uses a product word or a shared scene, which is nearly always. `## Troubleshooting` appears when a case has a known way to go wrong that is not a product defect: the wrong account, a setting left changed, a cached build. `## Charter` appears when the change carries a gesture or a look the cases do not cover whole.
 
 **`## Preparation`, in this order:**
 
@@ -135,8 +133,6 @@ A case names the scene it starts from in `**Preconditions:**`, and only what dif
 
 **Expected result:** the end state that passes the case
 
-**By instrument:** (optional) the criterion and its threshold, for a developer-run verdict
-
 **Failure looks like:** what is on the screen when it is broken
 
 **Cleanup:** what to put back after the case, or —
@@ -146,7 +142,7 @@ A case names the scene it starts from in `**Preconditions:**`, and only what dif
 **Notes / attachments:** ______
 ```
 
-The heading is `### MC-<n>. <observable behaviour>`. The id is stable: a refresh does not renumber the cases, and the id of a removed case is never reused. All eleven fields are always there; only `**By instrument:**` is optional, and it appears only when an instrument settles a verdict a developer reads. Each field earns itself:
+The heading is `### MC-<n>. <observable behaviour>`. The id is stable: a refresh does not renumber the cases, and the id of a removed case is never reused. All eleven fields are always there. Each field earns itself:
 
 - `**Priority:**` — P1 is the original defect or the main scenario, P2 an important side path, P3 a rare edge. It decides what is run when there is no time for all of it.
 - `**Traces to:**` names the `## Manual acceptance` line or the acceptance criterion the case comes from.
@@ -155,7 +151,6 @@ The heading is `### MC-<n>. <observable behaviour>`. The id is stable: a refresh
 - `**Test data:**` carries every concrete value the steps use: names, prices, quantities, addresses.
 - `**Steps:**` is the table above. `Expected` is what the screen shows right after that action; it is `—` only for a step that merely prepares the next one. `Actual` stays empty for the tester.
 - `**Expected result:**` is the end state that passes the case, in one line.
-- `**Expected result:**` and `**By instrument:**` are not alternatives. `**Expected result:**` answers "was the action performed at all?", the instrument answers "was it performed correctly?". A case carrying only the instrument cannot tell a defect from a fumbled step.
 - `**Failure looks like:**` is the cheapest field and the strongest. A failure is recognised faster than a success is verified, and this is what turns "it did not add up" into "here is what is broken".
 - `**Cleanup:**` puts back what the case changed: an item left in the cart, a setting switched. `—` when there is nothing.
 - The `(file:line)` references a case was grounded in are its row in `## Code references`, never a field of the case.
@@ -163,7 +158,7 @@ The heading is `### MC-<n>. <observable behaviour>`. The id is stable: a refresh
 
 Write a blank line before every field, list and table. Markdown joins consecutive lines into one paragraph, and a table with no blank line above it renders as plain text. The lint checks structure, not rendering, so open the preview before handing the file over.
 
-**Language.** The section headings, `[COVERS]`, the table's column names and the field labels above stay English: they are the file's structure. So do the sub-headings of `## Preparation`: `### Screen map` and the scene ids `P0`…`Pn` are written in Latin letters in every language, and only a scene's title after its id is prose. A case's title after `### MC-<n>.`, the text after each label, the table's cells, and the text of every section — `## Scope`, `## Preparation`, `## Reading the verdict`, `## Troubleshooting`, `## Not covered`, `## Charter` — are prose in the project's `[LANG]` (`conventions/i18n.md` → Artifact authoring rule).
+**Language.** The section headings, `[COVERS]`, the table's column names and the field labels above stay English: they are the file's structure. So do the sub-headings of `## Preparation`: `### Screen map` and the scene ids `P0`…`Pn` are written in Latin letters in every language, and only a scene's title after its id is prose. A case's title after `### MC-<n>.`, the text after each label, the table's cells, and the text of every section — `## Scope`, `## Preparation`, `## Troubleshooting`, `## Not covered`, `## Charter` — are prose in the project's `[LANG]` (`conventions/i18n.md` → Artifact authoring rule).
 
 ## What a case must prove
 
@@ -173,9 +168,9 @@ A case earns a tester's time only when its verdict says something about this cha
 
 **It checks what the diff touches.** An item of `OpsChecklist.md` becomes a case only when the diff touches that behaviour, as the `ops-checklist` skill defines touches. Otherwise the item is N/A, with its reason, by that skill. The one nothing-broke case is the only case not built on changed code. Its row in `## Code references` names the code of the behaviour it guards.
 
-**It is settled by eye when the difference shows at normal speed.** That is so when the defect was found by eye, or when the check is tagged `visual judgment`. A recording is the fallback: "if unsure, record the screen and send it". The person never reads frames, traces or logs. An instrument is the main path only when no eye can see the difference at all, and then an agent or a developer settles the verdict by `**By instrument:**`.
+**It is settled by eye when the difference shows at normal speed.** That is so when the defect was found by eye, or when the check is tagged `visual judgment`. A recording is the fallback: "if unsure, record the screen and send it". The person never reads frames, traces or logs. When no eye can see the difference at all, the check is no case of this file: `## No instrument in the file` says where it goes.
 
-**It holds no line for a developer.** Outside `**By instrument:**`, `## Reading the verdict`, `**dev-only:**` steps and `## Code references`, no line is for a developer. Measurements, internal terms and the history of edits go to `Validation.md` or `Walkthrough.md`. Code references go to `## Code references`.
+**It holds no line for a developer.** Outside `**dev-only:**` steps and `## Code references`, no line is for a developer. Measurements, internal terms and the history of edits go to `Validation.md` or `Walkthrough.md`. Code references go to `## Code references`.
 
 The first two rules hold for a task that changes product behaviour. On a task whose diff changes no product behaviour — a TEST task, a change to docs or tests only — the first rule does not apply. There a case checks the behaviour the task targets that automation could not reach, which is what `[MANUAL_CHECKS]` `always` asks of such a run.
 
@@ -185,7 +180,7 @@ The first two rules hold for a task that changes product behaviour. On a task wh
 - **No "repeat steps".** "Repeat steps 3–5 twice" is not a step: write the rows out.
 - **Cases are independent.** No case starts from "the state after case N": every case starts from its own `**Preconditions:**`, and a scene several cases share lives in `## Preparation`.
 - **Every object is named and located.** "The plus button on the Green tea row", not "the add button".
-- **An expectation is checkable.** A number, a text on the screen, an element present or absent. "Smoothly", "without a jump" or "about" only with a criterion a tester can apply by hand and eye: "before you can lift the finger", "wider than half the screen". A value that needs a tool goes to `**Test data:**` as a reference and to `**Notes / attachments:**` as "attach a screenshot, a developer checks it", or to `**By instrument:**`.
+- **An expectation is checkable.** A number, a text on the screen, an element present or absent. "Smoothly", "without a jump" or "about" only with a criterion a tester can apply by hand and eye: "before you can lift the finger", "wider than half the screen". A value that needs a tool goes to `**Test data:**` as a reference and to `**Notes / attachments:**` as "attach a screenshot, a developer checks it"; a measurement the eye cannot take is no step (`## No instrument in the file`).
 - **A case that cannot be run without a code change is BLOCKED for the tester**, and its `**Preconditions:**` say so.
 - **Visible text is copied from the app verbatim.** Before writing, take every button, title and message from the app's string resources in the interface language that Run record names; the platform's validator says where those resources live. One language per file: never mix the label of one button in two languages.
 
@@ -200,6 +195,7 @@ The first two rules hold for a task that changes product behaviour. On a task wh
 | `compound` | two steps in one `Action`: "then", "and then", "afterwards", "repeat steps", a semicolon |
 | `code` | code in `Action`, `Expected`, `**Preconditions:**` or `**What it checks:**`: a CamelCase word, a source file, a dotted name of three parts or more, a `(file:line)` |
 | `codeslot` | a case with no row in `## Code references`, a row with no `file:line` in it, a row for a case not in `## Cases` |
+| `instrument` | an instrument in the file a person walks: an instrument field in a case, a section of instrument commands, a step that has the tester record the screen (`## No instrument in the file`) |
 | `chain` | "after case N", "the state right after", or an edit history kept in the file |
 | `scriptable` | a case in which every step is a command — a backticked command, or "run the command…": nothing in it needs a person, so it is a script, not a case (`## Does this check need a person?`). The repair routes the case — `covered` in `## Scope`, or an automatable gap — and under `auto` the last one routed away takes the file with it; rewording the steps is not a repair |
 | `budget` | a case over 40 lines, `## Scope` over 8, `## Preparation` over 60 |
@@ -229,18 +225,9 @@ A Validation that finds `ManualChecks.md` with a `[COVERS]` behind HEAD refreshe
 4. A file with `**Code:**` inside its cases is the old format: move each into `## Code references` as that case's row. A file no Validation refreshes stays as it is.
 5. `[COVERS]` becomes HEAD.
 
-## The instrument rule
+## No instrument in the file
 
-A tester's verdict is written in what a person can **see**, and a tester's case needs no instrument. An instrument — a trace, a log, a parser, a profiler — settles a verdict a developer reads, from the build or from a recording the tester sends. The tester's part is at most to record and send; an agent or a developer reads the recording. That instrument has to be runnable from this file: the command in full, and the value in its output that decides.
-
-The command is written **once**, in `## Reading the verdict`. A case's `**By instrument:**` names only its own criterion — the measurement and the threshold it is judged against. Twelve cases do not repeat one invocation twelve times. When no command serves more than one case — a single case, or cases each measured differently — there is no such section and each command lives in its own case.
-
-| | |
-|---|---|
-| Defect | `**By instrument:** the log shows the update` — no command anywhere, no threshold |
-| Case | `**By instrument:** the badge refreshes within 300 ms of the tap`, with `## Reading the verdict` carrying the invocation that prints it |
-
-Naming the instrument is not carrying it: an instrument mentioned by filename, with no invocation and no field to read, is a defect. The optional field is no way out of a criterion either: a case with no instrument still has an `**Expected result:**` a person can compare with the screen.
+A tester's verdict is written in what a person can **see**, so the file a person walks holds no instrument: no field of a case, no section, no step that has the tester record the screen for someone else to read. A measurement the agent can make itself is made in the run and recorded in `Validation.md`. A measurement it cannot make is a line in `## Not covered`, with its reason, so that its absence does not read as a pass. Naming a trace, a log or a profiler in a case is a defect all the same: the tester cannot run it.
 
 ## The symbol rule
 
@@ -255,7 +242,7 @@ Neither `**Preconditions:**`, a cell of `**Steps:**`, nor `**Expected result:**`
 **The reader** is a tester with no access to the code: a fresh dispatch of the validator's role, tuned `light`. Of the task and the repository it reads `ManualChecks.md`, except its `## Code references`, and nothing else — no other file of the task, no source file, no git — and returns two lists:
 
 - `walk` — one line per step of every case, as the action it would take: "I press X there, and expect Y";
-- `smells` — every place it could not execute as written, each with the case, the step, a quote of at most one line and what is missing, of one kind: `ambiguous` — an intent, or a step with no object and place; `unverified` — an action with no expectation, other than a preparing step; `precondition` — preconditions that cannot be compared with the screen; `tacit` — a term, a screen or data with no route to it; `oracle` — an expectation that cannot be compared with the screen; `access` — a step that cannot be done without the code or a terminal and is not marked `**dev-only:**`; `twofold` — an expectation that can be counted as passed in two ways; `chained` — a case that cannot be run alone; `redundant` — a repeat, a caveat said a second time, text not for this reader: a measurement, an internal term, an edit history. `**By instrument:**`, `## Reading the verdict`, `**dev-only:**` steps and `## Code references` are for a developer by design, and none of them is ever a `redundant` place.
+- `smells` — every place it could not execute as written, each with the case, the step, a quote of at most one line and what is missing, of one kind: `ambiguous` — an intent, or a step with no object and place; `unverified` — an action with no expectation, other than a preparing step; `precondition` — preconditions that cannot be compared with the screen; `tacit` — a term, a screen or data with no route to it; `oracle` — an expectation that cannot be compared with the screen; `access` — a step that cannot be done without the code or a terminal and is not marked `**dev-only:**`; `twofold` — an expectation that can be counted as passed in two ways; `chained` — a case that cannot be run alone; `redundant` — a repeat, a caveat said a second time, text not for this reader: a measurement, an internal term, an edit history. `**dev-only:**` steps and `## Code references` are for a developer by design, and neither is ever a `redundant` place.
 
 **Revision.** An empty `smells` ends the check. Otherwise the author, with the code and the task, fixes in one pass every place named and every step `walk` retold wrongly, then runs the lint again. The revision deletes a `redundant` place, never rewrites it. A place where something is missing is closed by rewording first, and by adding text only when rewording cannot close it. What is left is not checked again. The run notes one line — `ManualChecks.md check: N place(s), revised, A → B lines.`, A and B being the file's lines before and after the revision, or `ManualChecks.md check: nothing unclear.` When B is above A, the line goes on: `The revision lengthened the file.` A failure of either dispatch is noted and stops nothing.
 
@@ -263,7 +250,7 @@ Neither `**Preconditions:**`, a cell of `**Steps:**`, nor `**Expected result:**`
 
 The axis decides depth, not existence: whether this file appears at all is `manual_checks`. The value arrives in the contract as `manual_checks`; `conventions/task-settings.md` holds the chain it was resolved along. At either value of `scale` it is written when that switch says so — it is the only record of ground nothing verified, and `conventions/task-scale.md ## The floor` keeps what carries a guarantee.
 
-`lite` halves `## Preparation` and `## Reading the verdict`, drops `## Troubleshooting`, and cuts no required field of a case; a case, `## Scope` and `## Charter` keep theirs. Eleven fields with two steps already fill about 30 lines, so a case keeps its 40 lines at `lite` too: a case missing its `**Failure looks like:**` is not shorter, it is unusable. `## Manual acceptance` at `lite` runs to about three lines, one when there is nothing to list — an expected size, not a ceiling: a task with five checks that need a person lists five.
+`lite` halves `## Preparation`, drops `## Troubleshooting`, and cuts no required field of a case; a case, `## Scope` and `## Charter` keep theirs. Eleven fields with two steps already fill about 30 lines, so a case keeps its 40 lines at `lite` too: a case missing its `**Failure looks like:**` is not shorter, it is unusable. `## Manual acceptance` at `lite` runs to about three lines, one when there is nothing to list — an expected size, not a ceiling: a task with five checks that need a person lists five.
 
 ## Review
 
