@@ -40,7 +40,11 @@ For BUG the reproduction replay is not listed: its steps are already in `Reprodu
 
 ## Does this check need a person?
 
-A check needs a person only when it requires at least one of three things:
+Does the diff change this behaviour? Ask that first, before the three below, and take "change" as the `ops-checklist` skill defines touches: directly or through code on its path. When the diff does not change it, the check is neither a case nor a Pending: it is a line in `## Not covered` with its reason, or N/A in `OpsChecklist.md`. A constraint of the implementation ("no network is used") is not a behaviour the diff changes, so it gets no case. The same holds for a check deferred because of a driver that could not reach it: that is a reason the run could not do it, never a reason a person must.
+
+A `## Manual acceptance` of `Fully automatable.` does not forbid a case. When Validation still writes one, its `**What it checks:**` names the change of the diff it checks.
+
+When the diff does change it, a check needs a person only when it requires at least one of three things:
 
 | Needs | Examples |
 |---|---|
@@ -56,7 +60,7 @@ A check that needs none of them is not a case. It gets one of three outcomes:
 | `covered` | Validation, or automation already run, checked it, and the evidence exists | `## Scope`, with a reference to the evidence; `Validation.md` when there is no file |
 | `drop` | it costs more than it is worth, or its outcome changes nothing | at Plan: a line in `## Not automated` with its reason |
 
-**A check deferred because nothing could drive the app in this run** — `drive_app` off, no driver, a driver that cannot reach the surface — is a device action: driving the app is exactly what the run could not do, so it needs a person. The BUG reproduction replay is one, and it stays a case. "Automatable, not automated" is for a check a script could make, never for one only a driver could.
+**A check deferred because nothing could drive the app in this run** — `drive_app` off, no driver, a driver that cannot reach the surface — and that the diff changes is a device action: driving the app is exactly what the run could not do, so it needs a person. The BUG reproduction replay is one, and it stays a case. "Automatable, not automated" is for a check a script could make, never for one only a driver could.
 
 **A mixed check** — one or two actions of a person inside a check made of commands — is not written as a case of steps. Plan makes it work for a phase: a script that does everything itself, stops at a prompt where the person is needed ("turn on airplane mode, press Enter") and prints PASS or FAIL. It lives where the project keeps its scripts. In `ManualChecks.md` its launch is a `**dev-only:**` step in `## Preparation`; the case holds only the person's steps, and its `**Expected result:**` is the verdict the script prints.
 
@@ -162,7 +166,7 @@ Write a blank line before every field, list and table. Markdown joins consecutiv
 
 ## What a case must prove
 
-A case earns a tester's time only when its verdict says something about this change. Four rules decide that.
+A case earns a tester's time only when its verdict says something about this change. Five rules decide that.
 
 **It tells the build before the change from the build after.** On the build before the change the case fails; on the build after it passes. Checks that pass the same on both fold into one case, "nothing broke", whose `**What it checks:**` says it is not a check of the fix. When automated tests or the driver already cover that regression, there is no such case, and `## Scope` names the evidence.
 
@@ -171,6 +175,8 @@ A case earns a tester's time only when its verdict says something about this cha
 **It is settled by eye when the difference shows at normal speed.** That is so when the defect was found by eye, or when the check is tagged `visual judgment`. When the eye is unsure, the case says what to look for, and the eye decides. The person never reads frames, traces or logs. When no eye can see the difference at all, the check is no case of this file: `## No instrument in the file` says where it goes.
 
 **It holds no line for a developer.** Outside `**dev-only:**` steps and `## Code references`, no line is for a developer. Measurements, internal terms and the history of edits go to `Validation.md` or `Walkthrough.md`. Code references go to `## Code references`.
+
+**It is one check, one case.** The conditions a check is run under — language, theme, text size, device, orientation — are a table of conditions in **Test data:**, and the steps are walked once per row. A check that differs from another only in its conditions is a row of that case, never a second case. The status is one, and a condition that broke is named in its reason. A case about how a screen looks reaches the screen and does not walk again what ## Scope calls covered.
 
 The first two rules hold for a task that changes product behaviour. On a task whose diff changes no product behaviour — a TEST task, a change to docs or tests only — the first rule does not apply. There a case checks the behaviour the task targets that automation could not reach, which is what `[MANUAL_CHECKS]` `always` asks of such a run.
 
@@ -242,7 +248,7 @@ Neither `**Preconditions:**`, a cell of `**Steps:**`, nor `**Expected result:**`
 **The reader** is a tester with no access to the code: a fresh dispatch of the validator's role, tuned `light`. Of the task and the repository it reads `ManualChecks.md`, except its `## Code references`, and nothing else — no other file of the task, no source file, no git — and returns two lists:
 
 - `walk` — one line per step of every case, as the action it would take: "I press X there, and expect Y";
-- `smells` — every place it could not execute as written, each with the case, the step, a quote of at most one line and what is missing, of one kind: `ambiguous` — an intent, or a step with no object and place; `unverified` — an action with no expectation, other than a preparing step; `precondition` — preconditions that cannot be compared with the screen; `tacit` — a term, a screen or data with no route to it; `oracle` — an expectation that cannot be compared with the screen; `access` — a step that cannot be done without the code or a terminal and is not marked `**dev-only:**`; `twofold` — an expectation that can be counted as passed in two ways; `chained` — a case that cannot be run alone; `redundant` — a repeat, a caveat said a second time, text not for this reader: a measurement, an internal term, an edit history. `**dev-only:**` steps and `## Code references` are for a developer by design, and neither is ever a `redundant` place.
+- `smells` — every place it could not execute as written, each with the case, the step, a quote of at most one line and what is missing, of one kind: `ambiguous` — an intent, or a step with no object and place; `unverified` — an action with no expectation, other than a preparing step; `precondition` — preconditions that cannot be compared with the screen; `tacit` — a term, a screen or data with no route to it; `oracle` — an expectation that cannot be compared with the screen; `access` — a step that cannot be done without the code or a terminal and is not marked `**dev-only:**`; `twofold` — an expectation that can be counted as passed in two ways; `chained` — a case that cannot be run alone; `redundant` — a repeat, a case that repeats another under other conditions, a caveat said a second time, text not for this reader: a measurement, an internal term, an edit history. `**dev-only:**` steps and `## Code references` are for a developer by design, and neither is ever a `redundant` place.
 
 **Revision.** An empty `smells` ends the check. Otherwise the author, with the code and the task, fixes in one pass every place named and every step `walk` retold wrongly, then runs the lint again. The revision deletes a `redundant` place, never rewrites it. A place where something is missing is closed by rewording first, and by adding text only when rewording cannot close it. What is left is not checked again. The run notes one line — `ManualChecks.md check: N place(s), revised, A → B lines.`, A and B being the file's lines before and after the revision, or `ManualChecks.md check: nothing unclear.` When B is above A, the line goes on: `The revision lengthened the file.` A failure of either dispatch is noted and stops nothing.
 

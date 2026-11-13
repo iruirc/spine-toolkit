@@ -809,3 +809,30 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
   done
   return 0
 }
+
+@test "the first question is whether the diff changes the behaviour, and an unchanged one gets neither a case nor a Pending" {
+  s="$(skill_section '## Does this check need a person?')"
+  [ -n "$s" ] || { echo "no ## Does this check need a person?"; return 1; }
+  first="$(grep -m1 . <<<"$s")"
+  grep -qF 'Does the diff change this behaviour?' <<<"$first" \
+    || { echo "the section does not open with the question about the diff"; return 1; }
+  for token in 'Does the diff change this behaviour?' 'neither a case nor a Pending' 'Fully automatable' \
+               '`## Not covered`' 'as the `ops-checklist` skill defines touches' 'a driver that could not reach'; do
+    grep -qF -- "$token" <<<"$s" || { echo "## Does this check need a person? does not say: $token"; return 1; }
+  done
+  grep -qF 'names the change of the diff it checks' <<<"$s" \
+    || { echo "a case written under Fully automatable does not name the change it checks"; return 1; }
+}
+
+@test "one check is one case: conditions are a table in Test data, walked once per row" {
+  s="$(skill_section '## What a case must prove')"
+  for token in 'one check, one case' 'a table of conditions in **Test data:**' 'once per row' \
+               'does not walk again what ## Scope calls covered'; do
+    grep -qF -- "$token" <<<"$s" || { echo "## What a case must prove does not say: $token"; return 1; }
+  done
+}
+
+@test "a case that repeats another under other conditions is a redundant place" {
+  skill_section '## Check' | grep -qF 'a case that repeats another under other conditions' \
+    || { echo "## Check: redundant does not name a case repeated under other conditions"; return 1; }
+}
