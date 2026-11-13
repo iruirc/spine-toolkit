@@ -33,6 +33,12 @@ en | ru
 ## auq_progress_label
 Насколько подробно прогон профиля рассказывает о себе
 
+## auq_manual_checks_style_label
+Кто проходит ручные проверки? Я или другой разработчик (brief) / Отдельный тестировщик (full)
+
+## auq_manual_checks_style_options
+brief | full
+
 ## auq_reconfigure_toolkit
 spine-toolkit уже настроен в проекте (`SPINE.md` существует). Что сделать?
 

@@ -193,6 +193,16 @@ only that file, and revised once from what it could not execute. It runs after a
 passed and wrote or changed one holding a case; there is no `auto`. It costs one `light` dispatch,
 and one more validator dispatch when it finds something.
 
+### [MANUAL_CHECKS_STYLE]
+
+**Values:** `brief` `full` · **Default:** `brief` · **Task override:** `[MANUAL_CHECKS_STYLE] = [brief|full]` ·
+**Defined by:** the `manual-checks` skill
+
+Who walks `ManualChecks.md`: `brief` — the developer who made the change or another developer, who
+knows the product and the code; `full` — a separate tester, who knows the product but not the code.
+The field reaches the validator as `manual_checks_style` in the run's contract, and the skill says how
+the file reads in each style. `/setup` asks the question when it writes a config.
+
 ### [REPORT]
 
 **Values:** `auto` `on` `off` · **Default:** `auto` — stays `auto` for `TEST`, `FEATURE`, `RESEARCH` and `EPIC`, `off` for `QUICK`, `BUG` and `REFACTOR`, always `off` for `REVIEW` ·

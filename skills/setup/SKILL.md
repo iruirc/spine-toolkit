@@ -15,7 +15,7 @@ Bootstraps spine-toolkit in an **already existing** project. Two-file layout:
 - `AGENTS.md` — touched only when this skill runs in Codex CLI, which reads `AGENTS.md` and no `@`-import: one marked block pointing at the project config (see **AGENTS.md (Codex CLI)**).
 - `.codex/rules/spine*.rules`, the project's `.codex/config.toml` and the user's Codex `config.toml` — touched only in Codex CLI, after the user agrees to it (see **Codex permissions (Codex CLI)**).
 
-This skill owns the config **format** and every block or field that is core's: `[LANG]`, `[WORKFLOW_MODE]`, `[PROGRESS]`, `## Platform`, `## Agents`, and the file-level scaffolding. It owns none of the stack: `## Stack` and `## Modules` are filled by the platform half (step 5), because which axes exist and which values they take is the platform manifest's `## Axes`, not core's.
+This skill owns the config **format** and every block or field that is core's: `[LANG]`, `[WORKFLOW_MODE]`, `[PROGRESS]`, `[MANUAL_CHECKS_STYLE]`, `## Platform`, `## Agents`, and the file-level scaffolding. It owns none of the stack: `## Stack` and `## Modules` are filled by the platform half (step 5), because which axes exist and which values they take is the platform manifest's `## Axes`, not core's.
 
 The skill creates no source files, modifies no code, and starts no workflow. Generating a project from scratch belongs to the platform plugin's `init` agent.
 
@@ -30,6 +30,7 @@ is the other:
 lang     = en | ru                    # skips q0
 mode     = manual | auto              # skips qM
 progress = quiet | normal | live      # skips qP
+manual_checks_style = brief | full    # skips qMS
 platform = plugin name                # skips Platform Discovery
 stack    = {axis: value, …} | —       # forwarded to the platform half in step 5; — skips step 5
 tasks    = create | skip              # skips step 6's question
@@ -89,8 +90,8 @@ The skill's behavior is determined by the project state, computed from five chec
 
 | State | `CLAUDE.md` | `SPINE.md` | `CLAUDE-spine-toolkit.md` | Pre-split config | Toolkit sections in `CLAUDE.md`? | Action branch |
 |---|---|---|---|---|---|---|
-| **A · new_install** | absent | absent | absent | absent | — | Ask q0, qM, qP. Create both files. |
-| **B · existing_md** | present | absent | absent | absent | no | Ask q0, qM, qP. Backup CLAUDE.md. Insert `@import` line. Create `SPINE.md`. |
+| **A · new_install** | absent | absent | absent | absent | — | Ask q0, qM, qP, qMS. Create both files. |
+| **B · existing_md** | present | absent | absent | absent | no | Ask q0, qM, qP, qMS. Backup CLAUDE.md. Insert `@import` line. Create `SPINE.md`. |
 | **C · already_configured** | present | present, 2.0 fields | any | — | no | AUQ `auq_reconfigure_toolkit` first, in the config's language; q0 and the platform only after Overwrite. Self-heal `CLAUDE.md` if `@import` is missing. |
 | **D · old_format** | present | absent | absent | absent | yes | AUQ `auq_migrate_old_format`. Run the migration algorithm (see below). |
 | **E · renamed_config** | present | absent | absent | present | — | AUQ `auq_migrate_config_name`. Rename the file, reconcile blocks, rewrite the `@import` line. |
@@ -153,8 +154,9 @@ anything — which is what lets F, G and C take the language and the platform fr
 4. Branch by state:
 
    STATE A (new_install):
-     a. Ask qM (mode) using `auq_mode_label` and qP (progress) using `auq_progress_label` —
-        each only if the input did not already answer it (same rule in states B and C).
+     a. Ask qM (mode) using `auq_mode_label`, qP (progress) using `auq_progress_label` and qMS
+        (manual checks style) using `auq_manual_checks_style_label` — each only if the input did not
+        already answer it (same rule in states B and C).
      b. Render `templates/spine-md/en.md` with the Placeholder Replacements below.
         Write to <project>/SPINE.md.
      c. **If CLAUDE.md does NOT exist**: render `templates/claude-md-stub/<lang>.md` with
@@ -163,7 +165,7 @@ anything — which is what lets F, G and C take the language and the platform fr
         Do not overwrite the user's CLAUDE.md.
 
    STATE B (existing_md):
-     a. Ask qM, qP.
+     a. Ask qM, qP, qMS.
      b. Render the toolkit template. Write to <project>/SPINE.md.
      c. If the `@./SPINE.md` line already exists anywhere in the file → skip
         c and d: CLAUDE.md is neither written nor backed up. Otherwise backup CLAUDE.md →
@@ -186,7 +188,8 @@ anything — which is what lets F, G and C take the language and the platform fr
         reconfiguration rewrites the config from the template, so both are asked again. A stop
         here — no platform installed, a Cancel on the platform question — leaves every file
         as it was.
-     c. Ask qM, qP.
+     c. Ask qM, qP, qMS — qMS only when the config holds no `[MANUAL_CHECKS_STYLE]` line.
+        A config that holds the line keeps its value, and the rewritten file carries it over.
      d. Backup-and-overwrite → rename SPINE.md → SPINE.md.bak (timestamp on collision). Then
         render the toolkit template and write it to SPINE.md (overwrite).
      e. Self-heal CLAUDE.md: if the `@./SPINE.md` line is missing, run the
@@ -555,7 +558,7 @@ past — chiefly the pre-rename spelling of `drive_app` in the row above — whi
 user wrote rather than on the default 1.x fell to.
 
 A field no block answered is written at **the value `scripts/resolve-settings.sh` resolves when the
-field is absent**, which is not the same thing as the template's line. Twenty-four agree; `[SCALE]` does
+field is absent**, which is not the same thing as the template's line. Twenty-five agree; `[SCALE]` does
 not — the template ships `lite`, the resolver resolves `full`. `lite` is what a *new* project is
 given; a 1.x config with no `Scale` block was running `full`, and writing `lite` would take
 `[WALKTHROUGH]` to `off` with it, so the project would silently stop writing `Walkthrough.md`.
@@ -590,7 +593,7 @@ For canonical sections missing from the source: fill from the template default (
 The two field blocks are canonical sections no migrating source has, so they always arrive from the
 template. The mapping then replaces the bracketed value of each field a moved block answered; a
 field none answered is written at the absent-field default named under the mapping — the template's
-line for twenty-three of them, `full` for `[SCALE]` — and listed in `filled_default_fields`. The moved
+line for twenty-four of them, `full` for `[SCALE]` — and listed in `filled_default_fields`. The moved
 blocks themselves are not carried over: their headings are gone from the format, and one left in
 the file is what the resolver refuses.
 
@@ -628,12 +631,13 @@ Empty `user_sections` → the file ends at the `@import` line (with a trailing n
 
 ## Core Questions
 
-Labels from locale keys. Core asks three — minus any the input already answered; every stack
+Labels from locale keys. Core asks four — minus any the input already answered; every stack
 question belongs to the platform half.
 
 - q0 — Language: `en` / `ru` (`auq_lang_label`, `auq_lang_options`)
 - qM — Mode: `manual` (default) / `auto` (`auq_mode_label`)
 - qP — Progress: `normal` (default) / `quiet` / `live` (`auq_progress_label`)
+- qMS — Manual checks style: `brief` (default) / `full` (`auq_manual_checks_style_label`, `auq_manual_checks_style_options`)
 
 ## Placeholder Replacements
 
@@ -645,6 +649,7 @@ In `templates/spine-md/en.md` (the toolkit file is EN-only):
 | the `<one … line per axis …>` placeholder in `## Stack` | step 5 | the axis lines the platform half wrote |
 | the bracketed value in `[WORKFLOW_MODE]` | qM | `manual` or `auto` |
 | the bracketed value in `[PROGRESS]` | qP | `quiet`, `normal` or `live` |
+| the bracketed value in `[MANUAL_CHECKS_STYLE]` | qMS | `brief` or `full`; in state C a config that already holds the line keeps its own value |
 | first non-empty line under `## DeliveryMode` | template default | `manual`; do not replace this when applying qM |
 | the bracketed value in `[LANG]` | q0 | `en` or `ru` |
 | `<Communication Language>` in `## Persona` | q0 | `English` or `Russian` (the human-readable language name; drives Claude's communication language with the user) |

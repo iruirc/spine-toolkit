@@ -33,6 +33,12 @@ Workflow mode
 ## auq_progress_label
 How much a profile run narrates itself
 
+## auq_manual_checks_style_label
+Who walks the manual checks? You or another developer (brief), or a separate tester (full)
+
+## auq_manual_checks_style_options
+brief | full
+
 ## auq_reconfigure_toolkit
 spine-toolkit is already configured (`SPINE.md` exists). What should I do?
 

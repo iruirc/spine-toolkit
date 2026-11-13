@@ -67,3 +67,32 @@ state_b() { awk '/^   STATE B /{f=1;next} f&&/^   STATE C /{exit} f' "$SKILL"; }
 @test "the backup safeguard is tied to a write, not to every run" {
   grep -qF 'A file setup does not write gets no backup' "$SKILL"
 }
+
+@test "Input has an answer for the manual-checks style question" {
+  input_section | grep -qE '^manual_checks_style[[:space:]]+= brief \| full[[:space:]]+# skips qMS' \
+    || { echo "no manual_checks_style field"; return 1; }
+}
+
+@test "the manual-checks style is a core question, qMS, with its locale keys in both languages" {
+  grep -qF -- '- qMS — Manual checks style: `brief` (default) / `full` (`auq_manual_checks_style_label`, `auq_manual_checks_style_options`)' "$SKILL" \
+    || { echo "Core Questions does not list qMS"; return 1; }
+  grep -qF 'the bracketed value in `[MANUAL_CHECKS_STYLE]` | qMS' "$SKILL" || { echo "no placeholder row for qMS"; return 1; }
+  for lang in en ru; do
+    for key in auq_manual_checks_style_label auq_manual_checks_style_options; do
+      grep -qxF "## $key" "$ROOT/skills/setup/locales/$lang.md" || { echo "$lang.md has no $key"; return 1; }
+    done
+  done
+  diff <(grep '^## ' "$ROOT/skills/setup/locales/en.md" | sort) <(grep '^## ' "$ROOT/skills/setup/locales/ru.md" | sort) \
+    || { echo "locale keys are not in parity"; return 1; }
+  opts="$(awk '/^## auq_manual_checks_style_options$/{f=1;next} f&&/^## /{exit} f&&NF' "$ROOT/skills/setup/locales/en.md")"
+  [ "$opts" = 'brief | full' ] || { echo "en options: $opts"; return 1; }
+}
+
+@test "qMS is asked in states A, B and C after qP, and in C only when the config holds no style" {
+  [ "$(grep -cF 'qMS' <<<"$(awk '/^   STATE A /{f=1} /^   STATE D /{exit} f' "$SKILL")")" -ge 3 ] \
+    || { echo "states A, B and C do not each name qMS"; return 1; }
+  c="$(awk '/^   STATE C \(already_configured\):/{f=1} /^   STATE D /{exit} f' "$SKILL")"
+  grep -qF 'qMS only when the config holds no `[MANUAL_CHECKS_STYLE]` line' <<<"$c" \
+    || { echo "state C asks qMS although the config answers it"; return 1; }
+  grep -qF 'A config that holds the line keeps its value' <<<"$c" || { echo "state C does not carry the value over"; return 1; }
+}
