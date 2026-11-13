@@ -15,7 +15,7 @@ description: "Use at Plan to decide which checks need a person and route the res
 
 ## The reader
 
-The reader is a tester who knows the product but not the code, and was not on this task. They install a build, use the app and record the screen. They do not open the sources, edit a configuration or run a terminal. Everything else in this skill follows from that:
+The reader is a tester who knows the product but not the code, and was not on this task. They install a build and use the app. They do not open the sources, edit a configuration or run a terminal. Everything else in this skill follows from that:
 
 - Steps, expectations, `**Preconditions:**` and `**What it checks:**` use only words from the screen: screen names, button labels, menu items, the text the app shows. No class name, no resource key, no file name.
 - Code references live only in `## Code references`, the last section of the file. That section is for the developer who fixes a failure; the tester never reads it.
@@ -154,7 +154,7 @@ The heading is `### MC-<n>. <observable behaviour>`. The id is stable: a refresh
 - `**Failure looks like:**` is the cheapest field and the strongest. A failure is recognised faster than a success is verified, and this is what turns "it did not add up" into "here is what is broken".
 - `**Cleanup:**` puts back what the case changed: an item left in the cart, a setting switched. `—` when there is nothing.
 - The `(file:line)` references a case was grounded in are its row in `## Code references`, never a field of the case.
-- `**Status:**` and `**Notes / attachments:**` are the tester's: a mark, a reason for BLOCKED, a screenshot or a recording.
+- `**Status:**` and `**Notes / attachments:**` are the tester's: a mark, a reason for BLOCKED, a screenshot of what failed.
 
 Write a blank line before every field, list and table. Markdown joins consecutive lines into one paragraph, and a table with no blank line above it renders as plain text. The lint checks structure, not rendering, so open the preview before handing the file over.
 
@@ -168,7 +168,7 @@ A case earns a tester's time only when its verdict says something about this cha
 
 **It checks what the diff touches.** An item of `OpsChecklist.md` becomes a case only when the diff touches that behaviour, as the `ops-checklist` skill defines touches. Otherwise the item is N/A, with its reason, by that skill. The one nothing-broke case is the only case not built on changed code. Its row in `## Code references` names the code of the behaviour it guards.
 
-**It is settled by eye when the difference shows at normal speed.** That is so when the defect was found by eye, or when the check is tagged `visual judgment`. A recording is the fallback: "if unsure, record the screen and send it". The person never reads frames, traces or logs. When no eye can see the difference at all, the check is no case of this file: `## No instrument in the file` says where it goes.
+**It is settled by eye when the difference shows at normal speed.** That is so when the defect was found by eye, or when the check is tagged `visual judgment`. When the eye is unsure, the case says what to look for, and the eye decides. The person never reads frames, traces or logs. When no eye can see the difference at all, the check is no case of this file: `## No instrument in the file` says where it goes.
 
 **It holds no line for a developer.** Outside `**dev-only:**` steps and `## Code references`, no line is for a developer. Measurements, internal terms and the history of edits go to `Validation.md` or `Walkthrough.md`. Code references go to `## Code references`.
 
@@ -180,7 +180,7 @@ The first two rules hold for a task that changes product behaviour. On a task wh
 - **No "repeat steps".** "Repeat steps 3–5 twice" is not a step: write the rows out.
 - **Cases are independent.** No case starts from "the state after case N": every case starts from its own `**Preconditions:**`, and a scene several cases share lives in `## Preparation`.
 - **Every object is named and located.** "The plus button on the Green tea row", not "the add button".
-- **An expectation is checkable.** A number, a text on the screen, an element present or absent. "Smoothly", "without a jump" or "about" only with a criterion a tester can apply by hand and eye: "before you can lift the finger", "wider than half the screen". A value that needs a tool goes to `**Test data:**` as a reference and to `**Notes / attachments:**` as "attach a screenshot, a developer checks it"; a measurement the eye cannot take is no step (`## No instrument in the file`).
+- **An expectation is checkable.** A number, a text on the screen, an element present or absent. "Smoothly", "without a jump" or "about" only with a criterion a tester can apply by hand and eye: "before you can lift the finger", "wider than half the screen". A value that needs a tool is no step: it is a measurement the agent takes in `Validation.md`, or a `## Not covered` line (`## No instrument in the file`).
 - **A case that cannot be run without a code change is BLOCKED for the tester**, and its `**Preconditions:**` say so.
 - **Visible text is copied from the app verbatim.** Before writing, take every button, title and message from the app's string resources in the interface language that Run record names; the platform's validator says where those resources live. One language per file: never mix the label of one button in two languages.
 
@@ -195,7 +195,7 @@ The first two rules hold for a task that changes product behaviour. On a task wh
 | `compound` | two steps in one `Action`: "then", "and then", "afterwards", "repeat steps", a semicolon |
 | `code` | code in `Action`, `Expected`, `**Preconditions:**` or `**What it checks:**`: a CamelCase word, a source file, a dotted name of three parts or more, a `(file:line)` |
 | `codeslot` | a case with no row in `## Code references`, a row with no `file:line` in it, a row for a case not in `## Cases` |
-| `instrument` | an instrument in the file a person walks: an instrument field in a case, a section of instrument commands, a step that has the tester record the screen (`## No instrument in the file`) |
+| `instrument` | an instrument in the file a person walks: an instrument field in a case, a section of instrument commands, a step or a field that asks the tester to record the screen (`## No instrument in the file`) |
 | `chain` | "after case N", "the state right after", or an edit history kept in the file |
 | `scriptable` | a case in which every step is a command — a backticked command, or "run the command…": nothing in it needs a person, so it is a script, not a case (`## Does this check need a person?`). The repair routes the case — `covered` in `## Scope`, or an automatable gap — and under `auto` the last one routed away takes the file with it; rewording the steps is not a repair |
 | `budget` | a case over 40 lines, `## Scope` over 8, `## Preparation` over 60 |
@@ -227,7 +227,7 @@ A Validation that finds `ManualChecks.md` with a `[COVERS]` behind HEAD refreshe
 
 ## No instrument in the file
 
-A tester's verdict is written in what a person can **see**, so the file a person walks holds no instrument: no field of a case, no section, no step that has the tester record the screen for someone else to read. A measurement the agent can make itself is made in the run and recorded in `Validation.md`. A measurement it cannot make is a line in `## Not covered`, with its reason, so that its absence does not read as a pass. Naming a trace, a log or a profiler in a case is a defect all the same: the tester cannot run it.
+A tester's verdict is written in what a person can **see**, so the file a person walks holds no instrument: no instrument field in a case, no section of instrument commands, and no field, section or step of a case asks the person to record the screen, because nobody reads a recording. A measurement the agent can make itself is made in the run and recorded in `Validation.md`. A measurement it cannot make is a line in `## Not covered`, with its reason, so that its absence does not read as a pass. Naming a trace, a log or a profiler in a case is a defect all the same: the tester cannot run it.
 
 ## The symbol rule
 

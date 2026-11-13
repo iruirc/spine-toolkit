@@ -129,7 +129,7 @@ Sign in with the test account from Test data. The cart must be empty before each
 
 **Expected:** the Expected cell of that step
 
-**Attachments:** a screenshot or a screen recording
+**Attachments:** a screenshot
 
 ## Not covered
 

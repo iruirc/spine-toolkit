@@ -184,7 +184,7 @@ If the badge shows a number before step 6, the account's cart is not empty: reco
 
 **Expected:** the Expected cell of that step
 
-**Attachments:** a screenshot or a screen recording
+**Attachments:** a screenshot
 
 ## Not covered
 

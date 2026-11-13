@@ -22,9 +22,9 @@ set -euo pipefail
 #             row per case), a row with no file:line, a row for an id that is no case under ## Cases;
 #   chain     a case that starts from another case's end state, or a file that keeps its edit history;
 #   instrument **By instrument:** in a case, a ## Reading the verdict section in the file, a screen
-#             recording in a step ("record the screen", "screen recording", "start recording" and
-#             their Russian forms): nothing a person walks is settled by an instrument, a measurement
-#             is Validation.md's or a line of ## Not covered;
+#             recording asked of the tester in a step or in any field of a case ("record the screen",
+#             "screen recording", "start recording" and their Russian forms): nothing a person walks is
+#             settled by an instrument, a measurement is Validation.md's or a line of ## Not covered;
 #   scriptable a case whose every step is a shell command: a backticked command with at most a verb
 #             before it, or "run the command ..." and its Russian forms; nothing in it needs a person,
 #             so it is a script, not a case; a case with one step a person takes is not named;
@@ -84,7 +84,9 @@ RUN_VERB = r'(?:run|execute|\u0432\u044b\u043f\u043e\u043b\u043d\w*|\u0437\u0430
 # backticks (`Checkout`) is not one; the word command follows the verb with at most one word between,
 # so the Undo command of a menu and the Russian word for team are not one. Russian: script, and read
 # the output.
-# A step that has the tester record the screen: the recording is an instrument's input, not a step.
+# A recording asked of the tester, in a step or in a field: nobody reads it, so no case asks for one.
+RECORD_FIELDS = ('What it checks', 'Preconditions', 'Test data', 'Expected result', 'Failure looks like',
+                  'Cleanup', 'Notes / attachments')
 RECORD = [re.compile(p, re.I) for p in (
     r'\brecord\s+the\s+screen\b', r'\bscreen\s+recording\b', r'\bstart\s+recording\b',
     r'\u0437\u0430\u043f\u0438(?:\u0441|\u0448)\w*\s+\u044d\u043a\u0440\u0430\u043d',   # record the screen
@@ -292,9 +294,13 @@ for i, h in cases:
             actions.append((step, c[1]))
             expects.append((step, c[3]))
 
-    for step, text in actions:
-        if any(p.search(text) for p in RECORD):
+    for (step, action), (_, expected) in zip(actions, expects):
+        if any(p.search(t) for p in RECORD for t in (action, expected)):
             found.append('instrument: a screen recording in a step (%s, step %s)' % (where, step))
+    for label in RECORD_FIELDS:
+        text = field(plain, label)
+        if text is not None and any(p.search(text) for p in RECORD):
+            found.append('instrument: a screen recording in **%s:** (%s)' % (label, where))
 
     for step, text in actions:
         hit = next((p.search(text) for p in COMPOUND if p.search(text)), None)

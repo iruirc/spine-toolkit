@@ -419,11 +419,42 @@ for line in sys.stdin.read().split("\n")[:-1]:
   done
 }
 
-@test "instrument: a file with none of them is clean, and a recording named in a field is not a step" {
+# A case whose field $1 reads $2 instead of what case_md writes.
+field_case() {
+  case_md 1 | LABEL="$1" TEXT="$2" python3 -c 'import os, sys
+tag = "**%s:**" % os.environ["LABEL"]
+for line in sys.stdin.read().split("\n")[:-1]:
+    print(tag + " " + os.environ["TEXT"] if line.startswith(tag) else line)'
+}
+
+@test "instrument: a screen recording in any field of a case is named, in English and in Russian" {
+  local label text
+  for label in 'What it checks' 'Preconditions' 'Test data' 'Expected result' 'Failure looks like' 'Cleanup' 'Notes / attachments'; do
+    for text in 'screen recording, always' 'Record the screen while you tap the plus button' \
+                "$(ru '\u0437\u0430\u043f\u0438\u0441\u044c \u044d\u043a\u0440\u0430\u043d\u0430, \u0432\u0441\u0435\u0433\u0434\u0430')"; do
+      write "$(field_case "$label" "$text")"
+      run "$LINT" "$F"
+      [ "$status" -eq 1 ] || { echo "not named: $label: $text"; return 1; }
+      [ "$output" = "ManualChecks.md: instrument: a screen recording in **$label:** (### MC-1.)" ] \
+        || { printf 'label: %s\n got: %s\n' "$label" "$output"; return 1; }
+    done
+  done
+}
+
+@test "instrument: the Expected cell of a step is read for a recording too" {
+  EXPECTED='The screen recording shows the quantity 2'
+  write
+  run "$LINT" "$F"
+  [ "$status" -eq 1 ] || { echo "not named"; return 1; }
+  [ "$output" = 'ManualChecks.md: instrument: a screen recording in a step (### MC-1., step 2)' ] || { echo "$output"; return 1; }
+}
+
+@test "instrument: a file with none of them is clean, and a screenshot of the failure is allowed" {
   write
   clean "$F"
-  WHAT='the badge follows the quantity; a tester who is unsure sends a screen recording.'
-  write
+  write "$(field_case 'Notes / attachments' 'a screenshot of the failure')"
+  clean "$F"
+  write "$(field_case 'Notes / attachments' "$(ru '\u0441\u043a\u0440\u0438\u043d\u0448\u043e\u0442 \u0441\u0431\u043e\u044f')")"
   clean "$F"
 }
 

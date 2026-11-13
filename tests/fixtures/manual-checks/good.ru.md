@@ -129,7 +129,7 @@
 
 **Expected:** ячейка Expected этого шага
 
-**Attachments:** скриншот или запись экрана
+**Attachments:** скриншот
 
 ## Not covered
 

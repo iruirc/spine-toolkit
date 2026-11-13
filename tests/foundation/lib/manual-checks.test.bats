@@ -39,6 +39,22 @@ setup() {
   ! grep -q '^## The instrument rule$' "$SKILL" || { echo "the instrument rule is still there"; return 1; }
   ! grep -qF 'Reading the verdict' "$SKILL" || { echo "the skill still names ## Reading the verdict"; return 1; }
   ! grep -qF '**By instrument:**' "$SKILL" || { echo "the skill still names **By instrument:**"; return 1; }
+  grep -qF 'no field, section or step of a case asks the person to record the screen' <<<"$s" \
+    || { echo "## No instrument in the file lets a case ask for a recording"; return 1; }
+}
+
+@test "no case asks the tester for a screen recording; a screenshot of a failure is all that is attached" {
+  # Only the rule that forbids a recording may name one: the lint row and ## No instrument in the file.
+  hits="$(grep -iE 'record the screen|a recording|screen recording|start recording' "$SKILL" | grep -vF -e '`instrument` |' -e 'asks the person to record the screen' || true)"
+  [ -z "$hits" ] || { echo "the skill still has the tester record the screen: $hits"; return 1; }
+  ! grep -qF 'a developer checks it' "$SKILL" || { echo "a value that needs a tool still goes to the tester's attachments"; return 1; }
+  grep -qF 'a screenshot of what failed' "$SKILL" || { echo "**Notes / attachments:** is not a screenshot of what failed"; return 1; }
+  r="$(skill_section '## The reader')"
+  ! grep -qiE 'record' <<<"$r" || { echo "## The reader still has the tester record the screen"; return 1; }
+  for f in "$ROOT"/skills/manual-checks/examples/manual-checks.*.md "$ROOT"/tests/fixtures/manual-checks/good.*.md; do
+    ! grep -qiE 'screen recording' "$f" || { echo "$f asks for a screen recording"; return 1; }
+    ! grep -qF "$(ru '\u0437\u0430\u043f\u0438\u0441\u044c \u044d\u043a\u0440\u0430\u043d\u0430')" "$f" || { echo "$f asks for a screen recording"; return 1; }
+  done
 }
 
 @test "the reader is a tester who knows the product but not the code" {
