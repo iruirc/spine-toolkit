@@ -40,7 +40,7 @@ For BUG the reproduction replay is not listed: its steps are already in `Reprodu
 
 ## Does this check need a person?
 
-Does the diff change this behaviour? Ask that first, before the three below, and take "change" as the `ops-checklist` skill defines touches: directly or through code on its path. When the diff does not change it, the check is neither a case nor a Pending: it is a line in `## Not covered` with its reason, or N/A in `OpsChecklist.md`. A constraint of the implementation ("no network is used") is not a behaviour the diff changes, so it gets no case. The same holds for a check deferred because of a driver that could not reach it: that is a reason the run could not do it, never a reason a person must.
+Does the diff change this behaviour? Ask that first, before the three below, and take "change" as the `ops-checklist` skill defines touches: directly or through code on its path. When the diff does not change it, the check is neither a case nor a Pending: it is a line in `## Not covered` with its reason, or N/A in `OpsChecklist.md`. A constraint of the implementation ("no network is used") is not a behaviour the diff changes, so it gets no case. The same holds for a check deferred because of a driver that could not reach it: that is a reason the run could not do it, never a reason a person must. On a task whose diff changes no product behaviour, the question reads: does automation leave the behaviour the task targets unchecked? The one nothing-broke case is the exception: it guards a regression on a path the diff touches, so it is not behaviour the diff does not change.
 
 A `## Manual acceptance` of `Fully automatable.` does not forbid a case. When Validation still writes one, its `**What it checks:**` names the change of the diff it checks.
 
@@ -152,7 +152,7 @@ The heading is `### MC-<n>. <observable behaviour>`. The id is stable: a refresh
 - `**Traces to:**` names the `## Manual acceptance` line or the acceptance criterion the case comes from.
 - `**What it checks:**` is what lets a case be skipped knowingly. Without it the only way to learn what a case covers is to run it.
 - `**Preconditions:**` is a state the tester can compare with the screen before the first step. A case that needs a fresh state says so in bold: "a **new** account, not the one from P1".
-- `**Test data:**` carries every concrete value the steps use: names, prices, quantities, addresses.
+- `**Test data:**` carries every concrete value the steps use: names, prices, quantities, addresses, and the table of conditions the steps are walked over.
 - `**Steps:**` is the table above. `Expected` is what the screen shows right after that action; it is `—` only for a step that merely prepares the next one. `Actual` stays empty for the tester.
 - `**Expected result:**` is the end state that passes the case, in one line.
 - `**Failure looks like:**` is the cheapest field and the strongest. A failure is recognised faster than a success is verified, and this is what turns "it did not add up" into "here is what is broken".
@@ -176,9 +176,9 @@ A case earns a tester's time only when its verdict says something about this cha
 
 **It holds no line for a developer.** Outside `**dev-only:**` steps and `## Code references`, no line is for a developer. Measurements, internal terms and the history of edits go to `Validation.md` or `Walkthrough.md`. Code references go to `## Code references`.
 
-**It is one check, one case.** The conditions a check is run under — language, theme, text size, device, orientation — are a table of conditions in **Test data:**, and the steps are walked once per row. A check that differs from another only in its conditions is a row of that case, never a second case. The status is one, and a condition that broke is named in its reason. A case about how a screen looks reaches the screen and does not walk again what ## Scope calls covered.
+**It is one check, one case.** The conditions a check is run under — language, theme, text size, device, orientation — are a table of conditions in **Test data:**, and the steps are walked once per row. A check that differs from another only in its conditions is a row of that case, never a second case. The status is one, and a condition that broke is named in its reason. A case about how a screen looks starts from a scene or its preconditions and does not re-run the covered flow to get there, and it does not walk again what ## Scope calls covered.
 
-The first two rules hold for a task that changes product behaviour. On a task whose diff changes no product behaviour — a TEST task, a change to docs or tests only — the first rule does not apply. There a case checks the behaviour the task targets that automation could not reach, which is what `[MANUAL_CHECKS]` `always` asks of such a run.
+The first two rules hold for a task that changes product behaviour. On a task whose diff changes no product behaviour — a TEST task, a change to docs or tests only — the first rule does not apply, and the question of `## Does this check need a person?` reads as it says for such a task. There a case checks the behaviour the task targets that automation could not reach, which is what `[MANUAL_CHECKS]` `always` asks of such a run.
 
 ## Step rules
 

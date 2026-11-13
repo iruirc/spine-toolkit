@@ -836,3 +836,20 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
   skill_section '## Check' | grep -qF 'a case that repeats another under other conditions' \
     || { echo "## Check: redundant does not name a case repeated under other conditions"; return 1; }
 }
+
+@test "the diff-first question has two exceptions: a task with no product change, and the nothing-broke case" {
+  s="$(skill_section '## Does this check need a person?')"
+  grep -qF 'On a task whose diff changes no product behaviour, the question reads: does automation leave the behaviour the task targets unchecked?' <<<"$s" \
+    || { echo "the opening question has no reading for a task with no product change"; return 1; }
+  grep -qF 'The one nothing-broke case is the exception: it guards a regression on a path the diff touches, so it is not behaviour the diff does not change.' <<<"$s" \
+    || { echo "the opening question does not except the nothing-broke case"; return 1; }
+  skill_section '## What a case must prove' | grep -qF 'the first rule does not apply, and the question of `## Does this check need a person?` reads as it says for such a task' \
+    || { echo "## What a case must prove does not point at the reading for such a task"; return 1; }
+}
+
+@test "the Test data field carries the conditions table, and a visual case starts from its scene" {
+  grep -E '^- `\*\*Test data:\*\*`' "$SKILL" | grep -qF 'the table of conditions the steps are walked over' \
+    || { echo "the Test data field does not mention the conditions table"; return 1; }
+  skill_section '## What a case must prove' | grep -qF 'starts from a scene or its preconditions and does not re-run the covered flow to get there' \
+    || { echo "a visual case may re-run the covered flow to reach the screen"; return 1; }
+}
