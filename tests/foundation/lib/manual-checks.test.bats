@@ -824,7 +824,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
   grep -qF 'Does the diff change this behaviour?' <<<"$first" \
     || { echo "the section does not open with the question about the diff"; return 1; }
   for token in 'Does the diff change this behaviour?' 'neither a case nor a Pending' 'Fully automatable' \
-               '`## Not covered`' 'as the `ops-checklist` skill defines touches' 'a driver that could not reach'; do
+               '`## Not covered`' 'as the `ops-checklist` skill defines touches' 'because a driver could not reach it' 'that alone is a reason the run could not do it, never a reason a person must'; do
     grep -qF -- "$token" <<<"$s" || { echo "## Does this check need a person? does not say: $token"; return 1; }
   done
   grep -qF 'names the change of the diff it checks' <<<"$s" \
@@ -1007,4 +1007,35 @@ PY
     ! awk '/^## Scope$/{f=1;next} f&&/^## /{exit} f' "$ex" | grep -qiE "in the model|$(ru '\u0432 \u043c\u043e\u0434\u0435\u043b\u0438')" \
       || { echo "$lang: Scope uses an internal term"; return 1; }
   done
+}
+
+@test "a check the diff does not change, deferred because a driver could not reach it, is never a reason a person must" {
+  s="$(skill_section '## Does this check need a person?')"
+  grep -qF 'holds for a check the diff does not change that was deferred because a driver could not reach it' <<<"$s" \
+    || { echo "the first paragraph does not scope the driver deferral to a check the diff does not change"; return 1; }
+  grep -qF 'so it needs a person' <<<"$s" || { echo "the changed, driver-deferred check is no longer a device action"; return 1; }
+}
+
+@test "every Review brief judges a brief file by ## Brief in place of ## The case" {
+  for p in $PROFILES; do
+    rb="$(review_brief "$ROOT/workflows/profile-$p.js")"
+    grep -qF 'with ## Brief in place of ## The case for a file whose [STYLE] is brief' <<<"$rb" \
+      || { echo "profile-$p.js: Review does not send a brief file to ## Brief"; return 1; }
+    r="$(bullet "$ROOT/skills/workflow-$p/SKILL.md" Review)"
+    grep -qF 'with `## Brief` in place of `## The case` for a file whose `[STYLE]` is brief' <<<"$r" \
+      || { echo "workflow-$p: Review does not send a brief file to ## Brief"; return 1; }
+  done
+}
+
+@test "## Brief says what the Result line holds when no case is left, and how a preparing step is written" {
+  b="$(skill_section '## Brief')"
+  for token in 'with no case left, `## Cases` reads `none — <why>` and the `**Result:**` line reads `**Result:** none`' \
+               'A preparing step is a numbered step with no `→` line, allowed only when the next step'"'"'s expectation covers it'; do
+    grep -qF -- "$token" <<<"$b" || { echo "## Brief does not say: $token"; return 1; }
+  done
+}
+
+@test "the no-instrument rule reaches the scenes of ## Preparation" {
+  grep -qF 'and no scene of `## Preparation` does either' "$SKILL" \
+    || { echo "the skill does not say a Preparation scene asks no recording"; return 1; }
 }

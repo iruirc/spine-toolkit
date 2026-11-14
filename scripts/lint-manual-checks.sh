@@ -25,6 +25,8 @@ set -euo pipefail
 #             recording asked of the tester in a step or in any field of a case ("record the screen",
 #             "screen recording", "start recording" and their Russian forms): nothing a person walks is
 #             settled by an instrument, a measurement is Validation.md's or a line of ## Not covered;
+#             the same recording asked in a ## Preparation scene (S1 in brief, P2 in full) is named by
+#             the scene's id;
 #   scriptable a case whose every step is a shell command: a backticked command with at most a verb
 #             before it, or "run the command ..." and its Russian forms; nothing in it needs a person,
 #             so it is a script, not a case; a case with one step a person takes is not named;
@@ -259,6 +261,21 @@ else:
         found.append('file: missing ## Run record (file)')
     if not any(t.startswith('## On failure') for t in titles):
         found.append('file: missing ## On failure (file)')
+
+# instrument, in ## Preparation: a person walks its scenes (S-scenes in brief, P-tables in full) too.
+prep = next((i for i, h in headings if h == (2, '## Preparation')), None)
+if prep is not None:
+    scene, hit = '## Preparation', []
+    for line, h in rows[prep + 1:]:
+        if h:
+            if h[0] <= 2:
+                break
+            m = re.match(r'^#+\s+([A-Z]\d+)\b', h[1])
+            scene = m.group(1) if m else re.sub(r'^#+\s*', '', h[1])
+            continue
+        if any(p.search(line) for p in RECORD) and scene not in hit:
+            hit.append(scene)
+            found.append('instrument: a screen recording in ## Preparation (%s)' % scene)
 
 # instrument, at file level: the section an instrument's commands lived in.
 if any(t.startswith('## Reading the verdict') for t in titles):

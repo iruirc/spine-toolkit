@@ -161,3 +161,10 @@ mapping_rows() {
   grep -qF '`[ARTIFACT_CHECK]`' <<<"$para" || { echo "the absent-field paragraph does not exempt [ARTIFACT_CHECK]"; return 1; }
   grep -qF 'Twenty-five agree' <<<"$para" || { echo "the absent-field paragraph miscounts the fields that agree"; return 1; }
 }
+
+@test "the migration's two counts of the fields at their default agree: twenty-five, and [SCALE] apart" {
+  grep -qF 'Twenty-five agree' "$SKILL" || { echo "the absent-field paragraph does not say twenty-five agree"; return 1; }
+  tr '\n' ' ' <"$SKILL" | tr -s ' ' | grep -qF "the template's line for twenty-five of them, \`full\` for \`[SCALE]\`" \
+    || { echo "the step that fills the absent fields counts them wrong"; return 1; }
+  ! grep -qF 'twenty-four' "$SKILL" || { echo "a count of twenty-four is left"; return 1; }
+}

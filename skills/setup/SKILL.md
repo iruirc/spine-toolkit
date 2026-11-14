@@ -593,7 +593,7 @@ For canonical sections missing from the source: fill from the template default (
 The two field blocks are canonical sections no migrating source has, so they always arrive from the
 template. The mapping then replaces the bracketed value of each field a moved block answered; a
 field none answered is written at the absent-field default named under the mapping — the template's
-line for twenty-four of them, `full` for `[SCALE]` — and listed in `filled_default_fields`. The moved
+line for twenty-five of them, `full` for `[SCALE]` — and listed in `filled_default_fields`. The moved
 blocks themselves are not carried over: their headings are gone from the format, and one left in
 the file is what the resolver refuses.
 

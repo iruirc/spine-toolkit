@@ -42,7 +42,7 @@ For BUG the reproduction replay is not listed: its steps are already in `Reprodu
 
 ## Does this check need a person?
 
-Does the diff change this behaviour? Ask that first, before the three below, and take "change" as the `ops-checklist` skill defines touches: directly or through code on its path. When the diff does not change it, the check is neither a case nor a Pending: it is a line in `## Not covered` with its reason, or N/A in `OpsChecklist.md`. A constraint of the implementation ("no network is used") is not a behaviour the diff changes, so it gets no case. The same holds for a check deferred because of a driver that could not reach it: that is a reason the run could not do it, never a reason a person must. On a task whose diff changes no product behaviour, the question reads: does automation leave the behaviour the task targets unchecked? The one nothing-broke case is the exception: it guards a regression on a path the diff touches, so it is not behaviour the diff does not change.
+Does the diff change this behaviour? Ask that first, before the three below, and take "change" as the `ops-checklist` skill defines touches: directly or through code on its path. When the diff does not change it, the check is neither a case nor a Pending: it is a line in `## Not covered` with its reason, or N/A in `OpsChecklist.md`. A constraint of the implementation ("no network is used") is not a behaviour the diff changes, so it gets no case. The same holds for a check the diff does not change that was deferred because a driver could not reach it: that alone is a reason the run could not do it, never a reason a person must. On a task whose diff changes no product behaviour, the question reads: does automation leave the behaviour the task targets unchecked? The one nothing-broke case is the exception: it guards a regression on a path the diff touches, so it is not behaviour the diff does not change.
 
 A `## Manual acceptance` of `Fully automatable.` does not forbid a case. When Validation still writes one, its `**What it checks:**` names the change of the diff it checks.
 
@@ -239,7 +239,7 @@ A Validation that finds `ManualChecks.md` with a `[COVERS]` behind HEAD refreshe
 
 ## No instrument in the file
 
-A tester's verdict is written in what a person can **see**, so the file a person walks holds no instrument: no instrument field in a case, no section of instrument commands, and no field, section or step of a case asks the person to record the screen, because nobody reads a recording. A measurement the agent can make itself is made in the run and recorded in `Validation.md`. A measurement it cannot make is a line in `## Not covered`, with its reason, so that its absence does not read as a pass. Naming a trace, a log or a profiler in a case is a defect all the same: the tester cannot run it.
+A tester's verdict is written in what a person can **see**, so the file a person walks holds no instrument: no instrument field in a case, no section of instrument commands, and no field, section or step of a case asks the person to record the screen, and no scene of `## Preparation` does either, because nobody reads a recording. A measurement the agent can make itself is made in the run and recorded in `Validation.md`. A measurement it cannot make is a line in `## Not covered`, with its reason, so that its absence does not read as a pass. Naming a trace, a log or a profiler in a case is a defect all the same: the tester cannot run it.
 
 ## The symbol rule
 
@@ -260,7 +260,7 @@ Neither `**Preconditions:**`, a cell of `**Steps:**`, nor `**Expected result:**`
 | `## Code references` | As in `full`; the tester never reads it |
 | `**Result:**` | The last line of the file: `**Result:** MC-1 __ · MC-2 __ …` |
 
-The `**Result:**` line carries one mark per case: PASS, FAIL or BLOCKED, with its reason after a FAIL or a BLOCKED. A brief case has no status field, so that mark is the one status of `## What a case must prove`, and a failing condition is named in that mark's reason.
+The `**Result:**` line carries one mark per case: PASS, FAIL or BLOCKED, with its reason after a FAIL or a BLOCKED. Under `[MANUAL_CHECKS]` = `always` with no case left, `## Cases` reads `none — <why>` and the `**Result:**` line reads `**Result:** none`. A brief case has no status field, so that mark is the one status of `## What a case must prove`, and a failing condition is named in that mark's reason.
 
 **The case:**
 
@@ -279,7 +279,7 @@ The `**Result:**` line carries one mark per case: PASS, FAIL or BLOCKED, with it
 **Failure looks like:** what is on the screen when it is broken
 ```
 
-`**What it checks:**`, `**Start:**` and `**Failure looks like:**` are always there. `**Test data:**` is there when a step uses a value or the case walks conditions. Each step is a numbered line with one action, and its expectation follows `→`, on the line under it or on the same line. A case starts from a scene and never from another case. It carries no other field: priority, traces, preconditions, an expected result, cleanup, status and notes belong to `full`.
+`**What it checks:**`, `**Start:**` and `**Failure looks like:**` are always there. `**Test data:**` is there when a step uses a value or the case walks conditions. Each step is a numbered line with one action, and its expectation follows `→`, on the line under it or on the same line. A preparing step is a numbered step with no `→` line, allowed only when the next step's expectation covers it. A case starts from a scene and never from another case. It carries no other field: priority, traces, preconditions, an expected result, cleanup, status and notes belong to `full`.
 
 **What holds from `full`.** `## Does this check need a person?`, `## What a case must prove`, `## Grounding`, the `## Code references` section, `## Refreshing`, `## No instrument in the file` and `## The symbol rule`. `## Step rules` hold too, except the steps table: one action per step, no "repeat steps", independent cases, every object named and located, a checkable expectation, the app's text copied verbatim. They read in brief terms: where a rule names `**Preconditions:**`, read `**Start:**`; where it names `**Expected result:**`, read the last step's expectation; the interface language is named in `## Scope` or in `S1`; and a step that needs a code change or a terminal goes in a scene marked `**dev-only:**`.
 

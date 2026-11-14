@@ -672,3 +672,47 @@ PY
   ! grep -qF '**Result:**' "$F"
   clean "$F"
 }
+
+# A scene a case starts from is walked by a person too, so a recording asked in Preparation is named.
+@test "instrument: a screen recording asked in a Preparation scene is named, in full and in brief, English and Russian" {
+  write
+  python3 - "$F" <<'PY'
+import sys
+p = sys.argv[1]; t = open(p, encoding='utf-8').read()
+t = t.replace('Sign in with the test account.\n', 'Sign in with the test account.\n\n### P2. A cart with two rows\n\n| # | Action | Expected |\n|---|---|---|\n| 1 | Start recording, then add two items | Two rows |\n')
+open(p, 'w', encoding='utf-8').write(t)
+PY
+  expect 'ManualChecks.md: instrument: a screen recording in ## Preparation (P2)'
+  brief_md
+  python3 - "$F" <<'PY'
+import sys
+p = sys.argv[1]; t = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(t.replace('put one Green tea in the cart.', 'put one Green tea in the cart. Record the screen from here.'))
+PY
+  expect 'ManualChecks.md: instrument: a screen recording in ## Preparation (S1)'
+  brief_md
+  python3 - "$F" "$(ru 'put one Green tea in the cart. \u0412\u043a\u043b\u044e\u0447\u0438\u0442\u0435 \u0437\u0430\u043f\u0438\u0441\u044c \u044d\u043a\u0440\u0430\u043d\u0430.')" <<'PY'
+import sys
+p = sys.argv[1]; t = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(t.replace('put one Green tea in the cart.', sys.argv[2]))
+PY
+  expect 'ManualChecks.md: instrument: a screen recording in ## Preparation (S1)'
+  brief_md
+  clean "$F"
+}
+
+@test "brief: under always with no case left, ## Cases reads none and **Result:** reads none, and the file passes" {
+  brief_md
+  python3 - "$F" <<'PY'
+import re, sys
+p = sys.argv[1]; t = open(p, encoding='utf-8').read()
+t = re.sub(r'## Cases\n.*?(?=## Not covered)', '## Cases\n\nnone \u2014 every check was covered by the automated pass.\n\n', t, flags=re.S)
+t = re.sub(r'## Code references.*?(?=\*\*Result:\*\*)', '', t, flags=re.S)
+t = re.sub(r'\*\*Result:\*\*.*', '**Result:** none', t)
+open(p, 'w', encoding='utf-8').write(t)
+PY
+  grep -qxF '**Result:** none' "$F" || { echo "the file was not built"; return 1; }
+  clean "$F"
+  drop '**Result:**'
+  expect 'ManualChecks.md: file: missing **Result:** (file)'
+}
