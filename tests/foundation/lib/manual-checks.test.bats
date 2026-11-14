@@ -624,7 +624,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     grep -qF 'repairs what it names and runs it again' <<<"$v" || { echo "workflow-$p: Method B does not repair the lint findings"; return 1; }
   done
   for f in "$ROOT"/workflows/profile-*.js; do
-    grep -qF "read each case's **Preconditions:** against its first step and its steps against each other" "$f" \
+    grep -qF "read each case's \${startLabel} against its first step and its steps against each other" "$f" \
       || { echo "$(basename "$f"): the revision never checks the preconditions against the steps"; return 1; }
     for old in '**Scene:**' 'By eye' 'Wrap-up' 'You see' 'a person about to execute the file'; do
       ! grep -qF -- "$old" "$f" || { echo "$(basename "$f"): still names the old format: $old"; return 1; }
@@ -964,5 +964,47 @@ PY
     v="$(bullet "$ROOT/skills/workflow-$p/SKILL.md" Validation)"
     grep -qF 'in the style the contract'"'"'s `manual_checks_style` names, its `[STYLE]` line saying which' <<<"$v" \
       || { echo "workflow-$p: the Validation stage does not name manual_checks_style"; return 1; }
+  done
+}
+
+@test "a refresh of a file in another style rewrites it whole in the run's style, ids kept" {
+  r="$(skill_section '## Refreshing')"
+  for token in "a file whose \`[STYLE]\` differs from this run's \`manual_checks_style\`" 'a file with no `[STYLE]` line reads as `full`' \
+               "is rewritten whole in the run's style" 'its case ids are kept' 'a removed id is not reused'; do
+    grep -qF -- "$token" <<<"$r" || { echo "## Refreshing does not say: $token"; return 1; }
+  done
+  for p in $PROFILES; do
+    grep -qF "a file in another style is rewritten whole in this run's style, its case ids kept" "$ROOT/workflows/profile-$p.js" \
+      || { echo "profile-$p.js: the Validation brief does not rewrite a file in another style"; return 1; }
+  done
+}
+
+@test "the revision reads Start in brief and Preconditions in full against the first step" {
+  for p in $PROFILES; do
+    pr="$(walk_run "$p" '' '' "$SMELL" | pick 'o.calls[2].prompt')"
+    grep -qF "read each case's **Start:** against its first step" <<<"$pr" || { echo "profile-$p: brief revision does not read Start"; return 1; }
+    pr="$(walk_run "$p" ', "manual_checks_style": "full"' '' "$SMELL" | pick 'o.calls[2].prompt')"
+    grep -qF "read each case's **Preconditions:** against its first step" <<<"$pr" || { echo "profile-$p: full revision does not read Preconditions"; return 1; }
+  done
+}
+
+@test "## Brief says how the inherited rules read where they name full-only things" {
+  b="$(skill_section '## Brief')"
+  for token in 'where a rule names `**Preconditions:**`, read `**Start:**`' \
+               "where it names \`**Expected result:**\`, read the last step's expectation" \
+               'the interface language is named in `## Scope` or in `S1`' \
+               'a step that needs a code change or a terminal goes in a scene marked `**dev-only:**`'; do
+    grep -qF -- "$token" <<<"$b" || { echo "## Brief does not say: $token"; return 1; }
+  done
+}
+
+@test "the brief examples hide no action in Test data, cover what their rows cover, and speak in screen terms" {
+  for lang in en ru; do
+    ex="$ROOT/skills/manual-checks/examples/manual-checks.brief.$lang.md"
+    ! grep '^\*\*Test data:\*\*' "$ex" | grep -qiE "\\btap\\b|$(ru '\u043d\u0430\u0436')" || { echo "$lang: an action in Test data"; return 1; }
+    ! grep -qiE "hard to read|every theme|$(ru '\u043f\u043b\u043e\u0445\u043e \u0447\u0438\u0442\u0430')|$(ru '\u043b\u044e\u0431\u043e\u0439 \u0442\u0435\u043c')" "$ex" \
+      || { echo "$lang: a subjective or overreaching claim"; return 1; }
+    ! awk '/^## Scope$/{f=1;next} f&&/^## /{exit} f' "$ex" | grep -qiE "in the model|$(ru '\u0432 \u043c\u043e\u0434\u0435\u043b\u0438')" \
+      || { echo "$lang: Scope uses an internal term"; return 1; }
   done
 }

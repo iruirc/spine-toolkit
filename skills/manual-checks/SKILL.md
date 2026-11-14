@@ -234,7 +234,8 @@ A Validation that finds `ManualChecks.md` with a `[COVERS]` behind HEAD refreshe
 2. A case with a code reference into one of them is checked again, and so is a case with no code reference at all; the others are left alone.
 3. A new `## Manual acceptance` line goes through `## Does this check need a person?`; one that needs a person becomes a case with the next unused id; a case automation now covers moves to `## Scope` with a reference to that evidence, and its id is not reused.
 4. A file with `**Code:**` inside its cases is the old format: move each into `## Code references` as that case's row. A file no Validation refreshes stays as it is.
-5. `[COVERS]` becomes HEAD.
+5. The style: a file whose `[STYLE]` differs from this run's `manual_checks_style` is rewritten whole in the run's style, where a file with no `[STYLE]` line reads as `full`; its case ids are kept, and a removed id is not reused.
+6. `[COVERS]` becomes HEAD.
 
 ## No instrument in the file
 
@@ -280,7 +281,7 @@ The `**Result:**` line carries one mark per case: PASS, FAIL or BLOCKED, with it
 
 `**What it checks:**`, `**Start:**` and `**Failure looks like:**` are always there. `**Test data:**` is there when a step uses a value or the case walks conditions. Each step is a numbered line with one action, and its expectation follows `→`, on the line under it or on the same line. A case starts from a scene and never from another case. It carries no other field: priority, traces, preconditions, an expected result, cleanup, status and notes belong to `full`.
 
-**What holds from `full`.** `## Does this check need a person?`, `## What a case must prove`, `## Grounding`, the `## Code references` section, `## Refreshing`, `## No instrument in the file` and `## The symbol rule`. `## Step rules` hold too, except the steps table: one action per step, no "repeat steps", independent cases, every object named and located, a checkable expectation, the app's text copied verbatim.
+**What holds from `full`.** `## Does this check need a person?`, `## What a case must prove`, `## Grounding`, the `## Code references` section, `## Refreshing`, `## No instrument in the file` and `## The symbol rule`. `## Step rules` hold too, except the steps table: one action per step, no "repeat steps", independent cases, every object named and located, a checkable expectation, the app's text copied verbatim. They read in brief terms: where a rule names `**Preconditions:**`, read `**Start:**`; where it names `**Expected result:**`, read the last step's expectation; the interface language is named in `## Scope` or in `S1`; and a step that needs a code change or a terminal goes in a scene marked `**dev-only:**`.
 
 **What does not.** The screen map and its word table (`### Screen map`), `## Run record`, `## On failure`, `## Troubleshooting` and `## Charter`. The reader knows the app, so the file does not explain the product: it names only the task's scenes, data and conditions.
 

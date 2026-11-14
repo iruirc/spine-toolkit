@@ -616,6 +616,7 @@ const checkManualChecks = async (stage, role, agentType, path) => {
       ? ' The file is written in the brief style, so name a place tacit only for a scene, data or a condition of this task, never for the name of a screen or a button of the app.'
       : ''
   const noProduct = MANUAL_CHECKS_STYLE === 'brief' ? ' Add no explanation of the product: the reader knows the app.' : ''
+  const startLabel = MANUAL_CHECKS_STYLE === 'brief' ? '**Start:**' : '**Preconditions:**'
   const read = await agent(
     brief(
       stage,
@@ -637,7 +638,7 @@ const checkManualChecks = async (stage, role, agentType, path) => {
   const fix = await agent(
     brief(
       stage,
-      `A reader who was not on this task read ${file}, except its ## Code references section, and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. A redundant place is deleted, never rewritten; a place where something is missing is closed by rewording first, and by adding text only when rewording cannot close it.${noProduct} Count the lines of the whole file with wc -l before you touch it and again when you are done. What you change is checked against the code, as its ## Grounding section requires. Then read each case's **Preconditions:** against its first step and its steps against each other, fix what disagrees, run "${core('scripts/lint-manual-checks.sh')}" on the file once more, and repair every finding it prints. [COVERS] stays as it is.
+      `A reader who was not on this task read ${file}, except its ## Code references section, and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. A redundant place is deleted, never rewritten; a place where something is missing is closed by rewording first, and by adding text only when rewording cannot close it.${noProduct} Count the lines of the whole file with wc -l before you touch it and again when you are done. What you change is checked against the code, as its ## Grounding section requires. Then read each case's ${startLabel} against its first step and its steps against each other, fix what disagrees, run "${core('scripts/lint-manual-checks.sh')}" on the file once more, and repair every finding it prints. [COVERS] stays as it is.
 
 Places the reader could not execute as written:
 ${places}

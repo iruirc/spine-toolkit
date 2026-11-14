@@ -7,7 +7,7 @@
 ## Scope
 
 A shopper now changes the quantity of an item right in the cart, and the total and the badge on the cart icon follow every change.
-Automated tests covered the arithmetic of the total and the per-item limit in the model.
+Automated tests already checked that the total adds up and that a row stops at ten items.
 Three cases, about ten minutes, on the build made from [COVERS].
 
 ## Preparation
@@ -34,11 +34,11 @@ Add Green tea to the cart in the quantity the case's Start names, and open the c
 
 ### MC-2. The plus button stops at ten items
 
-**What it checks:** the quantity of a row never goes above the limit of 10 per item, and the limit text reads whole in every theme and text size.
+**What it checks:** the quantity of a row never goes above the limit of 10 per item, and the limit text reads whole in the light and the dark theme and at the largest text size.
 
 **Start:** S1 with nine Green tea.
 
-**Test data:** walk the steps once per row; between rows, tap the minus button once to get back to nine.
+**Test data:** walk the steps once per row of conditions; the last step brings the cart back to nine for the next row.
 
 | Theme | Text size |
 |---|---|
@@ -50,8 +50,10 @@ Add Green tea to the cart in the quantity the case's Start names, and open the c
    → The quantity reads 10, and the plus button turns grey
 2. Tap the grey plus button once more
    → The quantity still reads 10, and "Limit 10 per item" appears under the row, on one line and not cut off
+3. Tap the minus button in the Green tea row
+   → The quantity reads 9, and the plus button is blue again
 
-**Failure looks like:** the quantity reads 11, the plus button stays blue at 10, or the limit text is cut off or hard to read.
+**Failure looks like:** the quantity reads 11, the plus button stays blue at 10, or the limit text wraps to a second line or ends cut off.
 
 ### MC-3. Removing the last item empties the cart
 
