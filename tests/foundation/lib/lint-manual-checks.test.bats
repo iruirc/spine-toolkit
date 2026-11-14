@@ -2,7 +2,7 @@
 # ManualChecks.md is a hand-run script for a tester who knows the product but not the code. A case
 # that leaned on code, on another case's end state or on a step holding two actions passed the
 # cold reader often enough that the format needed a measurement. This lint is that measurement:
-# its nine checks are the executable definition of the case format the manual-checks skill
+# its checks are the executable definition of the case format the manual-checks skill
 # describes, and its fixtures are cases that format accepts.
 
 setup() {
@@ -301,25 +301,23 @@ PY
   done
 }
 
-@test "budget: a case over 40 lines, ## Scope over 8 and ## Preparation over 60 are named" {
-  # The helper's case is 30 lines, heading to the last field: ten more steps make 40, eleven make 41.
-  long() { local rows='' i
-    for i in $(seq 3 $((2 + $1))); do rows="$rows| $i | Tap plus | — | Quantity $i | |\\n"; done
-    write "$(case_md 1 | awk -v rows="$rows" '{ print } /^\| 2 \|/ { printf "%s", rows }')"; }
-  long 10
-  clean "$F"
-  long 11
-  expect 'ManualChecks.md: budget: case of 41 lines, more than 40 (### MC-1.)'
-  write
-  python3 - "$F" <<'PY'
+@test "no line budget: a long case, a long ## Scope and a long ## Preparation pass" {
+  # ManualChecks.md carries no line ceiling in either style: its length is held by the format and by
+  # the fresh reader's redundant, never by a count.
+  local rows='' i
+  for i in $(seq 3 30); do rows="$rows| $i | Tap plus | — | Quantity $i | |\\n"; done
+  write "$(case_md 1 | awk -v rows="$rows" '{ print } /^\| 2 \|/ { printf "%s", rows }')"
+  python3 - "$F" <<'PY2'
 import sys
 p = sys.argv[1]
 t = open(p, encoding='utf-8').read()
-t = t.replace('The cart lets a shopper change a quantity.\n', ''.join('Scope line %d.\n' % i for i in range(9)))
-t = t.replace('Sign in with the test account.\n', ''.join('Preparation line %d.\n' % i for i in range(61)))
+t = t.replace('The cart lets a shopper change a quantity.\n', ''.join('Scope line %d.\n' % i for i in range(20)))
+t = t.replace('Sign in with the test account.\n', ''.join('Preparation line %d.\n' % i for i in range(100)))
 open(p, 'w', encoding='utf-8').write(t)
-PY
-  expect "$(printf '%s\n%s' 'ManualChecks.md: budget: ## Scope of 9 lines, more than 8 (## Scope)' 'ManualChecks.md: budget: ## Preparation of 61 lines, more than 60 (## Preparation)')"
+PY2
+  [ "$(grep -c '^| [0-9]* | Tap plus |' "$F")" -eq 28 ] || { echo "the long case was not built"; return 1; }
+  clean "$F"
+  ! grep -q 'budget' "$LINT" || { echo "the lint still carries a budget check"; return 1; }
 }
 
 @test "file: a missing ## Run record, ## On failure and [COVERS] are named" {
@@ -458,15 +456,14 @@ for line in sys.stdin.read().split("\n")[:-1]:
   clean "$F"
 }
 
-@test "scriptable: MC-2 of the field sample is named, next to its budget and its instrument section" {
-  # The sample's thirteen command steps also overrun the case budget, as the original did, and it
-  # keeps its commands in a ## Reading the verdict section, which the file a person walks no longer has.
+@test "scriptable: MC-2 of the field sample is named, next to its instrument section" {
+  # The sample keeps its commands in a ## Reading the verdict section, which the file a person walks
+  # no longer has. Its thirteen command steps are no finding of length: there is no line budget.
   run "$LINT" "$FIX/scriptable.ru.md"
   [ "$status" -eq 1 ] || { echo "status $status: $output"; return 1; }
-  [ "$output" = "$(printf '%s\n%s\n%s' \
+  [ "$output" = "$(printf '%s\n%s' \
     'ManualChecks.md: instrument: ## Reading the verdict in the file (## Reading the verdict)' \
-    'ManualChecks.md: scriptable: no step needs a person, run it as a script (### MC-2.)' \
-    'ManualChecks.md: budget: case of 41 lines, more than 40 (### MC-2.)')" ] || { echo "$output"; return 1; }
+    'ManualChecks.md: scriptable: no step needs a person, run it as a script (### MC-2.)')" ] || { echo "$output"; return 1; }
 }
 
 @test "scriptable: a menu command and a team are not shell commands" {
@@ -497,5 +494,181 @@ s = re.sub(r'## Cases\n\n.*?(?=## On failure)', '## Cases\n\nnone — every chec
 open(p, 'w').write(s)
 PY
   cut_refs
+  clean "$F"
+}
+
+# The brief style: a file whose [STYLE] line reads brief is read by the rules of the skill's ## Brief
+# section. A file without the line, or with full, is read as above, so no file written before the
+# style existed gains a finding.
+brief_case_md() { # $1 id; the replaceable parts come from the variables set in setup, and START
+  cat <<EOF2
+### MC-$1. The plus button raises the quantity
+
+**What it checks:** $WHAT
+
+**Start:** ${START:-S1, with the cart open.}
+
+**Test data:** Green tea at 4.50; walk the steps once per row.
+
+| Language | Theme |
+|---|---|
+| English | light |
+| English | dark |
+
+1. Look at the Green tea row
+   → One row, Green tea, quantity 1
+2. $ACTION
+   → $EXPECTED
+
+**Failure looks like:** the quantity stays at 1.
+EOF2
+}
+
+brief_md() { # $@ cases, each a whole case text; none given means one case built by brief_case_md
+  [ "$#" -gt 0 ] || set -- "$(brief_case_md 1)"
+  local c id ids=''
+  { printf '# Manual Checks — Cart\n\n[COVERS] = a1b2c3d\n\n[STYLE] = brief\n\n'
+    printf '## Scope\n\nThe cart lets a shopper change a quantity.\n\n'
+    printf '## Preparation\n\n### S1. A cart with Green tea\n\nSign in with the test account and put one Green tea in the cart.\n\n## Cases\n\n'
+    for c in "$@"; do printf '%s\n\n' "$c"; done
+    printf '## Not covered\n\nnone\n\n'
+    printf '## Code references\n\n| Case | Code |\n|---|---|\n'
+    for c in "$@"; do
+      id="$(printf '%s\n' "$c" | sed -n 's/^### MC-\([0-9][0-9]*\)\..*/\1/p' | head -n 1)"
+      [ -z "$id" ] || { printf '| MC-%s | %s |\n' "$id" "$CODE"; ids="$ids MC-$id __"; }
+    done
+    printf '\n**Result:**%s\n' "$ids"; } >"$F"
+}
+
+@test "brief: a clean brief file passes, and a conditions table in **Test data:** is not taken for steps" {
+  brief_md
+  clean "$F"
+  brief_md "$(brief_case_md 1)" "$(brief_case_md 2)"
+  clean "$F"
+  # One line for a step and its expectation is a step too.
+  brief_md "$(brief_case_md 1 | python3 -c 'import sys
+t = sys.stdin.read().replace("\n   → ", " → ")
+sys.stdout.write(t)')"
+  clean "$F"
+}
+
+@test "brief: a missing **What it checks:**, **Start:** or **Failure looks like:** is named, once per label" {
+  brief_md
+  drop '**Start:**'
+  drop '**Failure looks like:**'
+  drop '**What it checks:**'
+  expect "$(printf '%s\n%s\n%s' 'ManualChecks.md: case: missing **What it checks:** (### MC-1.)' \
+    'ManualChecks.md: case: missing **Start:** (### MC-1.)' 'ManualChecks.md: case: missing **Failure looks like:** (### MC-1.)')"
+}
+
+@test "brief: a case with no numbered step that carries → is named; the conditions table is no step" {
+  brief_md
+  drop '   → '
+  expect 'ManualChecks.md: steps: no numbered step with → (### MC-1.)'
+  # Only the conditions table is left: its rows are not steps.
+  brief_md
+  drop '   → '
+  drop '1. Look at'
+  drop '2. Tap'
+  expect 'ManualChecks.md: steps: no numbered step with → (### MC-1.)'
+}
+
+@test "brief: a field of the full case is named once per case" {
+  brief_md "$(brief_case_md 1 | awk '/^\*\*Failure looks like:\*\*/ { print "**Priority:** P1"; print ""; print "**Status:** PASS / FAIL"; print "" } { print }')"
+  expect 'ManualChecks.md: case: a field brief does not carry (### MC-1.)'
+  local label
+  for label in 'Traces to' 'Preconditions' 'Expected result' 'Cleanup' 'Notes / attachments' 'Steps'; do
+    brief_md "$(brief_case_md 1 | awk -v l="$label" '/^\*\*Failure looks like:\*\*/ { print "**" l ":** something"; print "" } { print }')"
+    run "$LINT" "$F"
+    [ "$output" = 'ManualChecks.md: case: a field brief does not carry (### MC-1.)' ] || { printf 'label: %s\n got: %s\n' "$label" "$output"; return 1; }
+  done
+}
+
+@test "brief: a section of the full file is named by its heading" {
+  brief_md
+  python3 - "$F" <<'PY'
+import sys
+p = sys.argv[1]; t = open(p, encoding='utf-8').read()
+t = t.replace('## Scope\n', '## Run record\n\n| Field | Value |\n|---|---|\n| Build | ______ |\n\n## Scope\n')
+t = t.replace('## Preparation\n\n', '## Preparation\n\n### Screen map\n\n| Word in the cases | What it is on the screen |\n|---|---|\n| badge | the red circle |\n\n')
+t = t.replace('## Not covered\n', '## On failure — bug report\n\n**Title:** MC-N\n\n## Not covered\n')
+t = t.replace('## Code references\n', '## Troubleshooting\n\nnone\n\n## Charter\n\nten minutes\n\n## Code references\n')
+open(p, 'w', encoding='utf-8').write(t)
+PY
+  expect "$(printf '%s\n%s\n%s\n%s\n%s' \
+    'ManualChecks.md: file: a section brief does not carry (## Run record)' \
+    'ManualChecks.md: file: a section brief does not carry (### Screen map)' \
+    'ManualChecks.md: file: a section brief does not carry (## On failure — bug report)' \
+    'ManualChecks.md: file: a section brief does not carry (## Troubleshooting)' \
+    'ManualChecks.md: file: a section brief does not carry (## Charter)')"
+}
+
+@test "brief: a file with no **Result:** line is named" {
+  brief_md
+  drop '**Result:**'
+  expect 'ManualChecks.md: file: missing **Result:** (file)'
+}
+
+@test "brief: no line budget, and no full-file finding for a missing ## Run record or ## On failure" {
+  local steps='' i
+  for i in $(seq 3 40); do steps="$steps$i. Tap the plus button\\n   → The quantity reads $i\\n"; done
+  brief_md "$(brief_case_md 1 | awk -v s="$steps" '{ print } /^   → The quantity reads 2$/ { printf "%s", s }')"
+  [ "$(grep -c '^[0-9]*\. Tap the plus' "$F")" -eq 39 ] || { echo "the long case was not built"; return 1; }
+  clean "$F"
+}
+
+@test "brief: chain, code, codeslot, instrument and compound hold in brief too" {
+  ACTION='Tap plus, then tap minus'
+  brief_md
+  expect 'ManualChecks.md: compound: "then" in the Action of step 2 (### MC-1.)'
+  # A semicolon in the expectation is two checkable facts, not two actions.
+  ACTION='Tap the plus button' EXPECTED='Quantity 2; total 9.00'
+  brief_md
+  clean "$F"
+  EXPECTED='CartBadgeView shows 2'
+  brief_md
+  expect 'ManualChecks.md: code: "CartBadgeView" in the Expected of step 2 (### MC-1.)'
+  EXPECTED='The quantity reads 2'
+  START='S1, with the flag cart.stepper.enabled on.'
+  brief_md
+  expect 'ManualChecks.md: code: "cart.stepper.enabled" in **Start:** (### MC-1.)'
+  START='S1, as it is after case 1.'
+  brief_md
+  expect 'ManualChecks.md: chain: "after case 1" (### MC-1.)'
+  START=''
+  brief_md
+  drop '| MC-1 |'
+  expect 'ManualChecks.md: codeslot: no row in ## Code references (### MC-1.)'
+  ACTION='Record the screen while you tap the plus button'
+  brief_md
+  expect 'ManualChecks.md: instrument: a screen recording in a step (### MC-1., step 2)'
+  ACTION='Tap the plus button'
+  brief_md "$(brief_case_md 1 | sed 's/^\*\*Failure looks like:\*\* .*/**Failure looks like:** screen recording, always/')"
+  expect 'ManualChecks.md: instrument: a screen recording in **Failure looks like:** (### MC-1.)'
+  brief_md "$(brief_case_md 1 | awk '/^\*\*Failure looks like:\*\*/ { print "**By instrument:** the log shows it"; print "" } { print }')"
+  run "$LINT" "$F"
+  grep -qxF 'ManualChecks.md: instrument: **By instrument:** in a case (### MC-1.)' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "brief: a case whose every step is a command is named as scriptable" {
+  ACTION='Run `git log -1 --format=%h`'
+  brief_md "$(brief_case_md 1 | sed 's/^1\. Look at the Green tea row$/1. Run `git status --short`/')"
+  expect 'ManualChecks.md: scriptable: no step needs a person, run it as a script (### MC-1.)'
+}
+
+@test "full: a file with [STYLE] = full, or with no [STYLE] line, is read as before" {
+  write
+  clean "$F"
+  python3 - "$F" <<'PY'
+import sys
+p = sys.argv[1]; t = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(t.replace('[COVERS] = a1b2c3d\n', '[COVERS] = a1b2c3d\n\n[STYLE] = full\n'))
+PY
+  clean "$F"
+  drop '## Run record'
+  expect 'ManualChecks.md: file: missing ## Run record (file)'
+  # A full file carries no **Result:** line and is not asked for one.
+  write
+  ! grep -qF '**Result:**' "$F"
   clean "$F"
 }

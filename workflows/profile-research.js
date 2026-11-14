@@ -607,10 +607,20 @@ Return changed true once the file is revised. Change no production code and no t
 // A reader with none of the task's context, then one revision: manual-checks → ## Check.
 const checkManualChecks = async (stage, role, agentType, path) => {
   const file = path || `${DIR}/ManualChecks.md`
+  // Who the reader plays follows the run's style, as that section says.
+  const reader =
+    MANUAL_CHECKS_STYLE === 'brief'
+      ? 'a tester who knows the app but not the task: its screens, buttons and behaviour are known to you, and this task\'s scenes, data and conditions are not'
+      : 'a tester with no access to the code, who knows the product but was not on this task'
+  const tacit =
+    MANUAL_CHECKS_STYLE === 'brief'
+      ? ' The file is written in the brief style, so name a place tacit only for a scene, data or a condition of this task, never for the name of a screen or a button of the app.'
+      : ''
+  const noProduct = MANUAL_CHECKS_STYLE === 'brief' ? ' Add no explanation of the product: the reader knows the app.' : ''
   const read = await agent(
     brief(
       stage,
-      `Apply the spine-toolkit:manual-checks skill, its ## Check section, as the reader it describes: a tester with no access to the code, who knows the product but was not on this task. Of the task and the repository, read ${file}, except its ## Code references section, and nothing else — open no other file of the task and no source file, and run no git command. Return walk, one line per step of every case: the action you would take and what you expect to see; and smells, every place you could not execute as written: its case and step, its kind as that section names them — a step that needs the code or a terminal, an expectation that can be counted two ways, a case that cannot be run alone and text that is redundant included — a quote of at most one line, and what was missing. Change nothing on disk.`,
+      `Apply the spine-toolkit:manual-checks skill, its ## Check section, as the reader it describes: ${reader}. Of the task and the repository, read ${file}, except its ## Code references section, and nothing else — open no other file of the task and no source file, and run no git command. Return walk, one line per step of every case: the action you would take and what you expect to see; and smells, every place you could not execute as written: its case and step, its kind as that section names them — a step that needs the code or a terminal, an expectation that can be counted two ways, a case that cannot be run alone and text that is redundant included — a quote of at most one line, and what was missing.${tacit} Change nothing on disk.`,
     ),
     { label: 'manual-checks:check', phase: stage, agentType, schema: MANUAL_CHECKS_READ, ...tuning(role, 'light') },
   )
@@ -628,7 +638,7 @@ const checkManualChecks = async (stage, role, agentType, path) => {
   const fix = await agent(
     brief(
       stage,
-      `A reader who was not on this task read ${file}, except its ## Code references section, and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. A redundant place is deleted, never rewritten; a place where something is missing is closed by rewording first, and by adding text only when rewording cannot close it. Count the lines of the whole file with wc -l before you touch it and again when you are done. What you change is checked against the code, as its ## Grounding section requires. Then read each case's **Preconditions:** against its first step and its steps against each other, fix what disagrees, run "${core('scripts/lint-manual-checks.sh')}" on the file once more, and repair every finding it prints. [COVERS] stays as it is.
+      `A reader who was not on this task read ${file}, except its ## Code references section, and nothing else, as the spine-toolkit:manual-checks skill's ## Check section describes. Revise the file in one pass by applying that skill: fix every place listed below, and every step the walk retells other than its case means. A redundant place is deleted, never rewritten; a place where something is missing is closed by rewording first, and by adding text only when rewording cannot close it.${noProduct} Count the lines of the whole file with wc -l before you touch it and again when you are done. What you change is checked against the code, as its ## Grounding section requires. Then read each case's **Preconditions:** against its first step and its steps against each other, fix what disagrees, run "${core('scripts/lint-manual-checks.sh')}" on the file once more, and repair every finding it prints. [COVERS] stays as it is.
 
 Places the reader could not execute as written:
 ${places}

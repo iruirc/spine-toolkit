@@ -117,14 +117,14 @@ repository has already watched go unobserved for months. State it, then measure 
 That instrument fits an artifact of fixed shape. It does not fit one whose length is a function of
 the work: `Walkthrough.md` carries a section per commit at `deep` and a bullet at `brief`,
 `ManualChecks.md` a case per check, and a single whole-file number for either would strangle a large
-task or mean nothing on a small one. Those two are budgeted **per unit** instead, in the skill that
-governs each (`task-walkthrough`, `manual-checks`). A `ManualChecks.md` unit has a fixed shape, so
-its ceilings are counted: `scripts/lint-manual-checks.sh` holds a case to 40 lines, `## Scope` to 8
-and `## Preparation` to 60, and the `manual-checks` skill says how the count runs. Only the
-Walkthrough's per-commit size stays unmeasured: at `deep` a commit's section carries no count at all
-and is bounded by the sub-headings it earns, so it is read like the rest of the artifact, by the
-stage that reviews it. Adding a count for it to a lint's table would not make it measured; it would
-make the number arbitrary.
+task or mean nothing on a small one. `Walkthrough.md` is budgeted **per unit** instead, in the
+`task-walkthrough` skill. `ManualChecks.md` carries no numeric limit at all, in either style, `brief`
+or `full`: not for a case, not for a section, not for the file. It is bounded by its format, the
+fields of a case and the sections of the file, and by the fresh reader's `redundant`, as the
+`manual-checks` skill says, like the Walkthrough's section per commit at `deep`, which carries no
+count either and is bounded by the sub-headings it earns. Both are read like the rest of an artifact,
+by the stage that reviews it. Adding a count for either to a lint's table would not make it measured;
+it would make the number arbitrary.
 
 A project may move a ceiling in its config's `[BUDGETS]`, and a task in its own `Task.md`'s. Each key
 walks the chain alone: this run's `--set budgets.<key>`, the task's `Task.md`, for a `.step/` the

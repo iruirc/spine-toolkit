@@ -28,10 +28,25 @@ set -euo pipefail
 #   scriptable a case whose every step is a shell command: a backticked command with at most a verb
 #             before it, or "run the command ..." and its Russian forms; nothing in it needs a person,
 #             so it is a script, not a case; a case with one step a person takes is not named;
-#   budget    a case over 40 lines, heading to last line; ## Scope over 8; ## Preparation over 60
-#             (blank lines inside count, the ones at either end do not);
 #   file      [COVERS], ## Run record and ## On failure are there, and ## Code references when there is
 #             a case.
+#
+# No check counts lines: a case, a section and the file have no line limit.
+#
+# A file whose [STYLE] line reads brief is read by the skill's ## Brief section instead; a file with no
+# such line, or with full, is read as above. In brief:
+#
+#   case      the three labels **What it checks:**, **Start:** and **Failure looks like:** are there,
+#             and no field of the full case is (once per case);
+#   steps     at least one numbered step "1. <action>" carries its expectation after "→", on its own
+#             line or on the line under it; a table, a conditions table in **Test data:**
+#             included, is never a step;
+#   file      [COVERS] and a **Result:** line are there, ## Code references when there is a case, and
+#             no section of the full file is: ## Run record, ## On failure, ## Troubleshooting,
+#             ## Charter, ### Screen map;
+#   compound, code, codeslot, chain, instrument and scriptable read the brief case as they read a
+#             full one: the Action is the text of a numbered step before "→", the Expected the text
+#             after it, and **Start:** is read where a full case's **Preconditions:** is.
 #
 # Known limit: a product name in CamelCase (YouTube, PayPal) reads as code. There is no allow-list.
 #
@@ -52,7 +67,13 @@ import re, sys
 LABELS = ['Priority', 'Traces to', 'What it checks', 'Preconditions', 'Test data', 'Steps',
           'Expected result', 'Failure looks like', 'Cleanup', 'Status', 'Notes / attachments']
 STEPS_HEADER = ['#', 'Action', 'Data', 'Expected', 'Actual']
-BUDGET_CASE, BUDGET_SCOPE, BUDGET_PREPARATION = 40, 8, 60
+# The brief case: its own three labels, and the fields of the full case it does not carry.
+BRIEF_LABELS = ['What it checks', 'Start', 'Failure looks like']
+BRIEF_NOT = ['Priority', 'Traces to', 'Preconditions', 'Expected result', 'Cleanup', 'Status',
+             'Notes / attachments', 'Steps']
+BRIEF_NOT_SECTIONS = ('## Run record', '## On failure', '## Troubleshooting', '## Charter', '### Screen map')
+STYLE = re.compile(r'^\s*\[STYLE\]\s*=\s*\[?\s*(brief|full)\s*\]?\s*$')
+NUMBERED = re.compile(r'^(\d+)\.\s+(.*)$')
 
 FENCE = re.compile(r'^\s*(`{3,}|~{3,})')
 HEADING = re.compile(r'^(#{1,6})\s+(.*?)\s*#*\s*$')
@@ -85,7 +106,7 @@ RUN_VERB = r'(?:run|execute|\u0432\u044b\u043f\u043e\u043b\u043d\w*|\u0437\u0430
 # so the Undo command of a menu and the Russian word for team are not one. Russian: script, and read
 # the output.
 # A recording asked of the tester, in a step or in a field: nobody reads it, so no case asks for one.
-RECORD_FIELDS = ('What it checks', 'Preconditions', 'Test data', 'Expected result', 'Failure looks like',
+RECORD_FIELDS = ('What it checks', 'Preconditions', 'Start', 'Test data', 'Expected result', 'Failure looks like',
                   'Cleanup', 'Notes / attachments')
 RECORD = [re.compile(p, re.I) for p in (
     r'\brecord\s+the\s+screen\b', r'\bscreen\s+recording\b', r'\bstart\s+recording\b',
@@ -160,7 +181,8 @@ def field(body, label):
         if tag in line and not line.lstrip().startswith('|'):
             text = [line.split(tag, 1)[1]]
             for nxt in body[i + 1:]:
-                if LABEL_LINE.match(nxt):
+                # In brief the steps follow a field with no label of their own: a numbered step ends it.
+                if LABEL_LINE.match(nxt) or (brief and NUMBERED.match(nxt)):
                     break
                 text.append(nxt)
             return '\n'.join(text)
@@ -177,6 +199,26 @@ def steps_table(body):
         elif table or (start >= 0 and LABEL_LINE.match(line)):
             break
     return table
+
+
+def numbered_steps(body):
+    """The brief steps: each "<n>. <action>" line at the margin, with the indented lines under it.
+    Returns (n, action, expected) per step; expected is None when no "→" follows the action."""
+    out, cur = [], None
+    for line in body:
+        m = NUMBERED.match(line)
+        if m:
+            cur = [m.group(1), m.group(2)]
+            out.append(cur)
+        elif cur is not None and line.strip() and (line[:1].isspace() or line.startswith('\u2192')):
+            cur[1] += '\n' + line.strip()
+        else:
+            cur = None
+    steps = []
+    for n, text in out:
+        action, arrow, expected = text.partition('\u2192')
+        steps.append((n, action.strip(), expected.strip() if arrow else None))
+    return steps
 
 
 def code_in(text):
@@ -199,13 +241,24 @@ found = []
 headings = [(i, h) for i, (_, h) in enumerate(rows) if h]
 titles = [h[1] for _, h in headings]
 
+# The style: brief only when the file says so, so a file written before the style existed reads as full.
+style = next((STYLE.match(line).group(1) for line, h in rows if h is None and STYLE.match(line)), 'full')
+brief = style == 'brief'
+
 # file
 if not any(re.match(r'^\s*\[COVERS\]', line) for line, h in rows if h is None):
     found.append('file: missing [COVERS] (file)')
-if not any(t == '## Run record' for t in titles):
-    found.append('file: missing ## Run record (file)')
-if not any(t.startswith('## On failure') for t in titles):
-    found.append('file: missing ## On failure (file)')
+if brief:
+    for t in titles:
+        if any(t == s or (s == '## On failure' and t.startswith(s)) for s in BRIEF_NOT_SECTIONS):
+            found.append('file: a section brief does not carry (%s)' % t)
+    if not any(line.lstrip().startswith('**Result:**') for line, h in rows if h is None):
+        found.append('file: missing **Result:** (file)')
+else:
+    if not any(t == '## Run record' for t in titles):
+        found.append('file: missing ## Run record (file)')
+    if not any(t.startswith('## On failure') for t in titles):
+        found.append('file: missing ## On failure (file)')
 
 # instrument, at file level: the section an instrument's commands lived in.
 if any(t.startswith('## Reading the verdict') for t in titles):
@@ -266,17 +319,26 @@ for i, h in cases:
     if not m.group(2).strip():
         found.append('case: no observable behaviour after the id (%s)' % where)
     plain = [line for line in body if not line.lstrip().startswith('|')]
-    for label in LABELS:
+    for label in (BRIEF_LABELS if brief else LABELS):
         if not any('**%s:**' % label in line for line in plain):
             found.append('case: missing **%s:** (%s)' % (label, where))
+    if brief and any('**%s:**' % label in line for label in BRIEF_NOT for line in plain):
+        found.append('case: a field brief does not carry (%s)' % where)
     if any('**By instrument:**' in line for line in plain):
         found.append('instrument: **By instrument:** in a case (%s)' % where)
     if i == old_code:
         found.append('case: old format, **Code:** inside a case instead of ## Code references (%s)' % where)
 
-    table = steps_table(body)
+    table = [] if brief else steps_table(body)
     actions, expects = [], []
-    if not table:
+    if brief:
+        steps = numbered_steps(body)
+        if not any(e is not None for _, _, e in steps):
+            found.append('steps: no numbered step with \u2192 (%s)' % where)
+        for n, action, expected in steps:
+            actions.append((n, action))
+            expects.append((n, expected or ''))
+    elif not table:
         found.append('steps: no steps table (%s)' % where)
     elif cells(table[0]) != STEPS_HEADER:
         found.append('steps: header is not | # | Action | Data | Expected | Actual | (%s)' % where)
@@ -312,7 +374,7 @@ for i, h in cases:
 
     places = [('the Action of step %s' % s, t) for s, t in actions] + \
              [('the Expected of step %s' % s, t) for s, t in expects]
-    for label in ('Preconditions', 'What it checks'):
+    for label in (('Start', 'What it checks') if brief else ('Preconditions', 'What it checks')):
         text = field(plain, label)
         if text is not None:
             places.append(('**%s:**' % label, text))
@@ -327,20 +389,9 @@ for i, h in cases:
         elif not FILE_LINE.search(refs[m.group(1)]):
             found.append('codeslot: no file:line in ## Code references (%s)' % where)
 
-    span = trimmed([h[1]] + body)
-    if len(span) > BUDGET_CASE:
-        found.append('budget: case of %d lines, more than %d (%s)' % (len(span), BUDGET_CASE, where))
-
 for n in refs:
     if n not in seen:
         found.append('codeslot: row for a case not in ## Cases (MC-%s)' % n)
-
-for name, limit in (('Scope', BUDGET_SCOPE), ('Preparation', BUDGET_PREPARATION)):
-    for i, h in headings:
-        if h == (2, '## ' + name):
-            n = len(trimmed(section(i, 2)))
-            if n > limit:
-                found.append('budget: ## %s of %d lines, more than %d (## %s)' % (name, n, limit, name))
 
 # chain, over the whole file: a line names the heading it sits under.
 where = 'file'

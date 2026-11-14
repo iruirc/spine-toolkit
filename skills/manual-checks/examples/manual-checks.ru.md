@@ -2,6 +2,8 @@
 
 [COVERS] = 4f2a9c1
 
+[STYLE] = full
+
 ## Run record
 
 | Field | Value |

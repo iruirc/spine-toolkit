@@ -85,21 +85,26 @@ setup() {
 @test "the skill says how its lint counts and where it is wrong" {
   l="$(skill_section '## The lint')"
   [ -n "$l" ] || { echo "no ## The lint"; return 1; }
-  for id in case steps compound code codeslot chain budget file; do
+  for id in case steps compound code codeslot chain file; do
     grep -qF -- "| \`$id\` |" <<<"$l" || { echo "## The lint does not list the check $id"; return 1; }
   done
-  for token in '`scripts/lint-manual-checks.sh`' 'blank lines inside it count' 'about 30 lines' 'about twelve steps' \
-               '`YouTube`' '`shop.example.com`' 'no allow-list' 'runs it again'; do
+  for token in '`scripts/lint-manual-checks.sh`' '`YouTube`' '`shop.example.com`' 'no allow-list' 'runs it again'; do
     grep -qF -- "$token" <<<"$l" || { echo "## The lint does not say $token"; return 1; }
+  done
+  # No line budget, in either style: the lint counts no lines, and the skill says how none.
+  for token in '| `budget` |' 'How the budget counts' 'blank lines inside it count' 'about 30 lines' 'about twelve steps'; do
+    ! grep -qF -- "$token" <<<"$l" || { echo "## The lint still says $token"; return 1; }
   done
 }
 
-@test "the scale convention says the lint counts the case ceilings, and only the commit is read" {
+@test "the scale convention gives ManualChecks.md no numeric limit, in either style" {
   C="$ROOT/conventions/task-scale.md"
-  grep -qF '`scripts/lint-manual-checks.sh` holds a case to 40 lines' "$C" \
-    || { echo "the convention does not say which script counts a case"; return 1; }
-  tr '\n' ' ' <"$C" | grep -qF "Only the Walkthrough's per-commit size stays unmeasured" \
-    || { echo "the convention does not say what review alone reads"; return 1; }
+  ! grep -qF '40 lines' "$C" || { echo "the convention still holds a case to 40 lines"; return 1; }
+  ! grep -qF '`scripts/lint-manual-checks.sh` holds' "$C" || { echo "the convention still says the lint counts a case"; return 1; }
+  tr '\n' ' ' <"$C" | grep -qF '`ManualChecks.md` carries no numeric limit at all, in either style' \
+    || { echo "the convention does not say ManualChecks.md has no numeric limit"; return 1; }
+  tr '\n' ' ' <"$C" | grep -qF "like the Walkthrough's section per commit at \`deep\`" \
+    || { echo "the convention does not compare it with the Walkthrough's section at deep"; return 1; }
   ! grep -qF 'A per-unit budget is not something a line count can decide' "$C" \
     || { echo "the convention still says no count can decide a case's size"; return 1; }
 }
@@ -304,11 +309,13 @@ review_brief() {
 # One section of the skill, heading excluded, up to the next H2.
 skill_section() { awk -v h="$1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
 
-@test "a case is budgeted at 40 lines, Scope at 8 and Preparation at 60, and lite keeps the case whole" {
-  grep -qF '| `## Cases` | `### MC-<n>.`, one per check | ≤ 40 lines each |' "$SKILL" || { echo "a case is not budgeted at 40 lines"; return 1; }
-  grep -qE '^\| `## Scope` \|.*\| ≤ 8 lines \|$' "$SKILL" || { echo "## Scope is not budgeted at 8 lines"; return 1; }
-  grep -qE '^\| `## Preparation` \|.*\| ≤ 60 lines \|$' "$SKILL" || { echo "## Preparation is not budgeted at 60 lines"; return 1; }
-  grep -qF 'a case keeps its 40 lines' "$SKILL" || { echo "lite cuts a case below what eleven fields need"; return 1; }
+@test "no line budget in the skill: no Budget column, no 40 lines, and lite still keeps the case whole" {
+  grep -qxF '| Section | Content |' "$SKILL" || { echo "the ## Structure table is not headed | Section | Content |"; return 1; }
+  for token in '| Budget |' '40 lines' '≤ 8 lines' '≤ 60 lines' 'How the budget counts'; do
+    ! grep -qF -- "$token" "$SKILL" || { echo "the skill still says $token"; return 1; }
+  done
+  skill_section '## Depth by task scale' | grep -qF 'cuts no required field of a case' \
+    || { echo "lite is not held off the required fields of a case"; return 1; }
 }
 
 @test "Preparation maps the screen and its words, marks dev-only steps, and the file has its frame" {
@@ -436,7 +443,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
 
 @test "a passed Validation that wrote cases has the file walked cold by the validator's role" {
   for p in $PROFILES; do
-    out="$(walk_run "$p")"
+    out="$(walk_run "$p" ', "manual_checks_style": "full"')"
     [ "$(labels <<<"$out")" = "validation manual-checks:check" ] || { echo "profile-$p: $(labels <<<"$out")"; return 1; }
     pr="$(pick 'o.calls[1].prompt' <<<"$out")"
     for f in 'spine-toolkit:manual-checks skill, its ## Check section' 'a tester with no access to the code' '/p/Tasks/ACTIVE/001-x/ManualChecks.md, except its ## Code references section, and nothing else' 'run no git command'; do
@@ -580,11 +587,11 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
   done
 }
 
-@test "the symbol rule covers the steps table, and lite keeps the ceilings too small to halve" {
+@test "the symbol rule covers the steps table, and lite halves nothing by a count" {
   grep -qF 'Neither `**Preconditions:**`, a cell of `**Steps:**`, nor `**Expected result:**`' "$SKILL" \
     || { echo "the symbol rule does not reach the steps table"; return 1; }
-  grep -qF '`## Scope` and `## Charter` keep theirs' "$SKILL" \
-    || { echo "lite halves ## Scope and ## Charter"; return 1; }
+  ! grep -qF 'halves `## Preparation`' "$SKILL" || { echo "lite still halves ## Preparation by a count"; return 1; }
+  ! grep -qF 'keep theirs' "$SKILL" || { echo "lite still speaks of ceilings a section keeps"; return 1; }
 }
 
 @test "Method B refreshes a file behind HEAD, and the orchestrator names the case it gates on" {
@@ -852,4 +859,110 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     || { echo "the Test data field does not mention the conditions table"; return 1; }
   skill_section '## What a case must prove' | grep -qF 'starts from a scene or its preconditions and does not re-run the covered flow to get there' \
     || { echo "a visual case may re-run the covered flow to reach the screen"; return 1; }
+}
+
+# The brief style (decisions 13-16 of iteration 2): a short case for a tester who knows the app.
+@test "the skill says the style comes from manual_checks_style and the file names it after [COVERS]" {
+  intro="$(awk '/^## The reader$/{exit} {print}' "$SKILL")"
+  for token in '`manual_checks_style`' '`[STYLE] = <value>`' 'after `[COVERS]`' '`## Brief`'; do
+    grep -qF -- "$token" <<<"$intro" || { echo "the top of the skill does not say $token"; return 1; }
+  done
+  awk '/^```$/{n++} n==1' <<<"$(skill_section '## Structure')" | grep -qxF '[STYLE] = full' \
+    || { echo "the full structure does not show its [STYLE] line"; return 1; }
+}
+
+@test "the ## Brief section sets the reader, the file, the case and the rules it keeps" {
+  b="$(skill_section '## Brief')"
+  [ -n "$b" ] || { echo "no ## Brief section"; return 1; }
+  for token in '[STYLE] = brief' '**Start:**' 'S1' '**Result:**' 'knows the app but not the task' \
+               '**What it checks:**' '**Failure looks like:**' '**Test data:**' '→' \
+               '`## What a case must prove`' '`## Grounding`' '`## Code references`' '`## Step rules`' \
+               '### Screen map' '## Run record' '## On failure' '## Troubleshooting' '## Charter' \
+               'one mark per case' 'no line limit'; do
+    grep -qF -- "$token" <<<"$b" || { echo "## Brief does not say $token"; return 1; }
+  done
+  grep -qF 'examples/manual-checks.brief.en.md' <<<"$b" && grep -qF 'examples/manual-checks.brief.ru.md' <<<"$b" \
+    || { echo "## Brief does not point at its examples"; return 1; }
+}
+
+@test "a brief case has no status: the Result line marks each case and names the failing condition" {
+  b="$(skill_section '## Brief')"
+  grep -qF 'carries one mark per case' <<<"$b" || { echo "## Brief does not say the Result line carries one mark per case"; return 1; }
+  grep -qF "a failing condition is named in that mark's reason" <<<"$b" \
+    || { echo "## Brief does not say where a failing condition is named"; return 1; }
+}
+
+@test "the check's reader in brief knows the app, and tacit reaches only the task's scenes, data and conditions" {
+  c="$(skill_section '## Check')"
+  for token in 'knows the app but not the task' 'scenes, data and conditions' 'adds no explanation of the product' \
+               'a tester with no access to the code'; do
+    grep -qF -- "$token" <<<"$c" || { echo "## Check does not say $token"; return 1; }
+  done
+}
+
+@test "two brief examples pass the lint, hold three cases, and one walks a table of conditions" {
+  for lang in en ru; do
+    ex="$ROOT/skills/manual-checks/examples/manual-checks.brief.$lang.md"
+    [ -f "$ex" ] || { echo "no example $ex"; return 1; }
+    run "$ROOT/scripts/lint-manual-checks.sh" "$ex"
+    [ "$status" -eq 0 ] || { echo "manual-checks.brief.$lang.md fails the lint:"; echo "$output"; return 1; }
+    grep -qxF '[STYLE] = brief' "$ex" || { echo "manual-checks.brief.$lang.md: no [STYLE] = brief line"; return 1; }
+    [ "$(grep -c '^### MC-[0-9]*\. ' "$ex")" -ge 3 ] || { echo "manual-checks.brief.$lang.md: fewer than three cases"; return 1; }
+    grep -q '^### S1\. ' "$ex" || { echo "manual-checks.brief.$lang.md: no scene S1"; return 1; }
+    grep -q '^\*\*Result:\*\* MC-1 ' "$ex" || { echo "manual-checks.brief.$lang.md: no Result line"; return 1; }
+    # A table of conditions under **Test data:**, walked once per row.
+    awk '/^\*\*Test data:\*\*/{f=1;next} f&&/^\|/{print "table"; exit} f&&/^[0-9]+\. /{exit}' "$ex" | grep -qx table \
+      || { echo "manual-checks.brief.$lang.md: no case walks a table of conditions"; return 1; }
+    for t in '## Run record' '## On failure' '## Troubleshooting' '## Charter' '### Screen map' '**Priority:**' '**Status:**'; do
+      ! grep -qF -- "$t" "$ex" || { echo "manual-checks.brief.$lang.md carries $t"; return 1; }
+    done
+    ! grep -qiE '\b(swift|kotlin|java|android|ios|iphone|xcode|gradle)\b' "$ex" \
+      || { echo "manual-checks.brief.$lang.md names an ecosystem"; return 1; }
+  done
+  run python3 - "$ROOT/skills/manual-checks/examples" <<'PY'
+import re, sys
+cyr = re.compile('[\u0400-\u04ff]')
+en = open(sys.argv[1] + '/manual-checks.brief.en.md', encoding='utf-8').read()
+ru = open(sys.argv[1] + '/manual-checks.brief.ru.md', encoding='utf-8').read()
+assert not cyr.search(en), 'manual-checks.brief.en.md holds Cyrillic'
+assert len(cyr.findall(ru)) > 400, 'manual-checks.brief.ru.md is not written in Russian'
+PY
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "the full examples name their style" {
+  for lang in en ru; do
+    grep -qxF '[STYLE] = full' "$ROOT/skills/manual-checks/examples/manual-checks.$lang.md" \
+      || { echo "manual-checks.$lang.md: no [STYLE] = full line"; return 1; }
+  done
+}
+
+@test "the reader and the reviser are briefed by the run's manual_checks_style" {
+  for p in $PROFILES; do
+    out="$(walk_run "$p" '' '' "$SMELL")"
+    pr="$(pick 'o.calls[1].prompt' <<<"$out")"
+    grep -qF 'knows the app but not the task' <<<"$pr" || { echo "profile-$p: the brief reader is not the one who knows the app"; return 1; }
+    ! grep -qF 'a tester with no access to the code' <<<"$pr" || { echo "profile-$p: brief got the full reader"; return 1; }
+    grep -qF 'tacit only for a scene, data or a condition of this task' <<<"$pr" || { echo "profile-$p: tacit is not narrowed in brief"; return 1; }
+    grep -qF 'Add no explanation of the product' <<<"$(pick 'o.calls[2].prompt' <<<"$out")" \
+      || { echo "profile-$p: the brief revision may explain the product"; return 1; }
+    out="$(walk_run "$p" ', "manual_checks_style": "full"' '' "$SMELL")"
+    pr="$(pick 'o.calls[1].prompt' <<<"$out")"
+    grep -qF 'a tester with no access to the code' <<<"$pr" || { echo "profile-$p: full lost its reader"; return 1; }
+    ! grep -qF 'knows the app but not the task' <<<"$pr" || { echo "profile-$p: full got the brief reader"; return 1; }
+    ! grep -qF 'Add no explanation of the product' <<<"$(pick 'o.calls[2].prompt' <<<"$out")" \
+      || { echo "profile-$p: the full revision may not explain the product"; return 1; }
+  done
+}
+
+@test "the Validation brief writes the file in the run's style, and Method B says the same" {
+  for p in $PROFILES; do
+    grep -qF "This run's manual_checks_style is \${MANUAL_CHECKS_STYLE}: write the file in that style, its [STYLE] line naming it." "$ROOT/workflows/profile-$p.js" \
+      || { echo "profile-$p.js: the Validation brief does not write the file in the run's style"; return 1; }
+    grep -qF "in brief, short ### MC-<n>. cases for a tester who knows the app but not the task, with the four fields of its ## Brief section" "$ROOT/workflows/profile-$p.js" \
+      || { echo "profile-$p.js: the Validation brief names only the full case"; return 1; }
+    v="$(bullet "$ROOT/skills/workflow-$p/SKILL.md" Validation)"
+    grep -qF 'in the style the contract'"'"'s `manual_checks_style` names, its `[STYLE]` line saying which' <<<"$v" \
+      || { echo "workflow-$p: the Validation stage does not name manual_checks_style"; return 1; }
+  done
 }
