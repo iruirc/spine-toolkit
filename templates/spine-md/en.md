@@ -24,6 +24,7 @@
 [MANUAL_CHECKS] = [auto]               # auto | always
 [MANUAL_CHECKS_CHECK] = [on]           # on | off
 [MANUAL_CHECKS_STYLE] = [brief]         # brief | full
+[MANUAL_CHECKS_PASS] = [per-step]       # per-step | end
 [REPORT] = [auto]                      # auto | on | off
 [DRIVER] = [auto]                      # <driver-plugin> | auto | —
 [DEVICE] = [auto]                      # auto | <device>

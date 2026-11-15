@@ -244,6 +244,7 @@ SCALARS = (
     ('manual_checks', 'MANUAL_CHECKS', ['auto', 'always'], 'auto'),
     ('manual_checks_check', 'MANUAL_CHECKS_CHECK', ['on', 'off'], 'on'),
     ('manual_checks_style', 'MANUAL_CHECKS_STYLE', ['brief', 'full'], 'brief'),
+    ('manual_checks_pass', 'MANUAL_CHECKS_PASS', ['per-step', 'end'], 'per-step'),
     ('driver', 'DRIVER', None, 'auto'),
     ('device', 'DEVICE', None, 'auto'),
     ('phase_verification', 'PHASE_VERIFICATION', ['proportional', 'full'], 'proportional'),

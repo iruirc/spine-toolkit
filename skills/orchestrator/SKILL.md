@@ -499,6 +499,7 @@ device_from=default
 manual_checks=auto|always
 manual_checks_check=on|off
 manual_checks_style=brief|full
+manual_checks_pass=per-step|end
 report=auto|on|off
 phase_verification=proportional|full
 security=auto|on|off
@@ -586,6 +587,8 @@ size belongs to the task, not to one dispatch.
 `manual_checks_check` — whether a reader with none of the task's context walks `ManualChecks.md` after a Validation that passed and wrote or changed one holding a case, and the validator revises once from what that reader could not execute. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile, `on` or `off`. The protocol is `manual-checks` → `## Check`. It travels in the contract for the reason `walkthrough` does — a Method A script gates on it and has no filesystem to read it from.
 
 `manual_checks_style` — who walks `ManualChecks.md`. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile, `brief` or `full`. It travels in the contract so the Validation brief of a Method A script can name it.
+
+`manual_checks_pass` — when an epic's manual checks are walked. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile, `per-step` or `end`. With `end` the steps of an epic mark their cases for one pass and the epic runs its `Acceptance` stage; a step inherits the field.
 
 `report` — whether the task leaves one topic report in a documentation component's places. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `auto` reaches the contract for TEST, FEATURE, RESEARCH and EPIC, because only the Plan stage can decide it, by `task-report` → `## When`; QUICK, BUG and REFACTOR resolve to `off` unless chosen, REVIEW always to `off`.
 

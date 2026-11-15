@@ -532,6 +532,17 @@ section() {
   [ "$(printf '%s' "$para" | wc -c)" -le "$own" ] || { echo "the paragraph outgrew the walkthrough_check one"; return 1; }
 }
 
+@test "the outbound contract carries manual_checks_pass, per-step or end" {
+  grep -qxF 'manual_checks_pass=per-step|end' "$SKILL" || { echo "no manual_checks_pass= line in the contract block"; return 1; }
+  para="$(awk '/^`manual_checks_pass` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`manual_checks_pass\` paragraph in the Outbound Contract"; return 1; }
+  for token in 'resolve-settings.sh json' 'Always filled' '`per-step`' '`end`' '`Acceptance`'; do
+    grep -qF "$token" <<<"$para" || { echo "the manual_checks_pass paragraph does not say $token"; return 1; }
+  done
+  own="$(awk '/^`walkthrough_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL" | wc -c)"
+  [ "$(printf '%s' "$para" | wc -c)" -le "$own" ] || { echo "the paragraph outgrew the walkthrough_check one"; return 1; }
+}
+
 @test "the outbound contract carries report, auto on or off" {
   grep -qxF 'report=auto|on|off' "$SKILL" || { echo "no report= line in the contract block"; return 1; }
   para="$(awk '/^`report` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"

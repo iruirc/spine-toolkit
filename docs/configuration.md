@@ -203,6 +203,18 @@ knows the product and the code; `full` — a separate tester, who knows the prod
 The field reaches the validator as `manual_checks_style` in the run's contract, and the skill says how
 the file reads in each style. `/setup` asks the question when it writes a config.
 
+### [MANUAL_CHECKS_PASS]
+
+**Values:** `per-step` `end` · **Default:** `per-step` · **Task override:** `[MANUAL_CHECKS_PASS] = [per-step|end]` ·
+**Defined by:** the `manual-checks` skill
+
+When a person walks the `ManualChecks.md` of an epic: `per-step` — after each step, as every step
+is handed over; `end` — once, at the end of the epic, in a single pass over the cases its steps
+marked for it. With `end` the steps of the epic mark their cases for that pass and the epic runs an
+`Acceptance` stage. The field reaches the run as `manual_checks_pass` in the contract and a step
+inherits the epic's value unless its own `Task.md` or the project says otherwise. `/setup` does not
+ask the question; the template ships `per-step`.
+
 ### [REPORT]
 
 **Values:** `auto` `on` `off` · **Default:** `auto` — stays `auto` for `TEST`, `FEATURE`, `RESEARCH` and `EPIC`, `off` for `QUICK`, `BUG` and `REFACTOR`, always `off` for `REVIEW` ·

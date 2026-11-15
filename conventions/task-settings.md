@@ -151,6 +151,7 @@ answers.
 | `manual_checks` | `[MANUAL_CHECKS]` | `[MANUAL_CHECKS]` | `auto` `always` | `auto` |
 | `manual_checks_check` | `[MANUAL_CHECKS_CHECK]` | `[MANUAL_CHECKS_CHECK]` | `on` `off` | `on` |
 | `manual_checks_style` | `[MANUAL_CHECKS_STYLE]` | `[MANUAL_CHECKS_STYLE]` | `brief` `full` | `brief` |
+| `manual_checks_pass` | `[MANUAL_CHECKS_PASS]` | `[MANUAL_CHECKS_PASS]` | `per-step` `end` | `per-step` |
 | `driver` | `[DRIVER]` | `[DRIVER]` | a plugin name, `auto`, `—` | `auto` |
 | `device` | `[DEVICE]` | `[DEVICE]` | `auto`, or a device in the platform's own terms | `auto` |
 | `phase_verification` | `[PHASE_VERIFICATION]` | `[PHASE_VERIFICATION]` | `proportional` `full` | `proportional` |
