@@ -62,7 +62,7 @@ A check that needs none of them is not a case. It gets one of three outcomes:
 | `covered` | Validation, or automation already run, checked it, and the evidence exists | `## Scope`, with a reference to the evidence; `Validation.md` when there is no file |
 | `drop` | it costs more than it is worth, or its outcome changes nothing | at Plan: a line in `## Not automated` with its reason |
 
-**A check deferred because nothing could drive the app in this run** — `drive_app` off, no driver, a driver that cannot reach the surface — and that the diff changes is a device action: driving the app is exactly what the run could not do, so it needs a person. The BUG reproduction replay is one, and it stays a case. "Automatable, not automated" is for a check a script could make, never for one only a driver could.
+**A check deferred because nothing could drive the app in this run** — `drive_app` off, no driver, a driver that cannot reach the surface — and that the diff changes is a device action: driving the app is exactly what the run could not do, so it needs a person. The BUG reproduction replay is one, and it stays a case. Under `manual_checks_pass` = `end` the check is deferred to a collective pass, where a driver is usually there: such a check that was deferred only because of the driver is marked `**Runner:** agent` instead of being a device action (`## Marks for a collective pass`), and a check that needs a person for another reason stays a device action. Under `per-step` the deferred check is a device action, whatever the reason. "Automatable, not automated" is for a check a script could make, never for one only a driver could.
 
 **A mixed check** — one or two actions of a person inside a check made of commands — is not written as a case of steps. Plan makes it work for a phase: a script that does everything itself, stops at a prompt where the person is needed ("turn on airplane mode, press Enter") and prints PASS or FAIL. It lives where the project keeps its scripts. In `ManualChecks.md` its launch is a `**dev-only:**` step in `## Preparation`; the case holds only the person's steps, and its `**Expected result:**` is the verdict the script prints.
 
@@ -164,6 +164,7 @@ The heading is `### MC-<n>. <observable behaviour>`. The id is stable: a refresh
 - `**Failure looks like:**` is the cheapest field and the strongest. A failure is recognised faster than a success is verified, and this is what turns "it did not add up" into "here is what is broken".
 - `**Cleanup:**` puts back what the case changed: an item left in the cart, a setting switched. `—` when there is nothing.
 - The `(file:line)` references a case was grounded in are its row in `## Code references`, never a field of the case.
+- `**Runner:**`, `**Device:**` and `**Order:**` are the three optional marks of `## Marks for a collective pass`; they follow `**What it checks:**` and are no part of the eleven.
 - `**Status:**` and `**Notes / attachments:**` are the tester's: a mark, a reason for BLOCKED, a screenshot of what failed.
 
 Write a blank line before every field, list and table. Markdown joins consecutive lines into one paragraph, and a table with no blank line above it renders as plain text. The lint checks structure, not rendering, so open the preview before handing the file over.
@@ -186,6 +187,18 @@ A case earns a tester's time only when its verdict says something about this cha
 
 The first two rules hold for a task that changes product behaviour. On a task whose diff changes no product behaviour — a TEST task, a change to docs or tests only — the first rule does not apply, and the question of `## Does this check need a person?` reads as it says for such a task. There a case checks the behaviour the task targets that automation could not reach, which is what `[MANUAL_CHECKS]` `always` asks of such a run.
 
+## Marks for a collective pass
+
+The contract's `manual_checks_pass` says when the cases of a task are walked: `per-step`, the default, walks each step's file after that step, and `end` collects the cases of all steps into one collective pass at the end. Under `end` a case may carry three marks that tell the pass who walks it, on what, and when. They are written right after `**What it checks:**`, in `full` and in `brief`, and each is optional:
+
+- `**Runner:** agent` marks a case the diff changes that this run did not walk only because the driver was off, was not found or did not reach the surface. The agent walks it in the pass; when it cannot, the case goes to a person with the reason. The value is always `agent`: a case a person walks has no `**Runner:**` line.
+- `**Device:** real` or `**Device:** <model>` marks a case that by its nature needs a real device, a named model: speed, a gesture with inertia, the camera, a sensor. A case that any device can show, a simulator included, has no such line.
+- `**Order:** first — <why>` or `**Order:** last — <why>` marks a case that needs a state nothing has touched or that changes it for good: a case that needs access not yet granted is `first`, a case that unloads the app is `last`. The reason follows the dash, in one clause. A case that can run at any point has no such line.
+
+No field means a person, any device and any order. A case that only a particular person can judge has no mark for it: `**What it checks:**` says so.
+
+Under `per-step` none of the three is written, and a `**Runner:** agent` in a file of such a task is a finding at Review (`## Review`). The file does not know its own `manual_checks_pass`, so the lint checks only the shape of the marks (`## The lint`).
+
 ## Step rules
 
 - **One row, one action.** An action on a named object in a named place, and what the screen shows right after it. "Then", "and then", "afterwards" or a semicolon inside `Action` mean two rows.
@@ -203,6 +216,7 @@ The first two rules hold for a task that changes product behaviour. On a task wh
 | Check | What it finds |
 |---|---|
 | `case` | a case heading that is not `### MC-<n>. <behaviour>`, a repeated id, a missing label, a `## Cases` with no `### MC-` case under it; a file of old `### <n>.` headings, or with a `**Code:**` field inside a case, is named once as the old format |
+| `field` | a mark of `## Marks for a collective pass` with a wrong value: `**Runner:**` that is not `agent`, `**Device:**` with no value, `**Order:**` that is not `first — <why>` or `last — <why>`; a missing mark is no finding, and a label in another letter case is no mark |
 | `steps` | no steps table, a header other than the one in `## The case`, an empty `Action` or `Expected` (`—` is a value) |
 | `compound` | two steps in one `Action`: "then", "and then", "afterwards", "repeat steps", a semicolon |
 | `code` | code in `Action`, `Expected`, `**Preconditions:**` or `**What it checks:**`: a CamelCase word, a source file, a dotted name of three parts or more, a `(file:line)` |
@@ -271,6 +285,12 @@ The `**Result:**` line carries one mark per case: PASS, FAIL or BLOCKED, with it
 
 **What it checks:** the intent, in one line
 
+**Runner:** agent
+
+**Device:** real
+
+**Order:** first — <why>
+
 **Start:** S1, and only what differs from it
 
 **Test data:** the values the steps use, or the table of conditions they are walked over
@@ -281,7 +301,7 @@ The `**Result:**` line carries one mark per case: PASS, FAIL or BLOCKED, with it
 **Failure looks like:** what is on the screen when it is broken
 ```
 
-`**What it checks:**`, `**Start:**` and `**Failure looks like:**` are always there. `**Test data:**` is there when a step uses a value or the case walks conditions. Each step is a numbered line with one action, and its expectation follows `→`, on the line under it or on the same line. A preparing step is a numbered step with no `→` line, allowed only when the next step's expectation covers it. A case starts from a scene and never from another case. It carries no other field: priority, traces, preconditions, an expected result, cleanup, status and notes belong to `full`.
+`**What it checks:**`, `**Start:**` and `**Failure looks like:**` are always there. `**Runner:**`, `**Device:**` and `**Order:**` are the optional marks of `## Marks for a collective pass`: the template shows where they stand, and a case keeps only the ones it needs. `**Test data:**` is there when a step uses a value or the case walks conditions. Each step is a numbered line with one action, and its expectation follows `→`, on the line under it or on the same line. A preparing step is a numbered step with no `→` line, allowed only when the next step's expectation covers it. A case starts from a scene and never from another case. It carries no other field than these and the marks: priority, traces, preconditions, an expected result, cleanup, status and notes belong to `full`.
 
 **What holds from `full`.** **A scene is a state** of `## Structure`, `## Does this check need a person?`, `## What a case must prove`, `## Grounding`, the `## Code references` section, `## Refreshing`, `## No instrument in the file` and `## The symbol rule`. `## Step rules` hold too, except the steps table: one action per step, no "repeat steps", independent cases, every object named and located, a checkable expectation, the app's text copied verbatim. They read in brief terms: where a rule names `**Preconditions:**`, read `**Start:**`; where it names `**Expected result:**`, read the last step's expectation; the interface language is named in `## Scope` or in `S1`; and a step that needs a code change or a terminal goes in a scene marked `**dev-only:**`.
 
@@ -312,4 +332,4 @@ The axis decides depth, not existence: whether this file appears at all is `manu
 
 ## Review
 
-This artifact is read at Review like any other the task produced. A case a tester cannot execute as written is an ordinary finding, judged by `## The case` and `## Grounding`, and in `brief` by `## Brief` in place of `## The case`; an empty case and a claim about behaviour with no reference in `## Code references` are findings too. So are a case that needs no person by `## Does this check need a person?` and a `## Manual acceptance` line with no `needs:`; neither blocks. By `## What a case must prove`, three more findings block nothing either: a case that does not tell the build before the change from the build after, a case on behaviour the diff did not touch, and a step that has a person measure what the eye can see. Review and `## Check` are the only checks that run against a real task: a test can hold the spec, never the artifact made from it.
+This artifact is read at Review like any other the task produced. A case a tester cannot execute as written is an ordinary finding, judged by `## The case` and `## Grounding`, and in `brief` by `## Brief` in place of `## The case`; an empty case and a claim about behaviour with no reference in `## Code references` are findings too. So are a case that needs no person by `## Does this check need a person?` and a `## Manual acceptance` line with no `needs:`; neither blocks. By `## What a case must prove`, three more findings block nothing either: a case that does not tell the build before the change from the build after, a case on behaviour the diff did not touch, and a step that has a person measure what the eye can see. A `**Runner:** agent` mark in a file of a task whose `manual_checks_pass` is `per-step` is a finding too: that mark is written only under `end`. Review and `## Check` are the only checks that run against a real task: a test can hold the spec, never the artifact made from it.

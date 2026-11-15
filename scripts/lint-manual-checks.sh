@@ -11,6 +11,10 @@ set -euo pipefail
 #             and no MC- heading is named once as the old format, and its cases are not read further;
 #             a case with a **Code:** field inside it is named once as the old format too: the
 #             references moved out of the case into ## Code references;
+#   field     the optional marks of a case, written after **What it checks:** and read by a collective
+#             pass: **Runner:** is "agent", **Device:** is not empty, **Order:** reads "first — <why>"
+#             or "last — <why>"; a mark is judged by its shape, never by the mode of the run, and a
+#             label in another case (**runner:**) is no mark;
 #   steps     **Steps:** is a table headed "| # | Action | Data | Expected | Actual |", and no row
 #             leaves Action or Expected empty ("—" is a value);
 #   compound  an Action that holds two steps: then, and then, afterwards, repeat steps, a semicolon,
@@ -39,15 +43,16 @@ set -euo pipefail
 # such line, or with full, is read as above. In brief:
 #
 #   case      the three labels **What it checks:**, **Start:** and **Failure looks like:** are there,
-#             and no field of the full case is (once per case);
+#             and no field of the full case is (once per case); the marks of `field` are not such
+#             a field;
 #   steps     at least one numbered step "1. <action>" carries its expectation after "→", on its own
 #             line or on the line under it; a table, a conditions table in **Test data:**
 #             included, is never a step;
 #   file      [COVERS] and a **Result:** line are there, ## Code references when there is a case, and
 #             no section of the full file is: ## Run record, ## On failure, ## Troubleshooting,
 #             ## Charter, ### Screen map;
-#   compound, code, codeslot, chain, instrument and scriptable read the brief case as they read a
-#             full one: the Action is the text of a numbered step before "→", the Expected the text
+#   field, compound, code, codeslot, chain, instrument and scriptable read the brief case as they
+#             read a full one: the Action is the text of a numbered step before "→", the Expected the text
 #             after it, and **Start:** is read where a full case's **Preconditions:** is.
 #
 # Known limit: a product name in CamelCase (YouTube, PayPal) reads as code. There is no allow-list.
@@ -74,6 +79,7 @@ BRIEF_LABELS = ['What it checks', 'Start', 'Failure looks like']
 BRIEF_NOT = ['Priority', 'Traces to', 'Preconditions', 'Expected result', 'Cleanup', 'Status',
              'Notes / attachments', 'Steps']
 BRIEF_NOT_SECTIONS = ('## Run record', '## On failure', '## Troubleshooting', '## Charter', '### Screen map')
+ORDER = re.compile(r'^(first|last) \u2014 \S')
 STYLE = re.compile(r'^\s*\[STYLE\]\s*=\s*\[?\s*(brief|full)\s*\]?\s*$', re.I)
 NUMBERED = re.compile(r'^(\d+)\.\s+(.*)$')
 
@@ -341,6 +347,14 @@ for i, h in cases:
             found.append('case: missing **%s:** (%s)' % (label, where))
     if brief and any('**%s:**' % label in line for label in BRIEF_NOT for line in plain):
         found.append('case: a field brief does not carry (%s)' % where)
+    # field: the optional marks. A missing mark is no finding; a present one has a shape.
+    runner, device, order = (field(plain, label) for label in ('Runner', 'Device', 'Order'))
+    if runner is not None and runner.strip() != 'agent':
+        found.append('field: **Runner:** is not agent (%s)' % where)
+    if device is not None and not device.strip():
+        found.append('field: **Device:** is empty (%s)' % where)
+    if order is not None and not ORDER.match(order.strip()):
+        found.append('field: **Order:** is not first or last with a reason (%s)' % where)
     if any('**By instrument:**' in line for line in plain):
         found.append('instrument: **By instrument:** in a case (%s)' % where)
     if i == old_code:

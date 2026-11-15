@@ -726,3 +726,79 @@ PY
   drop '**Result:**'
   expect 'ManualChecks.md: file: missing **Result:** (file)'
 }
+
+# The marks a collective pass reads: **Runner:**, **Device:** and **Order:**, optional in both styles,
+# written right after **What it checks:**. The lint checks their shape, never the mode of the run.
+marks() { # $1 the case text on stdin; $@ the lines to add after **What it checks:**, each one a field
+  python3 -c 'import sys
+text = sys.stdin.read().split("\n")
+out = []
+for line in text:
+    out.append(line)
+    if line.startswith("**What it checks:**"):
+        for mark in sys.argv[1:]:
+            out += ["", mark]
+print("\n".join(out), end="")' "$@"
+}
+
+@test "marks: Runner, Device and Order are optional, and a case with all three is clean in full and in brief" {
+  write "$(case_md 1 | marks '**Runner:** agent' '**Device:** real' "**Order:** first $(ru '\u2014') nothing was granted yet")"
+  grep -qF '**Runner:** agent' "$F" || { echo "the marks were not written"; return 1; }
+  clean "$F"
+  brief_md "$(brief_case_md 1 | marks '**Runner:** agent' '**Device:** iPhone SE 2020' "**Order:** last $(ru '\u2014') it signs the account out")"
+  grep -qF '**Device:** iPhone SE 2020' "$F" || { echo "the marks were not written"; return 1; }
+  clean "$F"
+  write "$(case_md 1 | marks '**Device:** real')"
+  clean "$F"
+  brief_md "$(brief_case_md 1 | marks "**Order:** last $(ru '\u2014') it signs the account out")"
+  clean "$F"
+}
+
+@test "field: a Runner that is not agent is named, in full and in brief" {
+  write "$(case_md 1 | marks '**Runner:** human')"
+  expect 'ManualChecks.md: field: **Runner:** is not agent (### MC-1.)'
+  write "$(case_md 1 | marks '**Runner:**')"
+  expect 'ManualChecks.md: field: **Runner:** is not agent (### MC-1.)'
+  brief_md "$(brief_case_md 1 | marks '**Runner:** agent, on a simulator')"
+  expect 'ManualChecks.md: field: **Runner:** is not agent (### MC-1.)'
+}
+
+@test "field: an empty Device is named, in full and in brief" {
+  write "$(case_md 1 | marks '**Device:**')"
+  expect 'ManualChecks.md: field: **Device:** is empty (### MC-1.)'
+  brief_md "$(brief_case_md 1 | marks '**Device:**   ')"
+  expect 'ManualChecks.md: field: **Device:** is empty (### MC-1.)'
+}
+
+@test "field: an Order that is not first or last with a reason is named, in full and in brief" {
+  for value in 'middle' 'first' "first $(ru '\u2014')" "first - no account yet" "last: it signs out" 'First — no account yet' ''; do
+    write "$(case_md 1 | marks "**Order:** $value")"
+    expect 'ManualChecks.md: field: **Order:** is not first or last with a reason (### MC-1.)' || { echo "value: $value"; return 1; }
+  done
+  brief_md "$(brief_case_md 1 | marks '**Order:** soon')"
+  expect 'ManualChecks.md: field: **Order:** is not first or last with a reason (### MC-1.)'
+}
+
+@test "field: each mark is judged in its own case, and a bad one is named once" {
+  write "$(case_md 1)" "$(case_md 2 | marks '**Runner:** nobody' '**Device:**' '**Order:** never')"
+  expect "$(printf '%s\n%s\n%s' \
+    'ManualChecks.md: field: **Runner:** is not agent (### MC-2.)' \
+    'ManualChecks.md: field: **Device:** is empty (### MC-2.)' \
+    'ManualChecks.md: field: **Order:** is not first or last with a reason (### MC-2.)')"
+}
+
+@test "field: a label in another case is not a mark, and no mark is an unknown field of a case" {
+  write "$(case_md 1 | marks '**runner:** human' '**DEVICE:**' '**order:** whenever')"
+  clean "$F"
+  brief_md "$(brief_case_md 1 | marks '**runner:** human' '**DEVICE:**' '**order:** whenever')"
+  clean "$F"
+}
+
+@test "field: the marks do not stand in for a missing label of the case" {
+  write "$(case_md 1 | marks '**Runner:** agent' '**Device:** real')"
+  drop '**Cleanup:**'
+  expect 'ManualChecks.md: case: missing **Cleanup:** (### MC-1.)'
+  brief_md "$(brief_case_md 1 | marks '**Runner:** agent')"
+  drop '**Failure looks like:**'
+  expect 'ManualChecks.md: case: missing **Failure looks like:** (### MC-1.)'
+}

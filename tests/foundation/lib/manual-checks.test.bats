@@ -1039,3 +1039,54 @@ PY
   grep -qF 'and no scene of `## Preparation` does either' "$SKILL" \
     || { echo "the skill does not say a Preparation scene asks no recording"; return 1; }
 }
+
+@test "the skill names the three marks of a collective pass and the contract key that switches them on" {
+  for token in '**Runner:** agent' '**Device:**' '**Order:** first' '**Order:** last' '`manual_checks_pass`'; do
+    grep -qF -- "$token" "$SKILL" || { echo "the skill never names $token"; return 1; }
+  done
+  s="$(skill_section '## Marks for a collective pass')"
+  [ -n "$s" ] || { echo "no ## Marks for a collective pass"; return 1; }
+  for token in '`manual_checks_pass`' '`end`' '`per-step`' '**Runner:** agent' '**Device:**' '**Order:**' \
+               'field means a person, any device and any order'; do
+    grep -qF -- "$token" <<<"$s" || { echo "## Marks for a collective pass does not say: $token"; return 1; }
+  done
+  # The section comes after ## What a case must prove, before ## Step rules.
+  heads="$(grep '^## ' "$SKILL")"
+  [ "$(grep -n -x '## Marks for a collective pass' <<<"$heads" | cut -d: -f1)" -eq "$(( $(grep -n -x '## What a case must prove' <<<"$heads" | cut -d: -f1) + 1 ))" ] \
+    || { echo "## Marks for a collective pass does not follow ## What a case must prove"; return 1; }
+}
+
+@test "the marks sit after **What it checks:** and are optional in the case and in brief" {
+  s="$(skill_section '## Marks for a collective pass')"
+  grep -qF 'right after `**What it checks:**`' <<<"$s" || { echo "the marks are not placed after What it checks"; return 1; }
+  grep -qF 'optional' <<<"$s" || { echo "the marks are not said to be optional"; return 1; }
+  b="$(skill_section '## Brief')"
+  for token in '**Runner:**' '**Device:**' '**Order:**' 'optional'; do
+    grep -qF -- "$token" <<<"$b" || { echo "## Brief does not carry the mark $token"; return 1; }
+  done
+}
+
+@test "under per-step no mark is written, and a Runner mark in a per-step run is a Review finding" {
+  s="$(skill_section '## Marks for a collective pass')"
+  grep -qF 'Under `per-step` none of the three is written' <<<"$s" || { echo "per-step still writes marks"; return 1; }
+  r="$(skill_section '## Review')"
+  grep -qF '**Runner:** agent' <<<"$r" && grep -qF '`per-step`' <<<"$r" \
+    || { echo "Review does not name a Runner mark under per-step"; return 1; }
+}
+
+@test "a check deferred because nothing could drive the app is a Runner agent mark under end, a device action otherwise" {
+  s="$(skill_section '## Does this check need a person?')"
+  para="$(grep -F 'A check deferred because nothing could drive the app' <<<"$s")"
+  for token in '`manual_checks_pass`' '`end`' '**Runner:** agent' '`per-step`'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the deferred-check paragraph does not say: $token"; return 1; }
+  done
+  grep -qF 'is a device action' <<<"$para" || { echo "the device action default is gone"; return 1; }
+}
+
+@test "the lint table names the field check and the three findings of the marks" {
+  s="$(skill_section '## The lint')"
+  grep -qF '| `field` |' <<<"$s" || { echo "the lint table has no field row"; return 1; }
+  for token in '**Runner:**' '**Device:**' '**Order:**'; do
+    grep -F '| `field` |' <<<"$s" | grep -qF -- "$token" || { echo "the field row does not name $token"; return 1; }
+  done
+}
