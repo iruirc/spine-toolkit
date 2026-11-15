@@ -246,3 +246,85 @@ PY2
   [[ "$output" == *"writeback: no place for: 09/MC-1"* ]]
   diff -r "$EPIC" "$BATS_TEST_TMPDIR/before"
 }
+
+# The cases below hand the pass a verdict of the agent for a case the Result line leaves at "__".
+agent_verdict() { # $1 case, $2 mark cell, $3 evidence
+  sed -i.bak "s# · $1 FAIL ([^)]*)# · $1 __#" "$EPIC/ManualChecks.md"
+  printf '| %s | %s | %s |\n' "$1" "$2" "$3" >> "$EPIC/Validation.md"
+}
+
+@test "a reason with an unbalanced parenthesis is written with square brackets and reads back whole" {
+  agent_verdict 01/MC-2 FAIL 'step 1) did not finish'
+  run "$PASS" writeback "$EPIC"
+  [ "$status" -eq 0 ]
+  grep -q '^\*\*Result:\*\* MC-1 PASS · MC-2 FAIL (step 1\] did not finish) · MC-3 PASS — ' "$EPIC/01-cart.step/ManualChecks.md"
+  run "$PASS" collect "$EPIC"
+  [ "$(echo "$output" | js '[c["step"] + "/" + c["id"] for c in d["cases"]]')" = '[]' ]
+  cp -R "$EPIC" "$BATS_TEST_TMPDIR/after-first"
+  run "$PASS" writeback "$EPIC"
+  [ "$output" = "writeback: 0 mark(s) in 0 file(s)" ]
+  diff -r "$EPIC" "$BATS_TEST_TMPDIR/after-first"
+}
+
+@test "an opening parenthesis in a reason is normalised too, and the full status carries the same text" {
+  agent_verdict 01/MC-2 FAIL '(step 1 did not finish'
+  python3 - "$EPIC/ManualChecks.md" <<'PY2'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read().replace('02/MC-2 BLOCKED (no real device at hand)', '02/MC-2 BLOCKED (no real device (an iPhone) at hand)')
+open(p, 'w', encoding='utf-8').write(s)
+PY2
+  run "$PASS" writeback "$EPIC"
+  [ "$status" -eq 0 ]
+  grep -q 'MC-2 FAIL (\[step 1 did not finish) · MC-3 PASS' "$EPIC/01-cart.step/ManualChecks.md"
+  grep -q '^\*\*Status:\*\* BLOCKED — reason: no real device \[an iPhone\] at hand$' "$EPIC/02-badge.step/ManualChecks.md"
+}
+
+@test "an agent FAIL, BLOCKED and DROPPED are written back with their Evidence as the reason" {
+  python3 - "$EPIC/ManualChecks.md" <<'PY2'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+s = s.replace('01/MC-2 FAIL (the spinner stays on the screen)', '01/MC-2 __')
+s = s.replace('02/MC-2 BLOCKED (no real device at hand)', '02/MC-2 __')
+s = s.replace('02/MC-3 DROPPED (the limit was removed from the design)', '02/MC-3 __')
+open(p, 'w', encoding='utf-8').write(s)
+PY2
+  printf '%s\n' '| 01/MC-2 | FAIL | the spinner stayed on the screen |' \
+    '| 02/MC-2 | BLOCKED | no camera on the simulator |' \
+    '| 02/MC-3 | DROPPED | the limit is gone from the design |' >> "$EPIC/Validation.md"
+  run "$PASS" writeback "$EPIC"
+  [ "$status" -eq 0 ]
+  [ "$output" = "writeback: 5 mark(s) in 2 file(s)" ]
+  grep -q 'MC-2 FAIL (the spinner stayed on the screen) · MC-3 PASS' "$EPIC/01-cart.step/ManualChecks.md"
+  grep -q '^\*\*Status:\*\* BLOCKED — reason: no camera on the simulator$' "$EPIC/02-badge.step/ManualChecks.md"
+  grep -q '^\*\*Status:\*\* DROPPED — reason: the limit is gone from the design$' "$EPIC/02-badge.step/ManualChecks.md"
+  run "$PASS" marks "$EPIC"
+  [ "$(echo "$output" | js '[(m["case"], m["mark"], m["by"]) for m in d["marks"] if m["by"] == "agent"]')" = \
+'[["01/MC-1", "PASS", "agent"], ["01/MC-2", "FAIL", "agent"], ["02/MC-2", "BLOCKED", "agent"], ["02/MC-3", "DROPPED", "agent"]]' ]
+  run "$PASS" writeback "$EPIC"
+  [ "$output" = "writeback: 0 mark(s) in 0 file(s)" ]
+}
+
+@test "a FAIL with no reason round-trips in a brief step and in a full step" {
+  python3 - "$EPIC/ManualChecks.md" <<'PY2'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+s = s.replace('01/MC-2 FAIL (the spinner stays on the screen)', '01/MC-2 FAIL')
+s = s.replace('02/MC-2 BLOCKED (no real device at hand)', '02/MC-2 FAIL')
+open(p, 'w', encoding='utf-8').write(s)
+PY2
+  run "$PASS" marks "$EPIC"
+  [ "$(echo "$output" | js '[m["reason"] for m in d["marks"] if m["mark"] == "FAIL"]')" = '[null, null]' ]
+  run "$PASS" writeback "$EPIC"
+  [ "$status" -eq 0 ]
+  grep -q '^\*\*Result:\*\* MC-1 PASS · MC-2 FAIL · MC-3 PASS — ' "$EPIC/01-cart.step/ManualChecks.md"
+  grep -q '^\*\*Status:\*\* FAIL — reason: —$' "$EPIC/02-badge.step/ManualChecks.md"
+  run "$PASS" collect "$EPIC"
+  [ "$(echo "$output" | js 'd["cases"]')" = '[]' ]
+  run "$PASS" marks "$EPIC"
+  [ "$(echo "$output" | js '[m["reason"] for m in d["marks"] if m["mark"] == "FAIL"]')" = '[null, null]' ]
+  run "$PASS" writeback "$EPIC"
+  [ "$output" = "writeback: 0 mark(s) in 0 file(s)" ]
+}

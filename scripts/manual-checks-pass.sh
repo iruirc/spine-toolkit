@@ -23,7 +23,8 @@ set -euo pipefail
 #              file means pass_file false and nothing else.
 #   writeback  writes each mark into the file of its step and prints "writeback: <N> mark(s) in
 #              <M> file(s)". In a brief step the token "MC-<n> __" becomes "MC-<n> <MARK>" (with
-#              " (<why>)" when there is a reason) and the rest of the **Result:** line, the prose
+#              " (<why>)" when there is a reason; "(" and ")" in a reason are written as "[" and "]",
+#              in a full step too) and the rest of the **Result:** line, the prose
 #              after " — " included, stays. In a full step the **Status:** line of the case becomes
 #              "**Status:** <MARK> — reason: <why, or —>". It writes nothing and exits 1 when a case
 #              of the pass is unmarked ("writeback: unmarked: <ids>") or a mark has no place in any
@@ -309,6 +310,9 @@ else:
     for mk in marks:
         sid, mc = mk['case'].split('/')
         n = int(mc[3:])
+        # A reason stands inside "( ... )" in a brief Result line, and an unbalanced parenthesis would
+        # cut it short and hide every token after it; both styles get the same text, with square brackets.
+        mk['reason'] = mk['reason'].replace('(', '[').replace(')', ']') if mk['reason'] else mk['reason']
         st = steps.get(sid)
         case = next((c for c in step_cases(st['rows']) if c[0] == n), None) if st else None
         if not case:
