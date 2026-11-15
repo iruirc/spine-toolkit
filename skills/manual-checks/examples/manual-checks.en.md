@@ -68,7 +68,7 @@ Product page                    Cart
 | 3 | Type "Green tea" in the search field at the top | One result: Green tea, 4.50 |
 | 4 | Tap the Green tea result | The product page of Green tea; the Quantity list reads 1 |
 | 5 | Choose the quantity from the case's Test data in the Quantity list | The Quantity list reads that quantity |
-| 6 | Tap Add to cart | The badge on the cart icon shows that quantity |
+| 6 | Tap Add to cart | The button now reads In the cart |
 
 If the badge shows a number before step 6, the account's cart is not empty: record the case as BLOCKED with that number.
 

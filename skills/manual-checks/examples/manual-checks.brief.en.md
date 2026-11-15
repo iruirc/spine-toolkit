@@ -8,7 +8,7 @@
 
 A shopper now changes the quantity of an item right in the cart, and the total and the badge on the cart icon follow every change.
 Automated tests already checked that the total adds up and that a row stops at ten items.
-Three cases, about ten minutes, on the build made from [COVERS].
+Four cases, about ten minutes, on the build made from [COVERS].
 
 ## Preparation
 
@@ -70,6 +70,19 @@ Add Green tea to the cart in the quantity the case's Start names, and open the c
 
 **Failure looks like:** a row with quantity 0 stays in the cart, or the badge still shows 1.
 
+### MC-4. Nothing broke: swiping a row away still removes it
+
+**What it checks:** not a check of the change — the row the stepper now sits in still gives way to a swipe, as it did before.
+
+**Start:** S1 with one Green tea.
+
+1. Swipe the Green tea row to the left
+   → A red Remove button appears at the right end of the row
+2. Tap Remove
+   → The row disappears, "Your cart is empty" is on the screen, and the cart icon has no badge
+
+**Failure looks like:** the swipe moves nothing, or Remove leaves the row in the cart.
+
 ## Not covered
 
 - The cart on the server agreeing with the screen: no person can read it, so no case checks it.
@@ -82,5 +95,6 @@ Add Green tea to the cart in the quantity the case's Start names, and open the c
 | MC-1 | (cart/quantity_stepper.src:41), (cart/badge_counter.src:18) |
 | MC-2 | (cart/quantity_limit.src:17), (cart/limit_label.src:12) |
 | MC-3 | (cart/quantity_stepper.src:58), (cart/empty_state.src:9) |
+| MC-4 | (cart/cart_row.src:33) |
 
-**Result:** MC-1 __ · MC-2 __ · MC-3 __ — PASS, FAIL or BLOCKED each; after a FAIL or a BLOCKED, why, and the row of conditions it failed on
+**Result:** MC-1 __ · MC-2 __ · MC-3 __ · MC-4 __ — PASS, FAIL or BLOCKED each; after a FAIL or a BLOCKED, why, and the row of conditions it failed on

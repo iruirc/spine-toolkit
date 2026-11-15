@@ -552,6 +552,16 @@ sys.stdout.write(t)')"
   clean "$F"
 }
 
+@test "brief: the [STYLE] value is read whatever its case" {
+  local v
+  for v in Brief BRIEF '[Brief]'; do
+    brief_md
+    sed -i.bak "s/^\[STYLE\] = brief\$/[STYLE] = $v/" "$F"
+    run "$LINT" "$F"
+    [ "$status" -eq 0 ] && [ -z "$output" ] || { printf 'value: %s\n got: %s\n' "$v" "$output"; return 1; }
+  done
+}
+
 @test "brief: a missing **What it checks:**, **Start:** or **Failure looks like:** is named, once per label" {
   brief_md
   drop '**Start:**'

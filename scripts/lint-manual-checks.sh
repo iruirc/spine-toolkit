@@ -74,7 +74,7 @@ BRIEF_LABELS = ['What it checks', 'Start', 'Failure looks like']
 BRIEF_NOT = ['Priority', 'Traces to', 'Preconditions', 'Expected result', 'Cleanup', 'Status',
              'Notes / attachments', 'Steps']
 BRIEF_NOT_SECTIONS = ('## Run record', '## On failure', '## Troubleshooting', '## Charter', '### Screen map')
-STYLE = re.compile(r'^\s*\[STYLE\]\s*=\s*\[?\s*(brief|full)\s*\]?\s*$')
+STYLE = re.compile(r'^\s*\[STYLE\]\s*=\s*\[?\s*(brief|full)\s*\]?\s*$', re.I)
 NUMBERED = re.compile(r'^(\d+)\.\s+(.*)$')
 
 FENCE = re.compile(r'^\s*(`{3,}|~{3,})')
@@ -244,7 +244,7 @@ headings = [(i, h) for i, (_, h) in enumerate(rows) if h]
 titles = [h[1] for _, h in headings]
 
 # The style: brief only when the file says so, so a file written before the style existed reads as full.
-style = next((STYLE.match(line).group(1) for line, h in rows if h is None and STYLE.match(line)), 'full')
+style = next((STYLE.match(line).group(1).lower() for line, h in rows if h is None and STYLE.match(line)), 'full')
 brief = style == 'brief'
 
 # file
