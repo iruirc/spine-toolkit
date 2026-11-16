@@ -138,6 +138,10 @@ const DEVICE_NOTE = DEVICE ? `\n\nDevice: «${DEVICE}» — every build, test an
 // words in every brief that drives, so the four causes cannot drift apart between stages.
 const DRIVER_STOPS = `Four things can suspend it, and all four hand it over the same way: drive_app resolving to off — this run's value is ${DRIVE_APP} — no driver resolving at all, a driver that cannot be reached for this run's surface — its server not connected, the module for that surface not installed, or that surface absent from this machine — or a driver that drives none of the surfaces this platform produces. The second of those reaches only a platform that takes part in the driver contract: a platform whose manifest declares no ## Driver block drives with its own tooling exactly as it did before this contract existed, and that cause fires for it only when it has no tooling to drive a running instance at all, which you announce as a declared deviation. Which driver condition applied comes back in driver_status — no driver, one that cannot be reached, or a mismatched one — while drive_app: off is the project's own setting rather than a driver condition and needs no such report; ${core('conventions/driver-contract.md')} has the full vocabulary and what each one means for the user.`
 
+// What a step's Validation adds under manual_checks_pass=end: its cases do not go to a person as the
+// step ends but to the epic's collective pass. Empty at per-step, so the brief reads as it did.
+const PASS_NOTE = MANUAL_CHECKS_PASS === 'end' ? `\n\nThis run's manual_checks_pass is end: the cases of this step go to the epic's collective pass, not to a person as the step ends. Mark them by the manual-checks skill's ## Marks for a collective pass. A check deferred only because a driver could not reach it gets **Runner:** agent, not a case for a person.` : ''
+
 // Documentation routing. Which declared component a change set may have touched is a script
 // (conventions/docs-components.md), because matching a diff against a dozen glob patterns by
 // eye is how a router names the wrong document with full confidence. Whether a rule actually

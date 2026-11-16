@@ -1174,3 +1174,49 @@ PY
   done
   diff "$BATS_TEST_TMPDIR/ids.en" "$BATS_TEST_TMPDIR/ids.ru" || { echo "the cases of the two examples differ"; return 1; }
 }
+
+# ── Validation of a step under manual_checks_pass ────────────────────────────
+
+@test "every Validation brief of the five profiles carries the pass note" {
+  for p in $PROFILES; do
+    validation_brief "$ROOT/workflows/profile-$p.js" | grep -qF '${PASS_NOTE}' \
+      || { echo "profile-$p.js: the Validation brief never interpolates PASS_NOTE"; return 1; }
+  done
+}
+
+@test "the pass note is a shared constant of the prelude, empty at per-step" {
+  grep -qE "^const PASS_NOTE = MANUAL_CHECKS_PASS === 'end' \?" "$ROOT/workflow-src/prelude.js" \
+    || { echo "prelude.js: PASS_NOTE is not a function of MANUAL_CHECKS_PASS"; return 1; }
+  for p in $PROFILES; do
+    ! grep -qF 'Marks for a collective pass' "$ROOT/workflows/profile-$p.js" \
+      || [ "$(grep -cF 'Marks for a collective pass' "$ROOT/workflows/profile-$p.js")" -eq 1 ] \
+      || { echo "profile-$p.js: the section is restated in more than one place"; return 1; }
+  done
+}
+
+@test "at end the Validation brief tells the validator to mark cases for the pass, at per-step it does not" {
+  for p in $PROFILES; do
+    end="$(walk_run "$p" ', "manual_checks_pass": "end"' | pick 'o.calls[0].prompt')"
+    for t in 'collective pass' '## Marks for a collective pass' '**Runner:** agent' 'not a case for a person'; do
+      grep -qF -- "$t" <<<"$end" || { echo "profile-$p: the end brief lacks: $t"; return 1; }
+    done
+    for pass in '' ', "manual_checks_pass": "per-step"'; do
+      step="$(walk_run "$p" "$pass" | pick 'o.calls[0].prompt')"
+      ! grep -qF 'collective pass' <<<"$step" || { echo "profile-$p: the per-step brief mentions the collective pass"; return 1; }
+    done
+  done
+}
+
+@test "the five workflow skills name manual_checks_pass in the Validation paragraph" {
+  for p in $PROFILES; do
+    bullet "$ROOT/skills/workflow-$p/SKILL.md" Validation | grep -qF 'manual_checks_pass' \
+      || { echo "workflow-$p/SKILL.md: the Validation paragraph never names manual_checks_pass"; return 1; }
+  done
+}
+
+@test "the driver contract no longer sends an unclaimed capability to a human by name" {
+  ! grep -qF 'deferred to a human' "$ROOT/conventions/driver-contract.md" \
+    || { echo "driver-contract.md still says deferred to a human"; return 1; }
+  grep -qF 'manual_checks_pass' "$ROOT/conventions/driver-contract.md" \
+    || { echo "driver-contract.md never says where a deferred check goes depends on manual_checks_pass"; return 1; }
+}

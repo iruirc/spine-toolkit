@@ -128,10 +128,11 @@ any order, across as many lines as reads well — **and nothing else. No prose.*
 block is read as a capability, so a sentence here is reported word by word. Explanations belong
 above the block or in `## Procedure`. **Positive lists only: named means supported where the surface is reachable, absent means not.**
 
-Absence as "no" is the safe default. An unclaimed capability is deferred to a human rather than
+Absence as "no" is the safe default. An unclaimed capability is deferred rather than
 silently skipped, which is the failure this whole contract exists to stop. There is no `partial`:
 "partly supported" is indistinguishable from "unsupported" at the moment someone decides whether a
-check can be driven.
+check can be driven. Where a deferred check goes depends on the contract's `manual_checks_pass`: to a person after
+the step under `per-step`, to the epic's collective pass under `end`.
 
 The table describes the driver, not the machine. A server may be installed in parts — one of the two
 this contract was designed against ships a modular edition whose platforms are opt-in, defaulting to
