@@ -1405,7 +1405,7 @@ const ACCEPTANCE = {
     manual_checks: { type: 'array', items: { type: 'string' }, description: 'the <step>/MC-<n> ids of the cases left for a person' },
     manual_checks_changed: { type: 'boolean', description: 'false when the pass file already held these cases as they are' },
     agent_verdicts: { type: 'integer', description: 'rows written under ## Agent verdicts' },
-    already_passed: { type: 'boolean', description: "true when the epic's Validation.md already carried a status line and was left as it was" },
+    already_passed: { type: 'boolean', description: "true when the epic's Validation.md already carried [VALIDATION_STATUS] = PASSED and was left as it was" },
     driver_status: VALIDATION.properties.driver_status,
     summary: { type: 'string' },
     directive_declined: DECLINED,
@@ -1554,13 +1554,23 @@ if (runs('Done') && MANUAL_CHECKS_PASS === 'end' && branch !== 'pure_research' &
     }
     const fresh = (marks.fails || []).filter((f) => !f.bug_step)
     if (fresh.length) {
+      // A person's case is in the pass file; an agent-walked case never is, and with no pass file
+      // there is none at all: its text is in the step's own ManualChecks.md.
+      const byOf = Object.fromEntries((marks.marks || []).map((m) => [m.case, m.by]))
+      const source = (f) => {
+        const [step, mc] = f.case.split('/')
+        const by = byOf[f.case] || (marks.pass_file ? 'person' : 'agent')
+        return by === 'person'
+          ? `a person's mark: copy it whole from ${PASS_FILE}`
+          : `an agent's mark: copy case ${mc} whole from the step's own ManualChecks.md, the one in the .step folder of step ${step}`
+      }
       const made = await agent(
         brief(
           'Done',
           `The collective pass of this epic failed these cases, and no step of the epic fixes them yet:
-${fresh.map((f) => `- ${f.case}: ${f.reason}`).join('\n')}
+${fresh.map((f) => `- ${f.case}: ${f.reason} — ${source(f)}`).join('\n')}
 
-For each one create a bug step in ${DIR} by invoking spine-toolkit:task-new: a <name>.step/ folder after the last step, whose Task.md carries [TASK_TYPE] = BUG, [STATUS] = PENDING and [MANUAL_CHECKS_PASS] = per-step, so its own Validation walks the case again and the epic's pass is not run a second time. Its Task.md names the case as <step>/MC-<n> and holds the failed case whole, copied from ${PASS_FILE}, as the reproduction, with the reason it failed. Add a row for it to the progress table of ${DIR}/Plan.md, "- [ ]" in the Done? column. Return every step you created in steps, in execution order, as the step reader returns them.`,
+For each one create a bug step in ${DIR} by invoking spine-toolkit:task-new: a <name>.step/ folder after the last step, whose Task.md carries [TASK_TYPE] = BUG, [STATUS] = PENDING and [MANUAL_CHECKS_PASS] = per-step, so its own Validation walks the case again and the epic's pass is not run a second time. Its Task.md names the case as <step>/MC-<n> and holds the failed case whole, copied from the file its line above names, as the reproduction, with the reason it failed. Add a row for it to the progress table of ${DIR}/Plan.md, "- [ ]" in the Done? column. Return every step you created in steps, in execution order, as the step reader returns them.`,
         ),
         { label: 'done:bug-steps', phase: 'Done', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'stage') },
       )
@@ -1579,7 +1589,7 @@ const acceptanceSection = () => {
   const c = accepted.counts || {}
   const steps = [...new Set((accepted.fails || []).map((f) => f.bug_step).filter(Boolean))]
   return `
-- A ## Manual acceptance section on the collective pass ${PASS_FILE}: the devices it ran on and their OS versions, from its sessions and the **Device:** lines of ${DIR}/Validation.md; the marks, PASS ${c.PASS || 0} / FAIL ${c.FAIL || 0} / BLOCKED ${c.BLOCKED || 0} / DROPPED ${c.DROPPED || 0}; and ${steps.length ? `a link to each bug step, ${steps.join(', ')}, with the case it fixes` : 'a line saying that no case failed'}.`
+- A ## Manual acceptance section on ${accepted.pass_file ? `the collective pass ${PASS_FILE}: the devices it ran on and their OS versions, from its sessions and the **Device:** lines of ${DIR}/Validation.md` : `the agent's walk of every case, with no pass file: the devices it ran on and their OS versions, from the **Device:** lines of ${DIR}/Validation.md`}; the marks, PASS ${c.PASS || 0} / FAIL ${c.FAIL || 0} / BLOCKED ${c.BLOCKED || 0} / DROPPED ${c.DROPPED || 0}; and ${steps.length ? `a link to each bug step, ${steps.join(', ')}, with the case it fixes` : 'a line saying that no case failed'}.`
 }
 
 // Done reports a finished epic. A walk that stopped early has not finished one, so the report

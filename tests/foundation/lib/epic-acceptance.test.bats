@@ -77,12 +77,17 @@ check() {
 
 @test "Done with a FAIL that has no bug step yet creates one and hands it back as pending" {
   out="$(run_epic Done end "$BRANCH, \"done:acceptance-marks\": {\"pass_file\": true, \"unmarked\": [], \"fails\": [{\"case\": \"02/MC-1\", \"reason\": \"the list stays empty\", \"bug_step\": null}], \"counts\": {\"PASS\": 3, \"FAIL\": 1}, \"writeback\": \"writeback: 4 mark(s) in 2 file(s)\"}, \"done:bug-steps\": {\"ok\": true, \"branch\": \"decomposition\", \"steps\": [{\"step_id\": \"03-fix.step\", \"task_id\": \"050.3\", \"task_type\": \"BUG\", \"status\": \"PENDING\"}]}")"
-  check "$out" 'has("done:bug-steps") && ["02/MC-1", "the list stays empty", "[TASK_TYPE] = BUG", "[MANUAL_CHECKS_PASS] = per-step", "Plan.md"].every((t) => call("done:bug-steps").prompt.includes(t)) && r.pending_steps.map((s) => s.step_id).join() === "03-fix.step" && r.pending_steps[0].profile === "BUG" && r.next_recommended_action === "continue" && !has("done")'
+  check "$out" 'has("done:bug-steps") && call("done:bug-steps").prompt.includes("a person\u0027s mark: copy it whole from '"$DIR"'/ManualChecks.md") && ["02/MC-1", "the list stays empty", "[TASK_TYPE] = BUG", "[MANUAL_CHECKS_PASS] = per-step", "Plan.md"].every((t) => call("done:bug-steps").prompt.includes(t)) && r.pending_steps.map((s) => s.step_id).join() === "03-fix.step" && r.pending_steps[0].profile === "BUG" && r.next_recommended_action === "continue" && !has("done")'
 }
 
 @test "Done with a FAIL whose bug step exists writes the report with a Manual acceptance section" {
   out="$(run_epic Done end "$BRANCH, \"done:acceptance-marks\": {\"pass_file\": true, \"unmarked\": [], \"fails\": [{\"case\": \"02/MC-1\", \"reason\": \"the list stays empty\", \"bug_step\": \"03-fix.step\"}], \"counts\": {\"PASS\": 3, \"FAIL\": 1, \"BLOCKED\": 0, \"DROPPED\": 1}, \"writeback\": \"writeback: 0 mark(s) in 0 file(s)\"}")"
   check "$out" '!has("done:bug-steps") && has("done") && ["## Manual acceptance", "PASS 3", "FAIL 1", "BLOCKED 0", "DROPPED 1", "03-fix.step", "OS version"].every((t) => call("done").prompt.includes(t)) && r.next_recommended_action === "stop"'
+}
+
+@test "Done with agent marks only and no pass file reports the devices from Validation.md, with no sessions" {
+  out="$(run_epic Done end "$BRANCH, \"done:acceptance-marks\": {\"pass_file\": false, \"marks\": [{\"case\": \"01/MC-1\", \"mark\": \"PASS\", \"reason\": null, \"by\": \"agent\"}], \"unmarked\": [], \"fails\": [], \"counts\": {\"PASS\": 1}, \"writeback\": \"writeback: 1 mark(s) in 1 file(s)\"}")"
+  check "$out" '!has("done:bug-steps") && has("done") && call("done").prompt.includes("## Manual acceptance") && call("done").prompt.includes("**Device:** lines of '"$DIR"'/Validation.md") && !call("done").prompt.includes("sessions") && !call("done").prompt.includes("on the collective pass '"$DIR"'/ManualChecks.md") && call("done").prompt.includes("PASS 1")'
 }
 
 @test "Done without a pass file reports as before" {
@@ -103,7 +108,7 @@ check() {
 
 @test "Done with no pass file but an agent FAIL creates the bug step and hands it back as pending" {
   out="$(run_epic Done end "$BRANCH, \"done:acceptance-marks\": {\"pass_file\": false, \"marks\": [{\"case\": \"01/MC-1\", \"mark\": \"PASS\", \"reason\": null, \"by\": \"agent\"}, {\"case\": \"01/MC-2\", \"mark\": \"FAIL\", \"reason\": \"the total stays 0.00\", \"by\": \"agent\"}], \"unmarked\": [], \"fails\": [{\"case\": \"01/MC-2\", \"reason\": \"the total stays 0.00\", \"bug_step\": null}], \"counts\": {\"PASS\": 1, \"FAIL\": 1}, \"writeback\": \"writeback: 2 mark(s) in 1 file(s)\"}, \"done:bug-steps\": {\"ok\": true, \"branch\": \"decomposition\", \"steps\": [{\"step_id\": \"03-fix.step\", \"task_id\": \"050.3\", \"task_type\": \"BUG\", \"status\": \"PENDING\"}]}")"
-  check "$out" 'has("done:bug-steps") && call("done:bug-steps").prompt.includes("01/MC-2") && r.pending_steps.map((s) => s.step_id).join() === "03-fix.step" && r.next_recommended_action === "continue" && !has("done") && !call("done:acceptance-marks").prompt.includes("When pass_file is false, return it with everything else empty")'
+  check "$out" 'has("done:bug-steps") && call("done:bug-steps").prompt.includes("01/MC-2") && call("done:bug-steps").prompt.includes("an agent\u0027s mark: copy case MC-2 whole from the step\u0027s own ManualChecks.md, the one in the .step folder of step 01") && !call("done:bug-steps").prompt.includes("copied from '"$DIR"'/ManualChecks.md") && r.pending_steps.map((s) => s.step_id).join() === "03-fix.step" && r.next_recommended_action === "continue" && !has("done") && !call("done:acceptance-marks").prompt.includes("When pass_file is false, return it with everything else empty")'
 }
 
 @test "end: a forward run after the pass keeps Validation.md, skips the check and goes on into Done" {
@@ -122,6 +127,8 @@ check() {
   grep -qE '^- \*\*Acceptance\*\* — `\[validator\]`' "$skill" || { echo "workflow-epic has no Acceptance stage owned by the validator"; return 1; }
   grep -qF 'bug step' "$skill" && grep -qF '[MANUAL_CHECKS_PASS] = per-step' "$skill" \
     || { echo "workflow-epic does not say that Done turns a FAIL into a per-step bug step"; return 1; }
+  grep -qF "an agent's mark from the step's own \`ManualChecks.md\`" "$skill" \
+    || { echo "workflow-epic does not say where the case of an agent's FAIL is copied from"; return 1; }
   orch="$ROOT/skills/orchestrator/SKILL.md"
   grep -qF 'every step is done, `manual_checks_pass` is `end` and the epic folder holds no `Validation.md` whose status line is `[VALIDATION_STATUS] = PASSED` → `Acceptance`' "$orch" \
     || { echo "State Detection does not route an epic to Acceptance"; return 1; }
