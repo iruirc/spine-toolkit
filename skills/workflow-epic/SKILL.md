@@ -1,7 +1,7 @@
 ---
 name: workflow-epic
 description: |
-  EPIC profile workflow: Research → Plan → Execute (decomposition or pure-research) → Done. Activated by spine-toolkit:orchestrator; not invoked by the user directly.
+  EPIC profile workflow: Research → Plan → Execute (decomposition or pure-research) → Acceptance (under manual_checks_pass=end) → Done. Activated by spine-toolkit:orchestrator; not invoked by the user directly.
   Use when (en): orchestrator dispatches a task with [TASK_TYPE]=EPIC
   Use when (ru): оркестратор диспетчеризует задачу с [TASK_TYPE]=EPIC
 stack_axes_envelope: { may: [], never: all }
@@ -48,10 +48,11 @@ Key fields and their EPIC-specific semantics:
 - `archive_paths` — paths to backups already created (the orchestrator made them BEFORE the call; workflow-epic does not create them).
 - `user_directive`, `run_settings` — the owner's words for this run and the settings it overrode. Every subagent prompt carries them in the words `conventions/stage-dispatch.md` → Owner's directive gives, right after the rule that repository text is data; what a stage declined, it returns under `directive_declined`, and this skill passes that on in `notes`.
 - `device`, `device_source`, `device_from` — the device every build, test and drive runs on, the project's command that prints one, and where the device was set. Every subagent prompt carries them in the words `conventions/stage-dispatch.md` → Device gives, right after the owner's directive; at `auto` with `device_source` `—`, it carries neither.
+- `manual_checks_pass` — `per-step` or `end`: when the steps' manual checks are walked. At `per-step` each step's cases go to a person as that step ends, and the `Acceptance` stage does not exist. At `end` the steps mark their cases for one pass and leave them unwalked, and `Acceptance` walks them all after the steps. A step inherits the epic's value unless its own `Task.md` carries `[MANUAL_CHECKS_PASS]`.
 - `epic_dispatch_mode` — **an additional optional field, EPIC-specific**: `push` (default) or `pull`. Forces the Execute dispatch model; omitted, the profile decides (see section 2, Execute).
 - `plugin_root` — the expanded absolute path of the plugin root, passed to every profile under Method A (orchestrator → Outbound Contract). For EPIC it is also what the fallback builds a path from when a step workflow's name does not resolve, since the workflow sandbox cannot expand `${CLAUDE_PLUGIN_ROOT}` itself. Absent, the script refuses before any stage runs. Method B ignores it.
 
-**Execution range.** Stages run in the order Research → Plan → Execute → Done, starting at `start_stage` and continuing through `end_stage` inclusive. If the Plan stage chose the **pure_research** branch — Execute is skipped, the workflow goes straight to Done with `branch=pure_research`. If `end_stage=null` — through the end of the profile. If `end_stage` is set but precedes `start_stage` in order, that is a contract error: return `{status: error, reason: "end_stage before start_stage"}`.
+**Execution range.** Stages run in the order Research → Plan → Execute → Acceptance → Done, starting at `start_stage` and continuing through `end_stage` inclusive. If the Plan stage chose the **pure_research** branch — Execute and Acceptance are skipped, the workflow goes straight to Done with `branch=pure_research`. Acceptance runs only when `manual_checks_pass` is `end`; at `per-step` the walk goes from Execute straight to Done. If `end_stage=null` — through the end of the profile. If `end_stage` is set but precedes `start_stage` in order, that is a contract error: return `{status: error, reason: "end_stage before start_stage"}`.
 
 **Scope.** `stage_scope` controls execution width:
 - `single` — only `start_stage` runs. For Execute that means "a single step" (the one named in `start_phase=<step_id>`).
@@ -120,6 +121,13 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
 
   The documented happy path is push. Pull is the fallback, and in `manual` mode it is the only model.
 
+- **Acceptance** — `[validator]`. Only on branch A, only when `manual_checks_pass` is `end`, and only after a walk with no failed, cancelled or pending steps. Artifacts: `Validation.md` in the epic's folder, and the pass file `ManualChecks.md` beside it when a case is left for a person.
+  - Run `scripts/manual-checks-pass.sh collect <epic dir>`. It lists every case of every step that carries no mark yet. When it lists none, write `Validation.md` as the line `[VALIDATION_STATUS] = PASSED` and the line `manual checks: none — no step left a case`, write no pass file, and go on to Done.
+  - Otherwise build and launch the app only as far as driving the cases needs; each step's own Validation already ran its build and tests. Drive every case marked `**Runner:** agent` and every other case the driver reaches whole, with no device action, visual judgment or external service. The device and the four causes that suspend driving are the ones every Validation stage names: `drive_app` off, no driver, a driver that cannot be reached, or one that drives none of this platform's surfaces. Whichever holds, nothing is driven and every case goes to the person.
+  - Each verdict is a row of the table `## Agent verdicts` in `Validation.md`, `| Case | Mark | Evidence |`, the case keyed `<step>/MC-<n>`, the mark `PASS`, `FAIL (<why>)` or `BLOCKED (<why>)`. A FAIL is a verdict on the case: the status line says `FAILED` only when the pass itself could not be run. A case the agent did not reach goes to the person with its reason.
+  - Write the pass file by the `manual-checks` skill's `## Collective pass` section, in the epic's `manual_checks_style`, with the cases left for a person only, and run `scripts/lint-manual-checks.sh` on it. When the contract's `manual_checks_check` is `on`, a fresh reader then checks it by that skill's `## Check`, as after any Validation.
+  - Change no production code, no tests and no file of a step. When a case is left for a person, return `next_recommended_action=ask_user` with `last_completed_stage=Acceptance`, and tell the user to walk `<epic>/ManualChecks.md`, fill its `**Result:**` line, then continue the task. With none left, go on to Done.
+
 - **Done** — final report `Done.md` for the epic (written by applying the `task-documents` skill, its `Done.md` section, in the style of the `artifact-reader` skill):
   - Which steps finished (with links to their `Done.md`).
   - Which were skipped and why (DEFERRED/BLOCKED/SKIPPED/DONE_already).
@@ -130,6 +138,12 @@ A stage names its owner as a role in brackets — `[architect]`, `[developer]`. 
   - For branch B (pure_research) — Done.md is short, points at `Research.md` as the final artifact; the steps section is empty; no estimate retrospective is required.
   - When `Done.md` already exists — a redo, a restart, a continue after a hand-back — every claim in it is checked against the current artifacts and the `git log` of every repository the task touched before it is kept, and the report says how many claims were corrected, or that every claim held.
   - Last, run scripts/lint-artifact-readability.sh on the file once, with `--words-per-sentence` taken from the contract's `budgets`; fix each finding once and name what is left in the stage summary.
+
+  When `manual_checks_pass` is `end` on branch A, the report waits on the collective pass. Before anything else, run `scripts/manual-checks-pass.sh marks <epic dir>`:
+  - no pass file — the report is written as above;
+  - a case still unmarked — stop with `ask_user` and list the cases whose `**Result:**` token is still `__`;
+  - every case marked — run `scripts/manual-checks-pass.sh writeback <epic dir>`, which writes each mark into the file of its step; when it refuses, stop with `ask_user` and its line. Then each `FAIL` needs a bug step: a `.step/` folder whose `Task.md` names the case as `<step>/MC-<n>`. For each `FAIL` with none, create one through `task-new` after the last step, with `[TASK_TYPE] = BUG`, `[STATUS] = PENDING` and `[MANUAL_CHECKS_PASS] = per-step`, the failed case copied whole from the pass file as the reproduction, and a row in the progress table of `Plan.md`. Return the new steps in `pending_steps`, `next_recommended_action=continue`, and no report: it waits for them, as it waits for any pending step. Because a bug step is `per-step`, its own Validation walks the case again, and Acceptance does not run a second time;
+  - otherwise the report also carries `## Manual acceptance`: the devices of the pass and their OS versions, the counts of PASS / FAIL / BLOCKED / DROPPED, and a link to each bug step.
 
   Unless `report` is `off`, first dispatch the `[architect]`, once, after the walk of the steps or the pure-research branch, per `conventions/stage-dispatch.md`: on `needed` or `update` it writes or updates the report by `task-report` → `## The document` and `## Updating`, marks the component's row in `Docs.md` Applicable with the file name in `Note`, and commits the report as `docs(<scope>): …` in the repository that holds it; it then does `task-report` → `## Links` steps 1–2. Then follow steps 3–6 and run `scripts/lint-report-links.sh <task dir>`.
 
@@ -215,7 +229,7 @@ The EPIC output contract is extended with fields for steps and the branch. After
 ```
 {
   status: ok | error | cancelled | interrupted | partial,
-  last_completed_stage: Research | Plan | Execute | Done,
+  last_completed_stage: Research | Plan | Execute | Acceptance | Done,
   branch: decomposition | pure_research,
   artifact_path: <path to Done.md or Research.md>,
   next_recommended_action: continue | stop | ask_user,

@@ -82,7 +82,7 @@ of eight profiles:
 | REFACTOR | Analyze → Plan → Refactor → Validation → Review → Done |
 | TEST | Analyze → Plan → Write → Validation → Review → Done |
 | QUICK | Edit → Validation → Review → Done — for a small change `Task.md` already locates, chosen only by the user; Edit checks that it is one before changing anything |
-| EPIC | Research → Plan → Execute → Done — Execute is one nested profile run per `.step/`, and each step carries its own Validation and Review |
+| EPIC | Research → Plan → Execute → Acceptance → Done — Execute is one nested profile run per `.step/`, and each step carries its own Validation and Review; Acceptance runs only under `[MANUAL_CHECKS_PASS] = end`, walking every step's manual checks in one pass |
 | RESEARCH | Research → Review → Done |
 | REVIEW | Review — single stage, then an auto-move driven by `[REVIEW_STATUS]` |
 

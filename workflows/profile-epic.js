@@ -1,18 +1,19 @@
 export const meta = {
   name: 'profile-epic',
-  description: 'EPIC profile pipeline: wide research, a decomposition-or-pure-research branch, a sequential walk of the .step/ subfolders, Done',
+  description: 'EPIC profile pipeline: wide research, a decomposition-or-pure-research branch, a sequential walk of the .step/ subfolders, a collective manual-checks pass under manual_checks_pass=end, Done',
   whenToUse:
     'Dispatched by spine-toolkit:orchestrator for a task with [TASK_TYPE]=EPIC, with the resolved Outbound Contract as args. Never invoked directly by a user: without the contract there is no task folder, no stack, and no stage range, and the run refuses to start.',
   phases: [
     { title: 'Research', detail: 'architect; writes Research.md and the decomposition verdict', agent: 'architect' },
     { title: 'Plan', detail: 'architect; either the step table plus the .step/ folders, or a research roadmap', agent: 'architect' },
     { title: 'Execute', detail: 'one nested workflow run per step, strictly sequential', agent: 'nested profile workflow per step; architect ticks the checkboxes' },
+    { title: 'Acceptance', detail: 'only under manual_checks_pass=end: one pass over the cases the steps left, the agent part driven, the rest in one file for a person', agent: 'validator' },
     { title: 'Done', detail: 'epic report: steps done, skipped, blocked, and the estimate retrospective', agent: 'architect' },
   ],
 }
 
 const PROFILE = 'EPIC'
-const ORDER = ['Research', 'Plan', 'Execute', 'Done']
+const ORDER = ['Research', 'Plan', 'Execute', 'Acceptance', 'Done']
 
 // Mirrors meta.phases[].agent, which the sandbox does not expose to the script body;
 // scripts/lint-workflows.sh fails on any drift between the two.
@@ -20,6 +21,7 @@ const AGENT_OF = {
   Research: 'architect',
   Plan: 'architect',
   Execute: 'nested profile workflow per step; architect ticks the checkboxes',
+  Acceptance: 'validator',
   Done: 'architect',
 }
 
@@ -131,6 +133,10 @@ const DEVICE_RUN = (() => {
   return n ? `${'`'.repeat(n + 1)} ${DEVICE_SOURCE} ${'`'.repeat(n + 1)}` : `\`${DEVICE_SOURCE}\``
 })()
 const DEVICE_NOTE = DEVICE ? `\n\nDevice: «${DEVICE}» — every build, test and drive of this stage runs on it, packages included, whatever the project's files or your own defaults name. Write a line "**Device:** …" in the closing block of your artifact: which device you used, and that the brief named it${DEVICE_FROM}.` : DEVICE_SOURCE ? `\n\nDevice: run ${DEVICE_RUN} from the project root once, at the start of this stage; its first non-empty line is the device every build, test and drive of this stage runs on, packages included, whatever the project's files or your own defaults name. If the command exits non-zero or prints nothing, the platform's own choice stands. Write a line "**Device:** …" in the closing block of your artifact: which device you used, and whether the command gave it.` : ''
+
+// What suspends driving a running app, and how a stage that drives says which one held: the same
+// words in every brief that drives, so the four causes cannot drift apart between stages.
+const DRIVER_STOPS = `Four things can suspend it, and all four hand it over the same way: drive_app resolving to off — this run's value is ${DRIVE_APP} — no driver resolving at all, a driver that cannot be reached for this run's surface — its server not connected, the module for that surface not installed, or that surface absent from this machine — or a driver that drives none of the surfaces this platform produces. The second of those reaches only a platform that takes part in the driver contract: a platform whose manifest declares no ## Driver block drives with its own tooling exactly as it did before this contract existed, and that cause fires for it only when it has no tooling to drive a running instance at all, which you announce as a declared deviation. Which driver condition applied comes back in driver_status — no driver, one that cannot be reached, or a mismatched one — while drive_app: off is the project's own setting rather than a driver condition and needs no such report; ${core('conventions/driver-contract.md')} has the full vocabulary and what each one means for the user.`
 
 // Documentation routing. Which declared component a change set may have touched is a script
 // (conventions/docs-components.md), because matching a diff against a dozen glob patterns by
@@ -1379,6 +1385,66 @@ if (runs('Execute')) {
   }
 }
 
+// ── Acceptance ──────────────────────────────────────────────────────────────
+// Under manual_checks_pass=end the steps leave their cases unwalked, and this stage walks them in one
+// pass: the agent drives what a driver reaches, and the rest goes into one file for a person. Only a
+// walk that reached its end gets one: a pass over steps still to run would be walked again later.
+// The orchestrator routes here only while the epic has no Validation.md, so a bug step that Done
+// creates is walked inside itself and this stage never runs twice.
+const PASS_FILE = `${DIR}/ManualChecks.md`
+const ACCEPTANCE = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['validation_status', 'artifact_path', 'manual_checks', 'agent_verdicts', 'summary'],
+  properties: {
+    validation_status: { type: 'string', enum: ['PASSED', 'FAILED', 'FLAKY'] },
+    artifact_path: { type: 'string', description: "the epic's Validation.md" },
+    manual_checks_path: { type: 'string', description: 'the pass file, when one was written' },
+    manual_checks: { type: 'array', items: { type: 'string' }, description: 'the <step>/MC-<n> ids of the cases left for a person' },
+    manual_checks_changed: { type: 'boolean', description: 'false when the pass file already held these cases as they are' },
+    agent_verdicts: { type: 'integer', description: 'rows written under ## Agent verdicts' },
+    driver_status: VALIDATION.properties.driver_status,
+    summary: { type: 'string' },
+    directive_declined: DECLINED,
+  },
+}
+
+if (runs('Acceptance') && MANUAL_CHECKS_PASS === 'end' && branch !== 'pure_research' && !failed_steps.length && !pending_steps.length && !cancelled) {
+  if (!need('Acceptance', 'validator')) return finish('ask_user')
+  const acceptance = await agent(
+    brief(
+      'Acceptance',
+      `This epic walks its manual checks in one pass at the end: its steps wrote their cases and left them unwalked. Write ${DIR}/Validation.md; its FIRST LINE is required to be exactly:
+
+[VALIDATION_STATUS] = PASSED | FAILED | FLAKY
+
+First run "${core('scripts/manual-checks-pass.sh')}" collect ${DIR}. It lists, as JSON, every case of every step that carries no mark yet, with its **Runner:**, **Device:** and **Order:**. When it lists none, write Validation.md as the status line PASSED and the single line "manual checks: none — no step left a case", write no ${PASS_FILE}, and return manual_checks empty and agent_verdicts 0.
+
+Otherwise build and launch the app only as far as driving the cases needs: each step's own Validation already ran its build and its tests. Walk through the driver every case marked **Runner:** agent and every other case the driver reaches whole, with no device action, visual judgment or external service, as the spine-toolkit:manual-checks skill's ## Does this check need a person? and ## Collective pass say. ${DRIVER_STOPS} Whichever it is, you drive nothing, and every case goes to the person. Write the verdict of each case you walked into Validation.md under the heading ## Agent verdicts, in a table | Case | Mark | Evidence |, one row per case: Case is <step>/MC-<n>, Mark is PASS, FAIL (<why>) or BLOCKED (<why>), Evidence is what you saw and where its record lies. A FAIL is a verdict on the case, not on this stage: the status line says FAILED only when the pass itself could not be run. A case you did not reach goes to the person, with its reason.
+
+Then write the pass file ${PASS_FILE} by the manual-checks skill's ## Collective pass section, in this run's manual_checks_style, ${MANUAL_CHECKS_STYLE}, with the cases left for a person only. Run "${core('scripts/lint-manual-checks.sh')}" on it, repair every finding it prints, and run it again. When no case is left for a person, write no pass file. Return manual_checks, the <step>/MC-<n> ids of the cases left for a person, and manual_checks_changed false when the pass file already held them as they are.
+
+Change no production code, no tests and no file of a step: the marks go back into the steps at Done. Return the same status you wrote on the first line.`,
+    ),
+    { label: 'acceptance', phase: 'Acceptance', agentType: A.agents.validator, schema: ACCEPTANCE, ...tuning('validator', 'stage') },
+  )
+  if (!acceptance) return finish('stop', { status: 'error', reason: 'the Acceptance agent returned nothing' })
+  record('Acceptance', acceptance)
+  if (acceptance.driver_status) result.notes.push(`driver_status: ${acceptance.driver_status}`)
+  log(`Acceptance: ${acceptance.agent_verdicts || 0} agent verdict(s), ${(acceptance.manual_checks || []).length} case(s) for a person`)
+  if (acceptance.validation_status !== 'PASSED') {
+    result.notes.push(`Acceptance returned ${acceptance.validation_status}; Done was not run.`)
+    return finish('ask_user', { validation_status: acceptance.validation_status, branch, completed_steps, skipped_steps, failed_steps, pending_steps })
+  }
+  const forPerson = acceptance.manual_checks || []
+  if (forPerson.length) {
+    const passFile = acceptance.manual_checks_path || PASS_FILE
+    if (MANUAL_CHECKS_CHECK === 'on' && acceptance.manual_checks_changed !== false) await checkManualChecks('Acceptance', 'validator', A.agents.validator, passFile)
+    result.notes.push(`The collective pass waits for a person: walk ${passFile}, fill its **Result:** line for each case — ${forPerson.join(', ')} — then continue the task.`)
+    return finish('ask_user', { branch, completed_steps, skipped_steps, failed_steps, pending_steps })
+  }
+}
+
 // ── Done ────────────────────────────────────────────────────────────────────
 // A run dispatched at Done alone — the orchestrator coming back after it pull-dispatched the
 // steps itself — has seen neither Research nor Plan, so the branch has to be read back before
@@ -1405,6 +1471,89 @@ if (runs('Done') && branch === null) {
   if (verdict) branch = verdict.branch
 }
 
+// After the collective pass the report waits on its marks: every case marked, the marks written back
+// into the steps, and every FAIL a bug step of its own. A bug step is walked like any other step and
+// its own Validation walks the failed case again, per-step, so Acceptance never runs a second time.
+const ACCEPTANCE_MARKS = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['pass_file', 'unmarked', 'fails', 'counts'],
+  properties: {
+    pass_file: { type: 'boolean', description: 'whether the epic has a pass file' },
+    unmarked: { type: 'array', items: { type: 'string' }, description: 'the <step>/MC-<n> ids with no mark yet' },
+    fails: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['case', 'reason', 'bug_step'],
+        properties: {
+          case: { type: 'string' },
+          reason: { type: 'string' },
+          bug_step: { type: ['string', 'null'], description: 'the step_id of the bug step whose Task.md names this case, or null' },
+        },
+      },
+    },
+    counts: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { PASS: { type: 'integer' }, FAIL: { type: 'integer' }, BLOCKED: { type: 'integer' }, DROPPED: { type: 'integer' } },
+    },
+    writeback: { type: 'string', description: 'the line writeback printed, on stdout or stderr; empty when it did not run' },
+  },
+}
+let accepted = null
+
+if (runs('Done') && MANUAL_CHECKS_PASS === 'end' && branch !== 'pure_research' && !failed_steps.length && !cancelled && !pending_steps.length) {
+  const passTool = core('scripts/manual-checks-pass.sh')
+  const marks = await agent(
+    brief(
+      'Done',
+      `Run "${passTool}" marks ${DIR} and read the JSON it prints. When pass_file is false, return it with everything else empty. When unmarked is not empty, return it and run nothing else. Otherwise run "${passTool}" writeback ${DIR} and return the line it printed, on stdout or on stderr, in writeback. Return fails, one entry per mark FAIL: its case, its reason, and bug_step — the step_id of the <name>.step/ folder of ${DIR} whose Task.md names that case as <step>/MC-<n>, or null when no step does. Return counts, the number of marks of each kind. Change nothing on disk but what writeback writes.`,
+    ),
+    { label: 'done:acceptance-marks', phase: 'Done', agentType: A.agents.architect, schema: ACCEPTANCE_MARKS, ...tuning('architect', 'stage') },
+  )
+  if (!marks) return finish('stop', { status: 'error', reason: 'the reader of the pass marks returned nothing' })
+  if (marks.pass_file) {
+    const unmarked = marks.unmarked || []
+    if (unmarked.length) {
+      result.notes.push(`The collective pass is not finished: ${unmarked.join(', ')} carry no mark in ${PASS_FILE}. Fill their **Result:** tokens, then continue the task.`)
+      return finish('ask_user', { branch, completed_steps, skipped_steps, failed_steps, pending_steps })
+    }
+    if (!/^writeback: \d+ mark/.test(marks.writeback || '')) {
+      result.notes.push(`The marks of the pass were not written back into the steps: ${marks.writeback || 'writeback did not run'}.`)
+      return finish('ask_user', { branch, completed_steps, skipped_steps, failed_steps, pending_steps })
+    }
+    const fresh = (marks.fails || []).filter((f) => !f.bug_step)
+    if (fresh.length) {
+      const made = await agent(
+        brief(
+          'Done',
+          `The collective pass of this epic failed these cases, and no step of the epic fixes them yet:
+${fresh.map((f) => `- ${f.case}: ${f.reason}`).join('\n')}
+
+For each one create a bug step in ${DIR} by invoking spine-toolkit:task-new: a <name>.step/ folder after the last step, whose Task.md carries [TASK_TYPE] = BUG, [STATUS] = PENDING and [MANUAL_CHECKS_PASS] = per-step, so its own Validation walks the case again and the epic's pass is not run a second time. Its Task.md names the case as <step>/MC-<n> and holds the failed case whole, copied from ${PASS_FILE}, as the reproduction, with the reason it failed. Add a row for it to the progress table of ${DIR}/Plan.md, "- [ ]" in the Done? column. Return every step you created in steps, in execution order, as the step reader returns them.`,
+        ),
+        { label: 'done:bug-steps', phase: 'Done', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'stage') },
+      )
+      if (!made || !Array.isArray(made.steps) || !made.steps.length) return finish('stop', { status: 'error', reason: 'the writer of the bug steps returned none' })
+      for (const st of made.steps) pending_steps.push(toPending(st))
+      result.notes.push(`The collective pass failed ${fresh.map((f) => f.case).join(', ')}: bug step(s) ${made.steps.map((s) => s.step_id).join(', ')} wait to run, and the report waits for them.`)
+    } else {
+      accepted = marks
+    }
+  }
+}
+
+// The report's account of the pass: devices, counts and the bug steps.
+const acceptanceSection = () => {
+  if (!accepted) return ''
+  const c = accepted.counts || {}
+  const steps = [...new Set((accepted.fails || []).map((f) => f.bug_step).filter(Boolean))]
+  return `
+- A ## Manual acceptance section on the collective pass ${PASS_FILE}: the devices it ran on and their OS versions, from its sessions and the **Device:** lines of ${DIR}/Validation.md; the marks, PASS ${c.PASS || 0} / FAIL ${c.FAIL || 0} / BLOCKED ${c.BLOCKED || 0} / DROPPED ${c.DROPPED || 0}; and ${steps.length ? `a link to each bug step, ${steps.join(', ')}, with the case it fixes` : 'a line saying that no case failed'}.`
+}
+
 // Done reports a finished epic. A walk that stopped early has not finished one, so the report
 // waits until the orchestrator has taken the pending steps somewhere.
 if (runs('Done') && !failed_steps.length && !cancelled && !pending_steps.length) {
@@ -1419,7 +1568,7 @@ if (runs('Done') && !failed_steps.length && !cancelled && !pending_steps.length)
 - Which BLOCKED steps need the user to act, listed explicitly with the blocker.
 - Overall progress: X of Y steps complete.
 - A ## Estimate retrospective section that rolls up every completed step's own retrospective: the aggregate estimated epic range against the summed actual effort, an in-range verdict, and the reason for any variance. Take actual effort per feature-estimation ## Estimate retrospective — the user's own figure when there is one, otherwise the git proxy, labelled as a proxy, otherwise unknown. Sum step rows only in matching units; never add human-days to proxy values in one total. Record this epic's data point in the calibration log: correct its row — the one whose task_id names this epic, as feature-estimation's Column semantics defines it — if the log already has one, otherwise append it.
-- Objections, aggregated from the steps' Done.md files where the user insisted on a contested decision.${walkthroughWriter() ? `
+- Objections, aggregated from the steps' Done.md files where the user insisted on a contested decision.${acceptanceSection()}${walkthroughWriter() ? `
 
 Never edit ${DIR}/Walkthrough.md: its writer runs after you, so a commit of yours outside the Tasks folder is still in range when it does.` : ''}`,
     ),

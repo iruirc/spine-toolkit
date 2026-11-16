@@ -199,8 +199,9 @@ bullet() { # $1 = SKILL.md, $2 = stage name
 }
 
 @test "exactly the five profiles with a Validation stage carry the clause" {
-  # Vacuity guard: without it the loops above iterate over a list someone shortened.
-  n="$(grep -l '## Manual acceptance' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  # Vacuity guard: without it the loops above iterate over a list someone shortened. It counts the
+  # Plan clause itself: EPIC's Done brief names a ## Manual acceptance section of Done.md too.
+  n="$(grep -l 'add a ## Manual acceptance section' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
   [ "$n" -eq 5 ] || { echo "$n profile script(s) carry the clause, expected 5"; return 1; }
 }
 
