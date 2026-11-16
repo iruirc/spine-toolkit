@@ -55,6 +55,18 @@ set -euo pipefail
 #             read a full one: the Action is the text of a numbered step before "→", the Expected the text
 #             after it, and **Start:** is read where a full case's **Preconditions:** is.
 #
+# A collective pass file, <epic>/ManualChecks.md of an epic that walks its cases at the end, is a file
+# with a line "[PASS] = <step>, <step>, ..." after [STYLE], in either style. Its cases sit under
+# "### Session <n>. <device>" as "#### <step>/MC-<n>. <behaviour>", and every check above reads such a
+# case as an ordinary one, naming it by its heading as written (#### 01/MC-1.). On top of them:
+#
+#   pass      a case outside a session (no session heading above it, or a ### heading under ## Cases
+#             that is no session), a case id that is not <step>/MC-<n>, **Order:** first after a case
+#             of its session that does not carry it, **Order:** last before a case that does not carry
+#             it (once per session and kind), a case with no "<step>/MC-<n> <mark>" token in
+#             **Result:**; the rows of ## Code references and the Result tokens are keyed by
+#             <step>/MC-<n>, and **Result:** is required in full too (the script reads it);
+#
 # Known limit: a product name in CamelCase (YouTube, PayPal) reads as code. There is no allow-list.
 #
 # Usage: scripts/lint-manual-checks.sh <ManualChecks.md | task-dir>
@@ -82,6 +94,11 @@ BRIEF_NOT_SECTIONS = ('## Run record', '## On failure', '## Troubleshooting', '#
 ORDER = re.compile(r'^(first|last) \u2014 \S')
 STYLE = re.compile(r'^\s*\[STYLE\]\s*=\s*\[?\s*(brief|full)\s*\]?\s*$', re.I)
 NUMBERED = re.compile(r'^(\d+)\.\s+(.*)$')
+PASS_LINE = re.compile(r'^\s*\[PASS\]\s*=')
+SESSION = re.compile(r'^### Session (\d+)\.')
+PASS_HEAD = re.compile(r'^#### (\S+?)\.(?:\s+(.*))?$')
+PASS_ID = re.compile(r'^[^\s/]+/MC-\d+$')
+PASS_REF = re.compile(r'^\S*MC-\S*$')
 
 FENCE = re.compile(r'^\s*(`{3,}|~{3,})')
 HEADING = re.compile(r'^(#{1,6})\s+(.*?)\s*#*\s*$')
@@ -252,6 +269,8 @@ titles = [h[1] for _, h in headings]
 # The style: brief only when the file says so, so a file written before the style existed reads as full.
 style = next((STYLE.match(line).group(1).lower() for line, h in rows if h is None and STYLE.match(line)), 'full')
 brief = style == 'brief'
+# A pass file is one with a [PASS] line; its cases are #### <step>/MC-<n>. under a ### Session heading.
+is_pass = any(PASS_LINE.match(line) for line, h in rows if h is None)
 
 # file
 if not any(re.match(r'^\s*\[COVERS\]', line) for line, h in rows if h is None):
@@ -267,6 +286,8 @@ else:
         found.append('file: missing ## Run record (file)')
     if not any(t.startswith('## On failure') for t in titles):
         found.append('file: missing ## On failure (file)')
+    if is_pass and not any(line.lstrip().startswith('**Result:**') for line, h in rows if h is None):
+        found.append('file: missing **Result:** (file)')
 
 # instrument, in ## Preparation: a person walks its scenes (S-scenes in brief, P-tables in full) too.
 prep = next((i for i, h in headings if h == (2, '## Preparation')), None)
@@ -287,7 +308,28 @@ if prep is not None:
 if any(t.startswith('## Reading the verdict') for t in titles):
     found.append('instrument: ## Reading the verdict in the file (## Reading the verdict)')
 
-cases = [(i, h) for i, h in headings if MC.match(h[1])]
+# The cases of the file as (heading index, label, where, text after the id, session). A label is
+# "MC-<n>", or "<step>/MC-<n>" in a pass file, where a case is any #### heading under ## Cases and the
+# session is the ### Session heading above it (None when there is none).
+recs = []
+if is_pass:
+    in_cases, session = False, None
+    for i, h in headings:
+        if h[0] <= 2:
+            in_cases, session = h[1] == '## Cases', None
+        elif in_cases and h[0] == 3:
+            s = SESSION.match(h[1])
+            session = '### Session %s.' % s.group(1) if s else None
+        elif in_cases and h[0] == 4:
+            m = PASS_HEAD.match(h[1])
+            label = m.group(1) if m else h[1]
+            recs.append((i, label, '#### %s.' % label if m else h[1], (m.group(2) or '') if m else '', session))
+else:
+    for i, h in headings:
+        m = MC.match(h[1])
+        if m:
+            recs.append((i, 'MC-' + m.group(1), '### MC-%s.' % m.group(1), m.group(2), None))
+where_of = {i: where for i, _, where, _, _ in recs}
 old = [(i, h) for i, h in headings if OLD.match(h[1])]
 
 # ## Code references: the table's rows, "MC-<n>" to the text of the Code cell.
@@ -299,18 +341,18 @@ for i, h in headings:
             if not line.lstrip().startswith('|') or set(line.strip()) <= set('|-: '):
                 continue
             c = cells(line)
-            r = re.match(r'^MC-(\d+)$', c[0])
-            if r and len(c) > 1 and r.group(1) not in refs:
-                refs[r.group(1)] = c[1]
+            r = (PASS_REF if is_pass else re.compile(r'^MC-\d+$')).match(c[0])
+            if r and len(c) > 1 and c[0] not in refs:
+                refs[c[0]] = c[1]
 
 # The old format keeps the references in the case, as a **Code:** field.
-old_code = next((i for i, h in cases
-                 if any('**Code:**' in line for line in section(i, 3) if not line.lstrip().startswith('|'))), None)
+old_code = next((i for i, _, _, _, _ in recs
+                 if any('**Code:**' in line for line in section(i, 4 if is_pass else 3) if not line.lstrip().startswith('|'))), None)
 
-if cases and not has_refs and old_code is None:
+if recs and not has_refs and old_code is None:
     found.append('file: missing ## Code references (file)')
 
-if not cases and old:
+if not recs and old:
     found.append('case: old format, ### <n>. headings instead of ### MC-<n>. (### %s.)' % OLD.match(old[0][1][1]).group(1))
 else:
     in_cases, under_cases = False, None
@@ -319,6 +361,12 @@ else:
             in_cases = h[1] == '## Cases'
             if in_cases and under_cases is None:
                 under_cases = 0
+        elif is_pass and h[0] == 3 and in_cases and not SESSION.match(h[1]):
+            found.append('pass: a heading under ## Cases is not ### Session <n>. (%s)' % h[1])
+        elif is_pass and h[0] == 4 and in_cases:
+            under_cases += 1
+        elif is_pass:
+            continue
         elif h[0] == 3 and in_cases and MC.match(h[1]):
             under_cases += 1
         elif h[0] == 3 and in_cases:
@@ -332,14 +380,17 @@ else:
         found.append('case: no case under ## Cases (## Cases)')
 
 seen = set()
-for i, h in cases:
-    m = MC.match(h[1])
-    where = '### MC-%s.' % m.group(1)
-    body = section(i, 3)
-    if m.group(1) in seen:
-        found.append('case: id MC-%s is used twice (%s)' % (m.group(1), where))
-    seen.add(m.group(1))
-    if not m.group(2).strip():
+orders = []
+for i, cid, where, behaviour, session in recs:
+    body = section(i, 4 if is_pass else 3)
+    if cid in seen:
+        found.append('case: id %s is used twice (%s)' % (cid, where))
+    seen.add(cid)
+    if is_pass and session is None:
+        found.append('pass: a case outside a session (%s)' % where)
+    if is_pass and not PASS_ID.match(cid):
+        found.append('pass: a case id is not <step>/MC-<n> (%s)' % where)
+    if not behaviour.strip():
         found.append('case: no observable behaviour after the id (%s)' % where)
     plain = [line for line in body if not line.lstrip().startswith('|')]
     for label in (BRIEF_LABELS if brief else LABELS):
@@ -355,6 +406,7 @@ for i, h in cases:
         found.append('field: **Device:** is empty (%s)' % where)
     if order is not None and not ORDER.match(order.strip()):
         found.append('field: **Order:** is not first or last with a reason (%s)' % where)
+    orders.append((session, order.strip().split(' ')[0] if order is not None and ORDER.match(order.strip()) else None))
     if any('**By instrument:**' in line for line in plain):
         found.append('instrument: **By instrument:** in a case (%s)' % where)
     if i == old_code:
@@ -415,21 +467,40 @@ for i, h in cases:
             found.append('code: "%s" in %s (%s)' % (word, name, where))
 
     if has_refs and old_code is None:
-        if m.group(1) not in refs:
+        if cid not in refs:
             found.append('codeslot: no row in ## Code references (%s)' % where)
-        elif not FILE_LINE.search(refs[m.group(1)]):
+        elif not FILE_LINE.search(refs[cid]):
             found.append('codeslot: no file:line in ## Code references (%s)' % where)
 
-for n in refs:
-    if n not in seen:
-        found.append('codeslot: row for a case not in ## Cases (MC-%s)' % n)
+for label in refs:
+    if label not in seen:
+        found.append('codeslot: row for a case not in ## Cases (%s)' % label)
+
+if is_pass:
+    # pass: inside a session the cases that need an untouched state come first, the ones that end it last.
+    sessions = []
+    for session, mark in orders:
+        if session is not None:
+            if not sessions or sessions[-1][0] != session:
+                sessions.append((session, []))
+            sessions[-1][1].append(mark)
+    for session, marks in sessions:
+        if any(m == 'first' and any(x != 'first' for x in marks[:j]) for j, m in enumerate(marks)):
+            found.append('pass: Order first after a case without it (%s)' % session)
+        if any(m != 'last' and 'last' in marks[:j] for j, m in enumerate(marks)):
+            found.append('pass: Order last before a case without it (%s)' % session)
+    # pass: the Result line carries a token for every case, keyed by <step>/MC-<n>.
+    result = ' '.join(line for line, h in rows if h is None and line.lstrip().startswith('**Result:**'))
+    if result:
+        for _, label, where, _, _ in recs:
+            if not re.search(r'(?<![\w/])' + re.escape(label) + r' (?:PASS|FAIL|BLOCKED|DROPPED|__)(?!\w)', result):
+                found.append('pass: no mark for a case in **Result:** (%s)' % where)
 
 # chain, over the whole file: a line names the heading it sits under.
 where = 'file'
-for line, h in rows:
+for n, (line, h) in enumerate(rows):
     if h:
-        m = MC.match(h[1])
-        where = '### MC-%s.' % m.group(1) if m else h[1]
+        where = where_of.get(n, h[1])
     for p in CHAIN:
         for m in p.finditer(line):
             found.append('chain: "%s" (%s)' % (m.group(), where))

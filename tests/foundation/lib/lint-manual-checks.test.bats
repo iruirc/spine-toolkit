@@ -802,3 +802,163 @@ print("\n".join(out), end="")' "$@"
   drop '**Failure looks like:**'
   expect 'ManualChecks.md: case: missing **Failure looks like:** (### MC-1.)'
 }
+
+# The collective pass file: <epic>/ManualChecks.md carries a [PASS] line after [STYLE], its cases sit
+# under ### Session <n>. <device> headings as #### <step>/MC-<n>., and each is read as an ordinary case.
+as_pass() { # $1 the id the case gets, e.g. 01/MC-1; the case text on stdin
+  sed "s|^### MC-[0-9]*\\.|#### $1.|"
+}
+
+SESSION1='### Session 1. Simulator'
+SESSION2='### Session 2. Real device'
+
+pass_file() { # $1 brief|full; $@ the text of ## Cases, one chunk each (a session heading or a case)
+  local style="$1" c id ids=''
+  shift
+  { printf '# Manual Checks — Collective pass: cart\n\n[COVERS] = a1b2c3d\n\n[STYLE] = %s\n\n[PASS] = 01, 02\n\n' "$style"
+    [ "$style" != full ] || printf '## Run record\n\n| Field | Value |\n|---|---|\n| Build | ______ |\n\n'
+    printf '## Scope\n\nOne pass over the cases of steps 01 and 02. Three cases, about ten minutes.\n\n'
+    printf '## Preparation\n\n### S1. A cart with Green tea\n\nSign in with the test account and put one Green tea in the cart.\n\n## Cases\n\n'
+    for c in "$@"; do printf '%s\n\n' "$c"; done
+    [ "$style" != full ] || printf '## On failure — bug report\n\n**Title:** MC-N: what broke\n\n'
+    printf '## Not covered\n\nnone\n\n## Code references\n\n| Case | Code |\n|---|---|\n'
+    for c in "$@"; do
+      id="$(printf '%s\n' "$c" | sed -n 's/^#### \([^ ]*\)\. .*/\1/p' | head -n 1)"
+      [ -z "$id" ] || { printf '| %s | %s |\n' "$id" "$CODE"; ids="$ids $id __ ·"; }
+    done
+    printf '\n**Result:**%s\n' "${ids% ·}"; } >"$F"
+}
+
+pass_brief() { # the default file: two sessions, three cases
+  [ "$#" -gt 0 ] || set -- "$SESSION1" "$(brief_case_md 1 | as_pass 01/MC-1)" "$(brief_case_md 2 | as_pass 02/MC-1)" \
+                           "$SESSION2" "$(brief_case_md 3 | as_pass 01/MC-2)"
+  pass_file brief "$@"
+}
+
+pass_full() {
+  [ "$#" -gt 0 ] || set -- "$SESSION1" "$(case_md 1 | as_pass 01/MC-1)" "$(case_md 2 | as_pass 02/MC-1)" \
+                           "$SESSION2" "$(case_md 3 | as_pass 01/MC-2)"
+  pass_file full "$@"
+}
+
+@test "pass: a file with [PASS], two sessions and cases #### <step>/MC-<n>. is clean, in brief and in full" {
+  pass_brief
+  grep -qxF '[PASS] = 01, 02' "$F" || { echo "the pass file was not built"; return 1; }
+  clean "$F"
+  pass_full
+  clean "$F"
+}
+
+@test "pass: the same case number under two steps is two cases, and each has its own row and its own mark" {
+  pass_brief
+  grep -qF '| 01/MC-1 |' "$F" && grep -qF '| 02/MC-1 |' "$F" || { echo "the rows were not built"; return 1; }
+  clean "$F"
+  drop '| 02/MC-1 |'
+  expect 'ManualChecks.md: codeslot: no row in ## Code references (#### 02/MC-1.)'
+}
+
+@test "pass: a case outside a session is named by its heading" {
+  pass_brief "$(brief_case_md 1 | as_pass 01/MC-1)" "$SESSION1" "$(brief_case_md 2 | as_pass 02/MC-1)"
+  expect 'ManualChecks.md: pass: a case outside a session (#### 01/MC-1.)'
+  pass_full "$(case_md 1 | as_pass 01/MC-1)" "$SESSION1" "$(case_md 2 | as_pass 02/MC-1)"
+  expect 'ManualChecks.md: pass: a case outside a session (#### 01/MC-1.)'
+}
+
+@test "pass: a case id that is not <step>/MC-<n> is named by its heading" {
+  pass_brief "$SESSION1" "$(brief_case_md 1 | as_pass MC-1)" "$(brief_case_md 2 | as_pass 02/MC-x)"
+  expect "$(printf '%s\n%s' \
+    'ManualChecks.md: pass: a case id is not <step>/MC-<n> (#### MC-1.)' \
+    'ManualChecks.md: pass: a case id is not <step>/MC-<n> (#### 02/MC-x.)')"
+}
+
+@test "pass: a heading under ## Cases that is no session is named, and a ### MC- case there is no case of the pass" {
+  pass_brief "### Simulator" "$(brief_case_md 1 | as_pass 01/MC-1)"
+  expect "$(printf '%s\n%s' \
+    'ManualChecks.md: pass: a heading under ## Cases is not ### Session <n>. (### Simulator)' \
+    'ManualChecks.md: pass: a case outside a session (#### 01/MC-1.)')"
+}
+
+order_case() { # $1 id, $2 the Order line or nothing; brief
+  brief_case_md 1 | as_pass "$1" | { if [ -n "${2:-}" ]; then marks "$2"; else cat; fi; }
+}
+
+@test "pass: Order first after a case without it, and Order last before a case without it, are named by the session" {
+  F1="**Order:** first $(ru '\u2014') nothing was granted yet"
+  L1="**Order:** last $(ru '\u2014') it signs the account out"
+  pass_brief "$SESSION1" "$(order_case 01/MC-1 "$F1")" "$(order_case 01/MC-2)" "$(order_case 01/MC-3 "$L1")" \
+             "$SESSION2" "$(order_case 02/MC-1)" "$(order_case 02/MC-2 "$F1")"
+  expect 'ManualChecks.md: pass: Order first after a case without it (### Session 2.)'
+  pass_brief "$SESSION1" "$(order_case 01/MC-1)" "$(order_case 01/MC-2 "$L1")" "$(order_case 01/MC-3)" \
+             "$SESSION2" "$(order_case 02/MC-1 "$F1")" "$(order_case 02/MC-2)" "$(order_case 02/MC-3 "$L1")"
+  expect 'ManualChecks.md: pass: Order last before a case without it (### Session 1.)'
+  pass_full "$SESSION1" "$(case_md 1 | as_pass 01/MC-1)" "$(case_md 2 | as_pass 01/MC-2 | marks "$L1")" "$(case_md 3 | as_pass 01/MC-3)"
+  expect 'ManualChecks.md: pass: Order last before a case without it (### Session 1.)'
+}
+
+@test "pass: the order of a session is first, the rest, last; a bad order is named once per session and kind" {
+  F1="**Order:** first $(ru '\u2014') nothing was granted yet"
+  L1="**Order:** last $(ru '\u2014') it signs the account out"
+  pass_brief "$SESSION1" "$(order_case 01/MC-1 "$F1")" "$(order_case 01/MC-2 "$F1")" "$(order_case 01/MC-3)" \
+             "$(order_case 01/MC-4 "$L1")" "$(order_case 01/MC-5 "$L1")" \
+             "$SESSION2" "$(order_case 02/MC-1)"
+  clean "$F"
+  pass_brief "$SESSION1" "$(order_case 01/MC-1)" "$(order_case 01/MC-2 "$F1")" "$(order_case 01/MC-3)" "$(order_case 01/MC-4 "$F1")"
+  expect 'ManualChecks.md: pass: Order first after a case without it (### Session 1.)'
+}
+
+@test "pass: Order is judged inside its session, so a first case of the second session is not late" {
+  F1="**Order:** first $(ru '\u2014') nothing was granted yet"
+  pass_brief "$SESSION1" "$(order_case 01/MC-1)" "$SESSION2" "$(order_case 02/MC-1 "$F1")" "$(order_case 02/MC-2)"
+  clean "$F"
+}
+
+@test "pass: the codeslot check reads <step>/MC-<n>: a row for a case that is not in the pass is named" {
+  pass_brief
+  sed -i.bak "s#^| 01/MC-2 | .*#&\n| 03/MC-1 | $CODE |#" "$F"
+  grep -qF '| 03/MC-1 |' "$F" || { echo "the row was not added"; return 1; }
+  expect 'ManualChecks.md: codeslot: row for a case not in ## Cases (03/MC-1)'
+  pass_brief
+  sed -i.bak 's#| 01/MC-1 | (cart/quantity_stepper.src:41) |#| 01/MC-1 | the stepper |#; s#| 01/MC-1 | .*#| 01/MC-1 | the stepper |#' "$F"
+  expect 'ManualChecks.md: codeslot: no file:line in ## Code references (#### 01/MC-1.)'
+}
+
+@test "pass: a case with no token in **Result:** is named, and a file with no **Result:** line is named in full too" {
+  pass_brief
+  sed -i.bak 's# · 02/MC-1 __##' "$F"
+  expect 'ManualChecks.md: pass: no mark for a case in **Result:** (#### 02/MC-1.)'
+  pass_full
+  drop '**Result:**'
+  expect 'ManualChecks.md: file: missing **Result:** (file)'
+  pass_brief
+  sed -i.bak 's#01/MC-1 __#01/MC-1 PASS#; s#02/MC-1 __#02/MC-1 DROPPED (the check left the design)#; s#01/MC-2 __#01/MC-2 FAIL (the spinner stays)#' "$F"
+  clean "$F"
+}
+
+@test "pass: every other check reads a pass case as an ordinary case, and names it by its heading" {
+  pass_brief "$SESSION1" "$(brief_case_md 1 | as_pass 01/MC-1 | grep -vF '**Failure looks like:**')"
+  expect 'ManualChecks.md: case: missing **Failure looks like:** (#### 01/MC-1.)'
+  pass_brief "$SESSION1" "$(brief_case_md 1 | as_pass 01/MC-1 | marks '**Runner:** human')"
+  expect 'ManualChecks.md: field: **Runner:** is not agent (#### 01/MC-1.)'
+  ACTION='Tap the plus button and then the minus button'
+  pass_brief "$SESSION1" "$(brief_case_md 1 | as_pass 01/MC-1)"
+  expect 'ManualChecks.md: compound: "and then" in the Action of step 2 (#### 01/MC-1.)'
+  ACTION='Tap the plus button on the Green tea row'
+  EXPECTED='The quantity of QuantityStepper reads 2'
+  pass_full "$SESSION1" "$(case_md 1 | as_pass 01/MC-1)"
+  expect 'ManualChecks.md: code: "QuantityStepper" in the Expected of step 2 (#### 01/MC-1.)'
+  EXPECTED='The quantity reads 2'
+  pass_full "$SESSION1" "$(case_md 1 | as_pass 01/MC-1)" "$(case_md 1 | as_pass 01/MC-1)"
+  expect 'ManualChecks.md: case: id 01/MC-1 is used twice (#### 01/MC-1.)'
+}
+
+@test "pass: a chain in a pass case is named by its heading, and a file with no [PASS] line is read as an ordinary file" {
+  WHAT='the state right after case 3 keeps the quantity.'
+  pass_brief "$SESSION1" "$(brief_case_md 1 | as_pass 01/MC-1)"
+  expect "$(printf '%s\n%s' 'ManualChecks.md: chain: "after case 3" (#### 01/MC-1.)' 'ManualChecks.md: chain: "state right after" (#### 01/MC-1.)')"
+  WHAT='one tap on plus adds one item to the cart.'
+  pass_brief
+  grep -vxF '[PASS] = 01, 02' "$F" >"$F.tmp" && mv "$F.tmp" "$F"
+  run "$LINT" "$F"
+  [ "$status" -eq 1 ] && grep -qF 'case: no case under ## Cases (## Cases)' <<<"$output" \
+    || { echo "a file with no [PASS] line was read as a pass: $output"; return 1; }
+}

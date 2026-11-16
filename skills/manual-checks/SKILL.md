@@ -199,6 +199,25 @@ No field means a person, any device and any order. A case that only a particular
 
 Under `per-step` none of the three is written, and a `**Runner:** agent` in a file of such a task is a finding at Review (`## Review`). The file does not know its own `manual_checks_pass`, so the lint checks only the shape of the marks (`## The lint`).
 
+## Collective pass
+
+Under `manual_checks_pass` = `end` the steps of an epic keep their own `ManualChecks.md` unwalked, and the epic's `Acceptance` stage writes one more at the epic's root, `<epic>/ManualChecks.md`: the collective pass, the one file a person walks at the end. The epic's `[validator]` writes it by this section and by the rest of the skill, in the epic's `manual_checks_style`. Before writing, read `examples/manual-checks.pass.en.md` or `examples/manual-checks.pass.ru.md`, and the English one for any other language.
+
+**Where the cases come from.** `scripts/manual-checks-pass.sh collect <epic_dir>` lists the cases of every step that carry no mark yet, with their `**Runner:**`, `**Device:**` and `**Order:**`. A step id is the name of its `.step` folder up to the first `-` (`06-editor.step` is `06`), and a case of the pass is `<step>/MC-<n>`.
+
+**What the agent walks.** The agent walks through the driver every `**Runner:** agent` case and every other case the driver reaches whole, with no device action, visual judgment or external service. The agent part is not in the file: its verdicts are rows of the table `## Agent verdicts` in the epic's `Validation.md`, `| Case | Mark | Evidence |`, one row per case, the case keyed `<step>/MC-<n>`. A case the agent did not reach goes to a person with the reason in `## Scope`, and is written into the file like any other.
+
+**The file.** After `[STYLE]` it carries the line `[PASS] = <step>, <step>, …`, the steps whose cases it holds; that line is what makes it a pass file to the lint.
+
+- `## Scope` names the steps, the interface language, how many cases and how long, and then two things nobody else records: every difference between the scenes that were merged, and every case that went back from the agent, with its reason. There is one language per pass: the interface language is the same for every case, and a step that was written in another is rewritten in it.
+- `## Preparation` holds the scenes the cases start from. Scenes of different steps that describe one state are merged into one scene, `### S1.` and on, built from the wording of the steps; where the steps disagree about that state (a different account, a different amount, a different order of taps), the scene takes one and `## Scope` names every difference. A scene no case of the pass starts from is not carried over.
+- `## Cases` is split into sessions, `### Session <n>. <device>`, one per device: a case with `**Device:** real` or `**Device:** <model>` goes into the session of that device, and the cases with no `**Device:**` go into one session for any device, which a simulator may be. Each session carries a time estimate, in the heading or in the line under it. Inside a session the cases run in this order: those with `**Order:** first`, then the rest, then those with `**Order:** last`.
+- Each case is copied whole from its step, with its marks, under the heading `#### <step>/MC-<n>. <behaviour>`. A case is rewritten only to bring its scene or its language to the pass's, and a case's text is never shortened. A copied full case keeps its `**Status:**` line as it was; the mark of the pass is the one in `**Result:**`.
+- `## Code references` carries the rows of the steps with the same ids, `| <step>/MC-<n> | (file:line) |`.
+- The last line is `**Result:**`, one token per case: `<id> PASS`, `<id> FAIL (<why>)`, `<id> BLOCKED (<why>)`, `<id> DROPPED (<why>)` for a case the owner took off during the pass, and `<id> __` while there is none. The author writes every token as `<id> __`. A reason is written without an unbalanced parenthesis: the reader of the line cannot read past one, and every later token is lost.
+
+A pass file is read by `## The lint` like any other: each case is an ordinary case of its style, named by its heading as written (`#### 01/MC-1.`), and `## Code references` and `**Result:**` are keyed by `<step>/MC-<n>`. Then `## Check` reads it with a fresh reader, as it reads every `ManualChecks.md`. The stage ends with the list of cases for a person and waits for `/task-continue`.
+
 ## Step rules
 
 - **One row, one action.** An action on a named object in a named place, and what the screen shows right after it. "Then", "and then", "afterwards" or a semicolon inside `Action` mean two rows.
@@ -225,6 +244,7 @@ Under `per-step` none of the three is written, and a `**Runner:** agent` in a fi
 | `chain` | "after case N", "the state right after", or an edit history kept in the file |
 | `scriptable` | a case in which every step is a command — a backticked command, or "run the command…": nothing in it needs a person, so it is a script, not a case (`## Does this check need a person?`). The repair routes the case — `covered` in `## Scope`, or an automatable gap — and under `auto` the last one routed away takes the file with it; rewording the steps is not a repair |
 | `file` | no `[COVERS]`, no `## Run record`, no `## On failure`, no `## Code references` in a file that holds a case |
+| `pass` | in a file with a `[PASS] = <step>, …` line (`## Collective pass`): a case outside a session, a case id that is not `<step>/MC-<n>`, `**Order:** first` after a case without it and `**Order:** last` before a case without it (once per session), a case with no token in `**Result:**`, a file with no `**Result:**` line in `full` too; the case is named by its heading as written |
 
 **No check counts lines.** The file has no line limit in either style, for a case, a section or the whole of it. Its length is held by the format of a case and by the fresh reader's `redundant` (`## Check`).
 

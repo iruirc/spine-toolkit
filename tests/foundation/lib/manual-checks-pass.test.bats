@@ -188,6 +188,12 @@ assert status['4'] == '**Status:** FAIL \u2014 reason: the badge was gone', stat
 PY2
 }
 
+@test "the pass file of the fixture is a pass file the lint accepts" {
+  grep -qxF '[PASS] = 01, 02' "$EPIC/ManualChecks.md"
+  run "$LINT" "$EPIC/ManualChecks.md"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
 @test "both step files still pass lint-manual-checks after writeback" {
   "$LINT" "$EPIC/01-cart.step/ManualChecks.md"
   "$LINT" "$EPIC/02-badge.step/ManualChecks.md"

@@ -1090,3 +1090,86 @@ PY
     grep -F '| `field` |' <<<"$s" | grep -qF -- "$token" || { echo "the field row does not name $token"; return 1; }
   done
 }
+
+# The collective pass: one ManualChecks.md at the root of an epic, written by its Acceptance stage.
+@test "the skill has ## Collective pass, after ## Marks for a collective pass, and says who writes the file and from what" {
+  grep -qx '## Collective pass' "$SKILL" || { echo "no ## Collective pass"; return 1; }
+  heads="$(grep '^## ' "$SKILL")"
+  [ "$(grep -n -x '## Collective pass' <<<"$heads" | cut -d: -f1)" -eq "$(( $(grep -n -x '## Marks for a collective pass' <<<"$heads" | cut -d: -f1) + 1 ))" ] \
+    || { echo "## Collective pass does not follow ## Marks for a collective pass"; return 1; }
+  s="$(skill_section '## Collective pass')"
+  for token in '`Acceptance`' 'scripts/manual-checks-pass.sh collect' '`[PASS] = <step>, <step>, …`' \
+               '`## Agent verdicts`' '`Validation.md`' '`## Scope`' '`## Preparation`' '`## Code references`' \
+               '`### Session <n>. <device>`' '`#### <step>/MC-<n>. <behaviour>`' '`**Order:** first`' '`**Order:** last`' \
+               '`**Result:**`' '`<id> PASS`' '`<id> FAIL (<why>)`' '`<id> BLOCKED (<why>)`' '`<id> DROPPED (<why>)`' '`<id> __`' \
+               'any device' 'one language' 'unbalanced parenthesis' 'examples/manual-checks.pass.en.md' 'examples/manual-checks.pass.ru.md'; do
+    grep -qF -- "$token" <<<"$s" || { echo "## Collective pass does not say: $token"; return 1; }
+  done
+}
+
+@test "the collective pass keeps the agent's part out of the file, merges scenes and hands back what the agent could not reach" {
+  s="$(skill_section '## Collective pass')"
+  grep -qF 'The agent part is not in the file' <<<"$s" || { echo "the agent part is not kept out of the file"; return 1; }
+  grep -qF 'goes to a person with the reason in `## Scope`' <<<"$s" || { echo "a case the agent did not reach has no route"; return 1; }
+  grep -qF 'describe one state are merged' <<<"$s" || { echo "the scenes are not merged"; return 1; }
+  grep -qF 'every difference' <<<"$s" || { echo "the differences of merged scenes are not recorded"; return 1; }
+  grep -qF 'copied whole' <<<"$s" || { echo "a case is not copied whole"; return 1; }
+  grep -qF 'time estimate' <<<"$s" || { echo "a session has no time estimate"; return 1; }
+}
+
+@test "the lint table names the pass file and its findings" {
+  s="$(skill_section '## The lint')"
+  grep -qF '| `pass` |' <<<"$s" || { echo "the lint table has no pass row"; return 1; }
+  row="$(grep -F '| `pass` |' <<<"$s")"
+  for token in '[PASS] = <step>' 'outside a session' '<step>/MC-<n>' 'Order'; do
+    grep -qF -- "$token" <<<"$row" || { echo "the pass row does not name $token"; return 1; }
+  done
+}
+
+@test "two collective pass examples pass the lint and show two sessions, a first-ordered case and a merged scene" {
+  for lang in en ru; do
+    ex="$ROOT/skills/manual-checks/examples/manual-checks.pass.$lang.md"
+    [ -f "$ex" ] || { echo "no example $ex"; return 1; }
+    run "$ROOT/scripts/lint-manual-checks.sh" "$ex"
+    [ "$status" -eq 0 ] || { echo "manual-checks.pass.$lang.md fails the lint:"; echo "$output"; return 1; }
+    grep -qE '^\[PASS\] = ' "$ex" || { echo "manual-checks.pass.$lang.md: no [PASS] line"; return 1; }
+    [ "$(grep -c '^### Session [0-9]*\. ' "$ex")" -eq 2 ] || { echo "manual-checks.pass.$lang.md: not two sessions"; return 1; }
+    n="$(grep -c '^#### [0-9][0-9]*/MC-[0-9]*\. ' "$ex")"
+    { [ "$n" -ge 4 ] && [ "$n" -le 5 ]; } || { echo "manual-checks.pass.$lang.md: $n cases, not four or five"; return 1; }
+    grep -qE '^\*\*Order:\*\* first ' "$ex" || { echo "manual-checks.pass.$lang.md: no case with Order first"; return 1; }
+    grep -q '^### S1\. ' "$ex" || { echo "manual-checks.pass.$lang.md: no merged scene S1"; return 1; }
+    grep -qE '^\*\*Result:\*\* 01/MC-1 ' "$ex" || { echo "manual-checks.pass.$lang.md: no Result line keyed by step"; return 1; }
+    sc="$(awk '/^## Scope/{f=1;next} f&&/^## /{exit} f' "$ex")"
+    grep -qiE "$(if [ "$lang" = en ]; then echo 'scene'; else ru '\u0441\u0446\u0435\u043d'; fi)" <<<"$sc" \
+      || { echo "manual-checks.pass.$lang.md: ## Scope says nothing of the scenes"; return 1; }
+    for t in '## Run record' '## On failure' '**Status:**' '**Priority:**'; do
+      ! grep -qF -- "$t" "$ex" || { echo "manual-checks.pass.$lang.md carries $t"; return 1; }
+    done
+    ! grep -qiE '\b(swift|kotlin|java|android|ios|iphone|xcode|gradle)\b' "$ex" \
+      || { echo "manual-checks.pass.$lang.md names an ecosystem"; return 1; }
+  done
+  run python3 - "$ROOT/skills/manual-checks/examples" <<'PY'
+import re, sys
+cyr = re.compile('[\u0400-\u04ff]')
+en = open(sys.argv[1] + '/manual-checks.pass.en.md', encoding='utf-8').read()
+ru = open(sys.argv[1] + '/manual-checks.pass.ru.md', encoding='utf-8').read()
+assert not cyr.search(en), 'manual-checks.pass.en.md holds Cyrillic'
+assert len(cyr.findall(ru)) > 300, 'manual-checks.pass.ru.md is not written in Russian'
+PY
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "the pass examples have the same cases in English and in Russian, and the script reads their Result line" {
+  for lang in en ru; do
+    ex="$ROOT/skills/manual-checks/examples/manual-checks.pass.$lang.md"
+    grep -o '^#### [0-9][0-9]*/MC-[0-9]*\.' "$ex" >"$BATS_TEST_TMPDIR/ids.$lang"
+    d="$BATS_TEST_TMPDIR/epic.$lang"
+    mkdir -p "$d"
+    cp "$ex" "$d/ManualChecks.md"
+    run "$ROOT/scripts/manual-checks-pass.sh" marks "$d"
+    [ "$status" -eq 0 ] || { echo "marks fails on the $lang example: $output"; return 1; }
+    [ "$(python3 -c 'import json,sys; print(len(json.load(sys.stdin)["unmarked"]))' <<<"$output")" -eq "$(wc -l <"$BATS_TEST_TMPDIR/ids.$lang" | tr -d ' ')" ] \
+      || { echo "the $lang example's Result line is not read case by case: $output"; return 1; }
+  done
+  diff "$BATS_TEST_TMPDIR/ids.en" "$BATS_TEST_TMPDIR/ids.ru" || { echo "the cases of the two examples differ"; return 1; }
+}
