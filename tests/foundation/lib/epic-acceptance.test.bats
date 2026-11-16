@@ -129,6 +129,8 @@ check() {
     || { echo "workflow-epic does not say that Done turns a FAIL into a per-step bug step"; return 1; }
   grep -qF "an agent's mark from the step's own \`ManualChecks.md\`" "$skill" \
     || { echo "workflow-epic does not say where the case of an agent's FAIL is copied from"; return 1; }
+  grep -qF 'When the stage'"'"'s own status is `FAILED` or `FLAKY`, return `next_recommended_action=ask_user` with `last_completed_stage=Acceptance` and do not run Done' "$skill" \
+    || { echo "workflow-epic does not stop for the user, with no Done, on a FAILED or FLAKY Acceptance"; return 1; }
   orch="$ROOT/skills/orchestrator/SKILL.md"
   grep -qF 'every step is done, `manual_checks_pass` is `end` and the epic folder holds no `Validation.md` whose status line is `[VALIDATION_STATUS] = PASSED` → `Acceptance`' "$orch" \
     || { echo "State Detection does not route an epic to Acceptance"; return 1; }

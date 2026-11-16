@@ -360,3 +360,40 @@ PY2
   run "$PASS" writeback "$EPIC"
   [ "$output" = "writeback: 0 mark(s) in 0 file(s)" ]
 }
+
+# Two step folders that share a prefix: address-form.step and address-list.step are both "address".
+colliding_epic() {
+  CE="$BATS_TEST_TMPDIR/colliding"
+  mkdir -p "$CE/address-form.step" "$CE/address-list.step" "$CE/03-plain.step"
+  local d
+  for d in address-form address-list 03-plain; do
+    printf '# Manual Checks\n\n[STYLE] = brief\n\n## Cases\n\n### MC-1. A case of %s\n\n**What it checks:** x\n\n**Start:** S1.\n\n1. Tap\n   → Shows\n\n**Failure looks like:** y\n\n**Result:** MC-1 __\n' "$d" > "$CE/$d.step/ManualChecks.md"
+  done
+  printf '# Manual Checks\n\n[STYLE] = brief\n\n[PASS] = address-form, address-list, 03\n\n## Cases\n\n### Session 1. Simulator\n\n#### address-form/MC-1. A\n\n#### address-list/MC-1. B\n\n#### 03/MC-1. C\n\n**Result:** address-form/MC-1 PASS · address-list/MC-1 FAIL (broken) · 03/MC-1 PASS\n' > "$CE/ManualChecks.md"
+}
+
+@test "step folders that share a prefix take their full stem as the id, the others keep the prefix" {
+  colliding_epic
+  run "$PASS" collect "$CE"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | js '[c["step"] + "/" + c["id"] for c in d["cases"]]')" = '["03/MC-1", "address-form/MC-1", "address-list/MC-1"]' ]
+}
+
+@test "writeback of colliding step ids writes each mark into its own folder, and a second run writes nothing" {
+  colliding_epic
+  run "$PASS" writeback "$CE"
+  [ "$status" -eq 0 ]
+  [ "$output" = "writeback: 3 mark(s) in 3 file(s)" ]
+  grep -q 'MC-1 PASS' "$CE/address-form.step/ManualChecks.md"
+  grep -q 'MC-1 FAIL (broken)' "$CE/address-list.step/ManualChecks.md"
+  grep -q 'MC-1 PASS' "$CE/03-plain.step/ManualChecks.md"
+  run "$PASS" writeback "$CE"
+  [ "$output" = "writeback: 0 mark(s) in 0 file(s)" ]
+}
+
+@test "marks reads the full-stem ids of colliding steps" {
+  colliding_epic
+  run "$PASS" marks "$CE"
+  [ "$(echo "$output" | js '[m["case"] for m in d["marks"]]')" = '["03/MC-1", "address-form/MC-1", "address-list/MC-1"]' ]
+  [ "$(echo "$output" | js 'd["unmarked"]')" = '[]' ]
+}

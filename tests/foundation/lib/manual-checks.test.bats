@@ -1197,7 +1197,7 @@ PY
 @test "at end the Validation brief tells the validator to mark cases for the pass, at per-step it does not" {
   for p in $PROFILES; do
     end="$(walk_run "$p" ', "manual_checks_pass": "end"' | pick 'o.calls[0].prompt')"
-    for t in 'collective pass' '## Marks for a collective pass' '**Runner:** agent' 'not a case for a person'; do
+    for t in 'collective pass' '## Marks for a collective pass' '**Runner:** agent' 'stays a case' 'counts as a case'; do
       grep -qF -- "$t" <<<"$end" || { echo "profile-$p: the end brief lacks: $t"; return 1; }
     done
     for pass in '' ', "manual_checks_pass": "per-step"'; do
@@ -1219,4 +1219,29 @@ PY
     || { echo "driver-contract.md still says deferred to a human"; return 1; }
   grep -qF 'manual_checks_pass' "$ROOT/conventions/driver-contract.md" \
     || { echo "driver-contract.md never says where a deferred check goes depends on manual_checks_pass"; return 1; }
+}
+
+@test "a Runner agent check stays a case of the step file and counts for writing it, in the skill" {
+  s="$(skill_section '## Does this check need a person?')"
+  para="$(grep -F 'A check deferred because nothing could drive the app' <<<"$s")"
+  for token in '**Runner:** agent' 'stays a case' 'counts as a case'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the deferred-check paragraph does not say: $token"; return 1; }
+  done
+  m="$(skill_section '## Marks for a collective pass')"
+  for token in '**Runner:** agent' 'stays a case' 'counts as a case' '`[MANUAL_CHECKS]` = `auto`'; do
+    grep -qF -- "$token" <<<"$m" || { echo "## Marks for a collective pass does not say: $token"; return 1; }
+  done
+}
+
+@test "the brief template marks the three lines as written only under end, and per-step carries none" {
+  b="$(skill_section '## Brief')"
+  grep -qF 'only under `manual_checks_pass` = `end`; at `per-step` a case carries none' <<<"$b" \
+    || { echo "## Brief does not say the marks are written only under end and none at per-step"; return 1; }
+  tpl="$(awk '/^\*\*The case:\*\*/{f=1} f&&/^```$/{n++} f{print} n==2{exit}' <<<"$b")"
+  [ "$(grep -cF '<only under end>' <<<"$tpl")" -eq 3 ] || { echo "the template does not mark each of the three lines as end-only"; return 1; }
+}
+
+@test "the public docs say a step takes the epic's manual_checks_pass unless its own Task.md names it" {
+  grep -qF 'inherits the epic'"'"'s value unless its own `Task.md` names it' "$ROOT/docs/configuration.md" \
+    || { echo "docs/configuration.md states another precedence"; return 1; }
 }

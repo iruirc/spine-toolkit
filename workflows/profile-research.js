@@ -136,7 +136,7 @@ const DRIVER_STOPS = `Four things can suspend it, and all four hand it over the 
 
 // What a step's Validation adds under manual_checks_pass=end: its cases do not go to a person as the
 // step ends but to the epic's collective pass. Empty at per-step, so the brief reads as it did.
-const PASS_NOTE = MANUAL_CHECKS_PASS === 'end' ? `\n\nThis run's manual_checks_pass is end: the cases of this step go to the epic's collective pass, not to a person as the step ends. Mark them by the manual-checks skill's ## Marks for a collective pass. A check deferred only because a driver could not reach it gets **Runner:** agent, not a case for a person.` : ''
+const PASS_NOTE = MANUAL_CHECKS_PASS === 'end' ? `\n\nThis run's manual_checks_pass is end: the cases of this step go to the epic's collective pass, not to a person as the step ends. Mark them by the manual-checks skill's ## Marks for a collective pass. A check deferred only because a driver could not reach it gets **Runner:** agent and stays a case of the step's ManualChecks.md; it counts as a case when deciding whether the file is written.` : ''
 
 // Documentation routing. Which declared component a change set may have touched is a script
 // (conventions/docs-components.md), because matching a diff against a dozen glob patterns by

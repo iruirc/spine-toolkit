@@ -212,7 +212,7 @@ When a person walks the `ManualChecks.md` of an epic: `per-step` — after each 
 is handed over; `end` — once, at the end of the epic, in a single pass over the cases its steps
 marked for it. With `end` the steps of the epic mark their cases for that pass and the epic runs an
 `Acceptance` stage. The field reaches the run as `manual_checks_pass` in the contract and a step
-inherits the epic's value unless its own `Task.md` or the project says otherwise. `/setup` does not
+inherits the epic's value unless its own `Task.md` names it. `/setup` does not
 ask the question; the template ships `per-step`.
 
 ### [REPORT]

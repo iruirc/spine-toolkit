@@ -62,7 +62,7 @@ A check that needs none of them is not a case. It gets one of three outcomes:
 | `covered` | Validation, or automation already run, checked it, and the evidence exists | `## Scope`, with a reference to the evidence; `Validation.md` when there is no file |
 | `drop` | it costs more than it is worth, or its outcome changes nothing | at Plan: a line in `## Not automated` with its reason |
 
-**A check deferred because nothing could drive the app in this run** — `drive_app` off, no driver, a driver that cannot reach the surface — and that the diff changes is a device action: driving the app is exactly what the run could not do, so it needs a person. The BUG reproduction replay is one, and it stays a case. Under `manual_checks_pass` = `end` the check is deferred to a collective pass, where a driver is usually there: such a check that was deferred only because of the driver is marked `**Runner:** agent` instead of being a device action (`## Marks for a collective pass`), and a check that needs a person for another reason stays a device action. Under `per-step` the deferred check is a device action, whatever the reason. "Automatable, not automated" is for a check a script could make, never for one only a driver could.
+**A check deferred because nothing could drive the app in this run** — `drive_app` off, no driver, a driver that cannot reach the surface — and that the diff changes is a device action: driving the app is exactly what the run could not do, so it needs a person. The BUG reproduction replay is one, and it stays a case. Under `manual_checks_pass` = `end` the check is deferred to a collective pass, where a driver is usually there: such a check that was deferred only because of the driver is marked `**Runner:** agent` instead of being a device action (`## Marks for a collective pass`); it stays a case of the step's `ManualChecks.md` and counts as a case when `[MANUAL_CHECKS]` = `auto` decides whether the file is written. A check that needs a person for another reason stays a device action. Under `per-step` the deferred check is a device action, whatever the reason. "Automatable, not automated" is for a check a script could make, never for one only a driver could.
 
 **A mixed check** — one or two actions of a person inside a check made of commands — is not written as a case of steps. Plan makes it work for a phase: a script that does everything itself, stops at a prompt where the person is needed ("turn on airplane mode, press Enter") and prints PASS or FAIL. It lives where the project keeps its scripts. In `ManualChecks.md` its launch is a `**dev-only:**` step in `## Preparation`; the case holds only the person's steps, and its `**Expected result:**` is the verdict the script prints.
 
@@ -191,7 +191,7 @@ The first two rules hold for a task that changes product behaviour. On a task wh
 
 The contract's `manual_checks_pass` says when the cases of a task are walked: `per-step`, the default, walks each step's file after that step, and `end` collects the cases of all steps into one collective pass at the end. Under `end` a case may carry three marks that tell the pass who walks it, on what, and when. They are written right after `**What it checks:**`, in `full` and in `brief`, and each is optional:
 
-- `**Runner:** agent` marks a case the diff changes that this run did not walk only because the driver was off, was not found or did not reach the surface. The agent walks it in the pass; when it cannot, the case goes to a person with the reason. The value is always `agent`: a case a person walks has no `**Runner:**` line.
+- `**Runner:** agent` marks a case the diff changes that this run did not walk only because the driver was off, was not found or did not reach the surface. The agent walks it in the pass; when it cannot, the case goes to a person with the reason. The value is always `agent`: a case a person walks has no `**Runner:**` line. A `**Runner:** agent` check stays a case of the step's `ManualChecks.md`, and it counts as a case when `[MANUAL_CHECKS]` = `auto` decides whether the file is written: a step whose only deferred checks are driver-only still writes its file.
 - `**Device:** real` or `**Device:** <model>` marks a case that by its nature needs a real device, a named model: speed, a gesture with inertia, the camera, a sensor. A case that any device can show, a simulator included, has no such line.
 - `**Order:** first — <why>` or `**Order:** last — <why>` marks a case that needs a state nothing has touched or that changes it for good: a case that needs access not yet granted is `first`, a case that unloads the app is `last`. The reason follows the dash, in one clause. A case that can run at any point has no such line.
 
@@ -203,7 +203,7 @@ Under `per-step` none of the three is written, and a `**Runner:** agent` in a fi
 
 Under `manual_checks_pass` = `end` the steps of an epic keep their own `ManualChecks.md` unwalked, and the epic's `Acceptance` stage writes one more at the epic's root, `<epic>/ManualChecks.md`: the collective pass, the one file a person walks at the end. The epic's `[validator]` writes it by this section and by the rest of the skill, in the epic's `manual_checks_style`. Before writing, read `examples/manual-checks.pass.en.md` or `examples/manual-checks.pass.ru.md`, and the English one for any other language.
 
-**Where the cases come from.** `scripts/manual-checks-pass.sh collect <epic_dir>` lists the cases of every step that carry no mark yet, with their `**Runner:**`, `**Device:**` and `**Order:**`. A step id is the name of its `.step` folder up to the first `-` (`06-editor.step` is `06`), and a case of the pass is `<step>/MC-<n>`.
+**Where the cases come from.** `scripts/manual-checks-pass.sh collect <epic_dir>` lists the cases of every step that carry no mark yet, with their `**Runner:**`, `**Device:**` and `**Order:**`. A step id is the name of its `.step` folder up to the first `-` (`06-editor.step` is `06`); when two or more `.step` folders resolve to the same id (`address-form.step` and `address-list.step` are both `address`), each of them takes its full name without `.step` (`address-form`, `address-list`), and the other steps keep the short id. A case of the pass is `<step>/MC-<n>`.
 
 **What the agent walks.** The agent walks through the driver every `**Runner:** agent` case and every other case the driver reaches whole, with no device action, visual judgment or external service. The agent part is not in the file: its verdicts are rows of the table `## Agent verdicts` in the epic's `Validation.md`, `| Case | Mark | Evidence |`, one row per case, the case keyed `<step>/MC-<n>`. A case the agent did not reach goes to a person with the reason in `## Scope`, and is written into the file like any other.
 
@@ -305,11 +305,11 @@ The `**Result:**` line carries one mark per case: PASS, FAIL or BLOCKED, with it
 
 **What it checks:** the intent, in one line
 
-**Runner:** agent
+**Runner:** agent   <only under end>
 
-**Device:** real
+**Device:** real   <only under end>
 
-**Order:** first — <why>
+**Order:** first — <why>   <only under end>
 
 **Start:** S1, and only what differs from it
 
@@ -321,7 +321,7 @@ The `**Result:**` line carries one mark per case: PASS, FAIL or BLOCKED, with it
 **Failure looks like:** what is on the screen when it is broken
 ```
 
-`**What it checks:**`, `**Start:**` and `**Failure looks like:**` are always there. `**Runner:**`, `**Device:**` and `**Order:**` are the optional marks of `## Marks for a collective pass`: the template shows where they stand, and a case keeps only the ones it needs. `**Test data:**` is there when a step uses a value or the case walks conditions. Each step is a numbered line with one action, and its expectation follows `→`, on the line under it or on the same line. A preparing step is a numbered step with no `→` line, allowed only when the next step's expectation covers it. A case starts from a scene and never from another case. It carries no other field than these and the marks: priority, traces, preconditions, an expected result, cleanup, status and notes belong to `full`.
+`**What it checks:**`, `**Start:**` and `**Failure looks like:**` are always there. `**Runner:**`, `**Device:**` and `**Order:**` are the optional marks of `## Marks for a collective pass`: the template shows where they stand, and a case keeps only the ones it needs, and only under `manual_checks_pass` = `end`; at `per-step` a case carries none. The `<only under end>` notes of the template are no part of a case. `**Test data:**` is there when a step uses a value or the case walks conditions. Each step is a numbered line with one action, and its expectation follows `→`, on the line under it or on the same line. A preparing step is a numbered step with no `→` line, allowed only when the next step's expectation covers it. A case starts from a scene and never from another case. It carries no other field than these and the marks: priority, traces, preconditions, an expected result, cleanup, status and notes belong to `full`.
 
 **What holds from `full`.** **A scene is a state** of `## Structure`, `## Does this check need a person?`, `## What a case must prove`, `## Grounding`, the `## Code references` section, `## Refreshing`, `## No instrument in the file` and `## The symbol rule`. `## Step rules` hold too, except the steps table: one action per step, no "repeat steps", independent cases, every object named and located, a checkable expectation, the app's text copied verbatim. They read in brief terms: where a rule names `**Preconditions:**`, read `**Start:**`; where it names `**Expected result:**`, read the last step's expectation; the interface language is named in `## Scope` or in `S1`; and a step that needs a code change or a terminal goes in a scene marked `**dev-only:**`.
 

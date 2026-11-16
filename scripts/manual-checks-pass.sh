@@ -8,7 +8,9 @@ set -euo pipefail
 #   collect    the cases of the steps that carry no mark yet, in the order of steps and ids:
 #              {"cases": [{"step", "dir", "id", "title", "style", "runner", "device", "order"}]}.
 #              A step's id is its .step folder's name up to the first "-" (06-editor.step is 06;
-#              a folder with no "-" is its name without .step). A step with no ManualChecks.md is
+#              a folder with no "-" is its name without .step); when two or more folders resolve to
+#              the same id (address-form.step and address-list.step are both address), each of them
+#              takes its full name without .step (address-form, address-list). A step with no ManualChecks.md is
 #              skipped. A brief case is open while its token in **Result:** reads "MC-<n> __" or is
 #              missing; a full case is open while its **Status:** line is still the three empty boxes.
 #              runner, device and order are the optional marks of a case as written, or null.
@@ -149,13 +151,17 @@ def result_lines(rows):
 
 
 def steps_of(epic):
-    """The step folders: (step id, folder name), in the order of their names."""
-    out = []
+    """The step folders: (step id, folder name), in the order of their names. The id is the short
+    prefix of the stem; when two or more folders share a prefix, each of them takes its full stem."""
+    found = []
     for name in sorted(os.listdir(epic), key=natural):
         if name.endswith('.step') and os.path.isdir(os.path.join(epic, name)):
             stem = name[:-len('.step')]
-            out.append((stem.split('-', 1)[0] if '-' in stem else stem, name))
-    return out
+            found.append((stem.split('-', 1)[0] if '-' in stem else stem, stem, name))
+    count = {}
+    for short, _, _ in found:
+        count[short] = count.get(short, 0) + 1
+    return [(short if count[short] == 1 else stem, name) for short, stem, name in found]
 
 
 def section(rows, start, level):
