@@ -111,6 +111,11 @@ check() {
   check "$out" 'has("acceptance") && ["[VALIDATION_STATUS]", "already_passed"].every((t) => call("acceptance").prompt.includes(t)) && !has("manual-checks:check") && has("done") && r.notes.includes("Acceptance already ran; Validation.md kept") && r.stages.some((s) => s.stage === "Acceptance") && r.last_completed_stage === "Done"'
 }
 
+@test "end: only a PASSED earlier pass is kept; after a FAILED one the stage runs as a fresh pass" {
+  out="$(run_epic Execute end "$DONE_STEPS, \"acceptance\": {\"already_passed\": false, \"validation_status\": \"PASSED\", \"artifact_path\": \"$DIR/Validation.md\", \"manual_checks_path\": \"$DIR/ManualChecks.md\", \"manual_checks\": [\"01/MC-1\"], \"manual_checks_changed\": true, \"agent_verdicts\": 1, \"summary\": \"s\"}")"
+  check "$out" 'call("acceptance").prompt.includes("already carries the line [VALIDATION_STATUS] = PASSED") && call("acceptance").prompt.includes("A status FAILED or FLAKY there means the earlier pass did not complete") && has("manual-checks:check") && r.next_recommended_action === "ask_user" && r.last_completed_stage === "Acceptance" && !r.notes.includes("Acceptance already ran") && !has("done")'
+}
+
 @test "Method B and the orchestrator know the Acceptance stage" {
   skill="$ROOT/skills/workflow-epic/SKILL.md"
   grep -qF 'Research → Plan → Execute → Acceptance → Done' "$skill" || { echo "workflow-epic does not order the stages with Acceptance"; return 1; }
@@ -118,7 +123,7 @@ check() {
   grep -qF 'bug step' "$skill" && grep -qF '[MANUAL_CHECKS_PASS] = per-step' "$skill" \
     || { echo "workflow-epic does not say that Done turns a FAIL into a per-step bug step"; return 1; }
   orch="$ROOT/skills/orchestrator/SKILL.md"
-  grep -qF 'every step is done, `manual_checks_pass` is `end` and the epic folder holds no `Validation.md` → `Acceptance`' "$orch" \
+  grep -qF 'every step is done, `manual_checks_pass` is `end` and the epic folder holds no `Validation.md` whose status line is `[VALIDATION_STATUS] = PASSED` → `Acceptance`' "$orch" \
     || { echo "State Detection does not route an epic to Acceptance"; return 1; }
   grep -qF "re-dispatch the epic by State Detection item 4's rule, applied directly" "$orch" \
     || { echo "the pending_steps re-dispatch does not say it bypasses the unticked Plan.md rows"; return 1; }

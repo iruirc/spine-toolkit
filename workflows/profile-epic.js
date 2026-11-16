@@ -1391,7 +1391,7 @@ if (runs('Execute')) {
 // walk that reached its end gets one: a pass over steps still to run would be walked again later.
 // The orchestrator routes here only while the epic has no Validation.md, so a bug step that Done
 // creates is walked inside itself. A forward run that walks the bug steps and arrives here anyway
-// meets a Validation.md from the earlier pass: the stage keeps it, since Done reads its ## Agent
+// meets a Validation.md from the earlier PASSED pass: the stage keeps it, since Done reads its ## Agent
 // verdicts and **Device:** lines, and the run goes on into Done.
 const PASS_FILE = `${DIR}/ManualChecks.md`
 const ACCEPTANCE = {
@@ -1417,7 +1417,7 @@ if (runs('Acceptance') && MANUAL_CHECKS_PASS === 'end' && branch !== 'pure_resea
   const acceptance = await agent(
     brief(
       'Acceptance',
-      `First read ${DIR}/Validation.md. When it exists and already carries a [VALIDATION_STATUS] line, the pass ran before: change nothing, run nothing, and return already_passed true, validation_status as that line says, manual_checks empty and agent_verdicts 0. Everything below is for an epic whose pass has not run yet.
+      `First read ${DIR}/Validation.md. When it exists and already carries the line [VALIDATION_STATUS] = PASSED, the pass ran before: change nothing, run nothing, and return already_passed true, validation_status PASSED, manual_checks empty and agent_verdicts 0. A status FAILED or FLAKY there means the earlier pass did not complete: return already_passed false, run the pass below as a fresh one, and rewrite the file. Everything below is for an epic whose pass has not completed yet.
 
 This epic walks its manual checks in one pass at the end: its steps wrote their cases and left them unwalked. Write ${DIR}/Validation.md; its FIRST LINE is required to be exactly:
 
