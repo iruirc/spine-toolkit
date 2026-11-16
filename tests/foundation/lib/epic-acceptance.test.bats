@@ -90,13 +90,37 @@ check() {
   check "$out" 'has("done") && !call("done").prompt.includes("## Manual acceptance") && !has("done:bug-steps")'
 }
 
+@test "end: Acceptance that returns a status other than PASSED stops for the user, and Done is not run" {
+  out="$(run_epic Execute end "$DONE_STEPS, \"acceptance\": {\"validation_status\": \"FAILED\", \"artifact_path\": \"$DIR/Validation.md\", \"manual_checks\": [], \"agent_verdicts\": 0, \"summary\": \"the app did not launch\"}")"
+  check "$out" 'has("acceptance") && r.next_recommended_action === "ask_user" && r.validation_status === "FAILED" && r.last_completed_stage === "Acceptance" && !has("done:acceptance-marks") && !has("done")'
+}
+
+@test "end: no validator on the platform hands the Acceptance stage back" {
+  AGENTS='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"\u2014","security":"\u2014","diagnostics":"g","init":"\u2014"}'
+  out="$(run_epic Execute end "$DONE_STEPS, $PERSON")"
+  check "$out" '!has("acceptance") && r.next_recommended_action === "ask_user" && r.handback && r.handback.stage === "Acceptance" && r.handback.role === "validator" && !has("done")'
+}
+
+@test "Done with no pass file but an agent FAIL creates the bug step and hands it back as pending" {
+  out="$(run_epic Done end "$BRANCH, \"done:acceptance-marks\": {\"pass_file\": false, \"marks\": [{\"case\": \"01/MC-1\", \"mark\": \"PASS\", \"reason\": null, \"by\": \"agent\"}, {\"case\": \"01/MC-2\", \"mark\": \"FAIL\", \"reason\": \"the total stays 0.00\", \"by\": \"agent\"}], \"unmarked\": [], \"fails\": [{\"case\": \"01/MC-2\", \"reason\": \"the total stays 0.00\", \"bug_step\": null}], \"counts\": {\"PASS\": 1, \"FAIL\": 1}, \"writeback\": \"writeback: 2 mark(s) in 1 file(s)\"}, \"done:bug-steps\": {\"ok\": true, \"branch\": \"decomposition\", \"steps\": [{\"step_id\": \"03-fix.step\", \"task_id\": \"050.3\", \"task_type\": \"BUG\", \"status\": \"PENDING\"}]}")"
+  check "$out" 'has("done:bug-steps") && call("done:bug-steps").prompt.includes("01/MC-2") && r.pending_steps.map((s) => s.step_id).join() === "03-fix.step" && r.next_recommended_action === "continue" && !has("done") && !call("done:acceptance-marks").prompt.includes("When pass_file is false, return it with everything else empty")'
+}
+
+@test "end: a forward run after the pass keeps Validation.md, skips the check and goes on into Done" {
+  out="$(run_epic Execute end "$DONE_STEPS, \"acceptance\": {\"already_passed\": true, \"validation_status\": \"PASSED\", \"artifact_path\": \"$DIR/Validation.md\", \"manual_checks\": [], \"agent_verdicts\": 0, \"summary\": \"s\"}, \"done:acceptance-marks\": {\"pass_file\": false, \"unmarked\": [], \"fails\": [], \"counts\": {}}")"
+  check "$out" 'has("acceptance") && ["[VALIDATION_STATUS]", "already_passed"].every((t) => call("acceptance").prompt.includes(t)) && !has("manual-checks:check") && has("done") && r.notes.includes("Acceptance already ran; Validation.md kept") && r.stages.some((s) => s.stage === "Acceptance") && r.last_completed_stage === "Done"'
+}
+
 @test "Method B and the orchestrator know the Acceptance stage" {
   skill="$ROOT/skills/workflow-epic/SKILL.md"
   grep -qF 'Research → Plan → Execute → Acceptance → Done' "$skill" || { echo "workflow-epic does not order the stages with Acceptance"; return 1; }
   grep -qE '^- \*\*Acceptance\*\* — `\[validator\]`' "$skill" || { echo "workflow-epic has no Acceptance stage owned by the validator"; return 1; }
-  grep -qF 'done:bug-steps' "$ROOT/workflows/profile-epic.js"
+  grep -qF 'bug step' "$skill" && grep -qF '[MANUAL_CHECKS_PASS] = per-step' "$skill" \
+    || { echo "workflow-epic does not say that Done turns a FAIL into a per-step bug step"; return 1; }
   orch="$ROOT/skills/orchestrator/SKILL.md"
   grep -qF 'every step is done, `manual_checks_pass` is `end` and the epic folder holds no `Validation.md` → `Acceptance`' "$orch" \
     || { echo "State Detection does not route an epic to Acceptance"; return 1; }
+  grep -qF "re-dispatch the epic by State Detection item 4's rule, applied directly" "$orch" \
+    || { echo "the pending_steps re-dispatch does not say it bypasses the unticked Plan.md rows"; return 1; }
   grep -qF 'Research → Plan → Execute → Acceptance → Done' "$ROOT/README.md" || { echo "README's EPIC row lacks Acceptance"; return 1; }
 }

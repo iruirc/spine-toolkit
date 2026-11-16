@@ -140,11 +140,37 @@ PY
   [ "$(echo "$output" | js 'd["unmarked"]')" = '["01/MC-1"]' ]
 }
 
-@test "marks without a pass file is pass_file false and nothing else" {
-  rm "$EPIC/ManualChecks.md"
+@test "marks with neither a pass file nor agent verdicts is pass_file false and nothing else" {
+  rm "$EPIC/ManualChecks.md" "$EPIC/Validation.md"
   run "$PASS" marks "$EPIC"
   [ "$status" -eq 0 ]
   [ "$(echo "$output" | js 'd')" = '{"marks": [], "pass_file": false, "unmarked": []}' ]
+}
+
+@test "marks without a pass file still reads the agent verdicts, and none is unmarked" {
+  rm "$EPIC/ManualChecks.md"
+  printf '%s\n' '| 02/MC-1 | FAIL | the badge read 1 on the screenshot |' >> "$EPIC/Validation.md"
+  run "$PASS" marks "$EPIC"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | js 'd["pass_file"]')" = 'false' ]
+  [ "$(echo "$output" | js '[(m["case"], m["mark"], m["reason"], m["by"]) for m in d["marks"]]')" = \
+'[["01/MC-1", "PASS", null, "agent"], ["02/MC-1", "FAIL", "the badge read 1 on the screenshot", "agent"]]' ]
+  [ "$(echo "$output" | js 'd["unmarked"]')" = '[]' ]
+}
+
+@test "writeback without a pass file writes the agent verdicts, once" {
+  rm "$EPIC/ManualChecks.md"
+  printf '%s\n' '| 02/MC-1 | FAIL | the badge read 1 on the screenshot |' >> "$EPIC/Validation.md"
+  run "$PASS" writeback "$EPIC"
+  [ "$status" -eq 0 ]
+  [ "$output" = "writeback: 2 mark(s) in 2 file(s)" ]
+  grep -q '^\*\*Result:\*\* MC-1 PASS · MC-2 __' "$EPIC/01-cart.step/ManualChecks.md"
+  grep -q '^\*\*Status:\*\* FAIL — reason: the badge read 1 on the screenshot$' "$EPIC/02-badge.step/ManualChecks.md"
+  cp -R "$EPIC" "$BATS_TEST_TMPDIR/after-first"
+  run "$PASS" writeback "$EPIC"
+  [ "$status" -eq 0 ]
+  [ "$output" = "writeback: 0 mark(s) in 0 file(s)" ]
+  diff -r "$EPIC" "$BATS_TEST_TMPDIR/after-first"
 }
 
 @test "marks reads a reason that holds a parenthesis and a dash" {
@@ -237,8 +263,8 @@ PY2
   [ "$(echo "$output" | grep -c '^[<>]')" -eq 2 ]
 }
 
-@test "writeback with no pass file writes nothing and exits 0" {
-  rm "$EPIC/ManualChecks.md"
+@test "writeback with neither a pass file nor agent verdicts writes nothing and exits 0" {
+  rm "$EPIC/ManualChecks.md" "$EPIC/Validation.md"
   run "$PASS" writeback "$EPIC"
   [ "$status" -eq 0 ]
   [ "$output" = "writeback: 0 mark(s) in 0 file(s)" ]

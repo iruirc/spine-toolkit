@@ -20,7 +20,8 @@ set -euo pipefail
 #              Mark cell of a verdict may carry "(<why>)"; without it a FAIL, BLOCKED or DROPPED
 #              takes its Evidence as the reason. A mark in the Result line wins over a verdict of
 #              the same case. A case of the pass with no mark, or still "__", is unmarked. No pass
-#              file means pass_file false and nothing else.
+#              file means pass_file false, the agent verdicts alone as the marks (by "agent"), and
+#              unmarked empty: the agent walked every case, so none was left for a person.
 #   writeback  writes each mark into the file of its step and prints "writeback: <N> mark(s) in
 #              <M> file(s)". In a brief step the token "MC-<n> __" becomes "MC-<n> <MARK>" (with
 #              " (<why>)" when there is a reason; "(" and ")" in a reason are written as "[" and "]",
@@ -29,7 +30,8 @@ set -euo pipefail
 #              "**Status:** <MARK> — reason: <why, or —>". It writes nothing and exits 1 when a case
 #              of the pass is unmarked ("writeback: unmarked: <ids>") or a mark has no place in any
 #              step file ("writeback: no place for: <ids>"). A case already written is left
-#              alone, so a second run prints "writeback: 0 mark(s) in 0 file(s)".
+#              alone, so a second run prints "writeback: 0 mark(s) in 0 file(s)". With no pass file
+#              it writes the agent verdicts the same way.
 #
 # The style of a step file is read from its [STYLE] line as lint-manual-checks.sh reads it: brief
 # or full in any letter case, and no line means full.
@@ -251,7 +253,12 @@ def pass_marks(epic):
     """(pass_file, marks, unmarked) of the pass file and the agent verdicts."""
     path = os.path.join(epic, 'ManualChecks.md')
     if not os.path.isfile(path):
-        return False, [], []
+        # No case was left for a person, so no pass file: the agent's verdicts are the marks.
+        verdicts = {}
+        for cid, mark, reason in agent_verdicts(epic):
+            verdicts.setdefault(cid, (mark, reason))
+        ids = sorted(verdicts, key=lambda c: (natural(c.split('/')[0]), natural(c.split('/')[1])))
+        return False, [{'case': c, 'mark': verdicts[c][0], 'reason': verdicts[c][1], 'by': 'agent'} for c in ids], []
     rows = scan(read(path))
     known, marks, open_ids = {}, {}, []
     for line, h in rows:

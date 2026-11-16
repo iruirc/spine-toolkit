@@ -1390,7 +1390,9 @@ if (runs('Execute')) {
 // pass: the agent drives what a driver reaches, and the rest goes into one file for a person. Only a
 // walk that reached its end gets one: a pass over steps still to run would be walked again later.
 // The orchestrator routes here only while the epic has no Validation.md, so a bug step that Done
-// creates is walked inside itself and this stage never runs twice.
+// creates is walked inside itself. A forward run that walks the bug steps and arrives here anyway
+// meets a Validation.md from the earlier pass: the stage keeps it, since Done reads its ## Agent
+// verdicts and **Device:** lines, and the run goes on into Done.
 const PASS_FILE = `${DIR}/ManualChecks.md`
 const ACCEPTANCE = {
   type: 'object',
@@ -1403,6 +1405,7 @@ const ACCEPTANCE = {
     manual_checks: { type: 'array', items: { type: 'string' }, description: 'the <step>/MC-<n> ids of the cases left for a person' },
     manual_checks_changed: { type: 'boolean', description: 'false when the pass file already held these cases as they are' },
     agent_verdicts: { type: 'integer', description: 'rows written under ## Agent verdicts' },
+    already_passed: { type: 'boolean', description: "true when the epic's Validation.md already carried a status line and was left as it was" },
     driver_status: VALIDATION.properties.driver_status,
     summary: { type: 'string' },
     directive_declined: DECLINED,
@@ -1414,7 +1417,9 @@ if (runs('Acceptance') && MANUAL_CHECKS_PASS === 'end' && branch !== 'pure_resea
   const acceptance = await agent(
     brief(
       'Acceptance',
-      `This epic walks its manual checks in one pass at the end: its steps wrote their cases and left them unwalked. Write ${DIR}/Validation.md; its FIRST LINE is required to be exactly:
+      `First read ${DIR}/Validation.md. When it exists and already carries a [VALIDATION_STATUS] line, the pass ran before: change nothing, run nothing, and return already_passed true, validation_status as that line says, manual_checks empty and agent_verdicts 0. Everything below is for an epic whose pass has not run yet.
+
+This epic walks its manual checks in one pass at the end: its steps wrote their cases and left them unwalked. Write ${DIR}/Validation.md; its FIRST LINE is required to be exactly:
 
 [VALIDATION_STATUS] = PASSED | FAILED | FLAKY
 
@@ -1430,18 +1435,24 @@ Change no production code, no tests and no file of a step: the marks go back int
   )
   if (!acceptance) return finish('stop', { status: 'error', reason: 'the Acceptance agent returned nothing' })
   record('Acceptance', acceptance)
-  if (acceptance.driver_status) result.notes.push(`driver_status: ${acceptance.driver_status}`)
-  log(`Acceptance: ${acceptance.agent_verdicts || 0} agent verdict(s), ${(acceptance.manual_checks || []).length} case(s) for a person`)
-  if (acceptance.validation_status !== 'PASSED') {
-    result.notes.push(`Acceptance returned ${acceptance.validation_status}; Done was not run.`)
-    return finish('ask_user', { validation_status: acceptance.validation_status, branch, completed_steps, skipped_steps, failed_steps, pending_steps })
-  }
-  const forPerson = acceptance.manual_checks || []
-  if (forPerson.length) {
-    const passFile = acceptance.manual_checks_path || PASS_FILE
-    if (MANUAL_CHECKS_CHECK === 'on' && acceptance.manual_checks_changed !== false) await checkManualChecks('Acceptance', 'validator', A.agents.validator, passFile)
-    result.notes.push(`The collective pass waits for a person: walk ${passFile}, fill its **Result:** line for each case — ${forPerson.join(', ')} — then continue the task.`)
-    return finish('ask_user', { branch, completed_steps, skipped_steps, failed_steps, pending_steps })
+  if (acceptance.already_passed) {
+    // The pass is never run a second time: the earlier one stands, and its marks are Done's to read.
+    result.notes.push('Acceptance already ran; Validation.md kept.')
+    log('Acceptance: already ran, Validation.md kept')
+  } else {
+    if (acceptance.driver_status) result.notes.push(`driver_status: ${acceptance.driver_status}`)
+    log(`Acceptance: ${acceptance.agent_verdicts || 0} agent verdict(s), ${(acceptance.manual_checks || []).length} case(s) for a person`)
+    if (acceptance.validation_status !== 'PASSED') {
+      result.notes.push(`Acceptance returned ${acceptance.validation_status}; Done was not run.`)
+      return finish('ask_user', { validation_status: acceptance.validation_status, branch, completed_steps, skipped_steps, failed_steps, pending_steps })
+    }
+    const forPerson = acceptance.manual_checks || []
+    if (forPerson.length) {
+      const passFile = acceptance.manual_checks_path || PASS_FILE
+      if (MANUAL_CHECKS_CHECK === 'on' && acceptance.manual_checks_changed !== false) await checkManualChecks('Acceptance', 'validator', A.agents.validator, passFile)
+      result.notes.push(`The collective pass waits for a person: walk ${passFile}, fill its **Result:** line for each case — ${forPerson.join(', ')} — then continue the task.`)
+      return finish('ask_user', { branch, completed_steps, skipped_steps, failed_steps, pending_steps })
+    }
   }
 }
 
@@ -1477,9 +1488,24 @@ if (runs('Done') && branch === null) {
 const ACCEPTANCE_MARKS = {
   type: 'object',
   additionalProperties: false,
-  required: ['pass_file', 'unmarked', 'fails', 'counts'],
+  required: ['pass_file', 'marks', 'unmarked', 'fails', 'counts'],
   properties: {
     pass_file: { type: 'boolean', description: 'whether the epic has a pass file' },
+    marks: {
+      type: 'array',
+      description: 'the marks as marks printed them, of the pass file and of the agent verdicts',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['case', 'mark', 'by'],
+        properties: {
+          case: { type: 'string' },
+          mark: { type: 'string', enum: ['PASS', 'FAIL', 'BLOCKED', 'DROPPED'] },
+          reason: { type: ['string', 'null'] },
+          by: { type: 'string', enum: ['person', 'agent'] },
+        },
+      },
+    },
     unmarked: { type: 'array', items: { type: 'string' }, description: 'the <step>/MC-<n> ids with no mark yet' },
     fails: {
       type: 'array',
@@ -1509,12 +1535,14 @@ if (runs('Done') && MANUAL_CHECKS_PASS === 'end' && branch !== 'pure_research' &
   const marks = await agent(
     brief(
       'Done',
-      `Run "${passTool}" marks ${DIR} and read the JSON it prints. When pass_file is false, return it with everything else empty. When unmarked is not empty, return it and run nothing else. Otherwise run "${passTool}" writeback ${DIR} and return the line it printed, on stdout or on stderr, in writeback. Return fails, one entry per mark FAIL: its case, its reason, and bug_step — the step_id of the <name>.step/ folder of ${DIR} whose Task.md names that case as <step>/MC-<n>, or null when no step does. Return counts, the number of marks of each kind. Change nothing on disk but what writeback writes.`,
+      `Run "${passTool}" marks ${DIR} and read the JSON it prints. With no pass file it still lists the agent verdicts of ${DIR}/Validation.md as marks; when pass_file is false and marks is empty, return pass_file false with everything else empty. Return marks as it printed them. When unmarked is not empty, return it and run nothing else. Otherwise run "${passTool}" writeback ${DIR} and return the line it printed, on stdout or on stderr, in writeback. Return fails, one entry per mark FAIL: its case, its reason, and bug_step — the step_id of the <name>.step/ folder of ${DIR} whose Task.md names that case as <step>/MC-<n>, or null when no step does. Return counts, the number of marks of each kind. Change nothing on disk but what writeback writes.`,
     ),
     { label: 'done:acceptance-marks', phase: 'Done', agentType: A.agents.architect, schema: ACCEPTANCE_MARKS, ...tuning('architect', 'stage') },
   )
   if (!marks) return finish('stop', { status: 'error', reason: 'the reader of the pass marks returned nothing' })
-  if (marks.pass_file) {
+  // No pass file means the agent walked every case, so its verdicts are the marks: they still go back
+  // into the steps, and an agent FAIL still becomes a bug step.
+  if (marks.pass_file || (marks.marks || []).length) {
     const unmarked = marks.unmarked || []
     if (unmarked.length) {
       result.notes.push(`The collective pass is not finished: ${unmarked.join(', ')} carry no mark in ${PASS_FILE}. Fill their **Result:** tokens, then continue the task.`)
