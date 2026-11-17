@@ -12,9 +12,9 @@ set -euo pipefail
 #              the same id (address-form.step and address-list.step are both address), each of them
 #              takes its full name without .step (address-form, address-list). A step with no
 #              ManualChecks.md is skipped, and so is a step whose own Task.md sets
-#              [MANUAL_CHECKS_PASS] = per-step (a bracketed or a bare value, in any letter case): it
-#              walks its own cases and is not collected, so marks and writeback never see them
-#              either. A brief case is open while its token in **Result:** reads "MC-<n> __" or is
+#              [MANUAL_CHECKS_PASS] = per-step (a bracketed or a bare value, in any letter case,
+#              with an optional trailing "# ..." comment): it walks its own cases and is not
+#              collected, so marks and writeback never see them either. A brief case is open while its token in **Result:** reads "MC-<n> __" or is
 #              missing; a full case is open while its **Status:** line is still the three empty boxes.
 #              runner, device and order are the optional marks of a case as written, or null.
 #   marks      the marks of the pass: {"pass_file": bool, "marks": [{"case": "<step>/MC-<n>",
@@ -62,7 +62,7 @@ import json, os, re, sys
 
 command, epic = sys.argv[1], sys.argv[2]
 
-OWN_PASS = re.compile(r'^\s*\[MANUAL_CHECKS_PASS\]\s*=\s*\[?\s*per-step\s*\]?\s*$', re.I)
+OWN_PASS = re.compile(r'^\s*\[MANUAL_CHECKS_PASS\]\s*=\s*\[?\s*per-step\s*\]?\s*(#.*)?$', re.I)
 STYLE = re.compile(r'^\s*\[STYLE\]\s*=\s*\[?\s*(brief|full)\s*\]?\s*$', re.I)
 FENCE = re.compile(r'^\s*(`{3,}|~{3,})')
 HEADING = re.compile(r'^(#{1,6})\s+(.*?)\s*#*\s*$')

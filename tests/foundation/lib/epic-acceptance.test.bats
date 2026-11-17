@@ -85,6 +85,11 @@ check() {
   check "$out" 'r.next_recommended_action === "ask_user" && r.notes.includes("01/MC-1, 02/MC-3") && r.notes.includes("never walked") && r.notes.includes("un the Acceptance stage, or mark them in their step files") && !r.notes.includes("pass file '"$DIR"'/ManualChecks.md") && !r.notes.includes("**Result:**")'
 }
 
+@test "the marks reader brief returns pass_file, marks and unmarked as printed, with a pass file or without" {
+  out="$(run_epic Done end "$BRANCH, \"done:acceptance-marks\": {\"pass_file\": false, \"marks\": [], \"unmarked\": [\"01/MC-1\"], \"fails\": [], \"counts\": {}}")"
+  check "$out" 'has("done:acceptance-marks") && !call("done:acceptance-marks").prompt.includes("everything else empty") && !call("done:acceptance-marks").prompt.includes("marks is empty and unmarked is empty") && call("done:acceptance-marks").prompt.includes("pass_file, marks and unmarked exactly as it printed them") && call("done:acceptance-marks").prompt.includes("with no pass file") && call("done:acceptance-marks").prompt.includes("the collected cases that have no verdict")'
+}
+
 @test "Done with no pass file and no agent mark but a collected case left unmarked stops, too" {
   out="$(run_epic Done end "$BRANCH, \"done:acceptance-marks\": {\"pass_file\": false, \"marks\": [], \"unmarked\": [\"01/MC-1\"], \"fails\": [], \"counts\": {}}")"
   check "$out" 'r.next_recommended_action === "ask_user" && r.notes.includes("01/MC-1") && !has("done:bug-steps") && !has("done")'

@@ -555,7 +555,7 @@ MD
 }
 
 @test "collect skips a step whose own Task.md sets per-step, bracketed or bare, in any letter case" {
-  for line in '[MANUAL_CHECKS_PASS] = [per-step]' '[MANUAL_CHECKS_PASS] = per-step' '[manual_checks_pass] = [Per-Step]'; do
+  for line in '[MANUAL_CHECKS_PASS] = [per-step]' '[MANUAL_CHECKS_PASS] = per-step' '[manual_checks_pass] = [Per-Step]' '[MANUAL_CHECKS_PASS] = [per-step]  # why: it walks its own cases' '[MANUAL_CHECKS_PASS] = per-step # a bug step'; do
     rm -rf "$EPIC/04-fix.step"
     add_bug_step "$line"
     run "$PASS" collect "$EPIC"
