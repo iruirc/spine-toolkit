@@ -15,15 +15,20 @@ set -euo pipefail
 #              missing; a full case is open while its **Status:** line is still the three empty boxes.
 #              runner, device and order are the optional marks of a case as written, or null.
 #   marks      the marks of the pass: {"pass_file": bool, "marks": [{"case": "<step>/MC-<n>",
-#              "mark", "reason", "by"}], "unmarked": ["<step>/MC-<n>"]}. They come from the
+#              "mark", "reason", "by"}], "unmarked": ["<step>/MC-<n>"], "missing": ["<step>/MC-<n>"]}.
+#              They come from the
 #              **Result:** line of <epic>/ManualChecks.md ("<step>/MC-<n> PASS", "... FAIL (<why>)",
 #              "... BLOCKED (<why>)", "... DROPPED (<why>)", "... __" for none yet) and from the
 #              table "## Agent verdicts" of <epic>/Validation.md ("| Case | Mark | Evidence |"). The
 #              Mark cell of a verdict may carry "(<why>)"; without it a FAIL, BLOCKED or DROPPED
 #              takes its Evidence as the reason. A mark in the Result line wins over a verdict of
-#              the same case. A case of the pass with no mark, or still "__", is unmarked. No pass
-#              file means pass_file false, the agent verdicts alone as the marks (by "agent"), and
-#              unmarked empty: the agent walked every case, so none was left for a person.
+#              the same case. A case of the pass with no mark, or still "__", is unmarked. So is a
+#              case `collect` lists now that the pass has neither a token in **Result:** nor a row
+#              in the verdicts (a case folded into another one, say, or never written): the pass
+#              file holds it nowhere, and it is listed in "missing" as well. A verdict row whose
+#              Case cell is no <step>/MC-<n> (a placeholder "—") is ignored. No pass file means
+#              pass_file false and the agent verdicts alone as the marks (by "agent"); a collected
+#              case with no verdict is unmarked and missing, since nobody walked it.
 #   writeback  writes each mark into the file of its step and prints "writeback: <N> mark(s) in
 #              <M> file(s)". In a brief step the token "MC-<n> __" becomes "MC-<n> <MARK>" (with
 #              " (<why>)" when there is a reason; "(" and ")" in a reason are written as "[" and "]",
@@ -255,16 +260,25 @@ def agent_verdicts(epic):
     return out
 
 
+def case_order(cid):
+    return (natural(cid.split('/')[0]), natural(cid.split('/')[1]))
+
+
 def pass_marks(epic):
-    """(pass_file, marks, unmarked) of the pass file and the agent verdicts."""
+    """(pass_file, marks, unmarked, missing) of the pass file and the agent verdicts. missing is the
+    cases `collect` lists that the pass file has no token, no heading and no verdict for; they are
+    unmarked too, so a case dropped from the pass cannot pass for done."""
     path = os.path.join(epic, 'ManualChecks.md')
+    expected = ['%s/%s' % (c['step'], c['id']) for c in collected(epic)]
     if not os.path.isfile(path):
-        # No case was left for a person, so no pass file: the agent's verdicts are the marks.
+        # No case was left for a person, so no pass file: the agent's verdicts are the marks, and a
+        # collected case with no verdict of the agent is unmarked.
         verdicts = {}
         for cid, mark, reason in agent_verdicts(epic):
             verdicts.setdefault(cid, (mark, reason))
-        ids = sorted(verdicts, key=lambda c: (natural(c.split('/')[0]), natural(c.split('/')[1])))
-        return False, [{'case': c, 'mark': verdicts[c][0], 'reason': verdicts[c][1], 'by': 'agent'} for c in ids], []
+        ids = sorted(verdicts, key=case_order)
+        lost = [c for c in expected if c not in verdicts]
+        return False, [{'case': c, 'mark': verdicts[c][0], 'reason': verdicts[c][1], 'by': 'agent'} for c in ids], lost, lost
     rows = scan(read(path))
     known, marks, open_ids = {}, {}, []
     for line, h in rows:
@@ -284,10 +298,11 @@ def pass_marks(epic):
     for cid, mark, reason in agent_verdicts(epic):
         if cid not in marks:
             marks[cid] = (mark, reason, 'agent')
-    ids = sorted(set(known) | set(marks), key=lambda c: (natural(c.split('/')[0]), natural(c.split('/')[1])))
+    missing = [c for c in expected if c not in known and c not in marks]
+    ids = sorted(set(known) | set(marks) | set(missing), key=case_order)
     listed = [{'case': c, 'mark': marks[c][0], 'reason': marks[c][1], 'by': marks[c][2]} for c in ids if c in marks]
     unmarked = [c for c in ids if c not in marks]
-    return True, listed, unmarked
+    return True, listed, unmarked, sorted(missing, key=case_order)
 
 
 def out(value):
@@ -295,7 +310,8 @@ def out(value):
     sys.stdout.write(json.dumps(value, ensure_ascii=False) + '\n')
 
 
-if command == 'collect':
+def collected(epic):
+    """The cases `collect` lists, in the order of steps and ids."""
     cases = []
     for st in load_steps(epic):
         rows = st['rows']
@@ -305,14 +321,18 @@ if command == 'collect':
             cases.append({'step': st['id'], 'dir': st['dir'], 'id': 'MC-%d' % n, 'title': title,
                           'style': st['style'], 'runner': case_field(rows, body, 'Runner'),
                           'device': case_field(rows, body, 'Device'), 'order': case_field(rows, body, 'Order')})
-    out({'cases': cases})
+    return cases
+
+
+if command == 'collect':
+    out({'cases': collected(epic)})
 
 elif command == 'marks':
-    has_pass, marks, unmarked = pass_marks(epic)
-    out({'pass_file': has_pass, 'marks': marks, 'unmarked': unmarked})
+    has_pass, marks, unmarked, missing = pass_marks(epic)
+    out({'pass_file': has_pass, 'marks': marks, 'unmarked': unmarked, 'missing': missing})
 
 else:
-    has_pass, marks, unmarked = pass_marks(epic)
+    has_pass, marks, unmarked, _ = pass_marks(epic)
     if unmarked:
         sys.stderr.write('writeback: unmarked: %s\n' % ', '.join(unmarked))
         sys.exit(1)

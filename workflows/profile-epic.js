@@ -1431,7 +1431,7 @@ First run "${core('scripts/manual-checks-pass.sh')}" collect ${DIR}. It lists, a
 
 Otherwise build and launch the app only as far as driving the cases needs: each step's own Validation already ran its build and its tests. Walk through the driver every case marked **Runner:** agent and every other case the driver reaches whole, with no device action, visual judgment or external service, as the spine-toolkit:manual-checks skill's ## Does this check need a person? and ## Collective pass say. ${DRIVER_STOPS} Whichever it is, you drive nothing, and every case goes to the person. Write the verdict of each case you walked into Validation.md under the heading ## Agent verdicts, in a table | Case | Mark | Evidence |, one row per case: Case is <step>/MC-<n>, Mark is PASS, FAIL (<why>) or BLOCKED (<why>), Evidence is what you saw and where its record lies. A FAIL is a verdict on the case, not on this stage: the status line says FAILED only when the pass itself could not be run. A case you did not reach goes to the person, with its reason.
 
-Then write the pass file ${PASS_FILE} by the manual-checks skill's ## Collective pass section, in this run's manual_checks_style, ${MANUAL_CHECKS_STYLE}, with the cases left for a person only. Run "${core('scripts/lint-manual-checks.sh')}" on it, repair every finding it prints, and run it again. When no case is left for a person, write no pass file. Return manual_checks, the <step>/MC-<n> ids of the cases left for a person, and manual_checks_changed false when the pass file already held them as they are.
+Then write the pass file ${PASS_FILE} by the manual-checks skill's ## Collective pass section, in this run's manual_checks_style, ${MANUAL_CHECKS_STYLE}, with the cases left for a person only. Every case collect lists is copied whole as its own #### <step>/MC-<n>. with its own **Result:** token: two cases are never merged into one, not even when they differ only in conditions or device; a case for another device goes into that device's session. A case that is neither in the pass file nor a row of ## Agent verdicts is lost: Done stops on it. Run "${core('scripts/lint-manual-checks.sh')}" on it, repair every finding it prints, and run it again. When no case is left for a person, write no pass file. Return manual_checks, the <step>/MC-<n> ids of the cases left for a person, and manual_checks_changed false when the pass file already held them as they are.
 
 Change no production code, no tests and no file of a step: the marks go back into the steps at Done. Return the same status you wrote on the first line.`,
     ),
@@ -1510,7 +1510,7 @@ const ACCEPTANCE_MARKS = {
         },
       },
     },
-    unmarked: { type: 'array', items: { type: 'string' }, description: 'the <step>/MC-<n> ids with no mark yet' },
+    unmarked: { type: 'array', items: { type: 'string' }, description: 'the <step>/MC-<n> ids with no mark yet, the ones the pass file leaves out included' },
     fails: {
       type: 'array',
       items: {
@@ -1539,17 +1539,17 @@ if (runs('Done') && MANUAL_CHECKS_PASS === 'end' && branch !== 'pure_research' &
   const marks = await agent(
     brief(
       'Done',
-      `Run "${passTool}" marks ${DIR} and read the JSON it prints. With no pass file it still lists the agent verdicts of ${DIR}/Validation.md as marks; when pass_file is false and marks is empty, return pass_file false with everything else empty. Return marks as it printed them. When unmarked is not empty, return it and run nothing else. Otherwise run "${passTool}" writeback ${DIR} and return the line it printed, on stdout or on stderr, in writeback. Return fails, one entry per mark FAIL: its case, its reason, and bug_step — the step_id of the <name>.step/ folder of ${DIR} whose Task.md names that case as <step>/MC-<n>, or null when no step does. Return counts, the number of marks of each kind. Change nothing on disk but what writeback writes.`,
+      `Run "${passTool}" marks ${DIR} and read the JSON it prints. With no pass file it still lists the agent verdicts of ${DIR}/Validation.md as marks; when pass_file is false, marks is empty and unmarked is empty, return pass_file false with everything else empty. Return marks as it printed them. When unmarked is not empty, return it and run nothing else. Otherwise run "${passTool}" writeback ${DIR} and return the line it printed, on stdout or on stderr, in writeback. Return fails, one entry per mark FAIL: its case, its reason, and bug_step — the step_id of the <name>.step/ folder of ${DIR} whose Task.md names that case as <step>/MC-<n>, or null when no step does. Return counts, the number of marks of each kind. Change nothing on disk but what writeback writes.`,
     ),
     { label: 'done:acceptance-marks', phase: 'Done', agentType: A.agents.architect, schema: ACCEPTANCE_MARKS, ...tuning('architect', 'stage') },
   )
   if (!marks) return finish('stop', { status: 'error', reason: 'the reader of the pass marks returned nothing' })
   // No pass file means the agent walked every case, so its verdicts are the marks: they still go back
   // into the steps, and an agent FAIL still becomes a bug step.
-  if (marks.pass_file || (marks.marks || []).length) {
+  if (marks.pass_file || (marks.marks || []).length || (marks.unmarked || []).length) {
     const unmarked = marks.unmarked || []
     if (unmarked.length) {
-      result.notes.push(`The collective pass is not finished: ${unmarked.join(', ')} carry no mark in ${PASS_FILE}. Fill their **Result:** tokens, then continue the task.`)
+      result.notes.push(`The collective pass is not finished: ${unmarked.join(', ')} carry no mark. A listed case may be missing from the pass file ${PASS_FILE} altogether, not only left at __. Mark each one by adding "<step>/MC-<n> <MARK>" to the **Result:** line of ${PASS_FILE}, or in its own file, the ManualChecks.md of its step. Then continue the task.`)
       return finish('ask_user', { branch, completed_steps, skipped_steps, failed_steps, pending_steps })
     }
     if (!/^writeback: \d+ mark/.test(marks.writeback || '')) {

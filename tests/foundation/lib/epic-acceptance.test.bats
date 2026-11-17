@@ -48,6 +48,11 @@ check() {
   check "$out" 'o.calls[0].label === "acceptance" && ["manual-checks-pass.sh\" collect '"$DIR"'", "manual checks: none — no step left a case", "[VALIDATION_STATUS] = PASSED", "**Runner:** agent", "## Agent verdicts", "| Case | Mark | Evidence |", "## Collective pass", "lint-manual-checks.sh", "Four things can suspend it"].every((t) => call("acceptance").prompt.includes(t))'
 }
 
+@test "end: the Acceptance brief says every collected case is copied whole as its own case and never merged" {
+  out="$(run_epic Acceptance end "$PERSON")"
+  check "$out" '["ase collect lists is copied whole as its own #### <step>/MC-<n>. with its own **Result:** token", "two cases are never merged into one, not even when they differ only in conditions or device", "a case for another device goes into that device\u0027s session"].every((t) => call("acceptance").prompt.includes(t))'
+}
+
 @test "the four reasons a driver stops read the same in the Acceptance brief as in Validation" {
   out="$(run_epic Acceptance end "$PERSON")"
   para="$(node -e 'const s = require("fs").readFileSync(process.argv[1], "utf8"); const i = s.indexOf("Four things can suspend it"); const j = s.indexOf("means for the user.", i); process.stdout.write(i < 0 || j < 0 ? "" : s.slice(i, j))' "$ROOT/workflow-src/prelude.js")"
@@ -68,6 +73,16 @@ check() {
 @test "Done with unmarked cases stops for the person and names them" {
   out="$(run_epic Done end "$BRANCH, \"done:acceptance-marks\": {\"pass_file\": true, \"unmarked\": [\"01/MC-2\", \"02/MC-3\"], \"fails\": [], \"counts\": {}}")"
   check "$out" 'has("done:acceptance-marks") && r.next_recommended_action === "ask_user" && r.notes.includes("01/MC-2, 02/MC-3") && !has("done:bug-steps") && !has("done") && !has("acceptance")'
+}
+
+@test "the Done stop on unmarked cases says a case may be missing from the pass file and how to mark it" {
+  out="$(run_epic Done end "$BRANCH, \"done:acceptance-marks\": {\"pass_file\": true, \"unmarked\": [\"02/MC-3\"], \"fails\": [], \"counts\": {}}")"
+  check "$out" 'r.next_recommended_action === "ask_user" && r.notes.includes("02/MC-3") && r.notes.includes("may be missing from the pass file") && r.notes.includes("<step>/MC-<n> <MARK>") && r.notes.includes("'"$DIR"'/ManualChecks.md") && r.notes.includes("**Result:**") && r.notes.includes("its own file")'
+}
+
+@test "Done with no pass file and no agent mark but a collected case left unmarked stops, too" {
+  out="$(run_epic Done end "$BRANCH, \"done:acceptance-marks\": {\"pass_file\": false, \"marks\": [], \"unmarked\": [\"01/MC-1\"], \"fails\": [], \"counts\": {}}")"
+  check "$out" 'r.next_recommended_action === "ask_user" && r.notes.includes("01/MC-1") && !has("done:bug-steps") && !has("done")'
 }
 
 @test "Done stops when the marks could not be written back" {
@@ -119,6 +134,12 @@ check() {
 @test "end: only a PASSED earlier pass is kept; after a FAILED one the stage runs as a fresh pass" {
   out="$(run_epic Execute end "$DONE_STEPS, \"acceptance\": {\"already_passed\": false, \"validation_status\": \"PASSED\", \"artifact_path\": \"$DIR/Validation.md\", \"manual_checks_path\": \"$DIR/ManualChecks.md\", \"manual_checks\": [\"01/MC-1\"], \"manual_checks_changed\": true, \"agent_verdicts\": 1, \"summary\": \"s\"}")"
   check "$out" 'call("acceptance").prompt.includes("already carries the line [VALIDATION_STATUS] = PASSED") && call("acceptance").prompt.includes("A status FAILED or FLAKY there means the earlier pass did not complete") && has("manual-checks:check") && r.next_recommended_action === "ask_user" && r.last_completed_stage === "Acceptance" && !r.notes.includes("Acceptance already ran") && !has("done")'
+}
+
+@test "Method B and the manual-checks skill say a collected case is copied whole and never merged" {
+  grep -qF 'never merged' "$ROOT/skills/workflow-epic/SKILL.md" || { echo "workflow-epic does not say that cases are never merged"; return 1; }
+  grep -qF 'never merged' "$ROOT/skills/manual-checks/SKILL.md" || { echo "manual-checks ## Collective pass does not say that cases are never merged"; return 1; }
+  grep -qF 'may be missing from the pass file' "$ROOT/skills/workflow-epic/SKILL.md" || { echo "workflow-epic does not say that an unmarked case may be missing from the pass file"; return 1; }
 }
 
 @test "Method B and the orchestrator know the Acceptance stage" {

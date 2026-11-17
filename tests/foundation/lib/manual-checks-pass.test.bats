@@ -140,31 +140,48 @@ PY
   [ "$(echo "$output" | js 'd["unmarked"]')" = '["01/MC-1"]' ]
 }
 
-@test "marks with neither a pass file nor agent verdicts is pass_file false and nothing else" {
+# The agent walked every case: a Validation.md whose Agent verdicts table holds all five open cases.
+all_agent_verdicts() {
+  printf '%s\n' '| 01/MC-2 | PASS | the spinner went away |' '| 02/MC-1 | FAIL | the badge read 1 on the screenshot |' \
+    '| 02/MC-2 | PASS | the badge went away |' '| 02/MC-3 | PASS | the badge read 10 |' >> "$EPIC/Validation.md"
+}
+
+@test "marks with neither a pass file nor agent verdicts is pass_file false, every collected case unmarked" {
   rm "$EPIC/ManualChecks.md" "$EPIC/Validation.md"
   run "$PASS" marks "$EPIC"
   [ "$status" -eq 0 ]
-  [ "$(echo "$output" | js 'd')" = '{"marks": [], "pass_file": false, "unmarked": []}' ]
+  [ "$(echo "$output" | js 'd["marks"]')" = '[]' ]
+  [ "$(echo "$output" | js 'd["pass_file"]')" = 'false' ]
+  [ "$(echo "$output" | js 'd["unmarked"]')" = '["01/MC-1", "01/MC-2", "02/MC-1", "02/MC-2", "02/MC-3"]' ]
 }
 
-@test "marks without a pass file still reads the agent verdicts, and none is unmarked" {
+@test "marks with nothing collected, no pass file and no verdicts is pass_file false and nothing else" {
+  rm "$EPIC/ManualChecks.md" "$EPIC/Validation.md"
+  sed -i.bak 's/^\*\*Result:\*\* MC-1 __ · MC-2 __ ·/**Result:** MC-1 PASS · MC-2 PASS ·/' "$EPIC/01-cart.step/ManualChecks.md"
+  sed -i.bak 's/^\*\*Status:\*\* ☐ PASS ☐ FAIL ☐ BLOCKED — reason: ______$/**Status:** PASS — reason: —/' "$EPIC/02-badge.step/ManualChecks.md"
+  run "$PASS" marks "$EPIC"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | js 'd')" = '{"marks": [], "missing": [], "pass_file": false, "unmarked": []}' ]
+}
+
+@test "marks without a pass file still reads the agent verdicts, and none is unmarked when they cover every case" {
   rm "$EPIC/ManualChecks.md"
-  printf '%s\n' '| 02/MC-1 | FAIL | the badge read 1 on the screenshot |' >> "$EPIC/Validation.md"
+  all_agent_verdicts
   run "$PASS" marks "$EPIC"
   [ "$status" -eq 0 ]
   [ "$(echo "$output" | js 'd["pass_file"]')" = 'false' ]
-  [ "$(echo "$output" | js '[(m["case"], m["mark"], m["reason"], m["by"]) for m in d["marks"]]')" = \
-'[["01/MC-1", "PASS", null, "agent"], ["02/MC-1", "FAIL", "the badge read 1 on the screenshot", "agent"]]' ]
+  [ "$(echo "$output" | js '[(m["case"], m["mark"], m["reason"], m["by"]) for m in d["marks"]][:3]')" = \
+'[["01/MC-1", "PASS", null, "agent"], ["01/MC-2", "PASS", null, "agent"], ["02/MC-1", "FAIL", "the badge read 1 on the screenshot", "agent"]]' ]
   [ "$(echo "$output" | js 'd["unmarked"]')" = '[]' ]
 }
 
 @test "writeback without a pass file writes the agent verdicts, once" {
   rm "$EPIC/ManualChecks.md"
-  printf '%s\n' '| 02/MC-1 | FAIL | the badge read 1 on the screenshot |' >> "$EPIC/Validation.md"
+  all_agent_verdicts
   run "$PASS" writeback "$EPIC"
   [ "$status" -eq 0 ]
-  [ "$output" = "writeback: 2 mark(s) in 2 file(s)" ]
-  grep -q '^\*\*Result:\*\* MC-1 PASS · MC-2 __' "$EPIC/01-cart.step/ManualChecks.md"
+  [ "$output" = "writeback: 5 mark(s) in 2 file(s)" ]
+  grep -q '^\*\*Result:\*\* MC-1 PASS · MC-2 PASS' "$EPIC/01-cart.step/ManualChecks.md"
   grep -q '^\*\*Status:\*\* FAIL — reason: the badge read 1 on the screenshot$' "$EPIC/02-badge.step/ManualChecks.md"
   cp -R "$EPIC" "$BATS_TEST_TMPDIR/after-first"
   run "$PASS" writeback "$EPIC"
@@ -263,8 +280,10 @@ PY2
   [ "$(echo "$output" | grep -c '^[<>]')" -eq 2 ]
 }
 
-@test "writeback with neither a pass file nor agent verdicts writes nothing and exits 0" {
+@test "writeback with neither a pass file nor agent verdicts and every case already marked writes nothing and exits 0" {
   rm "$EPIC/ManualChecks.md" "$EPIC/Validation.md"
+  sed -i.bak 's/^\*\*Result:\*\* MC-1 __ · MC-2 __ ·/**Result:** MC-1 PASS · MC-2 PASS ·/' "$EPIC/01-cart.step/ManualChecks.md"
+  sed -i.bak 's/^\*\*Status:\*\* ☐ PASS ☐ FAIL ☐ BLOCKED — reason: ______$/**Status:** PASS — reason: —/' "$EPIC/02-badge.step/ManualChecks.md"
   run "$PASS" writeback "$EPIC"
   [ "$status" -eq 0 ]
   [ "$output" = "writeback: 0 mark(s) in 0 file(s)" ]
@@ -396,4 +415,112 @@ colliding_epic() {
   run "$PASS" marks "$CE"
   [ "$(echo "$output" | js '[m["case"] for m in d["marks"]]')" = '["03/MC-1", "address-form/MC-1", "address-list/MC-1"]' ]
   [ "$(echo "$output" | js 'd["unmarked"]')" = '[]' ]
+}
+
+# A case `collect` lists that the pass file leaves out altogether: its section, its row of the code
+# references and its token in **Result:** are gone, as when the author folded it into another case.
+drop_from_pass() { # $1 case id as written in the pass file, $2 the heading that follows its section
+  python3 - "$EPIC/ManualChecks.md" "$1" "$2" <<'PY2'
+import re, sys
+p, cid, nxt = sys.argv[1:4]
+s = open(p, encoding='utf-8').read()
+i = s.index('#### %s.' % cid)
+j = s.index(nxt, i)
+s = s[:i] + s[j:]
+s = re.sub(r'^\| %s \|[^\n]*\n' % re.escape(cid), '', s, flags=re.M)
+s = re.sub(r' · %s [A-Z_]+(?: \([^)]*\))?' % re.escape(cid), '', s)
+open(p, 'w', encoding='utf-8').write(s)
+PY2
+}
+
+@test "marks puts a collected case the pass file omits into unmarked, and into missing" {
+  drop_from_pass 02/MC-3 '### Session 2.'
+  run "$PASS" marks "$EPIC"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | js 'd["unmarked"]')" = '["02/MC-3"]' ]
+  [ "$(echo "$output" | js 'd["missing"]')" = '["02/MC-3"]' ]
+  [ "$(echo "$output" | js '[m["case"] for m in d["marks"] if m["case"] == "02/MC-3"]')" = '[]' ]
+}
+
+@test "a case unmarked inside the pass file is unmarked but not missing" {
+  sed -i.bak 's/ · 02\/MC-1 PASS/ · 02\/MC-1 __/' "$EPIC/ManualChecks.md"
+  run "$PASS" marks "$EPIC"
+  [ "$(echo "$output" | js 'd["unmarked"]')" = '["02/MC-1"]' ]
+  [ "$(echo "$output" | js 'd["missing"]')" = '[]' ]
+}
+
+@test "unmarked lists a case the pass omits among the ones it holds unmarked, in the order of steps and ids" {
+  drop_from_pass 02/MC-3 '### Session 2.'
+  sed -i.bak 's/ · 01\/MC-2 FAIL ([^)]*)/ · 01\/MC-2 __/' "$EPIC/ManualChecks.md"
+  run "$PASS" marks "$EPIC"
+  [ "$(echo "$output" | js 'd["unmarked"]')" = '["01/MC-2", "02/MC-3"]' ]
+  [ "$(echo "$output" | js 'd["missing"]')" = '["02/MC-3"]' ]
+}
+
+@test "writeback refuses when the pass file omits a collected case, naming it, and writes nothing" {
+  drop_from_pass 02/MC-3 '### Session 2.'
+  cp -R "$EPIC" "$BATS_TEST_TMPDIR/before"
+  run "$PASS" writeback "$EPIC"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"writeback: unmarked: 02/MC-3"* ]]
+  diff -r "$EPIC" "$BATS_TEST_TMPDIR/before"
+}
+
+@test "a collected case the pass omits is covered by an agent verdict row" {
+  drop_from_pass 02/MC-3 '### Session 2.'
+  printf '%s\n' '| 02/MC-3 | PASS | the badge read 10 |' >> "$EPIC/Validation.md"
+  run "$PASS" marks "$EPIC"
+  [ "$(echo "$output" | js 'd["unmarked"]')" = '[]' ]
+  [ "$(echo "$output" | js 'd["missing"]')" = '[]' ]
+  run "$PASS" writeback "$EPIC"
+  [ "$status" -eq 0 ]
+}
+
+@test "without a pass file a collected case with no agent row is unmarked, and writeback refuses" {
+  rm "$EPIC/ManualChecks.md"
+  all_agent_verdicts
+  sed -i.bak '/^| 02\/MC-3 | PASS/d' "$EPIC/Validation.md"
+  run "$PASS" marks "$EPIC"
+  [ "$(echo "$output" | js 'd["pass_file"]')" = 'false' ]
+  [ "$(echo "$output" | js 'd["unmarked"]')" = '["02/MC-3"]' ]
+  cp -R "$EPIC" "$BATS_TEST_TMPDIR/before"
+  run "$PASS" writeback "$EPIC"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"writeback: unmarked: 02/MC-3"* ]]
+  diff -r "$EPIC" "$BATS_TEST_TMPDIR/before"
+}
+
+@test "an agent table that misses one collected case leaves it unmarked next to a pass file that omits nothing else" {
+  sed -i.bak -e 's/ · 02\/MC-1 PASS/ · 02\/MC-1 __/' "$EPIC/ManualChecks.md"
+  sed -i.bak '/^| 01\/MC-1 | PASS/d' "$EPIC/Validation.md"
+  printf '%s\n' '| 02/MC-1 | PASS | the badge read 2 |' >> "$EPIC/Validation.md"
+  run "$PASS" marks "$EPIC"
+  [ "$(echo "$output" | js 'd["unmarked"]')" = '["01/MC-1"]' ]
+}
+
+@test "a placeholder agent row whose case is no step id is ignored, not an error" {
+  printf '%s\n' '| — | — | the agent walked no case, the reasons are below |' >> "$EPIC/Validation.md"
+  run "$PASS" marks "$EPIC"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | js 'len(d["marks"])')" = '5' ]
+  [ "$(echo "$output" | js 'd["unmarked"]')" = '[]' ]
+  rm "$EPIC/ManualChecks.md"
+  run "$PASS" marks "$EPIC"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | js '[m["case"] for m in d["marks"]]')" = '["01/MC-1"]' ]
+  [ "$(echo "$output" | js 'd["unmarked"]')" = '["01/MC-2", "02/MC-1", "02/MC-2", "02/MC-3"]' ]
+}
+
+@test "the stand case: six collected, the pass folds one into another and the agent table holds only a placeholder" {
+  rm "$EPIC/ManualChecks.md"
+  python3 - "$EPIC/Validation.md" <<'PY2'
+import re, sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+s = re.sub(r'^\| 01/MC-1 \|[^\n]*\n', '| \u2014 | \u2014 | the agent walked no case, the reasons are below |\n', s, flags=re.M)
+open(p, 'w', encoding='utf-8').write(s)
+PY2
+  run "$PASS" writeback "$EPIC"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"writeback: unmarked: 01/MC-1, 01/MC-2, 02/MC-1, 02/MC-2, 02/MC-3"* ]]
 }
