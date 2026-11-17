@@ -524,3 +524,72 @@ PY2
   [ "$status" -eq 1 ]
   [[ "$output" == *"writeback: unmarked: 01/MC-1, 01/MC-2, 02/MC-1, 02/MC-2, 02/MC-3"* ]]
 }
+
+# A bug step Done created sets per-step for itself and walks its own case inside the step; its
+# Result is often left at "__" until a person fills it, and the pass must not collect it.
+add_bug_step() { # $1 the line of Task.md that carries the setting, or empty for none
+  mkdir "$EPIC/04-fix.step"
+  printf '# Task\n\n[TASK_TYPE] = BUG\n[STATUS] = PENDING\n%s\n' "$1" > "$EPIC/04-fix.step/Task.md"
+  cat > "$EPIC/04-fix.step/ManualChecks.md" <<'MD'
+# Manual Checks — The badge after a sign-out
+
+[COVERS] = 4f2a9c1
+
+[STYLE] = brief
+
+## Cases
+
+### MC-1. The badge survives a sign-out and sign-in
+
+**What it checks:** the badge shows the saved cart after signing in again.
+
+**Start:** the cart with one Green tea.
+
+1. Sign out and sign in again
+   → The badge shows 1
+
+**Failure looks like:** the badge is gone.
+
+**Result:** MC-1 __ — PASS, FAIL or BLOCKED each; after a FAIL or a BLOCKED, why
+MD
+}
+
+@test "collect skips a step whose own Task.md sets per-step, bracketed or bare, in any letter case" {
+  for line in '[MANUAL_CHECKS_PASS] = [per-step]' '[MANUAL_CHECKS_PASS] = per-step' '[manual_checks_pass] = [Per-Step]'; do
+    rm -rf "$EPIC/04-fix.step"
+    add_bug_step "$line"
+    run "$PASS" collect "$EPIC"
+    [ "$status" -eq 0 ]
+    [ "$(echo "$output" | js '[c["step"] for c in d["cases"] if c["step"] == "04"]')" = '[]' ]
+  done
+}
+
+@test "collect keeps a step with no per-step line, or one set to end, or with no Task.md" {
+  add_bug_step ''
+  run "$PASS" collect "$EPIC"
+  [ "$(echo "$output" | js '[c["step"] for c in d["cases"] if c["step"] == "04"]')" = '["04"]' ]
+  printf '[MANUAL_CHECKS_PASS] = [end]\n' >> "$EPIC/04-fix.step/Task.md"
+  run "$PASS" collect "$EPIC"
+  [ "$(echo "$output" | js '[c["step"] for c in d["cases"] if c["step"] == "04"]')" = '["04"]' ]
+  rm "$EPIC/04-fix.step/Task.md"
+  run "$PASS" collect "$EPIC"
+  [ "$(echo "$output" | js '[c["step"] for c in d["cases"] if c["step"] == "04"]')" = '["04"]' ]
+}
+
+@test "a per-step bug step with an open case is no unmarked or missing case of the pass, and writeback succeeds" {
+  add_bug_step '[MANUAL_CHECKS_PASS] = [per-step]'
+  run "$PASS" marks "$EPIC"
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | js 'd["unmarked"]')" = '[]' ]
+  [ "$(echo "$output" | js 'd["missing"]')" = '[]' ]
+  run "$PASS" writeback "$EPIC"
+  [ "$status" -eq 0 ]
+  [ "$output" = "writeback: 5 mark(s) in 2 file(s)" ]
+  grep -q '^\*\*Result:\*\* MC-1 __' "$EPIC/04-fix.step/ManualChecks.md"
+}
+
+@test "a bug step with no per-step line and an open case is a case of the pass that nobody wrote" {
+  add_bug_step ''
+  run "$PASS" marks "$EPIC"
+  [ "$(echo "$output" | js 'd["missing"]')" = '["04/MC-1"]' ]
+}

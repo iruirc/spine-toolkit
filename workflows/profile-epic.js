@@ -1544,12 +1544,15 @@ if (runs('Done') && MANUAL_CHECKS_PASS === 'end' && branch !== 'pure_research' &
     { label: 'done:acceptance-marks', phase: 'Done', agentType: A.agents.architect, schema: ACCEPTANCE_MARKS, ...tuning('architect', 'stage') },
   )
   if (!marks) return finish('stop', { status: 'error', reason: 'the reader of the pass marks returned nothing' })
-  // No pass file means the agent walked every case, so its verdicts are the marks: they still go back
-  // into the steps, and an agent FAIL still becomes a bug step.
+  // No pass file means the agent walked the cases, so its verdicts are the marks: they still go back
+  // into the steps, and an agent FAIL still becomes a bug step. A collected case with no verdict is
+  // unmarked, pass file or not, and stops here.
   if (marks.pass_file || (marks.marks || []).length || (marks.unmarked || []).length) {
     const unmarked = marks.unmarked || []
     if (unmarked.length) {
-      result.notes.push(`The collective pass is not finished: ${unmarked.join(', ')} carry no mark. A listed case may be missing from the pass file ${PASS_FILE} altogether, not only left at __. Mark each one by adding "<step>/MC-<n> <MARK>" to the **Result:** line of ${PASS_FILE}, or in its own file, the ManualChecks.md of its step. Then continue the task.`)
+      result.notes.push(marks.pass_file
+        ? `The collective pass is not finished: ${unmarked.join(', ')} carry no mark. A listed case may be missing from the pass file ${PASS_FILE} altogether, not only left at __. Mark each one by adding "<step>/MC-<n> <MARK>" to the **Result:** line of ${PASS_FILE}, or in its own file, the ManualChecks.md of its step. Then continue the task.`
+        : `${unmarked.join(', ')} were never walked: there is no pass file and no verdict of the agent for them. Run the Acceptance stage, or mark them in their step files, the ManualChecks.md of each step. Then continue the task.`)
       return finish('ask_user', { branch, completed_steps, skipped_steps, failed_steps, pending_steps })
     }
     if (!/^writeback: \d+ mark/.test(marks.writeback || '')) {

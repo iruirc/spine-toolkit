@@ -80,6 +80,11 @@ check() {
   check "$out" 'r.next_recommended_action === "ask_user" && r.notes.includes("02/MC-3") && r.notes.includes("may be missing from the pass file") && r.notes.includes("<step>/MC-<n> <MARK>") && r.notes.includes("'"$DIR"'/ManualChecks.md") && r.notes.includes("**Result:**") && r.notes.includes("its own file")'
 }
 
+@test "Done with no pass file blames no pass file: the cases were never walked, run Acceptance or mark them in their step files" {
+  out="$(run_epic Done end "$BRANCH, \"done:acceptance-marks\": {\"pass_file\": false, \"marks\": [], \"unmarked\": [\"01/MC-1\", \"02/MC-3\"], \"fails\": [], \"counts\": {}}")"
+  check "$out" 'r.next_recommended_action === "ask_user" && r.notes.includes("01/MC-1, 02/MC-3") && r.notes.includes("never walked") && r.notes.includes("un the Acceptance stage, or mark them in their step files") && !r.notes.includes("pass file '"$DIR"'/ManualChecks.md") && !r.notes.includes("**Result:**")'
+}
+
 @test "Done with no pass file and no agent mark but a collected case left unmarked stops, too" {
   out="$(run_epic Done end "$BRANCH, \"done:acceptance-marks\": {\"pass_file\": false, \"marks\": [], \"unmarked\": [\"01/MC-1\"], \"fails\": [], \"counts\": {}}")"
   check "$out" 'r.next_recommended_action === "ask_user" && r.notes.includes("01/MC-1") && !has("done:bug-steps") && !has("done")'
