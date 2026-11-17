@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # A project written before the model tiers names `sonnet` in [MODELS]; model-tiers.sh says so,
-# turns it into `fast`, and writes the [MODEL_TIERS] line that gives `fast` its model in each runtime
-# (docs/superpowers/specs/2026-11-10-model-tiers-design.md, section 3). Every test works on a copy.
+# turns it into `fast`, and writes the [MODEL_TIERS] line that gives `fast` its model in each runtime.
+# Every test works on a copy.
 
 bats_require_minimum_version 1.5.0
 

@@ -406,7 +406,7 @@ json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(s
   ! grep -qF 'read as session' <<<"$stderr" || { echo "$stderr"; false; }
 }
 
-# --- Model tiers: fast resolves through [MODEL_TIERS] (docs/superpowers/specs/2026-11-10-model-tiers-design.md) ---
+# --- Model tiers: fast resolves through [MODEL_TIERS] ---
 
 @test "fast resolves through the project's MODEL_TIERS in each runtime" {
   p="$BATS_TEST_TMPDIR/p"; t="$(rt_task "$p")"
