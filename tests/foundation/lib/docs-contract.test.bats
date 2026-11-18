@@ -154,8 +154,8 @@ EOF
 }
 
 @test "the repository layout lists the driver convention and fixture" {
-  grep -q 'driver-contract' "$ROOT/.claude/CLAUDE.md" || { echo "convention missing from the layout"; return 1; }
-  grep -q 'fixture-driver' "$ROOT/.claude/CLAUDE.md" || { echo "fixture missing from the layout"; return 1; }
+  grep -q 'driver-contract' "$ROOT/AGENTS.md" || { echo "convention missing from the layout"; return 1; }
+  grep -q 'fixture-driver' "$ROOT/AGENTS.md" || { echo "fixture missing from the layout"; return 1; }
 }
 
 @test "the driver how-to teaches the prefix list and the surfaces" {

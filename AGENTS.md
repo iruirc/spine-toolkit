@@ -1,8 +1,10 @@
-# CLAUDE.md — spine-toolkit
+# AGENTS.md — spine-toolkit
 
-> This repo is one Claude Code plugin: `spine-toolkit`, a task lifecycle orchestrator.
-> User-project templates live in `templates/claude-md-stub/<lang>.md` (NOT here).
-> This file configures Claude when it works on the plugin itself.
+> This repo is one plugin for Claude Code and Codex: `spine-toolkit`, a task lifecycle orchestrator.
+> User-project templates live in `templates/claude-md-stub/<lang>.md` and
+> `templates/agents-md-stub/<lang>.md` (NOT here).
+> This file configures the agent working on the plugin itself: Claude Code reads it through
+> `CLAUDE.md`, Codex reads it directly.
 
 ## Language
 
@@ -38,6 +40,7 @@ en
 - `tests/fixtures/fixture-platform/` — a complete minimal platform plugin. Core's suite binds
   against it, and it doubles as the reference implementation of the contract.
 - `tests/fixtures/fixture-driver/` — the same, for the driver contract.
+- `CLAUDE.md` — imports `AGENTS.md` for Claude Code
 
 ## Conventions
 
@@ -50,6 +53,7 @@ en
 ## When working on this repo
 
 - What to run and when, and how to wait for it: `spine-ops/WORKSPACE.md`.
+- After changing a skill, validate it: `${CODEX_HOME:-~/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/<name>`.
 - Adding a user-facing string: add the key to BOTH `locales/en.md` AND `locales/ru.md`, then
   reference it from the skill body. Parity check
   (`diff <(grep '^## ' .../en.md | sort) <(grep '^## ' .../ru.md | sort)`) must be empty.
@@ -82,3 +86,19 @@ en
   and push for absolute local paths and the owner's real project names. Never pass `--no-verify`
   and never change `core.hooksPath`. When the check stops you, replace the data with a neutral
   placeholder (`/Users/foo`, `com.example.app`, `MyApp`) instead of working around it.
+
+## Codex compatibility
+
+- Keep `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` aligned on `name`, `version`,
+  `author.name`, and `repository`. Never move `version` by hand: a release goes through
+  `spine-ops: scripts/release.sh`, which moves it in both. Never commit the `+codex.<cachebuster>`
+  suffix Codex's local reinstall flow writes into `version`.
+- `skills/` is the only component the Codex manifest declares. `skills/`, `conventions/`,
+  `templates/`, `scripts/` and `hooks/` are shared by Claude Code and Codex; Codex runs the hooks
+  and asks to trust them again after every update (`runtimes/codex-cli.md`). `commands/`,
+  `workflows/` and `workflow-src/` are Claude Code only.
+- In Codex the orchestrator runs through `runtimes/codex-cli.md`, the host's half of every step
+  Claude Code does with its own tools.
+- A skill only the orchestrator drives carries `policy.allow_implicit_invocation: false` in its
+  `skills/<name>/agents/openai.yaml` and no `default_prompt`. This prevents automatic selection but
+  does not disable explicit `$skill` use.
