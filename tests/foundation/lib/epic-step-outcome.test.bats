@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # A pushed step counts as done only when its own run reached the end: a profile hands a verdict it
 # cannot act on back as status ok with ask_user, and the walk must not build on it.
 

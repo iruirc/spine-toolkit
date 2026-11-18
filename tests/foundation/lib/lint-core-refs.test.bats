@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # lint-core-refs.sh checks that every core skill a platform names exists in the
 # oldest core its dependency range admits, and that hyphenated core skill names
 # are written in the namespaced form. The version floor comes from the

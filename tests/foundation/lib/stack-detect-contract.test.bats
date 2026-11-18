@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # stack-detect keeps the resolution algorithm; every axis name, every value and
 # every repo signal comes from the platform manifest. A platform word here means
 # the catalog crept back in and core silently detects one ecosystem again.

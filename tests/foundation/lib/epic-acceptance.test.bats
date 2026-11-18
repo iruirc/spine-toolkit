@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # Under manual_checks_pass=end an epic walks the cases its steps left in one collective pass: the
 # Acceptance stage after the walk of the steps, then a Done that reads the marks back, turns each
 # FAIL into a bug step, and only then writes the report. Under per-step none of it exists.

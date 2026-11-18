@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # The documents a task leaves are shaped by `task-documents` and read by the rules of `artifact-reader`.
 # A stage skill that writes one of them has to say so, or the writer never meets either skill.
 # This suite holds every surface that must name them, the stage bullets that write each document,

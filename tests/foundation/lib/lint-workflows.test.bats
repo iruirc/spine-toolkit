@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # lint-workflows.sh holds the dispatch rules nobody catches by reading: every agent() call carries
 # one tuning() beside its agentType, on the role that agentType reads, of the kind
 # conventions/stage-dispatch.md → Model and effort gives its label. Each test breaks one rule in a
