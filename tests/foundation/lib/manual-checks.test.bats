@@ -409,6 +409,13 @@ PY
   grep -qF 'a scene with no row' <<<"$(skill_section '## The lint')" || { echo "## The lint: no scene in codeslot"; return 1; }
 }
 
+@test "a collective pass grounds its merged scenes: an S<n> row with no step prefix, for the state it took" {
+  c="$(skill_section '## Collective pass')"
+  grep -qF '`| S<n> | (file:line) |`' <<<"$c" || { echo "## Collective pass: no row for a merged scene"; return 1; }
+  grep -qF 'for the state the scene takes' <<<"$c" || { echo "## Collective pass: the row of a merged scene is not grounded anew"; return 1; }
+  grep -qF '`S1` and on in `brief` and in a pass file' <<<"$(skill_section '## Grounding')" || { echo "## Grounding leaves out the pass file"; return 1; }
+}
+
 @test "a refresh re-checks only the cases whose code moved" {
   r="$(skill_section '## Refreshing')"
   [ -n "$r" ] || { echo "no ## Refreshing"; return 1; }

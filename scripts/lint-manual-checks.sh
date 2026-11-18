@@ -487,7 +487,8 @@ for label in refs:
 
 # codeslot, for the scenes of ## Preparation: the starting state of a scene is grounded like a case.
 # A scene is "### S<n>." in brief and in a pass file, "### P<n>." from P2 on in full; P0 and P1, the
-# build and the device, and a scene whose body opens with **dev-only:** need no row.
+# build and the device, and a scene whose body opens with **dev-only:** need no row; a row for P0 or P1
+# is accepted in any file, a full pass file included.
 if recs and has_refs and old_code is None:
     scene_kind = 'S' if brief or is_pass else 'P'
     scenes, present = [], set()
@@ -514,7 +515,7 @@ if recs and has_refs and old_code is None:
         elif not FILE_LINE.search(scene_refs[sid]):
             found.append('codeslot: no file:line in ## Code references (%s)' % where)
     for sid in scene_refs:
-        if sid not in present and not (scene_kind == 'P' and sid in ('P0', 'P1')):
+        if sid not in present and sid not in ('P0', 'P1'):
             found.append('codeslot: row for a scene not in ## Preparation (%s)' % sid)
 
 if is_pass:

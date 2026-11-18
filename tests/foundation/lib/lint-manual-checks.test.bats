@@ -1021,3 +1021,10 @@ order_case() { # $1 id, $2 the Order line or nothing; brief
   pass_brief
   clean "$F"
 }
+
+@test "pass: a full pass file accepts rows for its P0 and P1, as a full file does" {
+  pass_full
+  subst '### S1. A cart' '### P0. Build\n\n**dev-only:** build it.\n\n### P1. Device\n\nEnglish.\n\n### S1. A cart'
+  subst '| S1 |' '| P0 | (build/x.src:1) |\n| P1 | (app/x.src:1) |\n| S1 |'
+  clean "$F"
+}
