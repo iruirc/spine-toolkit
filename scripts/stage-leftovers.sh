@@ -265,10 +265,16 @@ def pending_call(path):
             row = json.loads(line)
         except ValueError:
             continue  # the last line can be half-written
+        # Only a turn of the conversation is an event; other rows, such as a copy of the API
+        # request, repeat calls already answered. The transcript format is not ours to rely on.
+        if not isinstance(row, dict) or row.get("type") not in ("assistant", "user"):
+            continue
         content = (row.get("message") or {}).get("content")
-        if not isinstance(content, list):
+        if not isinstance(content, list) or not row.get("timestamp"):
             continue
         for item in content:
+            if not isinstance(item, dict):
+                continue
             if item.get("type") == "tool_use":
                 pending[item.get("id")] = (item.get("name") or "", ts(row["timestamp"]))
             elif item.get("type") == "tool_result":

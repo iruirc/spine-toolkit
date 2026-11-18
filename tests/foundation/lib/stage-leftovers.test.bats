@@ -260,6 +260,20 @@ transcript() {
   [ "$status" -eq 4 ] || { echo "$output"; return 1; }
 }
 
+@test "a copy of the API request in the transcript neither stops the watch nor reopens a call" {
+  before
+  export STAGE_LEFTOVERS_POLL=0
+  transcript a1 mcp__x__y 900 pending
+  blob='{"type":"api-request-blob","sessionId":"s","agentId":"a1","hash":"h","message":{"content":[{"type":"tool_use","id":"t1","name":"mcp__x__y"}]}}'
+  t="$(sed -n 's/.*"timestamp":"\([^"]*\)".*/\1/p' "$T/wf/agent-a1.jsonl")"
+  { echo "$blob"
+    printf '{"type":"user","timestamp":"%s","message":{"content":[{"type":"tool_result","tool_use_id":"t1"}]}}\n' "$t"
+    echo "$blob"; } >>"$T/wf/agent-a1.jsonl"
+  touch -t 200001010000 "$T/wf/agent-a1.jsonl" "$T/wf"
+  run "$SL" watch --dir "$T/wf" --stall 300 --idle 1
+  [ "$status" -eq 5 ] || { echo "$output"; return 1; }
+}
+
 # --- The session above the script: Claude Code or Codex CLI (runtimes/codex-cli.md → Scripts) ---
 
 @test "the session is found above the script under codex" {
