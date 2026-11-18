@@ -5,6 +5,31 @@
 # is pinned byte-equal across the seven scripts that write either file, so a hand edit to one copy
 # goes red.
 
+# The read replies are built once per file: each is one node start, and the tests ask for the same
+# few sizes in every loop. So is rp.js: a node start costs more than a stubbed run's own work, so the
+# harness and every read of its result share one. It runs run-profile.js and prints each JS
+# expression over the result (o), values separated by RS.
+setup_file() {
+  local n
+  cat >"$BATS_FILE_TMPDIR/rp.js" <<'JS'
+const [helper, ...rest] = process.argv.slice(2)
+const exprs = rest.splice(3)
+const emit = console.log
+console.log = (s) => {
+  console.log = emit
+  const o = JSON.parse(s)
+  emit(exprs.map((e) => { const v = eval(e); return typeof v === 'string' ? v : String(JSON.stringify(v)) }).join('\x1e'))
+}
+process.argv = [process.argv[0], helper, ...rest]
+require(helper)
+JS
+  export RP_JS="$BATS_FILE_TMPDIR/rp.js"
+  for n in 0 1 2 3 6; do
+    export "READ_$n=$(node -e 'const n = +process.argv[1]; const kinds = ["reread", "undefined term", "identifier subject", "no reason", "no proof"]
+      console.log(JSON.stringify({ retelling: ["r"], unclear: Array.from({ length: n }, (_, i) => ({ quote: "q" + i, missing: "m" + i, kind: kinds[i % 5] })) }))' "$n")"
+  done
+}
+
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   SEVEN="feature bug refactor test quick epic research"
@@ -29,25 +54,33 @@ contract() {
     "$AGENTS" "$2" "$2" "$check" "${4:-}"
 }
 
-# $1 profile, $2 stage (Plan or Done), $3 artifact_check, $4 replies members, $5 extra contract members.
-run_stage() {
+# $1 profile, $2 contract, $3 replies, then JS expressions over o: V[0], V[1], ... are their values.
+rp() {
+  local raw i=0
+  raw="$(node "$RP_JS" "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" "$2" "$3" "${@:4}")"
+  V=()
+  while :; do
+    V[i]="${raw%%$'\x1e'*}"; i=$((i + 1))
+    [[ "$raw" == *$'\x1e'* ]] || break
+    raw="${raw#*$'\x1e'}"
+  done
+}
+
+# $1 profile, $2 stage (Plan or Done), $3 artifact_check, $4 replies members, $5 extra contract members,
+# then JS expressions over o, which land in V[4], V[5], ... What most tests read from a run is set in
+# F_ORDER (the stage's own dispatch and every artifact dispatch, each artifact one with its phase),
+# F_STAGE, F_STATUS and F_NOTES.
+stage() {
   local replies="$4"
   [ "$1" = epic ] && [ "$2" = Plan ] && replies="$DECOMPOSED${replies:+, $replies}"
-  node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" "$(contract "$1" "$2" "$3" "${5:-}")" "{$replies}"
+  rp "$1" "$(contract "$1" "$2" "$3" "${5:-}")" "{$replies}" \
+    'o.calls.filter((c) => ["plan", "done"].includes(c.label) || c.label.startsWith("artifact")).map((c) => c.label.startsWith("artifact") ? c.label + "/" + c.phase : c.label).join(" ")' \
+    'o.result.last_completed_stage' 'o.result.status' 'o.result.notes' "${@:6}"
+  F_ORDER="${V[0]}"; F_STAGE="${V[1]}"; F_STATUS="${V[2]}"; F_NOTES="${V[3]}"
 }
 
-pick() { node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8")); const v = eval(process.argv[1]); console.log(typeof v === "string" ? v : JSON.stringify(v))' "$1"; }
-
-# The stage's own dispatch and every artifact dispatch, each artifact one with its phase.
-order() { pick "o.calls.filter((c) => ['plan', 'done'].includes(c.label) || c.label.startsWith('artifact')).map((c) => c.label.startsWith('artifact') ? c.label + '/' + c.phase : c.label).join(' ')"; }
-
-notes() { pick 'o.result.notes'; }
-
-# A read reply with $1 quoted places.
-read_with() {
-  node -e 'const n = +process.argv[1]; const kinds = ["reread", "undefined term", "identifier subject", "no reason", "no proof"]
-    console.log(JSON.stringify({ retelling: ["r"], unclear: Array.from({ length: n }, (_, i) => ({ quote: "q" + i, missing: "m" + i, kind: kinds[i % 5] })) }))' "$1"
-}
+# A read reply with $1 quoted places, from the ones setup_file built.
+read_with() { local v="READ_$1"; printf '%s' "${!v}"; }
 
 # The stages of one profile that write a checked file.
 stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo Done ;; esac; }
@@ -89,8 +122,8 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   for p in $SEVEN; do
     for s in $(stages_of "$p"); do
       for c in off ''; do
-        out="$(run_stage "$p" "$s" "$c" "\"artifact:check\": $(read_with 3)")"
-        ! grep -qF 'artifact:' <<<"$(order <<<"$out")" || { echo "profile-$p $s (artifact_check='$c'): $(order <<<"$out")"; return 1; }
+        stage "$p" "$s" "$c" "\"artifact:check\": $(read_with 3)"
+        ! grep -qF 'artifact:' <<<"$F_ORDER" || { echo "profile-$p $s (artifact_check='$c'): $F_ORDER"; return 1; }
       done
     done
   done
@@ -99,10 +132,10 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
 @test "on with nothing unclear: one read after Plan and one after Done, no revision" {
   for p in $SEVEN; do
     for s in $(stages_of "$p"); do
-      out="$(run_stage "$p" "$s" on "\"artifact:check\": $(read_with 0)")"
+      stage "$p" "$s" on "\"artifact:check\": $(read_with 0)"
       want="$(tr 'A-Z' 'a-z' <<<"$s") artifact:check/$s"
-      [ "$(order <<<"$out")" = "$want" ] || { echo "profile-$p $s: dispatched $(order <<<"$out")"; return 1; }
-      grep -qF "$s.md check: nothing unclear." <<<"$(notes <<<"$out")" || { echo "profile-$p $s: no note"; return 1; }
+      [ "$F_ORDER" = "$want" ] || { echo "profile-$p $s: dispatched $F_ORDER"; return 1; }
+      grep -qF "$s.md check: nothing unclear." <<<"$F_NOTES" || { echo "profile-$p $s: no note"; return 1; }
     done
   done
 }
@@ -111,10 +144,10 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   for n in 1 3 6; do
     for p in $SEVEN; do
       for s in $(stages_of "$p"); do
-        out="$(run_stage "$p" "$s" on "\"artifact:check\": $(read_with "$n"), $REVISED")"
+        stage "$p" "$s" on "\"artifact:check\": $(read_with "$n"), $REVISED"
         want="$(tr 'A-Z' 'a-z' <<<"$s") artifact:check/$s artifact:revise/$s"
-        [ "$(order <<<"$out")" = "$want" ] || { echo "profile-$p $s, $n place(s): dispatched $(order <<<"$out")"; return 1; }
-        grep -qF "$s.md check: $n place(s), revised." <<<"$(notes <<<"$out")" || { echo "profile-$p $s: no note: $(notes <<<"$out")"; return 1; }
+        [ "$F_ORDER" = "$want" ] || { echo "profile-$p $s, $n place(s): dispatched $F_ORDER"; return 1; }
+        grep -qF "$s.md check: $n place(s), revised." <<<"$F_NOTES" || { echo "profile-$p $s: no note: $F_NOTES"; return 1; }
       done
     done
   done
@@ -124,12 +157,12 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   for p in $SEVEN; do
     for s in $(stages_of "$p"); do
       for reply in null '{"__throw": "dispatch failed"}' '{"retelling": ["r"], "unclear": "none"}' '{"retelling": ["r"]}'; do
-        out="$(run_stage "$p" "$s" on "\"artifact:check\": $reply")"
-        [ "$(order <<<"$out")" = "$(tr 'A-Z' 'a-z' <<<"$s") artifact:check/$s" ] || { echo "profile-$p $s: dispatched $(order <<<"$out")"; return 1; }
-        grep -qF "$s.md check: the reader returned nothing, so the file went unchecked." <<<"$(notes <<<"$out")" \
-          || { echo "profile-$p $s: no note: $(notes <<<"$out")"; return 1; }
-        [ "$(pick 'o.result.last_completed_stage' <<<"$out")" = "$s" ] || { echo "profile-$p $s: the run stopped: $out"; return 1; }
-        [ "$(pick 'o.result.status' <<<"$out")" != error ] || { echo "profile-$p $s: the run errored: $out"; return 1; }
+        stage "$p" "$s" on "\"artifact:check\": $reply"
+        [ "$F_ORDER" = "$(tr 'A-Z' 'a-z' <<<"$s") artifact:check/$s" ] || { echo "profile-$p $s: dispatched $F_ORDER"; return 1; }
+        grep -qF "$s.md check: the reader returned nothing, so the file went unchecked." <<<"$F_NOTES" \
+          || { echo "profile-$p $s: no note: $F_NOTES"; return 1; }
+        [ "$F_STAGE" = "$s" ] || { echo "profile-$p $s: the run stopped: $F_ORDER $F_NOTES"; return 1; }
+        [ "$F_STATUS" != error ] || { echo "profile-$p $s: the run errored: $F_ORDER $F_NOTES"; return 1; }
       done
     done
   done
@@ -140,15 +173,15 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   mixed='{"retelling": ["r"], "unclear": [{"quote": "q-one", "missing": "m-one", "kind": "no reason"}, {"missing": "m-none", "kind": "reread"}, {"quote": "q-two", "missing": "m-two", "kind": "undefined term"}]}'
   for p in $SEVEN; do
     for s in $(stages_of "$p"); do
-      out="$(run_stage "$p" "$s" on "\"artifact:check\": $bare, $REVISED")"
-      [ "$(order <<<"$out")" = "$(tr 'A-Z' 'a-z' <<<"$s") artifact:check/$s" ] || { echo "profile-$p $s: dispatched $(order <<<"$out")"; return 1; }
-      grep -qF "$s.md check: nothing unclear." <<<"$(notes <<<"$out")" || { echo "profile-$p $s: $(notes <<<"$out")"; return 1; }
-      grep -qF "$s.md check: 2 entry(ies) quoted no place, so they were skipped." <<<"$(notes <<<"$out")" || { echo "profile-$p $s: $(notes <<<"$out")"; return 1; }
+      stage "$p" "$s" on "\"artifact:check\": $bare, $REVISED"
+      [ "$F_ORDER" = "$(tr 'A-Z' 'a-z' <<<"$s") artifact:check/$s" ] || { echo "profile-$p $s: dispatched $F_ORDER"; return 1; }
+      grep -qF "$s.md check: nothing unclear." <<<"$F_NOTES" || { echo "profile-$p $s: $F_NOTES"; return 1; }
+      grep -qF "$s.md check: 2 entry(ies) quoted no place, so they were skipped." <<<"$F_NOTES" || { echo "profile-$p $s: $F_NOTES"; return 1; }
 
-      out="$(run_stage "$p" "$s" on "\"artifact:check\": $mixed, $REVISED")"
-      [ "$(order <<<"$out")" = "$(tr 'A-Z' 'a-z' <<<"$s") artifact:check/$s artifact:revise/$s" ] || { echo "profile-$p $s: dispatched $(order <<<"$out")"; return 1; }
-      grep -qF "$s.md check: 2 place(s), revised." <<<"$(notes <<<"$out")" || { echo "profile-$p $s: $(notes <<<"$out")"; return 1; }
-      fix="$(pick "o.calls.find((c) => c.label === 'artifact:revise').prompt" <<<"$out")"
+      stage "$p" "$s" on "\"artifact:check\": $mixed, $REVISED" '' "o.calls.find((c) => c.label === 'artifact:revise').prompt"
+      [ "$F_ORDER" = "$(tr 'A-Z' 'a-z' <<<"$s") artifact:check/$s artifact:revise/$s" ] || { echo "profile-$p $s: dispatched $F_ORDER"; return 1; }
+      grep -qF "$s.md check: 2 place(s), revised." <<<"$F_NOTES" || { echo "profile-$p $s: $F_NOTES"; return 1; }
+      fix="${V[4]}"
       grep -qF '"q-two" — m-two' <<<"$fix" || { echo "profile-$p $s: the revision does not carry a quoted place"; return 1; }
       ! grep -qF 'm-none' <<<"$fix" || { echo "profile-$p $s: the revision carries the quote-less entry"; return 1; }
     done
@@ -158,21 +191,21 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
 @test "a revision that returns nothing or changes nothing is noted, never read again" {
   for p in $SEVEN; do
     s=Done
-    out="$(run_stage "$p" "$s" on "\"artifact:check\": $(read_with 2), \"artifact:revise\": null")"
-    [ "$(order <<<"$out")" = "done artifact:check/Done artifact:revise/Done" ] || { echo "profile-$p: dispatched $(order <<<"$out")"; return 1; }
-    grep -qF 'Done.md check: 2 place(s); the revision returned nothing, so the file stands as written.' <<<"$(notes <<<"$out")" \
-      || { echo "profile-$p: $(notes <<<"$out")"; return 1; }
-    out="$(run_stage "$p" "$s" on "\"artifact:check\": $(read_with 2), \"artifact:revise\": {\"artifact_path\": \"x\", \"changed\": false}")"
-    [ "$(order <<<"$out")" = "done artifact:check/Done artifact:revise/Done" ] || { echo "profile-$p: dispatched $(order <<<"$out")"; return 1; }
-    grep -qF 'Done.md check: 2 place(s); the revision found nothing to change.' <<<"$(notes <<<"$out")" \
-      || { echo "profile-$p: $(notes <<<"$out")"; return 1; }
+    stage "$p" "$s" on "\"artifact:check\": $(read_with 2), \"artifact:revise\": null"
+    [ "$F_ORDER" = "done artifact:check/Done artifact:revise/Done" ] || { echo "profile-$p: dispatched $F_ORDER"; return 1; }
+    grep -qF 'Done.md check: 2 place(s); the revision returned nothing, so the file stands as written.' <<<"$F_NOTES" \
+      || { echo "profile-$p: $F_NOTES"; return 1; }
+    stage "$p" "$s" on "\"artifact:check\": $(read_with 2), \"artifact:revise\": {\"artifact_path\": \"x\", \"changed\": false}"
+    [ "$F_ORDER" = "done artifact:check/Done artifact:revise/Done" ] || { echo "profile-$p: dispatched $F_ORDER"; return 1; }
+    grep -qF 'Done.md check: 2 place(s); the revision found nothing to change.' <<<"$F_NOTES" \
+      || { echo "profile-$p: $F_NOTES"; return 1; }
   done
 }
 
 @test "the read prompt names the file, the owner who did not follow the task, and the five kinds" {
   for s in Plan Done; do
-    out="$(run_stage feature "$s" on "\"artifact:check\": $(read_with 0)")"
-    c="$(pick "o.calls.find((c) => c.label === 'artifact:check').prompt" <<<"$out")"
+    stage feature "$s" on "\"artifact:check\": $(read_with 0)" '' "o.calls.find((c) => c.label === 'artifact:check').prompt"
+    c="${V[4]}"
     for token in "/p/Tasks/ACTIVE/001-x/$s.md and nothing else" 'owner who did not follow the task' \
                  'spine-toolkit:artifact-reader' '## Check' 'no git command' \
                  'reread' 'undefined term' 'identifier subject' 'no reason' 'no proof' 'Change nothing on disk.'; do
@@ -187,20 +220,22 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   [ "$kinds" = 'reread,undefined term,identifier subject,no reason,no proof' ] || { echo "the skill lists: $kinds"; return 1; }
   grep -qxF "const ARTIFACT_KINDS = ['reread', 'undefined term', 'identifier subject', 'no reason', 'no proof']" "$ROOT/workflows/profile-feature.js" \
     || { echo "the script's kinds differ from the skill's"; return 1; }
-  out="$(run_stage feature Done on "\"artifact:check\": $(read_with 0)")"
-  [ "$(pick "o.calls.find((c) => c.label === 'artifact:check').schema.properties.unclear.items.properties.kind.enum.join()" <<<"$out")" = 'reread,undefined term,identifier subject,no reason,no proof' ]
-  [ "$(pick "o.calls.find((c) => c.label === 'artifact:check').schema.properties.unclear.items.required.join()" <<<"$out")" = 'quote,missing,kind' ]
+  stage feature Done on "\"artifact:check\": $(read_with 0)" '' \
+    "o.calls.find((c) => c.label === 'artifact:check').schema.properties.unclear.items.properties.kind.enum.join()" \
+    "o.calls.find((c) => c.label === 'artifact:check').schema.properties.unclear.items.required.join()"
+  [ "${V[4]}" = 'reread,undefined term,identifier subject,no reason,no proof' ]
+  [ "${V[5]}" = 'quote,missing,kind' ]
 }
 
 @test "the read is tuned light on the writer's role; the revision takes the writing stage's tuning" {
   models=', "models": {"light": "haiku", "done": "sonnet", "architect": "opus", "developer": "opus", "tester": "opus", "refactorer": "opus"}, "effort": {"done": "max", "architect": "high", "developer": "high", "tester": "high", "refactorer": "high"}'
   for p in $SEVEN; do
     for s in $(stages_of "$p"); do
-      out="$(run_stage "$p" "$s" on "\"artifact:check\": $(read_with 1), $REVISED" "$models")"
-      [ "$(pick "o.calls.find((c) => c.label === 'artifact:check').model" <<<"$out")" = haiku ] || { echo "profile-$p $s: the read is not on the light model"; return 1; }
-      [ "$(pick "o.calls.find((c) => c.label === 'artifact:check').effort" <<<"$out")" = high ] || { echo "profile-$p $s: the read is not at the role's effort"; return 1; }
-      writer="$(pick "JSON.stringify([o.calls.find((c) => c.label === '$(tr 'A-Z' 'a-z' <<<"$s")').model, o.calls.find((c) => c.label === '$(tr 'A-Z' 'a-z' <<<"$s")').effort])" <<<"$out")"
-      revise="$(pick "JSON.stringify([o.calls.find((c) => c.label === 'artifact:revise').model, o.calls.find((c) => c.label === 'artifact:revise').effort])" <<<"$out")"
+      w="$(tr 'A-Z' 'a-z' <<<"$s")"
+      stage "$p" "$s" on "\"artifact:check\": $(read_with 1), $REVISED" "$models" \
+        "const t = (l) => { const c = o.calls.find((x) => x.label === l); return JSON.stringify([c.model, c.effort]) }; [t('artifact:check'), t('$w'), t('artifact:revise')].join('\\n')"
+      { read -r rd; read -r writer; read -r revise; } <<<"${V[4]}"
+      [ "$rd" = '["haiku","high"]' ] || { echo "profile-$p $s: the read is tuned $rd, not light at the role's effort"; return 1; }
       [ "$revise" = "$writer" ] || { echo "profile-$p $s: the revision is tuned $revise, the writer $writer"; return 1; }
     done
   done
@@ -208,21 +243,23 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
 
 @test "QUICK and RESEARCH check only Done.md" {
   for p in quick research; do
-    out="$(run_stage "$p" Done on "\"artifact:check\": $(read_with 0)")"
-    [ "$(order <<<"$out")" = 'done artifact:check/Done' ] || { echo "profile-$p: dispatched $(order <<<"$out")"; return 1; }
+    stage "$p" Done on "\"artifact:check\": $(read_with 0)"
+    [ "$F_ORDER" = 'done artifact:check/Done' ] || { echo "profile-$p: dispatched $F_ORDER"; return 1; }
     ! grep -qF 'Plan.md' <<<"$(grep -F 'await checkArtifact(' "$ROOT/workflows/profile-$p.js")" || { echo "profile-$p.js checks Plan.md"; return 1; }
   done
 }
 
 @test "EPIC checks Plan.md only on the decomposition branch, and Done.md on both" {
   E="$ROOT/workflows/profile-epic.js"
-  out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$E" "$(contract epic Plan on)" "{\"plan\": {\"ok\": true, \"artifact_path\": \"p\", \"summary\": \"s\", \"branch\": \"pure_research\", \"steps\": []}, \"artifact:check\": $(read_with 0)}")"
-  [ "$(order <<<"$out")" = 'plan' ] || { echo "pure research: dispatched $(order <<<"$out")"; return 1; }
-  out="$(run_stage epic Plan on "\"artifact:check\": $(read_with 0)")"
-  [ "$(order <<<"$out")" = 'plan artifact:check/Plan' ] || { echo "decomposition: dispatched $(order <<<"$out")"; return 1; }
+  rp epic "$(contract epic Plan on)" "{\"plan\": {\"ok\": true, \"artifact_path\": \"p\", \"summary\": \"s\", \"branch\": \"pure_research\", \"steps\": []}, \"artifact:check\": $(read_with 0)}" \
+    'o.calls.filter((c) => ["plan", "done"].includes(c.label) || c.label.startsWith("artifact")).map((c) => c.label.startsWith("artifact") ? c.label + "/" + c.phase : c.label).join(" ")'
+  F_ORDER="${V[0]}"
+  [ "$F_ORDER" = 'plan' ] || { echo "pure research: dispatched $F_ORDER"; return 1; }
+  stage epic Plan on "\"artifact:check\": $(read_with 0)"
+  [ "$F_ORDER" = 'plan artifact:check/Plan' ] || { echo "decomposition: dispatched $F_ORDER"; return 1; }
   for b in decomposition pure_research; do
-    out="$(run_stage epic Done on "\"done:read-branch\": {\"branch\": \"$b\"}, \"artifact:check\": $(read_with 0)")"
-    [ "$(order <<<"$out")" = 'done artifact:check/Done' ] || { echo "$b Done: dispatched $(order <<<"$out")"; return 1; }
+    stage epic Done on "\"done:read-branch\": {\"branch\": \"$b\"}, \"artifact:check\": $(read_with 0)"
+    [ "$F_ORDER" = 'done artifact:check/Done' ] || { echo "$b Done: dispatched $F_ORDER"; return 1; }
   done
 }
 
