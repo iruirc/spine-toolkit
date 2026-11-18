@@ -3,10 +3,13 @@
 # the Done agent called the file consistent; a later Done cut the file short with a patch of its own
 # and nobody noticed. This lint is the measurement neither claim had.
 
-setup() {
+# The repository every test starts from is built once, with the history the dropped-commit findings
+# need: two reachable commits and one a reset dropped. Each test works on its own copy, because some
+# add commits or rewrite Task.md and Base.md.
+setup_file() {
+  local ROOT PROJ TASK
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  LINT="$ROOT/scripts/lint-walkthrough.sh"
-  PROJ="$BATS_TEST_TMPDIR/proj"
+  PROJ="$BATS_FILE_TMPDIR/proj"
   TASK="$PROJ/Tasks/ACTIVE/001-x"
   mkdir -p "$TASK"
   printf '## Paths\n' >"$PROJ/CLAUDE-spine-toolkit.md"
@@ -14,10 +17,18 @@ setup() {
   git -C "$PROJ" init -q -b main
   commit .gitignore
   "$ROOT/scripts/task-ranges.sh" record "$TASK"
-  commit a.txt; A1="$(git -C "$PROJ" rev-parse --short HEAD)"
-  commit b.txt; A2="$(git -C "$PROJ" rev-parse --short HEAD)"
-  commit c.txt; GONE="$(git -C "$PROJ" rev-parse --short HEAD)"
+  commit a.txt; export A1="$(git -C "$PROJ" rev-parse --short HEAD)"
+  commit b.txt; export A2="$(git -C "$PROJ" rev-parse --short HEAD)"
+  commit c.txt; export GONE="$(git -C "$PROJ" rev-parse --short HEAD)"
   git -C "$PROJ" reset -q --hard HEAD~1
+}
+
+setup() {
+  ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
+  LINT="$ROOT/scripts/lint-walkthrough.sh"
+  PROJ="$BATS_TEST_TMPDIR/proj"
+  TASK="$PROJ/Tasks/ACTIVE/001-x"
+  cp -R "$BATS_FILE_TMPDIR/proj" "$PROJ"
 }
 
 commit() {
