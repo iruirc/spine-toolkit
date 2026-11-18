@@ -20,6 +20,7 @@ NOW = float(os.environ.get("STAGE_LEFTOVERS_NOW") or time.time())
 POLL = float(os.environ.get("STAGE_LEFTOVERS_POLL") or 15)
 SELF = int(os.environ.get("STAGE_LEFTOVERS_SELF") or os.getpid())
 SHELL = re.compile(r"^\S*/?(zsh|bash|sh) -\w*c ")
+SNAPSHOT = re.compile(r"shell-snapshots/(snapshot-[\w.-]+?\.sh)")
 WATCH = re.compile(r"(stage-leftovers\.sh|python\S*\s+-)\s+watch\s")
 REGISTRY = os.environ.get("LONG_RUN_REGISTRY") or os.path.join(
     os.environ.get("TMPDIR") or "/tmp", "spine-long-run.registry")
@@ -31,12 +32,12 @@ def usage(msg):
 
 
 def procs():
-    # pid -> (ppid, start epoch, cpu, command); lstart is five words: "Fri Sep 25 14:24:01 2026".
+    # pid -> (ppid, start epoch, cpu, command, pgid, uid); lstart is five words: "Fri Sep 25 14:24:01 2026".
     if PS_FILE:
         text = open(PS_FILE, encoding="utf-8").read()
     else:
         # lstart follows LC_TIME: under ru_RU it is no longer five English words.
-        ps = subprocess.run(["ps", "-axww", "-o", "pid=,ppid=,pcpu=,lstart=,command="],
+        ps = subprocess.run(["ps", "-axww", "-o", "pid=,ppid=,pgid=,uid=,pcpu=,lstart=,command="],
                             capture_output=True, text=True, errors="replace",
                             env=dict(os.environ, LC_ALL="C"))
         if ps.returncode != 0 and not ps.stdout.strip():
@@ -45,12 +46,12 @@ def procs():
         text = ps.stdout
     table = {}
     for line in text.splitlines():
-        f = line.split(None, 8)
-        if len(f) < 9:
+        f = line.split(None, 10)
+        if len(f) < 11:
             continue
         try:
-            start = time.mktime(time.strptime(" ".join(f[3:8]), "%a %b %d %H:%M:%S %Y"))
-            table[int(f[0])] = (int(f[1]), start, f[2], f[8])
+            start = time.mktime(time.strptime(" ".join(f[5:10]), "%a %b %d %H:%M:%S %Y"))
+            table[int(f[0])] = (int(f[1]), start, f[4], f[10], int(f[2]), int(f[3]))
         except ValueError:
             continue
     return table
@@ -172,6 +173,31 @@ def new_roots(doc, table):
     return found
 
 
+def shell_orphans(doc, table):
+    # A Bash-tool shell leads its own process group, and what it sent to the background keeps the
+    # group when the shell exits and the process goes to PID 1. So the stage's orphan is a process
+    # under PID 1 whose group's leader is gone, of this user, started after the snapshot. A launchd
+    # job or an app leads its own group. A group whose shell names another session's snapshot file
+    # is that session's; one with no name at all is shown, the user decides.
+    mine = {SNAPSHOT.search(table[p][3]).group(1) for p in own_chain(table, doc["session"])
+            if SNAPSHOT.search(table[p][3])}
+    groups = {}
+    for pid, row in table.items():
+        groups.setdefault(row[4], []).append(pid)
+
+    def foreign(pgid):
+        names = {m.group(1) for p in groups[pgid] for m in [SNAPSHOT.search(table[p][3])] if m}
+        return bool(names) and bool(mine) and not names & mine
+
+    found = []
+    for pid in sorted(table):
+        ppid, start, _cpu, _cmd, pgid, uid = table[pid]
+        if (ppid == 1 and pgid != pid and pgid not in table and uid == os.getuid()
+                and start >= doc["taken"] and not foreign(pgid)):
+            found.append(pid)
+    return found
+
+
 def registry_orphans(doc, table, seen):
     # long-run.sh detaches its job to launchd, out of the claude subtree: its registry names it.
     found = []
@@ -201,10 +227,11 @@ def diff(args):
     doc = json.load(open(args[0], encoding="utf-8"))
     table = procs()
     hits = new_roots(doc, table)
+    hits += shell_orphans(doc, table)
     hits += registry_orphans(doc, table, set(hits))
     lines = []
     for pid in hits:
-        ppid, start, _cpu, cmd = table[pid]
+        ppid, start, _cpu, cmd = table[pid][:4]
         lines.append("process pid=%d start=%d age=%s parent=%d cmd=%s"
                      % (pid, start, age(NOW - start), ppid, cmd[:200]))
     for root, before in doc["roots"].items():
@@ -310,7 +337,7 @@ def watch(args):
                 below, _ = descendants(table, sess)
                 mine = own_chain(table, sess)
                 for pid in sorted(below - mine):
-                    ppid, start, cpu, cmd = table[pid]
+                    ppid, start, cpu, cmd = table[pid][:4]
                     if ppid != sess:
                         print("  proc pid=%d start=%d cpu=%s age=%s cmd=%s"
                               % (pid, start, cpu, age(now - start), cmd[:160]))

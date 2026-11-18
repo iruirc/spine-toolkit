@@ -10,10 +10,14 @@ setup() {
   export STAGE_LEFTOVERS_NOW="$(date -j -f '%a %b %d %H:%M:%S %Y' 'Fri Sep 25 15:00:00 2026' +%s 2>/dev/null \
     || date -d 'Fri Sep 25 15:00:00 2026' +%s)"
   : >"$LONG_RUN_REGISTRY"
+  ME="$(id -u)"
 }
 
-# One ps row: pid ppid lstart-time command. The day is fixed; only the clock time varies.
-row() { printf '%s %s 0.0 Fri Sep 25 %s 2026 %s\n' "$1" "$2" "$3" "$4"; }
+# One ps row: pid ppid lstart-time command. The day is fixed; only the clock time varies. The
+# process leads its own group and belongs to this user unless PG or U says otherwise.
+row() { printf '%s %s %s %s 0.0 Fri Sep 25 %s 2026 %s\n' "$1" "$2" "${PG:-$1}" "${U:-$ME}" "$3" "$4"; }
+# A process under PID 1 whose group's leader was another process: orow pid pgid time command.
+orow() { PG="$2" row "$1" 1 "$3" "$4"; }
 
 before() {
   { row 100 1 09:00:00 claude
@@ -66,7 +70,7 @@ snap() { "$SL" snap --out "$T/snap" "$@"; }
 
 @test "a pid reused by a new process is shown" {
   before; row 111 110 08:00:00 'xcodebuild old' >>"$T/ps"; snap
-  sed -i.bak 's/^111 110 0.0 Fri Sep 25 08:00:00 2026 xcodebuild old$/111 110 0.0 Fri Sep 25 14:30:00 2026 xcodebuild new/' "$T/ps"
+  sed -i.bak "s/^111 110 111 $ME 0.0 Fri Sep 25 08:00:00 2026 xcodebuild old\$/111 110 111 $ME 0.0 Fri Sep 25 14:30:00 2026 xcodebuild new/" "$T/ps"
   run "$SL" diff "$T/snap"
   [ "$status" -eq 1 ] && [[ "$output" == *"pid=111 "*"cmd=xcodebuild new"* ]] || { echo "$output"; return 1; }
 }
@@ -272,6 +276,42 @@ transcript() {
   touch -t 200001010000 "$T/wf/agent-a1.jsonl" "$T/wf"
   run "$SL" watch --dir "$T/wf" --stall 300 --idle 1
   [ "$status" -eq 5 ] || { echo "$output"; return 1; }
+}
+
+# A stage's load generator, `( busy loop ) &` in a Bash-tool command, went to PID 1 when the shell
+# exited, and diff said nothing while 84 such processes held the machine for half an hour.
+# The snapshot is taken at 14:00, the diff runs at 15:00; the caller's shell is 170.
+orphans() {
+  before
+  STAGE_LEFTOVERS_NOW=$((STAGE_LEFTOVERS_NOW - 3600)) snap
+  { row 170 100 14:59:59 '/bin/zsh -c source /u/.claude/shell-snapshots/snapshot-zsh-1-mine.sh && eval diff'
+    row 171 170 14:59:59 '/usr/bin/python3 - diff /s'; } >>"$T/ps"
+}
+
+@test "a process the stage orphaned to PID 1 is shown, once, at the top of what it started" {
+  orphans
+  { orow 141 140 14:30:00 'sleep 301'
+    orow 142 140 14:30:00 '/bin/zsh -c source /u/.claude/shell-snapshots/snapshot-zsh-1-mine.sh && eval loop'
+    PG=140 row 143 142 14:30:01 'perl -e busy'; } >>"$T/ps"
+  echo "141 $((STAGE_LEFTOVERS_NOW - 1800)) 100 $T/a.log" >>"$LONG_RUN_REGISTRY"
+  STAGE_LEFTOVERS_SELF=171 run "$SL" diff "$T/snap"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+  [ "${#lines[@]}" -eq 2 ] || { echo "$output"; return 1; }
+  [[ "${lines[0]}" == "process pid=141 "*"parent=1 cmd=sleep 301" ]] || { echo "$output"; return 1; }
+  [[ "${lines[1]}" == "process pid=142 "*"eval loop" ]] || { echo "$output"; return 1; }
+}
+
+@test "another session's orphan, an old one, a group leader and another user's process are not shown" {
+  orphans
+  { orow 151 150 14:30:00 'sleep 1'
+    orow 152 150 14:30:00 '/bin/zsh -c source /u/.claude/shell-snapshots/snapshot-zsh-2-other.sh && eval x'
+    orow 161 160 13:00:00 'sleep 2'
+    row 175 1 14:30:00 'launched by launchd'
+    row 180 100 14:30:00 '/bin/zsh -c eval y'; orow 181 180 14:30:00 'sleep 3'
+    U=0 orow 191 190 14:30:00 'sleep 4'; } >>"$T/ps"
+  STAGE_LEFTOVERS_SELF=171 run "$SL" diff "$T/snap"
+  [[ "$output" != *"pid=15"* && "$output" != *"pid=16"* && "$output" != *"pid=17"* \
+     && "$output" != *"pid=181"* && "$output" != *"pid=19"* ]] || { echo "$output"; return 1; }
 }
 
 # --- The session above the script: Claude Code or Codex CLI (runtimes/codex-cli.md → Scripts) ---
