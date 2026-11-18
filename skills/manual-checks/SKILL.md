@@ -100,7 +100,7 @@ The lint's `scriptable` check is the backstop: a case whose every step is a comm
 | `## Not covered` | Ground neither the automation nor these cases reach, one line each with its reason, or `none` |
 | `## Troubleshooting` | Symptom → cause → what to do, one row per symptom, for the ways a tester misses that are not product defects |
 | `## Charter` | A timebox and what to look at: "10 minutes: change quantities in a long cart; a total that lags, a badge that disagrees, a row that jumps" |
-| `## Code references` | A table headed `\| Case \| Code \|`, one row per case, `\| MC-<n> \| (file:line), … \|`; the tester never reads it |
+| `## Code references` | A table headed `\| Case \| Code \|`, one row per case, `\| MC-<n> \| (file:line), … \|`, and one per scene from `P2` on, `\| P<n> \| (file:line), … \|` (`## Grounding`); the tester never reads it |
 
 **`[COVERS]`, `[STYLE]`, `## Run record`, `## Scope`, `## Cases`, `## On failure` and `## Not covered` are always there, and so is `## Code references` whenever the file holds a case.** A file whose `## Cases` reads `none — <why>` has no references section. The others are conditional. `## Preparation` appears as soon as a step uses a product word or a shared scene, which is nearly always. `## Troubleshooting` appears when a case has a known way to go wrong that is not a product defect: the wrong account, a setting left changed, a cached build. `## Charter` appears when the change carries a gesture or a look the cases do not cover whole.
 
@@ -113,7 +113,7 @@ The lint's `scriptable` check is the backstop: a case whose every step is a comm
 
 A case names the scene it starts from in `**Preconditions:**`, and only what differs from it.
 
-**A scene is a state.** It names the state a case starts from and the shortest way to reach it, and nothing else. It is built without the behaviour the diff changes: when that state can be reached only through the changed behaviour, those actions are preparing steps of the case, so a broken change is the case's FAIL and never a scene that would not build. A scene that starts where another one ends says so, "P2, then…", and does not repeat it.
+**A scene is a state.** It names the state a case starts from and the shortest way to reach it, and nothing else. That state is checked like any claim of a case (`## Grounding`). It is built without the behaviour the diff changes: when that state can be reached only through the changed behaviour, those actions are preparing steps of the case, so a broken change is the case's FAIL and never a scene that would not build. A scene that starts where another one ends says so, "P2, then…", and does not repeat it.
 
 `## Not covered` is not a case list — nobody walks it. It exists so that later a missing case does not read as a passing one. Its reader is the file's reader, the one who walks the cases: each line says in the words of the screen what is left unchecked and, in one clause, why — "no safe way to make the disk fail". When automated tests hold it, "automated tests" is enough; how they hold it — the doubles, the temporary folders, the environments — goes to `Validation.md`.
 
@@ -239,7 +239,7 @@ A pass file is read by `## The lint` like any other: each case is an ordinary ca
 | `steps` | no steps table, a header other than the one in `## The case`, an empty `Action` or `Expected` (`—` is a value) |
 | `compound` | two steps in one `Action`: "then", "and then", "afterwards", "repeat steps", a semicolon |
 | `code` | code in `Action`, `Expected`, `**Preconditions:**` or `**What it checks:**`: a CamelCase word, a source file, a dotted name of three parts or more, a `(file:line)` |
-| `codeslot` | a case with no row in `## Code references`, a row with no `file:line` in it, a row for a case not in `## Cases` |
+| `codeslot` | a case with no row in `## Code references`, a row with no `file:line` in it, a row for a case not in `## Cases`; a scene with no row (`P2` and on in `full`, every `S<n>` in `brief` and in a pass file, none for a scene that is all `**dev-only:**`), a scene row with no `file:line`, a row for a scene not in `## Preparation` |
 | `instrument` | an instrument in the file a person walks: an instrument field in a case, a section of instrument commands, a step or a field that asks the tester to record the screen (`## No instrument in the file`) |
 | `chain` | "after case N", "the state right after", or an edit history kept in the file |
 | `scriptable` | a case in which every step is a command — a backticked command, or "run the command…": nothing in it needs a person, so it is a script, not a case (`## Does this check need a person?`). The repair routes the case — `covered` in `## Scope`, or an automatable gap — and under `auto` the last one routed away takes the file with it; rewording the steps is not a repair |
@@ -257,9 +257,12 @@ A pass file is read by `## The lint` like any other: each case is an ordinary ca
 A case states what the code does, so it is written from the code, never from memory:
 
 - Every claim about behaviour in `**Preconditions:**`, `Expected` and `**Failure looks like:**` — a direction, a limit, what a neighbouring element does — is checked against the code, and its reference goes into the case's row in `## Code references`, never into the step. Advice from `Review.md` enters a case only after that check.
+- The starting state of every scene — what is on the screen, and which values — is checked against the code the same way, because the cases count from it: `P2` and on in `full`, `S1` and on in `brief`, each with its own row in `## Code references`, keyed `S<n>` or `P<n>`. `P0`, `P1` and a scene that is all `**dev-only:**` need none.
+- A scene the driver opened in this run records what the screen showed, never what it was expected to show, and is checked against its row. A screen and a code that disagree are a finding in `Validation.md`, and the scene is written from neither.
+- A value the run's data sets — what recognition found, a file's length, a system setting, the clock — is written relative to a landmark on the screen: "the cursor reads the start of the first line of the list", "a tenth past the start of the phrase". An absolute value is written only where the code fixes it, and that reference is in the row.
 - A case about a resource or a style names, in its row of `## Code references`, the element that draws it and where it is used.
 - A step uses only what exists in the build at `[COVERS]`; a check of what a later step of an epic adds is a `## Not covered` line with its reason.
-- `scripts/lint-manual-checks.sh` names every case with no reference in `## Code references` and every place code leaked out of it; `## The lint` says how its findings are repaired.
+- `scripts/lint-manual-checks.sh` names every case and every scene with no reference in `## Code references` and every place code leaked out of it; `## The lint` says how its findings are repaired.
 - **The empty case.** `**Failure looks like:**` is what the code before the change would show from the same preconditions. When it matches `**Expected result:**`, the case checks nothing: delete it, and give `## Not covered` a line with the reason — or, when it guards a regression, make it part of the one nothing-broke case (`## What a case must prove`).
 
 ## Refreshing
@@ -267,10 +270,10 @@ A case states what the code does, so it is written from the code, never from mem
 A Validation that finds `ManualChecks.md` with a `[COVERS]` behind HEAD refreshes it rather than rewriting it:
 
 1. `git diff --name-only <COVERS>..HEAD` names the changed files.
-2. A case with a code reference into one of them is checked again, and so is a case with no code reference at all; the others are left alone.
+2. A case with a code reference into one of them is checked again, and so is a case with no code reference at all; the others are left alone. A scene is read the same way by its row, and a scene with no row gains one.
 3. A new `## Manual acceptance` line goes through `## Does this check need a person?`; one that needs a person becomes a case with the next unused id; a case automation now covers moves to `## Scope` with a reference to that evidence, and its id is not reused.
 4. A file with `**Code:**` inside its cases is the old format: move each into `## Code references` as that case's row. A file no Validation refreshes stays as it is.
-5. The style: a file whose `[STYLE]` differs from this run's `manual_checks_style` is rewritten whole in the run's style, where a file with no `[STYLE]` line reads as `full`; its case ids are kept, and a removed id is not reused.
+5. The style: a file whose `[STYLE]` differs from this run's `manual_checks_style` is rewritten whole in the run's style, where a file with no `[STYLE]` line reads as `full`; its case ids are kept, and a removed id is not reused. When a file is rewritten whole — this way or by hand under newer rules — every factual claim of every scene and every case is checked again: a change of form is no exemption from `## Grounding`.
 6. `[COVERS]` becomes HEAD.
 
 ## No instrument in the file
@@ -293,7 +296,7 @@ Neither `**Preconditions:**`, a cell of `**Steps:**`, nor `**Expected result:**`
 | `## Preparation` | Only the scenes cases start from, `### S1. <title>` and on, each with one or two sentences that build it: a state, by `## Structure`, with no `→` and no condition for BLOCKED |
 | `## Cases` | `### MC-<n>.`, one per check |
 | `## Not covered` | As in `full` |
-| `## Code references` | As in `full`, when the file holds a case; the tester never reads it |
+| `## Code references` | As in `full`, when the file holds a case, with a row `\| S<n> \| (file:line), … \|` for each scene; the tester never reads it |
 | `**Result:**` | The last line of the file: `**Result:** MC-1 __ · MC-2 __ …` |
 
 The `**Result:**` line carries one mark per case: PASS, FAIL or BLOCKED, with its reason after a FAIL or a BLOCKED. Under `[MANUAL_CHECKS]` = `always` with no case left, `## Cases` reads `none — <why>` and the `**Result:**` line reads `**Result:** none`. A brief case has no status field, so that mark is the one status of `## What a case must prove`, and a failing condition is named in that mark's reason.
@@ -352,4 +355,4 @@ The axis decides depth, not existence: whether this file appears at all is `manu
 
 ## Review
 
-This artifact is read at Review like any other the task produced. A case a tester cannot execute as written is an ordinary finding, judged by `## The case` and `## Grounding`, and in `brief` by `## Brief` in place of `## The case`; an empty case and a claim about behaviour with no reference in `## Code references` are findings too. So are a case that needs no person by `## Does this check need a person?` and a `## Manual acceptance` line with no `needs:`; neither blocks. By `## What a case must prove`, three more findings block nothing either: a case that does not tell the build before the change from the build after, a case on behaviour the diff did not touch, and a step that has a person measure what the eye can see. A `**Runner:** agent` mark in a file of a task whose `manual_checks_pass` is `per-step` is a finding too: that mark is written only under `end`. Review and `## Check` are the only checks that run against a real task: a test can hold the spec, never the artifact made from it.
+This artifact is read at Review like any other the task produced. A case a tester cannot execute as written is an ordinary finding, judged by `## The case` and `## Grounding`, and in `brief` by `## Brief` in place of `## The case`; an empty case and a claim about behaviour with no reference in `## Code references` are findings too, and so are a scene with no row in `## Code references` and a scene whose starting state was not checked against the code; neither blocks. So are a case that needs no person by `## Does this check need a person?` and a `## Manual acceptance` line with no `needs:`; neither blocks. By `## What a case must prove`, three more findings block nothing either: a case that does not tell the build before the change from the build after, a case on behaviour the diff did not touch, and a step that has a person measure what the eye can see. A `**Runner:** agent` mark in a file of a task whose `manual_checks_pass` is `per-step` is a finding too: that mark is written only under `end`. Review and `## Check` are the only checks that run against a real task: a test can hold the spec, never the artifact made from it.

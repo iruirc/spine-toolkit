@@ -398,6 +398,17 @@ PY
   [ "$(grep -c . <<<"$g")" -le 10 ] || { echo "## Grounding outgrew ten lines"; return 1; }
 }
 
+@test "scenes are grounded: a row per scene, observed over assumed, a value from data is relative, a rewrite re-checks" {
+  g="$(skill_section '## Grounding')"
+  for token in 'starting state of every scene' '`S<n>`' '`P<n>`' 'what the screen showed' '`Validation.md`' 'relative to a landmark on the screen'; do
+    grep -qF -- "$token" <<<"$g" || { echo "## Grounding does not name $token"; return 1; }
+  done
+  r="$(skill_section '## Refreshing')"
+  grep -qF 'every factual claim of every scene and every case is checked again' <<<"$r" || { echo "## Refreshing: no re-check on a whole rewrite"; return 1; }
+  grep -qF 'a scene with no row in `## Code references`' <<<"$(skill_section '## Review')" || { echo "## Review: no scene finding"; return 1; }
+  grep -qF 'a scene with no row' <<<"$(skill_section '## The lint')" || { echo "## The lint: no scene in codeslot"; return 1; }
+}
+
 @test "a refresh re-checks only the cases whose code moved" {
   r="$(skill_section '## Refreshing')"
   [ -n "$r" ] || { echo "no ## Refreshing"; return 1; }
