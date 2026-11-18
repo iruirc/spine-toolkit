@@ -53,7 +53,7 @@ en
 ## When working on this repo
 
 - What to run and when, and how to wait for it: `spine-ops/WORKSPACE.md`.
-- After changing a skill, validate it: `${CODEX_HOME:-~/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/<name>`.
+- After changing a skill, validate it: `python3 ${CODEX_HOME:-~/.codex}/skills/.system/skill-creator/scripts/quick_validate.py skills/<name>`.
 - Adding a user-facing string: add the key to BOTH `locales/en.md` AND `locales/ru.md`, then
   reference it from the skill body. Parity check
   (`diff <(grep '^## ' .../en.md | sort) <(grep '^## ' .../ru.md | sort)`) must be empty.
@@ -95,8 +95,9 @@ en
   suffix Codex's local reinstall flow writes into `version`.
 - `skills/` is the only component the Codex manifest declares. `skills/`, `conventions/`,
   `templates/`, `scripts/` and `hooks/` are shared by Claude Code and Codex; Codex runs the hooks
-  and asks to trust them again after every update (`runtimes/codex-cli.md`). `commands/`,
-  `workflows/` and `workflow-src/` are Claude Code only.
+  and asks to trust them again after every update (`runtimes/codex-cli.md`). `workflows/` and
+  `workflow-src/` are Claude Code only; of `commands/` Codex takes only a command whose body has no
+  `$ARGUMENTS`, as a skill of its own (`setup` shows up as `source-command-setup`).
 - In Codex the orchestrator runs through `runtimes/codex-cli.md`, the host's half of every step
   Claude Code does with its own tools.
 - A skill only the orchestrator drives carries `policy.allow_implicit_invocation: false` in its
