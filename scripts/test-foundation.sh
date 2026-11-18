@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run Foundation bats tests.
-# Usage: scripts/test-foundation.sh [unit|all|changed [--list]]
+# Usage: scripts/test-foundation.sh [unit|all|changed [--list]|touched <file>...]
 #   changed  runs the test files that name what the branch touched since its merge base with
 #            $TEST_BASE (default main), or on main what is not pushed; uncommitted and untracked
 #            files count. A change under skills/ conventions/ templates/ workflows/ commands/ also
@@ -8,6 +8,8 @@
 #            to a helper or a fixture runs the whole lib/ directory. A file no test names is
 #            reported on stderr and runs nothing. --list prints the selection, one path per line,
 #            instead of running it.
+#   touched  runs the test files that name any of the given repo-relative files, and nothing else:
+#            no fixture, sweep or skills/ rules, no diff against a base. Never records the tree.
 #   all      when green and the tree did not change during the run, records the tree it verified
 #            in .git/spine-verified-trees (the git common dir), the last 20 trees, newest last.
 set -euo pipefail
@@ -95,6 +97,22 @@ changed_suites() {
   printf '%s\n' "$selected" | sed '/^$/d' | sort -u
 }
 
+# Prints the bats arguments for the given files, one per line, and why to stderr. A file is named
+# by a test that holds its path as text; the selection is sorted and has no repeats.
+touched_suites() {   # <file>...
+  local f picked selected=""
+  for f in "$@"; do
+    picked="$(grep -lF -- "$f" "$lib"/*.bats 2>/dev/null || true)"
+    if [ -z "$picked" ]; then
+      echo "touched: $f -> no test names it" >&2
+    else
+      echo "touched: $f -> $(printf '%s\n' "$picked" | sed 's|.*/||' | tr '\n' ' ' | sed 's/ $//')" >&2
+      selected="$selected"$'\n'"$picked"
+    fi
+  done
+  printf '%s\n' "$selected" | sed '/^$/d' | sort -u
+}
+
 # Prints the tree hash the worktree would commit - tracked, modified and untracked files, as
 # `git add -A` sees them - built in a scratch copy of the index so the real one is not touched.
 # Exits 1 outside git or when $root is not the repository top level.
@@ -147,5 +165,16 @@ case "$target" in
     chosen=()
     while IFS= read -r s; do chosen+=("$s"); done <<< "$list"
     bats "${chosen[@]}" ;;
-  *)    echo "usage: $0 [unit|all|changed [--list]]" >&2; exit 2 ;;
+  touched)
+    shift
+    [ "$#" -gt 0 ] || { echo "usage: $0 [unit|all|changed [--list]|touched <file>...]" >&2; exit 2; }
+    list="$(touched_suites "$@")"
+    if [ -z "$list" ]; then
+      echo "touched: no test names these files" >&2
+      exit 0
+    fi
+    chosen=()
+    while IFS= read -r s; do chosen+=("$s"); done <<< "$list"
+    bats "${chosen[@]}" ;;
+  *)    echo "usage: $0 [unit|all|changed [--list]|touched <file>...]" >&2; exit 2 ;;
 esac

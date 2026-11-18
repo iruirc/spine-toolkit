@@ -13,6 +13,11 @@ setup() {
   mkdir -p "$R/scripts" "$R/tests/foundation/lib" "$BATS_TEST_TMPDIR/bin"
   cp "$ROOT/scripts/test-foundation.sh" "$R/scripts/test-foundation.sh"
   printf '# names nothing\n' >"$R/tests/foundation/lib/a.test.bats"
+  mkdir -p "$R/tests/fixtures/fixture-driver/.claude-plugin"
+  echo '{}' >"$R/tests/fixtures/fixture-driver/.claude-plugin/plugin.json"
+  printf '# tests/fixtures/fixture-driver/.claude-plugin/plugin.json\n' >"$R/tests/foundation/lib/driver.test.bats"
+  printf '# .claude-plugin/plugin.json\n' >"$R/tests/foundation/lib/manifest.test.bats"
+  printf '# names no path\n' >"$R/tests/foundation/lib/other.test.bats"
   cat >"$BATS_TEST_TMPDIR/bin/bats" <<'FAKE'
 #!/usr/bin/env bash
 printf '%s\n' "$@" >"$BATS_TEST_TMPDIR/bats-args"
@@ -96,4 +101,50 @@ FAKE
   run --separate-stderr "$R/scripts/test-foundation.sh" all
   [ "$status" -eq 0 ]
   [[ "$stderr" == *"test-foundation: could not record the verified tree"* ]]
+}
+
+@test "touched runs the tests that name the files, not the whole lib for a fixture" {
+  run --separate-stderr "$R/scripts/test-foundation.sh" touched tests/fixtures/fixture-driver/.claude-plugin/plugin.json
+  [ "$status" -eq 0 ]
+  # the manifest test holds the shorter path only, so it is not chosen; other and lib/ are not either
+  [ "$(cat "$BATS_TEST_TMPDIR/bats-args")" = "$R/tests/foundation/lib/driver.test.bats" ]
+  [[ "$stderr" == *"touched: tests/fixtures/fixture-driver/.claude-plugin/plugin.json -> "* ]]
+}
+
+@test "touched with a shorter path also runs the tests that hold the longer one" {
+  run --separate-stderr "$R/scripts/test-foundation.sh" touched .claude-plugin/plugin.json
+  [ "$status" -eq 0 ]
+  [ "$(grep -c . "$BATS_TEST_TMPDIR/bats-args")" -eq 2 ]
+}
+
+@test "touched with several files runs each test once" {
+  run --separate-stderr "$R/scripts/test-foundation.sh" touched tests/fixtures/fixture-driver/.claude-plugin/plugin.json .claude-plugin/plugin.json
+  [ "$status" -eq 0 ]
+  [ "$(grep -c . "$BATS_TEST_TMPDIR/bats-args")" -eq 2 ]
+  [ "$(grep -c 'driver.test.bats' "$BATS_TEST_TMPDIR/bats-args")" -eq 1 ]
+  [ "$(grep -c 'manifest.test.bats' "$BATS_TEST_TMPDIR/bats-args")" -eq 1 ]
+}
+
+@test "touched on files no test names runs nothing and passes" {
+  run --separate-stderr "$R/scripts/test-foundation.sh" touched docs/nothing.md
+  [ "$status" -eq 0 ]
+  [ ! -e "$BATS_TEST_TMPDIR/bats-args" ]
+  [[ "$stderr" == *"touched: docs/nothing.md -> no test names it"* ]]
+  [[ "$stderr" == *"touched: no test names these files"* ]]
+}
+
+@test "touched without files is a usage error" {
+  run --separate-stderr "$R/scripts/test-foundation.sh" touched
+  [ "$status" -eq 2 ]
+  [[ "$stderr" == *"usage:"* ]]
+  [ ! -e "$BATS_TEST_TMPDIR/bats-args" ]
+}
+
+@test "touched keeps the bats exit code and records nothing" {
+  FAKE_BATS_RC=1 run "$R/scripts/test-foundation.sh" touched .claude-plugin/plugin.json
+  [ "$status" -eq 1 ]
+  [ ! -e "$S" ]
+  run "$R/scripts/test-foundation.sh" touched .claude-plugin/plugin.json
+  [ "$status" -eq 0 ]
+  [ ! -e "$S" ]
 }
