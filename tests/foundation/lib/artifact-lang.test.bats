@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # The prose language of an artifact is measured, not asked for: conventions/artifact-language.md.
 # Russian text lives in tests/fixtures/artifact-lang/*.ru.md, the one place lint-i18n.sh lets it be.
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # A phase ends green so it can be reverted or bisected alone; how much "green" means
 # was defined nowhere, and a planner without a criterion re-ran the full regression in
 # nine phases of ten. This suite holds the rule's text and every surface pointing at it.

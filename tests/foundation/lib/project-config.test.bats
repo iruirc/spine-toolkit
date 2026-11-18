@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 bats_require_minimum_version 1.5.0
 # The project config is core's format: `setup` writes it, the orchestrator and
 # stack-detect read it. A block missing from the template is a block no project

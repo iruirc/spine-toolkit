@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # The registry format has three copies: the script that parses it, the convention that states
 # it, and the template a project starts from. A template that does not parse is the copy a
 # project actually gets, so it is checked by running the parser over it rather than by reading.

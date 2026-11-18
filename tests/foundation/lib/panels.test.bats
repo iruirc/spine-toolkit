@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # A panel stage's order is its profile's, and Method B states the order Method A already runs
 # (workflows/profile-bug.js, profile-test.js): BUG's lenses in parallel, then an architect
 # synthesis; TEST's architect lens, then the tester (spec: multi-llm milestone 6).

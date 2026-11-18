@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # A writer of Done, Plan, Review or Research is told twice what the reader needs: to write it by the
 # task-documents skill and the style of artifact-reader, and to run the readability lint once on the
 # file and name what is left. Each brief says it in two sentences, with its own file and section.

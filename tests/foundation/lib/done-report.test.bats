@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # A Done that runs again meets the report an earlier Done left. That report is claims to check
 # against the task, never a draft to confirm, and the calibration row it wrote is corrected in place.
 

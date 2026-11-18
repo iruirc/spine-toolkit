@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # ManualChecks.md is the one artifact of a task a person executes rather than reads.
 # A vague sentence in a walkthrough costs a re-read; a vague step here cannot be run at
 # all. This suite holds the parts of that spec a reviewer cannot see: that both halves

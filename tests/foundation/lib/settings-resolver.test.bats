@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep
 # Every setting a task runs with comes from one chain and one reader (scripts/resolve-settings.sh).
 # The chain is what a project's choice travels along; a chain resolved in prose cannot be tested,
 # which is why five surfaces used to resolve it five ways.
