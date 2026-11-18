@@ -1,27 +1,37 @@
 #!/usr/bin/env bats
 # `test-foundation.sh changed` picks the test files that name what a branch touched. Each test
 # builds a small repository, changes one thing on a branch and reads the selection from
-# `changed --list`; the script copied into the repository resolves its root there.
+# `changed --list`; the script copied into the repository resolves its root there. The repository
+# path holds a space, so a summary that splits paths on spaces shows.
 
 bats_require_minimum_version 1.5.0
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  R="$BATS_TEST_TMPDIR/r"
-  mkdir -p "$R/scripts" "$R/tests/foundation/helpers" "$R/tests/foundation/lib"
-  mkdir -p "$R/skills/task-report" "$R/skills/task-report-x"
+  R="$BATS_TEST_TMPDIR/my repo"
+  mkdir -p "$R/scripts" "$R/tests/foundation/helpers" "$R/tests/foundation/fixtures" \
+           "$R/tests/foundation/lib"
+  mkdir -p "$R/skills/task-report" "$R/skills/task-report-x" "$R/conventions" "$R/templates" \
+           "$R/workflows" "$R/commands"
   cp "$ROOT/scripts/test-foundation.sh" "$R/scripts/test-foundation.sh"
   echo a >"$R/scripts/a.sh"
   echo o >"$R/scripts/orphan.sh"
+  echo c >"$R/scripts/café.sh"
   echo s >"$R/skills/task-report/SKILL.md"
   echo s >"$R/skills/task-report-x/SKILL.md"
+  echo v >"$R/conventions/layout.md"
+  echo t >"$R/templates/task.md"
+  echo w >"$R/workflows/profile-x.js"
+  echo m >"$R/commands/setup.md"
   echo h >"$R/tests/foundation/helpers/h.bash"
+  echo f >"$R/tests/foundation/fixtures/f.txt"
   local lib="$R/tests/foundation/lib"
-  printf '# names scripts/a.sh\n' >"$lib/a.test.bats"
+  printf '# names scripts/a.sh and scripts/café.sh\n' >"$lib/a.test.bats"
   printf '# names skills/task-report/\n' >"$lib/report.test.bats"
   printf '# names skills/task-report-x\n' >"$lib/report-x.test.bats"
   printf '#!/usr/bin/env bats\n# changed: sweep\n' >"$lib/sweep.test.bats"
   printf '# names nothing\n' >"$lib/other.test.bats"
+  printf '# names scripts/a.sh\n' >"$lib/with space.test.bats"
   git -C "$R" init -q -b main
   git -C "$R" add -A
   git -C "$R" -c user.name=t -c user.email=t@t commit -qm base
@@ -50,7 +60,7 @@ names() {
   echo more >>"$R/scripts/a.sh"
   changed
   [ "$status" -eq 0 ]
-  [ "$(names)" = "a.test.bats" ]
+  [ "$(names)" = $'a.test.bats\nwith space.test.bats' ]
 }
 
 @test "a skill file selects its skill's tests and the sweeps" {
@@ -65,7 +75,7 @@ names() {
   commit rename
   changed
   [ "$status" -eq 0 ]
-  [ "$(names)" = "a.test.bats" ]
+  [ "$(names)" = $'a.test.bats\nwith space.test.bats' ]
 }
 
 @test "an untracked file under skills selects the sweeps" {
@@ -85,6 +95,65 @@ names() {
 
 @test "a helper change selects the whole suite" {
   echo more >>"$R/tests/foundation/helpers/h.bash"
+  changed
+  [ "$status" -eq 0 ]
+  [ "$(names)" = "DIR" ]
+}
+
+@test "a conventions file selects the sweeps" {
+  echo more >>"$R/conventions/layout.md"
+  changed
+  [ "$status" -eq 0 ]
+  [ "$(names)" = "sweep.test.bats" ]
+}
+
+@test "a template file selects the sweeps" {
+  echo more >>"$R/templates/task.md"
+  changed
+  [ "$status" -eq 0 ]
+  [ "$(names)" = "sweep.test.bats" ]
+}
+
+@test "a workflow script selects the sweeps" {
+  echo more >>"$R/workflows/profile-x.js"
+  changed
+  [ "$status" -eq 0 ]
+  [ "$(names)" = "sweep.test.bats" ]
+}
+
+@test "a command file selects the sweeps" {
+  echo more >>"$R/commands/setup.md"
+  changed
+  [ "$status" -eq 0 ]
+  [ "$(names)" = "sweep.test.bats" ]
+}
+
+@test "a path with a non-ASCII name selects the test that names it" {
+  echo more >>"$R/scripts/café.sh"
+  changed
+  [ "$status" -eq 0 ]
+  [ "$(names)" = "a.test.bats" ]
+  [[ "$stderr_text" == *"scripts/café.sh -> a.test.bats"* ]]
+}
+
+@test "the stderr summary keeps a path with a space whole" {
+  echo more >>"$R/scripts/a.sh"
+  changed
+  [ "$status" -eq 0 ]
+  [[ "$stderr_text" == *"scripts/a.sh -> a.test.bats with space.test.bats"* ]]
+}
+
+@test "a removed test file runs nothing and says so" {
+  git -C "$R" rm -q tests/foundation/lib/other.test.bats
+  commit remove
+  changed
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [[ "$stderr_text" == *"tests/foundation/lib/other.test.bats -> removed, nothing to run"* ]]
+}
+
+@test "a fixture change selects the whole suite" {
+  echo more >>"$R/tests/foundation/fixtures/f.txt"
   changed
   [ "$status" -eq 0 ]
   [ "$(names)" = "DIR" ]

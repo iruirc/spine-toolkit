@@ -28,7 +28,8 @@ suites=("$lib")
 # and untracked. On <base> itself the merge base is HEAD and would hide every local commit, so the
 # comparison is with origin/<base>: what has not been pushed. A fresh clone of a branch has
 # origin/<base> and no local <base>. Renames are listed as a delete and an add, so the old path of
-# a renamed file still selects the tests that name it.
+# a renamed file still selects the tests that name it. quotePath is off so that a path with a
+# non-ASCII name comes out as it is, not as an escaped string no test names.
 diff_files() {   # <repo> <base>
   local repo="$1" base_ref="$2" base
   if [ "$(git -C "$repo" symbolic-ref --short -q HEAD || true)" = "$base_ref" ] ||
@@ -37,8 +38,8 @@ diff_files() {   # <repo> <base>
   fi
   base="$(git -C "$repo" merge-base HEAD "$base_ref")" || {
     echo "error: $repo has no merge base with '$base_ref'; set TEST_BASE" >&2; return 2; }
-  { git -C "$repo" diff --name-only --no-renames "$base"
-    git -C "$repo" ls-files --others --exclude-standard; } | sort -u
+  { git -C "$repo" -c core.quotePath=false diff --name-only --no-renames "$base"
+    git -C "$repo" -c core.quotePath=false ls-files --others --exclude-standard; } | sort -u
 }
 
 # Prints the bats arguments for the changed files, one per line, and why to stderr.
@@ -53,6 +54,7 @@ changed_suites() {
     if head -10 "$f" | grep -qx '# changed: sweep'; then sweeps="$sweeps"$'\n'"$f"; fi
   done
   while IFS= read -r f; do
+    [ -n "$f" ] || continue
     picked=""
     case "$f" in
       tests/foundation/helpers/*|tests/foundation/fixtures/*|tests/fixtures/*)
@@ -80,7 +82,7 @@ changed_suites() {
     if [ -z "$picked" ]; then
       echo "changed: $f -> no test names it" >&2
     else
-      echo "changed: $f -> $(printf '%s\n' "$picked" | xargs -n1 basename | tr '\n' ' ' | sed 's/ $//')" >&2
+      echo "changed: $f -> $(printf '%s\n' "$picked" | sed 's|.*/||' | tr '\n' ' ' | sed 's/ $//')" >&2
       selected="$selected"$'\n'"$picked"
     fi
   done <<< "$files"
