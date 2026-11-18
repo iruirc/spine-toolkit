@@ -8,6 +8,8 @@
 #            to a helper or a fixture runs the whole lib/ directory. A file no test names is
 #            reported on stderr and runs nothing. --list prints the selection, one path per line,
 #            instead of running it.
+#   all      when green and the tree did not change during the run, records the tree it verified
+#            in .git/spine-verified-trees (the git common dir), the last 20 trees, newest last.
 set -euo pipefail
 
 target="${1:-all}"
@@ -93,9 +95,48 @@ changed_suites() {
   printf '%s\n' "$selected" | sed '/^$/d' | sort -u
 }
 
+# Prints the tree hash the worktree would commit - tracked, modified and untracked files, as
+# `git add -A` sees them - built in a scratch copy of the index so the real one is not touched.
+# Exits 1 outside git or when $root is not the repository top level.
+worktree_tree() {
+  local top idx tmp tree="" rc=0
+  top="$(git -C "$root" rev-parse --show-toplevel 2>/dev/null)" || return 1
+  [ "$top" = "$(cd -- "$root" && pwd -P)" ] || return 1
+  idx="$(git -C "$root" rev-parse --path-format=absolute --git-path index 2>/dev/null)" || return 1
+  tmp="$(mktemp)" || return 1
+  # An empty file is not an index to git; with no index to copy, let git start a fresh one.
+  if [ -f "$idx" ]; then cp "$idx" "$tmp" || rc=1; else rm -f "$tmp"; fi
+  if [ "$rc" -eq 0 ]; then
+    GIT_INDEX_FILE="$tmp" git -C "$root" add -A >/dev/null 2>&1 &&
+      tree="$(GIT_INDEX_FILE="$tmp" git -C "$root" write-tree 2>/dev/null)" || rc=1
+  fi
+  rm -f "$tmp"
+  [ "$rc" -eq 0 ] || return 1
+  printf '%s\n' "$tree"
+}
+
+# Appends <tree> to the stamp in the git common dir and keeps the last 20 lines. The new content
+# is written beside the stamp and moved over it, so a reader never sees a half-written file.
+record_green_tree() {   # <tree>
+  local tree="$1" stamp tmp
+  stamp="$(git -C "$root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/spine-verified-trees" || return 1
+  [ ! -d "$stamp" ] || return 1   # mv would put the new file inside it
+  tmp="$(mktemp "$stamp.XXXXXX" 2>/dev/null)" || return 1
+  { { [ ! -e "$stamp" ] || tail -n 19 "$stamp"; printf '%s\n' "$tree"; } >"$tmp" 2>/dev/null &&
+      mv "$tmp" "$stamp" 2>/dev/null; } || { rm -f "$tmp"; return 1; }
+}
+
 case "$target" in
   unit) bats "$lib" ;;
-  all)  bats "${suites[@]}" ;;
+  all)
+    before="$(worktree_tree || true)"
+    rc=0
+    bats "${suites[@]}" || rc=$?
+    after="$(worktree_tree || true)"
+    if [ "$rc" -eq 0 ] && [ -n "$before" ] && [ "$before" = "$after" ]; then
+      record_green_tree "$before" || echo "test-foundation: could not record the verified tree" >&2
+    fi
+    exit "$rc" ;;
   changed)
     list="$(changed_suites)"
     if [ "${2:-}" = "--list" ]; then
