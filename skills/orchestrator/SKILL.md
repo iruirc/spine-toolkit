@@ -1028,7 +1028,9 @@ the tool returns an error to the agent and the stage goes on; start the watch ag
 `stage_call_hung_option_wait` (start it again with `--since <now>` in epoch seconds, so the same call
 wakes you only after another `stall`) or `stage_call_hung_option_stop` (`TaskStop`
 the workflow, then the `diff` above). Exit 5 means no transcript moved for `max`: say so and do not
-restart it. Method B has no watch: the stage runs in this session, and nothing is left to wake it.
+restart it. Any other exit, except the one your own stop causes, means the watch itself failed and
+the stage runs unguarded: report it with key `stage_watch_failed` (`{code}`) and the last line it
+printed, do not restart it, and let the stage go on. Method B has no watch: the stage runs in this session, and nothing is left to wake it.
 
 **Per-phase commits vs flow-level commits.** The "commit always confirmed with user" rule applies ONLY to flow-level wrap commits the orchestrator itself initiates (squash, merge, push) — these are user-confirmed regardless of mode. **Per-phase commits inside a workflow-* multi-phase stage (Refactor / Execute / Fix / Write) are autonomous** — the workflow-* skill creates one commit per green phase without a user prompt, in both manual and auto modes. The orchestrator MUST NOT misread "does not confirm commit with user" inside workflow-* skills as "does not commit at all"; per-phase commits are mandatory for the phase invariant ("each phase independently buildable+test-passing+committed") to hold against interrupts.
 

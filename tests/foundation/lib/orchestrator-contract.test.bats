@@ -617,7 +617,7 @@ section() {
   for token in 'stage-leftovers.sh snap' 'stage-leftovers.sh diff' 'stage-leftovers.sh kill' 'stage-leftovers.sh watch' \
                '`roots`' '`status: interrupted`' '`TaskStop`' 'stage_error_prompt' \
                '`run_in_background`' '`mcp__*`' 'long_run.stall' '`added` file is shown, never removed' \
-               'Act on nothing before the user answers' 'Method B has no watch' \
+               'Act on nothing before the user answers' 'Method B has no watch' 'stage_watch_failed' \
                "status directory is replaced by \`*\`" "'…/Tasks/*/<task folder>'" '--since <now>'; do
     grep -qF -- "$token" <<<"$para" || { echo "the Stage leftovers paragraph does not name $token"; return 1; }
   done
@@ -628,7 +628,7 @@ section() {
 @test "every leftovers key exists in both locales" {
   for key in leftover_process leftover_tree leftovers_prompt leftovers_option_kill leftovers_option_restore \
              leftovers_option_leave stage_call_hung stage_call_hung_option_kill stage_call_hung_option_wait \
-             stage_call_hung_option_stop; do
+             stage_call_hung_option_stop stage_watch_failed; do
     for l in en ru; do
       grep -qx "## $key" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no $key"; return 1; }
     done

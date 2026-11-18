@@ -250,6 +250,9 @@ Keep waiting
 ## stage_call_hung_option_stop
 Stop the stage
 
+## stage_watch_failed
+The hung-call watch exited with code {code}, so this stage is no longer watched for hung tool calls. Its last line:
+
 ## warn_walkthrough_pre_depth
 `on` is the pre-depth value, so it is read as `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. A project's `on` still ends at `off` when this task's `scale` is `lite`, the gate sitting below the task's own field and above the project's. To keep the older shape, write `brief` in `[WALKTHROUGH]`, in `Task.md` or in the project config.
 
