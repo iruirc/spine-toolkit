@@ -16,6 +16,7 @@ setup() {
   ACTION='Tap the plus button on the Green tea row'
   EXPECTED='The quantity reads 2'
   CODE='(cart/quantity_stepper.src:41)'
+  SCENE_CODE='(cart/cart_screen.src:12)'
 }
 
 # A Russian word the lint must match, written as \uXXXX escapes: no Cyrillic outside *.ru.md.
@@ -85,6 +86,18 @@ PY
 # A case in the old format: its **Code:** field sits inside it, above **Status:**.
 old_case() { # $1 id
   case_md "$1" | awk -v id="$1" '/^\*\*Status:\*\*/ { print "**Code:** (a.src:" id ")"; print "" } { print }'
+}
+
+# $1 replaced by $2 in $F, the first time only; "\n" in either is a newline. A row goes in after a row
+# this way, never by >>: a brief or a pass file ends with its **Result:** line.
+subst() {
+  python3 - "$F" "$1" "$2" <<'PY'
+import sys
+p, a, b = sys.argv[1], sys.argv[2].replace('\\n', '\n'), sys.argv[3].replace('\\n', '\n')
+t = open(p, encoding='utf-8').read()
+assert a in t, a
+open(p, 'w', encoding='utf-8').write(t.replace(a, b, 1))
+PY
 }
 
 drop() { # $1 a fixed string; removes every line of $F holding it
@@ -242,6 +255,42 @@ clean() { # $1 a path; the lint must exit 0 with no output
   CODE='(cart/quantity_stepper.src:41)'; write
   printf '| MC-9 | (cart/x.src:1) |\n' >>"$F"
   expect 'ManualChecks.md: codeslot: row for a case not in ## Cases (MC-9)'
+}
+
+@test "codeslot: a brief scene with no row, a row with no file:line, and a row for no scene are named" {
+  brief_md; drop '| S1 |'
+  expect 'ManualChecks.md: codeslot: no row in ## Code references (### S1.)'
+  SCENE_CODE='the cart screen'; brief_md
+  expect 'ManualChecks.md: codeslot: no file:line in ## Code references (### S1.)'
+  SCENE_CODE='(cart/cart_screen.src:12)'; brief_md
+  subst '| S1 |' '| S3 | (cart/x.src:1) |\n| S1 |'
+  expect 'ManualChecks.md: codeslot: row for a scene not in ## Preparation (S3)'
+}
+
+@test "codeslot: in full, P2 and on need a row; P0, P1 and a row for them are fine" {
+  write
+  subst 'Sign in with the test account.\n' '### P0. Build\n\n**dev-only:** build it.\n\n### P1. Device\n\nEnglish.\n\n### P2. A cart with Green tea\n\nPut one Green tea in the cart.\n'
+  expect 'ManualChecks.md: codeslot: no row in ## Code references (### P2.)'
+  printf '| P0 | (build/x.src:1) |\n| P1 | (app/x.src:1) |\n| P2 | (cart/cart_screen.src:12) |\n' >>"$F"
+  clean "$F"
+}
+
+@test "codeslot: a scene whose body opens with **dev-only:** needs no row" {
+  brief_md
+  subst '## Cases\n' '### S2. A debug build\n\n**dev-only:** install the debug build.\n\n## Cases\n'
+  clean "$F"
+  # A row for it is no row for a missing scene: the scene is there.
+  subst '| S1 |' '| S2 | (build/debug.src:3) |\n| S1 |'
+  clean "$F"
+}
+
+@test "codeslot: a scene of the other style is no scene: P2 in brief, S1 in full" {
+  brief_md
+  subst '## Cases\n' '### P2. A cart\n\nPut one Green tea in the cart.\n\n## Cases\n'
+  clean "$F"
+  write
+  printf '| S1 | (cart/cart_screen.src:12) |\n' >>"$F"
+  expect 'ManualChecks.md: codeslot: row for a scene not in ## Preparation (S1)'
 }
 
 @test "file: cases with no ## Code references are named once" {
@@ -537,6 +586,7 @@ brief_md() { # $@ cases, each a whole case text; none given means one case built
       id="$(printf '%s\n' "$c" | sed -n 's/^### MC-\([0-9][0-9]*\)\..*/\1/p' | head -n 1)"
       [ -z "$id" ] || { printf '| MC-%s | %s |\n' "$id" "$CODE"; ids="$ids MC-$id __"; }
     done
+    printf '| S1 | %s |\n' "$SCENE_CODE"
     printf '\n**Result:**%s\n' "$ids"; } >"$F"
 }
 
@@ -690,6 +740,7 @@ PY
 import sys
 p = sys.argv[1]; t = open(p, encoding='utf-8').read()
 t = t.replace('Sign in with the test account.\n', 'Sign in with the test account.\n\n### P2. A cart with two rows\n\n| # | Action | Expected |\n|---|---|---|\n| 1 | Start recording, then add two items | Two rows |\n')
+t += '| P2 | (cart/cart_screen.src:12) |\n'
 open(p, 'w', encoding='utf-8').write(t)
 PY
   expect 'ManualChecks.md: instrument: a screen recording in ## Preparation (P2)'
@@ -826,6 +877,7 @@ pass_file() { # $1 brief|full; $@ the text of ## Cases, one chunk each (a sessio
       id="$(printf '%s\n' "$c" | sed -n 's/^#### \([^ ]*\)\. .*/\1/p' | head -n 1)"
       [ -z "$id" ] || { printf '| %s | %s |\n' "$id" "$CODE"; ids="$ids $id __ ·"; }
     done
+    printf '| S1 | %s |\n' "$SCENE_CODE"
     printf '\n**Result:**%s\n' "${ids% ·}"; } >"$F"
 }
 
@@ -961,4 +1013,11 @@ order_case() { # $1 id, $2 the Order line or nothing; brief
   run "$LINT" "$F"
   [ "$status" -eq 1 ] && grep -qF 'case: no case under ## Cases (## Cases)' <<<"$output" \
     || { echo "a file with no [PASS] line was read as a pass: $output"; return 1; }
+}
+
+@test "pass: a scene of the pass needs its S<n> row, with no step prefix" {
+  pass_brief; drop '| S1 |'
+  expect 'ManualChecks.md: codeslot: no row in ## Code references (### S1.)'
+  pass_brief
+  clean "$F"
 }

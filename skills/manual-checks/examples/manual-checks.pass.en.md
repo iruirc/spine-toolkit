@@ -107,5 +107,6 @@ Add Green tea to the cart in the quantity the case's Start names, and open the c
 | 02/MC-2 | (cart/badge_counter.src:30) |
 | 02/MC-3 | (cart/badge_counter.src:44) |
 | 01/MC-2 | (cart/refresh_control.src:12) |
+| S1 | (cart/add_to_cart.src:22), (cart/cart_screen.src:14) |
 
 **Result:** 01/MC-1 __ · 02/MC-1 __ · 02/MC-2 __ · 02/MC-3 __ · 01/MC-2 __ — PASS, FAIL, BLOCKED or DROPPED each; after a FAIL, a BLOCKED or a DROPPED, why, without an unbalanced parenthesis

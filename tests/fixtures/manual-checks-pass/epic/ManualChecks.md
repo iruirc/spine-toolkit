@@ -91,5 +91,6 @@ Add Green tea to the cart in the quantity the case's Start names, and open the c
 | 02/MC-1 | (cart/badge_counter.src:18) |
 | 02/MC-2 | (cart/badge_counter.src:30) |
 | 02/MC-3 | (cart/quantity_limit.src:17) |
+| S1 | (cart/add_to_cart.src:22), (cart/cart_screen.src:14) |
 
 **Result:** 01/MC-1 __ · 01/MC-2 FAIL (the spinner stays on the screen) · 02/MC-1 PASS · 02/MC-2 BLOCKED (no real device at hand) · 02/MC-3 DROPPED (the limit was removed from the design) — PASS, FAIL, BLOCKED or DROPPED each; after a FAIL, a BLOCKED or a DROPPED, why

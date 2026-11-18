@@ -24,6 +24,9 @@ set -euo pipefail
 #             decimal is not one), a (file:line) gloss;
 #   codeslot  a case with no row in ## Code references (a table "| Case | Code |", one "| MC-<n> | ... |"
 #             row per case), a row with no file:line, a row for an id that is no case under ## Cases;
+#             a scene of ## Preparation from P2 on ("### P<n>.") with no "| P<n> | ... |" row or with
+#             no file:line in it, and a row for a scene that is not there; P0, P1 and a scene whose
+#             body opens with **dev-only:** need no row, and the scene is named by its heading (### P2.);
 #   chain     a case that starts from another case's end state, or a file that keeps its edit history;
 #   instrument **By instrument:** in a case, a ## Reading the verdict section in the file, a screen
 #             recording asked of the tester in a step or in any field of a case ("record the screen",
@@ -53,7 +56,8 @@ set -euo pipefail
 #             ## Charter, ### Screen map;
 #   field, compound, code, codeslot, chain, instrument and scriptable read the brief case as they
 #             read a full one: the Action is the text of a numbered step before "→", the Expected the text
-#             after it, and **Start:** is read where a full case's **Preconditions:** is.
+#             after it, and **Start:** is read where a full case's **Preconditions:** is. The scenes
+#             codeslot reads are "### S<n>.", every one of them, with "| S<n> | ... |" rows.
 #
 # A collective pass file, <epic>/ManualChecks.md of an epic that walks its cases at the end, is a file
 # with a line "[PASS] = <step>, <step>, ..." after [STYLE], in either style. Its cases sit under
@@ -65,7 +69,8 @@ set -euo pipefail
 #             of its session that does not carry it, **Order:** last before a case that does not carry
 #             it (once per session and kind), a case with no "<step>/MC-<n> <mark>" token in
 #             **Result:**; the rows of ## Code references and the Result tokens are keyed by
-#             <step>/MC-<n>, and **Result:** is required in full too (the script reads it);
+#             <step>/MC-<n>, and **Result:** is required in full too (the script reads it); its
+#             scenes are "### S<n>." in either style, their rows "| S<n> | ... |" with no step prefix;
 #
 # Known limit: a product name in CamelCase (YouTube, PayPal) reads as code. There is no allow-list.
 #
@@ -151,6 +156,7 @@ CODE = [
     re.compile(r'\b[A-Za-z_]\w*(?:\.[A-Za-z_]\w*){2,}\b'),
     re.compile(r'\b[\w/-]+\.[A-Za-z]{1,5}:\d+\b'),
 ]
+SCENE_REF = re.compile(r'^[SP]\d+$')
 FILE_LINE = re.compile(r'[A-Za-z_][\w./-]*:\d+')
 
 path = sys.argv[1]
@@ -332,8 +338,9 @@ else:
 where_of = {i: where for i, _, where, _, _ in recs}
 old = [(i, h) for i, h in headings if OLD.match(h[1])]
 
-# ## Code references: the table's rows, "MC-<n>" to the text of the Code cell.
-refs, has_refs = {}, False
+# ## Code references: the table's rows, "MC-<n>" to the text of the Code cell, and a scene's "S<n>"
+# or "P<n>" to its own.
+refs, scene_refs, has_refs = {}, {}, False
 for i, h in headings:
     if h == (2, '## Code references'):
         has_refs = True
@@ -344,6 +351,8 @@ for i, h in headings:
             r = (PASS_REF if is_pass else re.compile(r'^MC-\d+$')).match(c[0])
             if r and len(c) > 1 and c[0] not in refs:
                 refs[c[0]] = c[1]
+            elif SCENE_REF.match(c[0]) and len(c) > 1 and c[0] not in scene_refs:
+                scene_refs[c[0]] = c[1]
 
 # The old format keeps the references in the case, as a **Code:** field.
 old_code = next((i for i, _, _, _, _ in recs
@@ -475,6 +484,38 @@ for i, cid, where, behaviour, session in recs:
 for label in refs:
     if label not in seen:
         found.append('codeslot: row for a case not in ## Cases (%s)' % label)
+
+# codeslot, for the scenes of ## Preparation: the starting state of a scene is grounded like a case.
+# A scene is "### S<n>." in brief and in a pass file, "### P<n>." from P2 on in full; P0 and P1, the
+# build and the device, and a scene whose body opens with **dev-only:** need no row.
+if recs and has_refs and old_code is None:
+    scene_kind = 'S' if brief or is_pass else 'P'
+    scenes, present = [], set()
+    if prep is not None:
+        for i, h in headings:
+            if i <= prep:
+                continue
+            if h[0] <= 2:
+                break
+            m = re.match(r'^###\s+(([SP])(\d+))\.', h[1])
+            if h[0] != 3 or not m or m.group(2) != scene_kind:
+                continue
+            present.add(m.group(1))
+            if scene_kind == 'P' and int(m.group(3)) < 2:
+                continue
+            body = trimmed(section(i, 3))
+            if body and body[0].lstrip().startswith('**dev-only:**'):
+                continue
+            scenes.append(m.group(1))
+    for sid in scenes:
+        where = '### %s.' % sid
+        if sid not in scene_refs:
+            found.append('codeslot: no row in ## Code references (%s)' % where)
+        elif not FILE_LINE.search(scene_refs[sid]):
+            found.append('codeslot: no file:line in ## Code references (%s)' % where)
+    for sid in scene_refs:
+        if sid not in present and not (scene_kind == 'P' and sid in ('P0', 'P1')):
+            found.append('codeslot: row for a scene not in ## Preparation (%s)' % sid)
 
 if is_pass:
     # pass: inside a session the cases that need an untouched state come first, the ones that end it last.

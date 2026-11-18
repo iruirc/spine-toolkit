@@ -208,3 +208,4 @@ If the badge shows a number before step 6, the account's cart is not empty: reco
 | MC-1 | (cart/quantity_stepper.src:41), (cart/badge_counter.src:18) |
 | MC-2 | (cart/quantity_limit.src:17) |
 | MC-3 | (cart/quantity_stepper.src:58), (cart/empty_state.src:9) |
+| P2 | (cart/add_to_cart.src:22), (cart/cart_screen.src:14) |

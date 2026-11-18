@@ -96,5 +96,6 @@ Add Green tea to the cart in the quantity the case's Start names, and open the c
 | MC-2 | (cart/quantity_limit.src:17), (cart/limit_label.src:12) |
 | MC-3 | (cart/quantity_stepper.src:58), (cart/empty_state.src:9) |
 | MC-4 | (cart/cart_row.src:33) |
+| S1 | (cart/add_to_cart.src:22), (cart/cart_screen.src:14) |
 
 **Result:** MC-1 __ · MC-2 __ · MC-3 __ · MC-4 __ — PASS, FAIL or BLOCKED each; after a FAIL or a BLOCKED, why, and the row of conditions it failed on
