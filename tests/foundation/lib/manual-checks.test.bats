@@ -4,6 +4,25 @@
 # all. This suite holds the parts of that spec a reviewer cannot see: that both halves
 # of the two-stage contract reached both execution forms of all five profiles.
 
+# The Method A tests below run a profile with stubbed agents and read a few things from its result.
+# A node start costs more than the run's own work, so the harness and every read share one: rp.js
+# runs run-profile.js and prints each JS expression over the result (o), values separated by RS.
+setup_file() {
+  cat >"$BATS_FILE_TMPDIR/rp.js" <<'JS'
+const [helper, ...rest] = process.argv.slice(2)
+const exprs = rest.splice(3)
+const emit = console.log
+console.log = (s) => {
+  console.log = emit
+  const o = JSON.parse(s)
+  emit(exprs.map((e) => { const v = eval(e); return typeof v === 'string' ? v : String(JSON.stringify(v)) }).join('\x1e'))
+}
+process.argv = [process.argv[0], helper, ...rest]
+require(helper)
+JS
+  export RP_JS="$BATS_FILE_TMPDIR/rp.js"
+}
+
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   SKILL="$ROOT/skills/manual-checks/SKILL.md"
@@ -428,59 +447,72 @@ PY
 # ── Method A: the cold walk after Validation, driven with stubbed agents ──
 AGENTS='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"—","diagnostics":"g","init":"—"}'
 
-walk_run() { # $1 profile, $2 extra contract members (leading comma), $3 validation reply members (leading comma), $4 check reply
-  node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" \
+# $1 profile, $2 contract, $3 replies, then JS expressions over o: V[0], V[1], ... are their values.
+rp() {
+  local raw i=0
+  raw="$(node "$RP_JS" "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" "$2" "$3" "${@:4}")"
+  V=()
+  while :; do
+    V[i]="${raw%%$'\x1e'*}"; i=$((i + 1))
+    [[ "$raw" == *$'\x1e'* ]] || break
+    raw="${raw#*$'\x1e'}"
+  done
+}
+
+walk_rp() { # $1 profile, $2 extra contract members (leading comma), $3 validation reply members (leading comma), $4 check reply, then JS expressions
+  rp "$1" \
     "{\"task_id\": \"001\", \"task_dir\": \"/p/Tasks/ACTIVE/001-x\", \"plugin_root\": \"/core\", \"lang\": \"en\", \"agents\": $AGENTS, \"start_stage\": \"Validation\", \"end_stage\": \"Validation\", \"stage_scope\": \"forward\"$2}" \
-    "{\"validation\": {\"validation_status\": \"PASSED\", \"reproduction_status\": \"fixed\", \"artifact_path\": \"v\", \"summary\": \"s\", \"manual_checks\": [\"the icon is new\"], \"manual_checks_path\": \"/p/Tasks/ACTIVE/001-x/ManualChecks.md\"$3}, \"manual-checks:check\": ${4:-$CLEAN}, \"manual-checks:revise\": {\"changed\": true, \"artifact_path\": \"/p/Tasks/ACTIVE/001-x/ManualChecks.md\"}}"
+    "{\"validation\": {\"validation_status\": \"PASSED\", \"reproduction_status\": \"fixed\", \"artifact_path\": \"v\", \"summary\": \"s\", \"manual_checks\": [\"the icon is new\"], \"manual_checks_path\": \"/p/Tasks/ACTIVE/001-x/ManualChecks.md\"$3}, \"manual-checks:check\": ${4:-$CLEAN}, \"manual-checks:revise\": {\"changed\": true, \"artifact_path\": \"/p/Tasks/ACTIVE/001-x/ManualChecks.md\"}}" \
+    "${@:5}"
 }
 
 CLEAN='{"walk": ["I open the header"], "smells": []}'
 
-pick() { node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8")); const v = eval(process.argv[1]); console.log(typeof v === "string" ? v : JSON.stringify(v))' "$1"; }
-
-labels() { pick 'o.calls.map((c) => c.label).join(" ")'; }
+LABELS='o.calls.map((c) => c.label).join(" ")'
 
 SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", "kind": "ambiguous", "quote": "find the start of the cell", "missing": "which cell, where"}]}'
 
 @test "a passed Validation that wrote cases has the file walked cold by the validator's role" {
   for p in $PROFILES; do
-    out="$(walk_run "$p" ', "manual_checks_style": "full"')"
-    [ "$(labels <<<"$out")" = "validation manual-checks:check" ] || { echo "profile-$p: $(labels <<<"$out")"; return 1; }
-    pr="$(pick 'o.calls[1].prompt' <<<"$out")"
+    walk_rp "$p" ', "manual_checks_style": "full"' '' '' "$LABELS" 'o.calls[1].prompt' 'o.result.notes'
+    [ "${V[0]}" = "validation manual-checks:check" ] || { echo "profile-$p: ${V[0]}"; return 1; }
+    pr="${V[1]}"
     for f in 'spine-toolkit:manual-checks skill, its ## Check section' 'a tester with no access to the code' '/p/Tasks/ACTIVE/001-x/ManualChecks.md, except its ## Code references section, and nothing else' 'run no git command'; do
       grep -qF -- "$f" <<<"$pr" || { echo "profile-$p: the reader brief lost: $f"; return 1; }
     done
-    grep -qF 'ManualChecks.md check: nothing unclear.' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: no note"; return 1; }
+    grep -qF 'ManualChecks.md check: nothing unclear.' <<<"${V[2]}" || { echo "profile-$p: no note"; return 1; }
   done
 }
 
 @test "what the reader could not execute goes back to the validator for one revision" {
   for p in $PROFILES; do
-    out="$(walk_run "$p" '' '' "$SMELL")"
-    [ "$(labels <<<"$out")" = "validation manual-checks:check manual-checks:revise" ] || { echo "profile-$p: $(labels <<<"$out")"; return 1; }
-    pr="$(pick 'o.calls[2].prompt' <<<"$out")"
+    walk_rp "$p" '' '' "$SMELL" "$LABELS" 'o.calls[2].prompt' 'o.result.notes'
+    [ "${V[0]}" = "validation manual-checks:check manual-checks:revise" ] || { echo "profile-$p: ${V[0]}"; return 1; }
+    pr="${V[1]}"
     for f in 'find the start of the cell' 'which cell, where' 'ambiguous' 'I look for the start' '## Grounding'; do
       grep -qF -- "$f" <<<"$pr" || { echo "profile-$p: the revision brief lost: $f"; return 1; }
     done
-    grep -qF 'ManualChecks.md check: 1 place(s), revised.' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: no note"; return 1; }
+    grep -qF 'ManualChecks.md check: 1 place(s), revised.' <<<"${V[2]}" || { echo "profile-$p: no note"; return 1; }
   done
 }
 
 @test "the revision reports the file's length before and after, and a longer file is flagged" {
   for p in $PROFILES; do
-    out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$p.js" \
+    rp "$p" \
       "{\"task_id\": \"001\", \"task_dir\": \"/p/Tasks/ACTIVE/001-x\", \"plugin_root\": \"/core\", \"lang\": \"en\", \"agents\": $AGENTS, \"start_stage\": \"Validation\", \"end_stage\": \"Validation\", \"stage_scope\": \"forward\"}" \
-      "{\"validation\": {\"validation_status\": \"PASSED\", \"reproduction_status\": \"fixed\", \"artifact_path\": \"v\", \"summary\": \"s\", \"manual_checks\": [\"a\"], \"manual_checks_path\": \"/p/Tasks/ACTIVE/001-x/ManualChecks.md\"}, \"manual-checks:check\": $SMELL, \"manual-checks:revise\": {\"changed\": true, \"artifact_path\": \"m\", \"lines_before\": 120, \"lines_after\": 98}}")"
-    grep -qF 'ManualChecks.md check: 1 place(s), revised, 120 → 98 lines.' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: $(pick 'o.result.notes' <<<"$out")"; return 1; }
-    ! grep -qF 'lengthened' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: flagged a shorter file"; return 1; }
-    pr="$(pick 'o.calls[2].prompt' <<<"$out")"
+      "{\"validation\": {\"validation_status\": \"PASSED\", \"reproduction_status\": \"fixed\", \"artifact_path\": \"v\", \"summary\": \"s\", \"manual_checks\": [\"a\"], \"manual_checks_path\": \"/p/Tasks/ACTIVE/001-x/ManualChecks.md\"}, \"manual-checks:check\": $SMELL, \"manual-checks:revise\": {\"changed\": true, \"artifact_path\": \"m\", \"lines_before\": 120, \"lines_after\": 98}}" \
+      'o.result.notes' 'o.calls[2].prompt'
+    grep -qF 'ManualChecks.md check: 1 place(s), revised, 120 → 98 lines.' <<<"${V[0]}" || { echo "profile-$p: ${V[0]}"; return 1; }
+    ! grep -qF 'lengthened' <<<"${V[0]}" || { echo "profile-$p: flagged a shorter file"; return 1; }
+    pr="${V[1]}"
     for f in 'redundant' 'lines_before' 'lines_after' 'wc -l'; do
       grep -qF -- "$f" <<<"$pr" || { echo "profile-$p: the revision brief lost: $f"; return 1; }
     done
-    out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$p.js" \
+    rp "$p" \
       "{\"task_id\": \"001\", \"task_dir\": \"/p/Tasks/ACTIVE/001-x\", \"plugin_root\": \"/core\", \"lang\": \"en\", \"agents\": $AGENTS, \"start_stage\": \"Validation\", \"end_stage\": \"Validation\", \"stage_scope\": \"forward\"}" \
-      "{\"validation\": {\"validation_status\": \"PASSED\", \"reproduction_status\": \"fixed\", \"artifact_path\": \"v\", \"summary\": \"s\", \"manual_checks\": [\"a\"], \"manual_checks_path\": \"/p/Tasks/ACTIVE/001-x/ManualChecks.md\"}, \"manual-checks:check\": $SMELL, \"manual-checks:revise\": {\"changed\": true, \"artifact_path\": \"m\", \"lines_before\": 98, \"lines_after\": 120}}")"
-    grep -qF 'ManualChecks.md check: 1 place(s), revised, 98 → 120 lines. The revision lengthened the file.' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: $(pick 'o.result.notes' <<<"$out")"; return 1; }
+      "{\"validation\": {\"validation_status\": \"PASSED\", \"reproduction_status\": \"fixed\", \"artifact_path\": \"v\", \"summary\": \"s\", \"manual_checks\": [\"a\"], \"manual_checks_path\": \"/p/Tasks/ACTIVE/001-x/ManualChecks.md\"}, \"manual-checks:check\": $SMELL, \"manual-checks:revise\": {\"changed\": true, \"artifact_path\": \"m\", \"lines_before\": 98, \"lines_after\": 120}}" \
+      'o.result.notes'
+    grep -qF 'ManualChecks.md check: 1 place(s), revised, 98 → 120 lines. The revision lengthened the file.' <<<"${V[0]}" || { echo "profile-$p: ${V[0]}"; return 1; }
   done
 }
 
@@ -504,16 +536,18 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
 
 @test "no walk when the switch is off, the verdict is not PASSED, or the file was left as it was" {
   for p in $PROFILES; do
-    [ "$(walk_run "$p" ', "manual_checks_check": "off"' | labels)" = validation ] || { echo "profile-$p: walked with the switch off"; return 1; }
-    [ "$(walk_run "$p" '' ', "manual_checks_changed": false' | labels)" = validation ] || { echo "profile-$p: walked an unchanged file"; return 1; }
-    out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$p.js" \
+    walk_rp "$p" ', "manual_checks_check": "off"' '' '' "$LABELS"
+    [ "${V[0]}" = validation ] || { echo "profile-$p: walked with the switch off"; return 1; }
+    walk_rp "$p" '' ', "manual_checks_changed": false' '' "$LABELS"
+    [ "${V[0]}" = validation ] || { echo "profile-$p: walked an unchanged file"; return 1; }
+    rp "$p" \
       "{\"task_id\": \"001\", \"task_dir\": \"/p/t\", \"plugin_root\": \"/core\", \"agents\": $AGENTS, \"start_stage\": \"Validation\", \"end_stage\": \"Validation\"}" \
-      '{"validation": {"validation_status": "FAILED", "artifact_path": "v", "summary": "s", "manual_checks": ["a"]}}')"
-    [ "$(labels <<<"$out")" = validation ] || { echo "profile-$p: walked after FAILED"; return 1; }
-    out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$p.js" \
+      '{"validation": {"validation_status": "FAILED", "artifact_path": "v", "summary": "s", "manual_checks": ["a"]}}' "$LABELS"
+    [ "${V[0]}" = validation ] || { echo "profile-$p: walked after FAILED"; return 1; }
+    rp "$p" \
       "{\"task_id\": \"001\", \"task_dir\": \"/p/t\", \"plugin_root\": \"/core\", \"agents\": $AGENTS, \"start_stage\": \"Validation\", \"end_stage\": \"Validation\"}" \
-      '{"validation": {"validation_status": "PASSED", "reproduction_status": "fixed", "artifact_path": "v", "summary": "s"}}')"
-    [ "$(labels <<<"$out")" = validation ] || { echo "profile-$p: walked a run with no cases"; return 1; }
+      '{"validation": {"validation_status": "PASSED", "reproduction_status": "fixed", "artifact_path": "v", "summary": "s"}}' "$LABELS"
+    [ "${V[0]}" = validation ] || { echo "profile-$p: walked a run with no cases"; return 1; }
   done
 }
 
@@ -581,10 +615,10 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
 
 @test "a BUG that passed but still reproduces, or was not replayed, is not walked" {
   for status in still-reproduces not-replayed; do
-    out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-bug.js" \
+    rp bug \
       "{\"task_id\": \"001\", \"task_dir\": \"/p/t\", \"plugin_root\": \"/core\", \"agents\": $AGENTS, \"start_stage\": \"Validation\", \"end_stage\": \"Validation\"}" \
-      "{\"validation\": {\"validation_status\": \"PASSED\", \"reproduction_status\": \"$status\", \"artifact_path\": \"v\", \"summary\": \"s\", \"manual_checks\": [\"a\"]}}")"
-    [ "$(labels <<<"$out")" = validation ] || { echo "profile-bug: walked a run whose reproduction is $status"; return 1; }
+      "{\"validation\": {\"validation_status\": \"PASSED\", \"reproduction_status\": \"$status\", \"artifact_path\": \"v\", \"summary\": \"s\", \"manual_checks\": [\"a\"]}}" "$LABELS"
+    [ "${V[0]}" = validation ] || { echo "profile-bug: walked a run whose reproduction is $status"; return 1; }
   done
 }
 
@@ -940,18 +974,18 @@ PY
 
 @test "the reader and the reviser are briefed by the run's manual_checks_style" {
   for p in $PROFILES; do
-    out="$(walk_run "$p" '' '' "$SMELL")"
-    pr="$(pick 'o.calls[1].prompt' <<<"$out")"
+    walk_rp "$p" '' '' "$SMELL" 'o.calls[1].prompt' 'o.calls[2].prompt'
+    pr="${V[0]}"
     grep -qF 'knows the app but not the task' <<<"$pr" || { echo "profile-$p: the brief reader is not the one who knows the app"; return 1; }
     ! grep -qF 'a tester with no access to the code' <<<"$pr" || { echo "profile-$p: brief got the full reader"; return 1; }
     grep -qF 'tacit only for a scene, data or a condition of this task' <<<"$pr" || { echo "profile-$p: tacit is not narrowed in brief"; return 1; }
-    grep -qF 'Add no explanation of the product' <<<"$(pick 'o.calls[2].prompt' <<<"$out")" \
+    grep -qF 'Add no explanation of the product' <<<"${V[1]}" \
       || { echo "profile-$p: the brief revision may explain the product"; return 1; }
-    out="$(walk_run "$p" ', "manual_checks_style": "full"' '' "$SMELL")"
-    pr="$(pick 'o.calls[1].prompt' <<<"$out")"
+    walk_rp "$p" ', "manual_checks_style": "full"' '' "$SMELL" 'o.calls[1].prompt' 'o.calls[2].prompt'
+    pr="${V[0]}"
     grep -qF 'a tester with no access to the code' <<<"$pr" || { echo "profile-$p: full lost its reader"; return 1; }
     ! grep -qF 'knows the app but not the task' <<<"$pr" || { echo "profile-$p: full got the brief reader"; return 1; }
-    ! grep -qF 'Add no explanation of the product' <<<"$(pick 'o.calls[2].prompt' <<<"$out")" \
+    ! grep -qF 'Add no explanation of the product' <<<"${V[1]}" \
       || { echo "profile-$p: the full revision may not explain the product"; return 1; }
   done
 }
@@ -982,9 +1016,11 @@ PY
 
 @test "the revision reads Start in brief and Preconditions in full against the first step" {
   for p in $PROFILES; do
-    pr="$(walk_run "$p" '' '' "$SMELL" | pick 'o.calls[2].prompt')"
+    walk_rp "$p" '' '' "$SMELL" 'o.calls[2].prompt'
+    pr="${V[0]}"
     grep -qF "read each case's **Start:** against its first step" <<<"$pr" || { echo "profile-$p: brief revision does not read Start"; return 1; }
-    pr="$(walk_run "$p" ', "manual_checks_style": "full"' '' "$SMELL" | pick 'o.calls[2].prompt')"
+    walk_rp "$p" ', "manual_checks_style": "full"' '' "$SMELL" 'o.calls[2].prompt'
+    pr="${V[0]}"
     grep -qF "read each case's **Preconditions:** against its first step" <<<"$pr" || { echo "profile-$p: full revision does not read Preconditions"; return 1; }
   done
 }
@@ -1196,12 +1232,14 @@ PY
 
 @test "at end the Validation brief tells the validator to mark cases for the pass, at per-step it does not" {
   for p in $PROFILES; do
-    end="$(walk_run "$p" ', "manual_checks_pass": "end"' | pick 'o.calls[0].prompt')"
+    walk_rp "$p" ', "manual_checks_pass": "end"' '' '' 'o.calls[0].prompt'
+    end="${V[0]}"
     for t in 'collective pass' '## Marks for a collective pass' '**Runner:** agent' 'stays a case' 'counts as a case'; do
       grep -qF -- "$t" <<<"$end" || { echo "profile-$p: the end brief lacks: $t"; return 1; }
     done
     for pass in '' ', "manual_checks_pass": "per-step"'; do
-      step="$(walk_run "$p" "$pass" | pick 'o.calls[0].prompt')"
+      walk_rp "$p" "$pass" '' '' 'o.calls[0].prompt'
+      step="${V[0]}"
       ! grep -qF 'collective pass' <<<"$step" || { echo "profile-$p: the per-step brief mentions the collective pass"; return 1; }
     done
   done
