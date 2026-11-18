@@ -49,9 +49,7 @@ en
 
 ## When working on this repo
 
-- Running the foundation suite: run `scripts/test-foundation.sh` once with its output redirected
-  to a log file, then read failures from the log (`grep '^not ok'`). Never pipe the run into
-  `tail` and re-run it to see another slice.
+- What to run and when, and how to wait for it: `spine-ops/WORKSPACE.md`.
 - Adding a user-facing string: add the key to BOTH `locales/en.md` AND `locales/ru.md`, then
   reference it from the skill body. Parity check
   (`diff <(grep '^## ' .../en.md | sort) <(grep '^## ' .../ru.md | sort)`) must be empty.
