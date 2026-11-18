@@ -60,8 +60,18 @@ import os, pty, select, signal, subprocess, sys, time
 sig = getattr(signal, sys.argv[1])
 wait_s = float(sys.argv[2])
 master, slave = pty.openpty()
+
+
+def default_signals():
+    # A suite started in the background inherits SIGINT as ignored, and bash cannot trap a
+    # signal that was ignored at entry, so the child must start with the default disposition.
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+
 proc = subprocess.Popen(sys.argv[3:], stdout=slave, stderr=slave,
-                        stdin=subprocess.DEVNULL, close_fds=True)
+                        stdin=subprocess.DEVNULL, close_fds=True,
+                        preexec_fn=default_signals)
 os.close(slave)
 
 
