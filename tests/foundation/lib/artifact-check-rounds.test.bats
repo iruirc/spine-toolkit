@@ -5,25 +5,12 @@
 # is pinned byte-equal across the seven scripts that write either file, so a hand edit to one copy
 # goes red.
 
+load "$(dirname "$BATS_TEST_FILENAME")/../helpers/run-profile-read"
+
 # The read replies are built once per file: each is one node start, and the tests ask for the same
-# few sizes in every loop. So is rp.js: a node start costs more than a stubbed run's own work, so the
-# harness and every read of its result share one. It runs run-profile.js and prints each JS
-# expression over the result (o), values separated by RS.
+# few sizes in every loop.
 setup_file() {
   local n
-  cat >"$BATS_FILE_TMPDIR/rp.js" <<'JS'
-const [helper, ...rest] = process.argv.slice(2)
-const exprs = rest.splice(3)
-const emit = console.log
-console.log = (s) => {
-  console.log = emit
-  const o = JSON.parse(s)
-  emit(exprs.map((e) => { const v = eval(e); return typeof v === 'string' ? v : String(JSON.stringify(v)) }).join('\x1e'))
-}
-process.argv = [process.argv[0], helper, ...rest]
-require(helper)
-JS
-  export RP_JS="$BATS_FILE_TMPDIR/rp.js"
   for n in 0 1 2 3 6; do
     export "READ_$n=$(node -e 'const n = +process.argv[1]; const kinds = ["reread", "undefined term", "identifier subject", "no reason", "no proof"]
       console.log(JSON.stringify({ retelling: ["r"], unclear: Array.from({ length: n }, (_, i) => ({ quote: "q" + i, missing: "m" + i, kind: kinds[i % 5] })) }))' "$n")"
@@ -38,6 +25,7 @@ setup() {
   REVISED='"artifact:revise": {"artifact_path": "x", "changed": true}'
   DECOMPOSED='"plan": {"ok": true, "artifact_path": "p", "summary": "s", "branch": "decomposition", "steps": []}'
   LINT='Last, run scripts/lint-artifact-readability.sh on the file once, with `--words-per-sentence` taken from the contract'"'"'s `budgets`; fix each finding once and name what is left in the stage summary.'
+  ORDER_JS='o.calls.filter((c) => ["plan", "done"].includes(c.label) || c.label.startsWith("artifact")).map((c) => c.label.startsWith("artifact") ? c.label + "/" + c.phase : c.label).join(" ")'
   METHOD_B="dispatch a fresh agent of the writer's role to read the file only, per \`artifact-reader\` → \`## Check\`, then revise once"
 }
 
@@ -54,18 +42,6 @@ contract() {
     "$AGENTS" "$2" "$2" "$check" "${4:-}"
 }
 
-# $1 profile, $2 contract, $3 replies, then JS expressions over o: V[0], V[1], ... are their values.
-rp() {
-  local raw i=0
-  raw="$(node "$RP_JS" "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" "$2" "$3" "${@:4}")"
-  V=()
-  while :; do
-    V[i]="${raw%%$'\x1e'*}"; i=$((i + 1))
-    [[ "$raw" == *$'\x1e'* ]] || break
-    raw="${raw#*$'\x1e'}"
-  done
-}
-
 # $1 profile, $2 stage (Plan or Done), $3 artifact_check, $4 replies members, $5 extra contract members,
 # then JS expressions over o, which land in V[4], V[5], ... What most tests read from a run is set in
 # F_ORDER (the stage's own dispatch and every artifact dispatch, each artifact one with its phase),
@@ -74,7 +50,7 @@ stage() {
   local replies="$4"
   [ "$1" = epic ] && [ "$2" = Plan ] && replies="$DECOMPOSED${replies:+, $replies}"
   rp "$1" "$(contract "$1" "$2" "$3" "${5:-}")" "{$replies}" \
-    'o.calls.filter((c) => ["plan", "done"].includes(c.label) || c.label.startsWith("artifact")).map((c) => c.label.startsWith("artifact") ? c.label + "/" + c.phase : c.label).join(" ")' \
+    "$ORDER_JS" \
     'o.result.last_completed_stage' 'o.result.status' 'o.result.notes' "${@:6}"
   F_ORDER="${V[0]}"; F_STAGE="${V[1]}"; F_STATUS="${V[2]}"; F_NOTES="${V[3]}"
 }
@@ -252,7 +228,7 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
 @test "EPIC checks Plan.md only on the decomposition branch, and Done.md on both" {
   E="$ROOT/workflows/profile-epic.js"
   rp epic "$(contract epic Plan on)" "{\"plan\": {\"ok\": true, \"artifact_path\": \"p\", \"summary\": \"s\", \"branch\": \"pure_research\", \"steps\": []}, \"artifact:check\": $(read_with 0)}" \
-    'o.calls.filter((c) => ["plan", "done"].includes(c.label) || c.label.startsWith("artifact")).map((c) => c.label.startsWith("artifact") ? c.label + "/" + c.phase : c.label).join(" ")'
+    "$ORDER_JS"
   F_ORDER="${V[0]}"
   [ "$F_ORDER" = 'plan' ] || { echo "pure research: dispatched $F_ORDER"; return 1; }
   stage epic Plan on "\"artifact:check\": $(read_with 0)"

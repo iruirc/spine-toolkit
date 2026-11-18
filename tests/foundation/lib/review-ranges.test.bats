@@ -2,24 +2,7 @@
 # What Review reads, what it may hand to Done, and how a catch-up runs — driven through the
 # scripts themselves with stubbed agents, so a prompt that loses a range fails here.
 
-# Each loop below runs a profile and reads a few things from its result. A node start costs more
-# than the run's own work, so the harness and every read share one: rp.js runs run-profile.js and
-# prints each JS expression over the result (o), values separated by RS.
-setup_file() {
-  cat >"$BATS_FILE_TMPDIR/rp.js" <<'JS'
-const [helper, ...rest] = process.argv.slice(2)
-const exprs = rest.splice(3)
-const emit = console.log
-console.log = (s) => {
-  console.log = emit
-  const o = JSON.parse(s)
-  emit(exprs.map((e) => { const v = eval(e); return typeof v === 'string' ? v : String(JSON.stringify(v)) }).join('\x1e'))
-}
-process.argv = [process.argv[0], helper, ...rest]
-require(helper)
-JS
-  export RP_JS="$BATS_FILE_TMPDIR/rp.js"
-}
+load "$(dirname "$BATS_TEST_FILENAME")/../helpers/run-profile-read"
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
@@ -31,18 +14,6 @@ setup() {
 
 contract() { # $1 start stage, $2 extra JSON members (leading comma)
   printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "%s", "stage_scope": "forward"%s}' "$AGENTS" "$1" "$2"
-}
-
-# $1 profile, $2 contract, $3 replies, then JS expressions over o: V[0], V[1], ... are their values.
-rp() {
-  local raw i=0
-  raw="$(node "$RP_JS" "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" "$2" "$3" "${@:4}")"
-  V=()
-  while :; do
-    V[i]="${raw%%$'\x1e'*}"; i=$((i + 1))
-    [[ "$raw" == *$'\x1e'* ]] || break
-    raw="${raw#*$'\x1e'}"
-  done
 }
 
 prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""' "$1"; }

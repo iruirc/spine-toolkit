@@ -4,24 +4,7 @@
 # all. This suite holds the parts of that spec a reviewer cannot see: that both halves
 # of the two-stage contract reached both execution forms of all five profiles.
 
-# The Method A tests below run a profile with stubbed agents and read a few things from its result.
-# A node start costs more than the run's own work, so the harness and every read share one: rp.js
-# runs run-profile.js and prints each JS expression over the result (o), values separated by RS.
-setup_file() {
-  cat >"$BATS_FILE_TMPDIR/rp.js" <<'JS'
-const [helper, ...rest] = process.argv.slice(2)
-const exprs = rest.splice(3)
-const emit = console.log
-console.log = (s) => {
-  console.log = emit
-  const o = JSON.parse(s)
-  emit(exprs.map((e) => { const v = eval(e); return typeof v === 'string' ? v : String(JSON.stringify(v)) }).join('\x1e'))
-}
-process.argv = [process.argv[0], helper, ...rest]
-require(helper)
-JS
-  export RP_JS="$BATS_FILE_TMPDIR/rp.js"
-}
+load "$(dirname "$BATS_TEST_FILENAME")/../helpers/run-profile-read"
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
@@ -446,18 +429,6 @@ PY
 
 # ── Method A: the cold walk after Validation, driven with stubbed agents ──
 AGENTS='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"—","diagnostics":"g","init":"—"}'
-
-# $1 profile, $2 contract, $3 replies, then JS expressions over o: V[0], V[1], ... are their values.
-rp() {
-  local raw i=0
-  raw="$(node "$RP_JS" "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" "$2" "$3" "${@:4}")"
-  V=()
-  while :; do
-    V[i]="${raw%%$'\x1e'*}"; i=$((i + 1))
-    [[ "$raw" == *$'\x1e'* ]] || break
-    raw="${raw#*$'\x1e'}"
-  done
-}
 
 walk_rp() { # $1 profile, $2 extra contract members (leading comma), $3 validation reply members (leading comma), $4 check reply, then JS expressions
   rp "$1" \
