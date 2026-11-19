@@ -47,7 +47,8 @@ def ask(*args):
 
 
 def cells(line):
-    return [c.strip() for c in line.strip().strip('|').split('|')]
+    # a cell code-formatted in single backticks reads as its plain value
+    return [re.sub(r'^`([^`]*)`$', r'\1', c.strip()).strip() for c in line.strip().strip('|').split('|')]
 
 
 path = os.path.join(TASK, 'Validation.md')

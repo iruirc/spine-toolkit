@@ -263,3 +263,12 @@ finds() { # the lint's output has a finding of this class
   run "$LINT" "$TASK/nope"
   [ "$status" -eq 2 ]
 }
+
+@test "a cell wrapped in backticks reads as its plain value" {
+  commit "$PROJ" a.txt
+  commit "$PROJ/Packages/Core" c.txt
+  vmd PASSED "$(row . App ran 12 "\`$(head7 "$PROJ")\`" '`validation-evidence/t/app.log`')" "$(core_row)"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ] || { echo "$output"; return 1; }
+}
