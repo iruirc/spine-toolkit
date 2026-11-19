@@ -12,7 +12,7 @@
 # Exit:  0, or 2 on a usage error, a record it cannot read, or a recorded repository gone.
 set -euo pipefail
 
-[ "$#" -ge 2 ] || { echo "usage: $0 record|tips|ranges <task-dir> [--kind k | --since s]" >&2; exit 2; }
+[ "$#" -ge 2 ] || { echo "usage: $0 record|tips|ranges|dirty|count|unreachable|commits|last <task-dir> [--kind k | --since s | <repo> <sha> | <sha>... | <a>..<b>]" >&2; exit 2; }
 [ -d "$2" ] || { echo "not a directory: $2" >&2; exit 2; }
 resolver="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/resolve-settings.sh"
 paths="$("$resolver" raw "$2" Paths)" || exit 2
@@ -184,7 +184,11 @@ elif CMD == 'dirty':
     for rel, top in sorted(REPOS.items()):
         tasks = os.path.relpath(TASKS, top)
         spec = ['--', '.', ':(exclude)' + tasks] if not tasks.startswith('..') else []
-        if git(top, 'status', '--porcelain', *spec):
+        # A status git cannot answer is not a clean one: the lint that reads this must not pass it.
+        status = git(top, 'status', '--porcelain', *spec)
+        if status is None:
+            die('git status failed in %s' % rel)
+        if status:
             print(rel)
 elif CMD == 'count':
     if len(OPTS) != 2:

@@ -431,3 +431,18 @@ track_tasks() { # the tasks folder tracked by the project repository instead of 
   run "$TR" count "$TASK" Nope "$sha"
   [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
 }
+
+@test "dirty stops with exit 2 on a repository git cannot read, never calls it clean" {
+  printf 'not an index' >"$PROJ/Packages/Core/.git/index"
+  run "$TR" dirty "$TASK"
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+  grep -q 'Packages/Core' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "the usage line names every command" {
+  run "$TR" bogus
+  [ "$status" -eq 2 ]
+  for c in record tips ranges dirty count unreachable commits last; do
+    grep -qF "$c" <<<"$output" || { echo "usage lacks $c: $output"; return 1; }
+  done
+}

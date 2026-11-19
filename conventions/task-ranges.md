@@ -64,7 +64,7 @@ outside the tasks folder (a tasks folder inside the repository is left out of th
 line, and nothing when every repository is clean. `count <repo> <sha>` prints the number of commits
 in `<sha>..HEAD` outside the tasks folder, counted the way `ranges` counts; `rewritten` when `<sha>`
 is not a commit of that repository or is not an ancestor of `HEAD`, and exit 2 when `<repo>` is not
-a repository of the task. They are what the validation-scope lint, `lint-validation-scope.sh`, measures with.
+a repository of the task. They are what the validation-scope lint, `scripts/lint-validation-scope.sh`, measures with.
 
 `unreachable <sha>…` prints each sha that no repository of the task holds in `base..HEAD` —
 reachable from `HEAD` alone where `Base.md` has no line or the base is `rewritten`. A sha a local

@@ -130,10 +130,11 @@ The old form, an ID followed by `— RESOLVED: …` with no question, is not val
 
 ## Validation.md
 
-`Validation.md` is written by the platform's validator, and its structure is the validator's. The status line `[VALIDATION_STATUS] = …` stays line 1. Two rules hold below it:
+`Validation.md` is written by the platform's validator, and its structure is the validator's. The status line `[VALIDATION_STATUS] = …` stays line 1. Three rules hold below it:
 
 - The Summary is plain language: what was built and run, what passed, what failed, and what that means for the user. It names no contract field — not `validation_status`, `VALIDATION_STATUS` or `manual_checks_changed`: those travel in the validator's return, not in the prose.
 - A log is cited by its copy in the task folder, `validation-evidence/<timestamp>/<name>.log`, never by a temporary path that does not outlive the session. The platform validators already copy the logs there.
+- A `## Regression set` section holds the repositories the Validation covered, one table row per module, and `scripts/lint-validation-scope.sh` reads it. The header is exactly `| Repository | Module | Why | Run | Tests | HEAD | Log |`. `Repository` is the name `scripts/task-ranges.sh` prints, `.` for the project. `Why` is `changed`, `depends on <module>` or `ships <module>`. `Run` is `ran`, or `carried <sha>` for a module not run again, with the sha of the Validation whose count it carries. `Tests` is the test count of the run's result line, a number. `HEAD` is the short sha of the repository the count was taken on. `Log` is the copy of the log in the task folder. A line `Not reached: <modules>.` follows the table, or `Not reached: none`. A project without modules has one row with `Module` set to `—`. A repository the task changed has a row; a repository with commits after its `carried` sha has at least one `ran` row. When the status is `PASSED`, the closing block holds the `[VALIDATED_COMMIT]` lines from `scripts/task-ranges.sh tips <task-dir> --kind validated`.
 
 ## Worked example
 
