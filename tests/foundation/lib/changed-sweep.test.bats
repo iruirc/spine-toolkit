@@ -111,3 +111,29 @@ fixture() {   # <name> <mark> [walk-workflows]
   printf 'echo skills commands\n' >"$BATS_TEST_TMPDIR/echo.test.bats"
   [ -z "$(sweep_walked "$BATS_TEST_TMPDIR/echo.test.bats")" ]
 }
+
+@test "a glob inside a directory path walks that directory" {
+  printf 'files=("$ROOT"/workflows/profile-*.x)\n' >"$BATS_TEST_TMPDIR/glob.test.bats"
+  [ "$(sweep_walked "$BATS_TEST_TMPDIR/glob.test.bats")" = workflows ]
+  printf 'files=("$ROOT"/skills/*/locales/*.md)\n' >"$BATS_TEST_TMPDIR/glob2.test.bats"
+  [ "$(sweep_walked "$BATS_TEST_TMPDIR/glob2.test.bats")" = skills ]
+}
+
+@test "a whole-root scan closed by a parenthesis walks every directory" {
+  printf 'x=$(grep -rl foo "$ROOT")\n' >"$BATS_TEST_TMPDIR/paren.test.bats"
+  [ "$(sweep_walked "$BATS_TEST_TMPDIR/paren.test.bats" | tr '\n' ' ')" = "$SWEEP_DIRS " ]
+}
+
+@test "a recursive flag outside the first flag cluster still makes a scan recursive" {
+  for cmd in 'grep -n -r foo "$ROOT"' 'grep -R foo "$ROOT"' 'grep --include=*.md -r foo "$ROOT"' 'grep --recursive foo "$ROOT"'; do
+    printf '%s\n' "x=\$($cmd)" >"$BATS_TEST_TMPDIR/late.test.bats"
+    [ "$(sweep_walked "$BATS_TEST_TMPDIR/late.test.bats" | tr '\n' ' ')" = "$SWEEP_DIRS " ] || { echo "not recursive: $cmd"; return 1; }
+  done
+  printf 'grep -n foo "$ROOT"\n' >"$BATS_TEST_TMPDIR/flat.test.bats"
+  [ -z "$(sweep_walked "$BATS_TEST_TMPDIR/flat.test.bats")" ]
+}
+
+@test "a comment that names a glob walks nothing" {
+  printf '# globs workflows/wf_*.json and $ROOT/skills/*\nx=1\n' >"$BATS_TEST_TMPDIR/comment.test.bats"
+  [ -z "$(sweep_walked "$BATS_TEST_TMPDIR/comment.test.bats")" ]
+}

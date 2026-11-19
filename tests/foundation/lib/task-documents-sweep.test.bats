@@ -116,3 +116,20 @@ INVESTIGATING='feature:Research bug:Diagnose refactor:Analyze test:Analyze epic:
     [ -z "$out" ] || { echo "$s: $out"; return 1; }
   done
 }
+
+@test "exactly six scripts carry each of the two stage clauses" {
+  # Vacuity guard: without it the loops above iterate over a list someone shortened. Research.md is
+  # written by five investigating stages and RESEARCH; Plan.md by five Plan stages and QUICK's Edit.
+  n="$(grep -l 'by applying the spine-toolkit:task-documents skill, its Research.md section' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 6 ] || { echo "$n script(s) carry the Research.md clause, expected 6"; return 1; }
+  n="$(grep -l 'by applying the spine-toolkit:task-documents skill, its Plan.md section' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 6 ] || { echo "$n script(s) carry the Plan.md clause, expected 6"; return 1; }
+}
+
+@test "no brief retells the skill's rules" {
+  # The rules live in the skill; a copy in a brief drifts from it.
+  for phrase in 'corrupted state' 'what a user would see' 'superseded revisions' 'meaning before a code' 'every question under the task'; do
+    ! grep -rqF "$phrase" "$ROOT"/workflows/profile-*.js "$ROOT"/skills/workflow-*/SKILL.md \
+      || { echo "a brief still retells: $phrase"; return 1; }
+  done
+}

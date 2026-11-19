@@ -158,15 +158,6 @@ doc_section() { # $1 = heading text
     || { echo "a step whose anchor was translated passes task-new's own check"; return 1; }
 }
 
-@test "exactly six scripts carry each of the two stage clauses" {
-  # Vacuity guard: without it the loops above iterate over a list someone shortened. Research.md is
-  # written by five investigating stages and RESEARCH; Plan.md by five Plan stages and QUICK's Edit.
-  n="$(grep -l 'by applying the spine-toolkit:task-documents skill, its Research.md section' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
-  [ "$n" -eq 6 ] || { echo "$n script(s) carry the Research.md clause, expected 6"; return 1; }
-  n="$(grep -l 'by applying the spine-toolkit:task-documents skill, its Plan.md section' "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
-  [ "$n" -eq 6 ] || { echo "$n script(s) carry the Plan.md clause, expected 6"; return 1; }
-}
-
 @test "the step process verifies structural anchors before reporting" {
   step="$(awk '/^## Process — step task/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/task-new/SKILL.md")"
   grep -qF 'step 10 of the root-task process' <<<"$step" \
@@ -176,14 +167,6 @@ doc_section() { # $1 = heading text
 @test "workflow-epic's Auto mode names --task-docs" {
   sect="$(awk '/^## 4\. Auto mode$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/workflow-epic/SKILL.md")"
   grep -qF -- '--task-docs' <<<"$sect" || { echo "Auto mode never mentions --task-docs"; return 1; }
-}
-
-@test "no brief retells the skill's rules" {
-  # The rules live in the skill; a copy in a brief drifts from it.
-  for phrase in 'corrupted state' 'what a user would see' 'superseded revisions' 'meaning before a code' 'every question under the task'; do
-    ! grep -rqF "$phrase" "$ROOT"/workflows/profile-*.js "$ROOT"/skills/workflow-*/SKILL.md \
-      || { echo "a brief still retells: $phrase"; return 1; }
-  done
 }
 
 # Acceptance of milestone 6 (EPIC 548): the step template's Stack, Logs and StackTrace headings stayed

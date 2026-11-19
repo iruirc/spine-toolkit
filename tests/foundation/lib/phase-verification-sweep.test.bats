@@ -114,3 +114,14 @@ review_brief() {
       || { echo "workflow-$p/SKILL.md: $s would run ticked checks a second time"; return 1; }
   done
 }
+
+@test "exactly the four phased profiles carry the Plan clause" {
+  # Vacuity guard: without it the loops above iterate over a list someone shortened.
+  n="$(grep -l "Open every phase's detail section with a" "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the Plan clause, expected 4"; return 1; }
+}
+
+@test "exactly the four phased profiles and QUICK carry the Review clause" {
+  n="$(grep -l "the way the phase-verification skill's ## Review section does" "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 5 ] || { echo "$n profile script(s) carry the Review clause, expected 5"; return 1; }
+}

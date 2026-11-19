@@ -97,12 +97,6 @@ section() { # $1 = file, $2 = heading text without "## "
     || { echo "a lite task could read as licence for a lower rung"; return 1; }
 }
 
-@test "exactly the four phased profiles carry the Plan clause" {
-  # Vacuity guard: without it the loops above iterate over a list someone shortened.
-  n="$(grep -l "Open every phase's detail section with a" "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
-  [ "$n" -eq 4 ] || { echo "$n profile script(s) carry the Plan clause, expected 4"; return 1; }
-}
-
 @test "TEST still calls a phase whose checks never ran unknown, not green" {
   grep -qF 'A phase whose checks were never run is not green, it is unknown.' "$ROOT/workflows/profile-test.js" \
     || { echo "profile-test.js lost the invariant along with the old wording"; return 1; }
@@ -111,11 +105,6 @@ section() { # $1 = file, $2 = heading text without "## "
 @test "the platform how-to leaves the rung's command to the platform" {
   grep -qF 'your agent turns it into the narrowest command that covers it' "$ROOT/docs/building-a-platform.md" \
     || { echo "a platform author is never told the rung's command is theirs"; return 1; }
-}
-
-@test "exactly the four phased profiles and QUICK carry the Review clause" {
-  n="$(grep -l "the way the phase-verification skill's ## Review section does" "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
-  [ "$n" -eq 5 ] || { echo "$n profile script(s) carry the Review clause, expected 5"; return 1; }
 }
 
 @test "the Method B loops cover every phased profile" {

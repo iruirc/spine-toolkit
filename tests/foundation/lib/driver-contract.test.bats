@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep skills conventions workflows
+# changed: sweep skills workflows
 # The driver contract is prose, and prose drifts from the lint that enforces it.
 # These tests bind the two: one compares the convention's vocabulary block against
 # the lint's VOCAB literal directly, and the rest check the fixture against the

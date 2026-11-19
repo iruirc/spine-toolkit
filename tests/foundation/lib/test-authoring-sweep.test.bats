@@ -48,3 +48,8 @@ review_brief() {
     return 1
   fi
 }
+
+@test "exactly the four phased profiles and QUICK carry the test-quality clause" {
+  n="$(grep -l "the way the test-authoring skill's ## Review section does" "$ROOT"/workflows/profile-*.js | wc -l | tr -d ' ')"
+  [ "$n" -eq 5 ] || { echo "$n profile script(s) carry the clause, expected 5"; return 1; }
+}
