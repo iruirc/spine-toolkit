@@ -2,8 +2,10 @@
 # Where a task's repositories stood, and what changed since: conventions/task-ranges.md.
 #
 # Usage: scripts/task-ranges.sh record <task-dir>                                 # Base.md, once
-#        scripts/task-ranges.sh tips   <task-dir> --kind reviewed|done            # record lines
-#        scripts/task-ranges.sh ranges <task-dir> --since base|reviewed|done      # JSON
+#        scripts/task-ranges.sh tips   <task-dir> --kind reviewed|done|validated  # record lines
+#        scripts/task-ranges.sh ranges <task-dir> --since base|reviewed|done|validated  # JSON
+#        scripts/task-ranges.sh dirty  <task-dir>                                 # repositories with uncommitted work
+#        scripts/task-ranges.sh count  <task-dir> <repo> <sha>                    # commits after sha, or rewritten
 #        scripts/task-ranges.sh unreachable <task-dir> <sha>...                   # shas not the task's
 #        scripts/task-ranges.sh commits <task-dir> <a>..<b>                       # a and what follows
 #        scripts/task-ranges.sh last <task-dir>                                   # newest own commit
@@ -23,8 +25,9 @@ python3 - "$paths" "$home" "$@" <<'PY'
 import glob, json, os, re, subprocess, sys
 
 PATHS, HOME_ARG, CMD, TASK, OPTS = sys.argv[1], sys.argv[2], sys.argv[3], os.path.realpath(sys.argv[4]), sys.argv[5:]
-KINDS = {'base': ('BASE', 'Base.md'), 'reviewed': ('REVIEWED', 'Review.md'), 'done': ('DONE', 'Done.md')}
-RECORD = re.compile(r'^\[(BASE|REVIEWED|DONE)_COMMIT\]\s*=\s*(.*)$')
+KINDS = {'base': ('BASE', 'Base.md'), 'reviewed': ('REVIEWED', 'Review.md'), 'done': ('DONE', 'Done.md'),
+         'validated': ('VALIDATED', 'Validation.md')}
+RECORD = re.compile(r'^\[(BASE|REVIEWED|DONE|VALIDATED)_COMMIT\]\s*=\s*(.*)$')
 
 
 def die(msg):
@@ -148,7 +151,7 @@ if CMD == 'record':
         with open(base, 'w', encoding='utf-8') as fh:
             fh.write('# Base\n\n' + '\n'.join(heads('BASE')) + '\n')
 elif CMD == 'tips':
-    kind = opt('--kind', ['reviewed', 'done'])
+    kind = opt('--kind', ['reviewed', 'done', 'validated'])
     lines = heads(KINDS[kind][0])
     if kind == 'done':
         # Where Done left the fix rounds: a later catch-up counts its own from here.
@@ -157,7 +160,7 @@ elif CMD == 'tips':
         lines.append('[REVIEW_FIXES] = %d' % max([int(n) for n in re.findall(r'Review fixes (\d+)', text)] or [0]))
     print('\n'.join(lines))
 elif CMD == 'ranges':
-    since = opt('--since', ['base', 'reviewed', 'done'])
+    since = opt('--since', ['base', 'reviewed', 'done', 'validated'])
     kind, name = KINDS[since]
     rec = recorded(kind, name)
     gone = sorted(set(rec) - set(REPOS))
@@ -175,6 +178,26 @@ elif CMD == 'ranges':
         else:
             repos[rel] = {'range': sha + '..HEAD', 'commits': count(top, sha), 'state': 'ok'}
     print(json.dumps({'since': since, 'repos': repos}, sort_keys=True))
+elif CMD == 'dirty':
+    if OPTS:
+        die('usage: task-ranges.sh dirty <task-dir>')
+    for rel, top in sorted(REPOS.items()):
+        tasks = os.path.relpath(TASKS, top)
+        spec = ['--', '.', ':(exclude)' + tasks] if not tasks.startswith('..') else []
+        if git(top, 'status', '--porcelain', *spec):
+            print(rel)
+elif CMD == 'count':
+    if len(OPTS) != 2:
+        die('usage: task-ranges.sh count <task-dir> <repo> <sha>')
+    name, sha = OPTS
+    if name not in REPOS:
+        die('%s is not a repository of this task' % name)
+    top = REPOS[name]
+    full = git(top, 'rev-parse', '-q', '--verify', sha + '^{commit}')
+    if full and git(top, 'merge-base', '--is-ancestor', full, 'HEAD') is not None:
+        print(count(top, full))
+    else:
+        print('rewritten')
 elif CMD == 'last':
     if OPTS:
         die('usage: task-ranges.sh last <task-dir>')

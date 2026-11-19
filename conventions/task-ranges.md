@@ -30,6 +30,7 @@ One line per repository, in this form:
 | `[BASE_COMMIT]` | `Base.md` | the orchestrator, `record` | once, when a run first includes a stage that changes code and no phase has landed yet |
 | `[REVIEWED_COMMIT]` | `Review.md`, in its closing block | the reviewer, from `tips --kind reviewed` | every Review |
 | `[DONE_COMMIT]` | `Done.md`, in its closing block | Done, from `tips --kind done` | every Done |
+| `[VALIDATED_COMMIT]` | `Validation.md`, in its closing block | the validator, from `tips --kind validated` | every Validation that ends PASSED |
 | `[REVIEW_FIXES]` | `Done.md`, in its closing block, after the `[DONE_COMMIT]` lines | Done, from `tips --kind done` | every Done |
 
 `[REVIEW_FIXES] = <n>` is one line for the task, not per repository: the highest `Review fixes <n>`
@@ -45,7 +46,7 @@ carry them on top.
 
 ## Ranges
 
-`ranges --since base|reviewed|done` gives, per repository, `<sha>..HEAD` from the matching record
+`ranges --since base|reviewed|done|validated` gives, per repository, `<sha>..HEAD` from the matching record
 and the number of commits in it. `rewritten` means the recorded sha is no longer an ancestor of
 `HEAD`; `unknown` means there is no record for that repository. With no `Base.md`, `base` falls back
 to the nearest merge base with the repository's main branch, local or `origin`'s, so commits one
@@ -54,6 +55,16 @@ committed on the main branch — is `unknown` too. When a record has several lin
 repository, the first wins. The orchestrator turns the result into the
 `review_ranges` contract field; which `--since` it asks for, and what it does on `rewritten` or
 `unknown`, is its Resolution Algorithm, step 5.6; `fix-review` always asks for `--since reviewed`.
+`validated` reads `Validation.md` and has no fallback: with no `[VALIDATED_COMMIT]` line a
+repository is `unknown`, never measured from a merge base, because a Validation that did not end
+PASSED has validated nothing.
+
+`dirty` prints the name of each repository that has uncommitted changes, untracked files included,
+outside the tasks folder (a tasks folder inside the repository is left out of the check), one per
+line, and nothing when every repository is clean. `count <repo> <sha>` prints the number of commits
+in `<sha>..HEAD` outside the tasks folder, counted the way `ranges` counts; `rewritten` when `<sha>`
+is not a commit of that repository or is not an ancestor of `HEAD`, and exit 2 when `<repo>` is not
+a repository of the task. They are what the validation-scope lint, `lint-validation-scope.sh`, measures with.
 
 `unreachable <sha>…` prints each sha that no repository of the task holds in `base..HEAD` —
 reachable from `HEAD` alone where `Base.md` has no line or the base is `rewritten`. A sha a local
@@ -69,6 +80,13 @@ ranges `Walkthrough.md` declares.
 in `base..HEAD` outside the tasks folder: the newest such commit along the first parent, or
 `unknown` where the base is missing or `rewritten`. A repository with no such commit is left out.
 It is what `scripts/lint-walkthrough.sh --current` checks `Walkthrough.md` against.
+
+## Validation ranges
+
+Validation reads the `validation_ranges` contract field: per repository, the range since the last
+passing Validation, from `ranges --since validated`. The orchestrator computes it in its Resolution
+Algorithm, step 5.6, next to `review_ranges`. A Validation that ends PASSED writes its
+`[VALIDATED_COMMIT]` lines in its closing block, from `tips --kind validated`.
 
 ## Review and Done
 

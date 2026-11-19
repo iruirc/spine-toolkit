@@ -106,7 +106,7 @@ for. The closing block follows the body after a blank line and holds, in this or
 artifact has:
 
 1. the marker lines the brief names: `[DONE_COMMIT]` lines, then `[REVIEWED_COMMIT]` lines, then
-   `[REVIEW_FIXES] = n`;
+   `[VALIDATED_COMMIT]` lines, then `[REVIEW_FIXES] = n`;
 2. `**Run:** …`, the line of "Owner's directive" above;
 3. `**Device:** …`, the line of "Device" above.
 

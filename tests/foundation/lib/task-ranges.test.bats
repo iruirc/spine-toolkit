@@ -359,3 +359,75 @@ layout() { # $1 top|closing|stale, $2 done|reviewed
     [ "$status" -eq 2 ] || { echo "$since: $status $output"; return 1; }
   done
 }
+
+track_tasks() { # the tasks folder tracked by the project repository instead of its own
+  rm -rf "$PROJ/Tasks/.git"
+  printf 'Packages/\n' >"$PROJ/.gitignore"
+  commit "$PROJ" .gitignore
+}
+
+@test "tips and ranges know the validated kind" {
+  run "$TR" tips "$TASK" --kind validated
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  grep -qxF "[VALIDATED_COMMIT] = .: $(git -C "$PROJ" rev-parse HEAD)" <<<"$output" || { echo "$output"; return 1; }
+  { printf '[VALIDATION_STATUS] = PASSED\n\n'; printf '%s\n' "$output"; } >"$TASK/Validation.md"
+  commit "$PROJ/Packages/Core" c.txt
+  run "$TR" ranges "$TASK" --since validated
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(state . <<<"$output")" = "ok 0" ] || { echo "$output"; return 1; }
+  [ "$(state Packages/Core <<<"$output")" = "ok 1" ] || { echo "$output"; return 1; }
+  grep -qF '"since": "validated"' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "a Validation.md without records is unknown, never a fallback base" {
+  git -C "$PROJ" checkout -qb feat
+  commit "$PROJ" a.txt
+  printf '[VALIDATION_STATUS] = FAILED\n' >"$TASK/Validation.md"
+  run "$TR" ranges "$TASK" --since validated
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(state . <<<"$output")" = "unknown None" ] || { echo "$output"; return 1; }
+  [ "$(state Packages/Core <<<"$output")" = "unknown None" ] || { echo "$output"; return 1; }
+}
+
+@test "dirty names a repository with uncommitted work outside the tasks folder" {
+  track_tasks
+  git -C "$PROJ" add CLAUDE-spine-toolkit.md
+  git -C "$PROJ" -c user.name=t -c user.email=t@t commit -qm config
+  run "$TR" dirty "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ] || { echo "$output"; return 1; }
+  echo "more" >>"$PROJ/Packages/Core/core.txt"
+  run "$TR" dirty "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "Packages/Core" ] || { echo "$output"; return 1; }
+  git -C "$PROJ/Packages/Core" checkout -q -- core.txt
+  echo "note" >"$TASK/Notes.md"
+  run "$TR" dirty "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ] || { echo "$output"; return 1; }
+  echo "new" >"$PROJ/new.txt"
+  run "$TR" dirty "$TASK"
+  [ "$output" = "." ] || { echo "$output"; return 1; }
+}
+
+@test "count measures commits after a sha, the tasks folder aside" {
+  track_tasks
+  sha="$(git -C "$PROJ/Packages/Core" rev-parse HEAD)"
+  commit "$PROJ/Packages/Core" c.txt
+  commit "$PROJ/Packages/Core" d.txt
+  run "$TR" count "$TASK" Packages/Core "$sha"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "2" ] || { echo "$output"; return 1; }
+  run "$TR" count "$TASK" Packages/Core "${sha:0:7}"
+  [ "$output" = "2" ] || { echo "$output"; return 1; }
+  head="$(git -C "$PROJ" rev-parse HEAD)"
+  commit "$PROJ" Tasks/ACTIVE/001-x/Validation.md
+  run "$TR" count "$TASK" . "$head"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "0" ] || { echo "$output"; return 1; }
+  run "$TR" count "$TASK" Packages/Core deadbee
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "rewritten" ] || { echo "$output"; return 1; }
+  run "$TR" count "$TASK" Nope "$sha"
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+}
