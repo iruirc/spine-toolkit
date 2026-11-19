@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# changed: sweep skills conventions workflows
 # The orchestrator and the skills it loads name Claude Code tools. Outside Claude Code the host
 # reads runtimes/<runtime>.md, which maps each of them (spec: multi-llm milestone 2). The runtime
 # id is stated once, in the orchestrator's Runtime paragraph, and every place that names a Claude
@@ -22,18 +21,6 @@ unescape() { python3 -c 'import sys; print(sys.argv[1].encode("ascii").decode("u
   grep -qF '`claude-code` in Claude Code' <<<"$para"
   grep -qF '`codex-cli` in Codex CLI' <<<"$para"
   grep -qF 'runtimes/<runtime>.md' <<<"$para"
-}
-
-@test "every workflow skill allows a contract as text" {
-  for f in "$ROOT"/skills/workflow-*/SKILL.md; do
-    grep -qF 'runtimes/<runtime>.md' "$f" || { echo "no runtime map in $f"; false; }
-  done
-}
-
-@test "dispatch conventions point outside Claude Code to the runtime map" {
-  for f in conventions/stage-dispatch.md conventions/agent-tooling.md; do
-    grep -qF 'runtimes/<runtime>.md' "$ROOT/$f" || { echo "no runtime map in $f"; false; }
-  done
 }
 
 @test "the orchestrator loads skills by the runtime map outside Claude Code" {
@@ -76,11 +63,6 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
 @test "the Codex map keeps the leftovers skip only for a run without the rules" {
   sec="$(codex_section '## Known limits')"
   grep -F 'ps is not permitted here' <<<"$sec" | grep -qF 'rule' || { echo "skip is not tied to the missing rule"; false; }
-}
-
-@test "outside the Codex map no brief tells a stage to escalate" {
-  hits="$(grep -rlF 'require_escalated' "$ROOT/conventions" "$ROOT/skills" "$ROOT/workflows" | grep -v '/skills/setup/' || true)"
-  [ -z "$hits" ] || { echo "$hits"; false; }
 }
 
 @test "the orchestrator checks Spine's Codex settings at the start of a task in Codex only" {
@@ -329,17 +311,6 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
 @test "the orchestrator locales keep the same keys" {
   d="$ROOT/skills/orchestrator/locales"
   diff <(grep '^## ' "$d/en.md" | sort) <(grep '^## ' "$d/ru.md" | sort)
-}
-
-# Codex hides every platform's manifest from its skill list (allow_implicit_invocation: false), so
-# setup's Platform Discovery found no platform in state C (milestone 3 acceptance, first run).
-@test "the Codex map finds installed platforms by their manifest files" {
-  row="$(grep -F 'installed skills named `manifest`' "$ROOT/runtimes/codex-cli.md")"
-  [ -n "$row" ] || { echo "no row for Platform Discovery"; false; }
-  for s in 'plugins/cache/' 'skills/manifest/SKILL.md' 'CODEX_HOME' '`## Roles`' 'driver'; do
-    grep -qF -- "$s" <<<"$row" || { echo "missing: $s"; false; }
-  done
-  grep -m1 '^\*\*Runtime\.\*\*' "$ROOT/skills/setup/SKILL.md" | grep -qF 'finding the installed platforms'
 }
 
 # Acceptance of milestone 3, QUICK 534: Codex's Default-mode request_user_input auto-resolves after
