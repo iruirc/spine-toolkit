@@ -136,7 +136,7 @@ FAKE
 @test "touched without files on a clean tree runs nothing and passes" {
   run --separate-stderr "$R/scripts/test-foundation.sh" touched
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"touched: nothing differs from HEAD"* ]]
+  grep -qF -- "touched: nothing differs from HEAD" <<<"$stderr"
   [ ! -e "$BATS_TEST_TMPDIR/bats-args" ]
 }
 

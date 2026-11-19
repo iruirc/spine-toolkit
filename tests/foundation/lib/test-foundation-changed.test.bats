@@ -124,7 +124,7 @@ names() {
   changed
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [[ "$stderr_text" == *"templates/task.md -> no test names it"* ]]
+  grep -qF -- "templates/task.md -> no test names it" <<<"$stderr_text"
 }
 
 @test "a workflow script selects the workflows sweep only" {
@@ -223,8 +223,8 @@ names() {
   printf '# names scripts/new.sh\n' >"$R/tests/foundation/lib/new.test.bats"
   touched
   [ "$status" -eq 0 ]
-  [[ "$(names)" == *"new.test.bats"* ]]
-  [[ "$stderr_text" == *"scripts/new.sh -> new.test.bats"* ]]
+  grep -qF -- "new.test.bats" <<<"$(names)"
+  grep -qF -- "scripts/new.sh -> new.test.bats" <<<"$stderr_text"
 }
 
 @test "a non-ASCII path from the worktree is selected" {
@@ -238,7 +238,7 @@ names() {
   touched
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [[ "$stderr_text" == *"touched: nothing differs from HEAD"* ]]
+  grep -qF -- "touched: nothing differs from HEAD" <<<"$stderr_text"
 }
 
 @test "touched with no arguments: a changed test file selects itself" {
@@ -259,7 +259,7 @@ names() {
   touched
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [[ "$stderr_text" == *"tests/foundation/lib/other.test.bats -> removed, nothing to run"* ]]
+  grep -qF -- "tests/foundation/lib/other.test.bats -> removed, nothing to run" <<<"$stderr_text"
 }
 
 @test "touched with the path as an argument: a removed test file runs nothing and says so" {
@@ -267,7 +267,7 @@ names() {
   touched tests/foundation/lib/other.test.bats
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [[ "$stderr_text" == *"tests/foundation/lib/other.test.bats -> removed, nothing to run"* ]]
+  grep -qF -- "tests/foundation/lib/other.test.bats -> removed, nothing to run" <<<"$stderr_text"
 }
 
 @test "touched: a helper change selects the whole suite" {
@@ -291,7 +291,7 @@ names() {
   touched scripts/orphan.sh
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [[ "$stderr_text" == *"touched: no test names these files"* ]]
+  grep -qF -- "touched: no test names these files" <<<"$stderr_text"
 }
 
 @test "a sweep is not selected by touched" {

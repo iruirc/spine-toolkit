@@ -44,11 +44,11 @@ fixture() {   # <name> <mark> [walk-workflows]
 
 @test "a bare sweep mark is a finding" {
   run sweep_findings "$(fixture bare '# changed: sweep')"
-  [[ "$output" == *"bare sweep mark"* ]]
+  grep -qF -- "bare sweep mark" <<<"$output"
   run sweep_findings "$(fixture bare-two '# changed: sweep' w)"
-  [[ "$output" == *"bare sweep mark"* ]]
-  [[ "$output" == *"walks skills but"* ]]
-  [[ "$output" == *"walks workflows but"* ]]
+  grep -qF -- "bare sweep mark" <<<"$output"
+  grep -qF -- "walks skills but" <<<"$output"
+  grep -qF -- "walks workflows but" <<<"$output"
 }
 
 @test "a walk with no mark is a finding" {
@@ -68,7 +68,7 @@ fixture() {   # <name> <mark> [walk-workflows]
 
 @test "an unknown word in the mark is a finding" {
   run sweep_findings "$(fixture unknown '# changed: sweep skills agents')"
-  [[ "$output" == *"unknown word 'agents'"* ]]
+  grep -qF -- "unknown word 'agents'" <<<"$output"
 }
 
 @test "a mark on a file that walks nothing is a finding" {
