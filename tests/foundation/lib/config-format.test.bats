@@ -30,8 +30,9 @@ report_mentions() {
   printf '%s\n' 'see ## Validation for the setting' >"$BATS_TEST_TMPDIR/x.md"
   run report_mentions Validation "$BATS_TEST_TMPDIR/x.md"
   [ "$status" -eq 1 ]
-  [[ "$output" == *'x.md:1: see ## Validation for the setting'* ]]
-  [[ "$output" == *'hint: "## Validation" reads as a section of the config, and the config has no such section any more: its settings are [FIELD] = [value] lines. Name a stage without "##" (the Validation stage) and a task file as Validation.md.'* ]]
+  # `[[ ]]` mid-test does not fail a test under bash 3.2, so assert with grep.
+  grep -qF -- 'x.md:1: see ## Validation for the setting' <<<"$output"
+  grep -qF -- 'hint: "## Validation" reads as a section of the config, and the config has no such section any more: its settings are [FIELD] = [value] lines. Name a stage without "##" (the Validation stage) and a task file as Validation.md.' <<<"$output"
   printf '%s\n' "the ## Validation's regression section" >"$BATS_TEST_TMPDIR/x.md"
   run report_mentions Validation "$BATS_TEST_TMPDIR/x.md"
   [ "$status" -eq 0 ]
