@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# changed: sweep skills
 # An experiment is the one way a RESEARCH task changes code, and only on a branch that is never
 # merged. The permission travels as a contract field; these tests hold every surface to it.
 

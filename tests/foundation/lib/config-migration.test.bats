@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# changed: sweep skills
 # A 1.x config is migrated key by key. The mapping is the whole contract: a key that maps to the
 # wrong field writes a project's own choice into the wrong setting, silently.
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# changed: sweep skills
 # In Codex CLI's workspace-write sandbox the project's .git is read-only, the simulator and ps are
 # refused, and Spine's questions come as text. setup offers Spine's Codex settings behind one
 # question (spec: multi-llm milestone 3, sections 2-3; milestone 5).

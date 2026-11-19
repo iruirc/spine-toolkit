@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# changed: sweep skills
 # The artifact is declared to be for someone who was not on the task, and was
 # written for the author instead. What holds the difference is not a length
 # ceiling but two things a grep can see: a named reader, and a value vocabulary

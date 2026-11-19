@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# changed: sweep skills
 # A configured project (state C) is asked whether to reconfigure before anything else: the
 # language and the platform come from the config, and are asked again only after Overwrite
 # (spec: multi-llm milestone 6). Cancel used to discard two answers given for nothing.

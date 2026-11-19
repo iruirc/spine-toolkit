@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# changed: sweep skills
 # A caller that already holds the answers passes them through setup's `## Input`;
 # one that fills every field is asked nothing about the config.
 
