@@ -65,6 +65,10 @@ line, and nothing when every repository is clean. `count <repo> <sha>` prints th
 in `<sha>..HEAD` outside the tasks folder, counted the way `ranges` counts; `rewritten` when `<sha>`
 is not a commit of that repository or is not an ancestor of `HEAD`, and exit 2 when `<repo>` is not
 a repository of the task. They are what the validation-scope lint, `scripts/lint-validation-scope.sh`, measures with.
+The lint judges a `carried` row per repository: modules of one repository may be carried from
+different Validations, so it reports a repository only when every `carried` row of it has commits
+after its sha and the repository has no `ran` row. A `carried` sha that is not an ancestor of `HEAD`
+(`rewritten`) is a finding of its own row.
 
 `unreachable <sha>…` prints each sha that no repository of the task holds in `base..HEAD` —
 reachable from `HEAD` alone where `Base.md` has no line or the base is `rewritten`. A sha a local
@@ -83,9 +87,12 @@ It is what `scripts/lint-walkthrough.sh --current` checks `Walkthrough.md` again
 
 ## Validation ranges
 
-Validation reads the `validation_ranges` contract field: per repository, the range since the last
-passing Validation, from `ranges --since validated`. The orchestrator computes it in its Resolution
-Algorithm, step 5.6, next to `review_ranges`. A Validation that ends PASSED writes its
+Validation reads the `validation_ranges` contract field, two ranges per repository, both from
+`ranges`: `task`, the whole range of the task (`--since base`), and `rerun`, the range since the last
+passing Validation (`--since validated`). `rerun` is null when there is nothing to narrow from — a
+restart, a `redo` of the Validation stage, a repository whose record is rewritten or unknown — and
+null means the whole set runs. The orchestrator computes both in its Resolution Algorithm, step 5.6,
+next to `review_ranges`. A Validation that ends PASSED writes its
 `[VALIDATED_COMMIT]` lines in its closing block, from `tips --kind validated`.
 
 ## Review and Done

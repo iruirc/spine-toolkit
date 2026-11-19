@@ -31,6 +31,14 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   grep -qF 'validation_ranges' "$ROOT/conventions/stage-dispatch.md" || { echo "Method B prompt does not name them"; return 1; }
 }
 
+@test "a redo of Validation runs the whole set, so its rerun is null" {
+  r="$(section "$S" 'Resolution Algorithm')"
+  grep -qF 'action=redo with' <<<"$r" || { echo "step 5.6 does not null rerun for a redo"; return 1; }
+  grep -qF 'stage_target=Validation (a redo runs the whole set)' <<<"$r" || { echo "step 5.6 does not name the Validation stage"; return 1; }
+  c="$(section "$S" 'Outbound Contract')"
+  grep -qF 'a `redo` of the Validation stage' <<<"$c" || { echo "the contract paragraph does not name the redo"; return 1; }
+}
+
 @test "step 5.6 records the base and asks for the right --since" {
   r="$(section "$S" 'Resolution Algorithm')"
   grep -qF '5.6. Record the base and compute the review ranges' <<<"$r" || { echo "no step 5.6"; return 1; }

@@ -182,6 +182,31 @@ finds() { # the lint's output has a finding of this class
   [ -z "$output" ] || { echo "$output"; return 1; }
 }
 
+@test "modules of one repository carried from two Validations pass while the newest row is current" {
+  commit "$PROJ" a.txt
+  s1="$(head7 "$PROJ/Packages/Core")"
+  commit "$PROJ/Packages/Core" c.txt
+  s2="$(head7 "$PROJ/Packages/Core")"
+  # V1 ran A and B at s1, V2 ran A at s2 and carried B at s1, a later round touched only the app:
+  # V3 runs the app and carries A at s2 and B at s1
+  vmd FAILED "$(app_row)" "$(row Packages/Core A "carried $s2" 7 "$s2" validation-evidence/t/core.log)" "$(row Packages/Core B "carried $s1" 3 "$s1" validation-evidence/t/core.log)"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  [ -z "$output" ] || { echo "$output"; return 1; }
+}
+
+@test "a repository whose every carried row is behind and has no ran row is a finding per row" {
+  commit "$PROJ" a.txt
+  s1="$(head7 "$PROJ/Packages/Core")"
+  commit "$PROJ/Packages/Core" c.txt
+  s2="$(head7 "$PROJ/Packages/Core")"
+  commit "$PROJ/Packages/Core" d.txt
+  vmd FAILED "$(app_row)" "$(row Packages/Core A "carried $s2" 7 "$s2" validation-evidence/t/core.log)" "$(row Packages/Core B "carried $s1" 3 "$s1" validation-evidence/t/core.log)"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$(grep -c '^Validation.md: carried:' <<<"$output")" -eq 2 ] || { echo "$output"; return 1; }
+}
+
 @test "a carried repository nothing changed in after its sha passes" {
   commit "$PROJ" a.txt
   old="$(head7 "$PROJ/Packages/Core")"

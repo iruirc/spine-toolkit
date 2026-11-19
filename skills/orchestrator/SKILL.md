@@ -331,7 +331,8 @@ Algorithm:
    • the range includes Validation, or action=catch-up:
        task  := bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since base
        rerun := bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since validated
-                ↓ null when action is restart or restart-full,
+                ↓ null when action is restart or restart-full, or action=redo with
+                  stage_target=Validation (a redo runs the whole set),
                   or any repository came back rewritten or unknown
        validation_ranges := {task, rerun}
    • otherwise validation_ranges := {}
@@ -618,7 +619,7 @@ size belongs to the task, not to one dispatch.
 
 `review_ranges` — what Review reads, per repository of the task: the JSON `task-ranges.sh ranges` printed in Resolution step 5.6, as described in `conventions/task-ranges.md`. `{}` when the range holds neither Review nor a catch-up, and for RESEARCH, REVIEW and EPIC. Method A passes the object as real JSON; Method B names each range in the Review stage's prompt (`conventions/stage-dispatch.md`).
 
-`validation_ranges` — what Validation covers: `task`, the task's whole range (`--since base`), and `rerun`, the commits after the last green Validation (`--since validated`), both the JSON `task-ranges.sh ranges` printed in Resolution step 5.6. `{}` for RESEARCH, REVIEW and EPIC, and when the range holds no Validation. `rerun` is null when there is nothing to narrow from — a restart, or a repository whose record is rewritten or unknown — and null means the whole set. Method A passes the object as real JSON; Method B names both ranges in the Validation stage's prompt (`conventions/stage-dispatch.md`).
+`validation_ranges` — what Validation covers: `task`, the task's whole range (`--since base`), and `rerun`, the commits after the last green Validation (`--since validated`), both the JSON `task-ranges.sh ranges` printed in Resolution step 5.6. `{}` for RESEARCH, REVIEW and EPIC, and when the range holds no Validation. `rerun` is null when there is nothing to narrow from — a restart, a `redo` of the Validation stage, or a repository whose record is rewritten or unknown — and null means the whole set. Method A passes the object as real JSON; Method B names both ranges in the Validation stage's prompt (`conventions/stage-dispatch.md`).
 
 `fix_findings`, `fix_round`, `after_done` — filled only when `action=fix-review`, as Gating sets them: the findings chosen, verbatim; the number of this fix phase across the task; whether `Done.md` exists, so that Done closes a catch-up the fixes interrupted. Any other action sends `[]`, `0` and `false`. Method A passes them as real JSON; Method B names the findings in the fix stage's prompt.
 

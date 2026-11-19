@@ -3,8 +3,8 @@ set -euo pipefail
 
 # Checks the ## Regression set table a validator writes into a task's Validation.md against the
 # task's history: a repository the task changed that the table leaves out, a ran row without a test
-# count or a log, a ran row that a later code commit made stale, a repository carried whole from an
-# earlier Validation although it changed since, and a PASSED status without the records the next
+# count or a log, a ran row that a later code commit made stale, a repository carried whole from
+# earlier Validations although it changed since, and a PASSED status without the records the next
 # Validation narrows from. Its classes: section, missing, count, log, stale, carried, record.
 #
 # It works on repositories, never on modules: which module of a repository should have run is the
@@ -12,6 +12,11 @@ set -euo pipefail
 # task-ranges.sh ranges --since base holds a commit of it (or cannot tell, state not ok) or
 # task-ranges.sh dirty names it. Every question about git goes through task-ranges.sh; a commit that
 # touches only the tasks folder is not one (the Validation.md commit itself must not age its own row).
+#
+# A carried row is judged per repository, never per row: a repository whose modules were carried from
+# different Validations (one module re-run after a commit, the other carried from before it) is
+# current, and it is a finding only when every carried row of it has commits after its sha and the
+# repository has no ran row. A carried sha that is not in the history is a finding of its own, per row.
 #
 # The table format is in skills/task-documents/SKILL.md, in its Validation.md section.
 #
@@ -101,6 +106,7 @@ if table:
     found += ['missing: %s has changes and no row (## Regression set)' % rel for rel in sorted(changed - listed)]
 
 ran = {r[0] for r in rows if r[3] == 'ran'}
+carried = {}  # repository -> [(commits after the sha, sha, where)], rewritten shas left out
 for repo, module, why, run, tests, head, log, where in rows:
     if run == 'ran':
         if not re.fullmatch(r'\d+', tests):
@@ -124,8 +130,12 @@ for repo, module, why, run, tests, head, log, where in rows:
     n = ask('count', TASK, repo, m.group(1))
     if n == 'rewritten':
         found.append('carried: %s is not in the history of %s (%s)' % (m.group(1), repo, where))
-    elif n != '0' and repo not in ran:
-        found.append('carried: %s commits after %s and no ran row for the repository (%s)' % (n, m.group(1), where))
+    else:
+        carried.setdefault(repo, []).append((n, m.group(1), where))
+
+for repo, held in carried.items():
+    if repo not in ran and all(n != '0' for n, _, _ in held):
+        found += ['carried: %s commits after %s, every carried row of the repository is behind, and no ran row (%s)' % (n, sha, where) for n, sha, where in held]
 
 # A PASSED Validation leaves the records the next one narrows from, one per repository it covered.
 if lines and re.match(r'\[VALIDATION_STATUS\]\s*=\s*PASSED\b', lines[0].strip()):

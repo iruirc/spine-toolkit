@@ -44,7 +44,7 @@ prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""
     rp "$p" "$(contract Validation "$AGAIN")" '{}' "$(prompt_js validation)"
     v="${V[0]}"
     for f in 'The last green Validation stood at: .: c3..HEAD (2 commits); Packages/Core: d4..HEAD (0 commits).' \
-             'Re-run only the modules these commits reach' 'carried' \
+             'Re-run only the modules these commits reach, the uncommitted edits of every root included' 'carried' \
              'drive the app again only when these commits reach the UI layer or the path the scenario walks'; do
       grep -qF -- "$f" <<<"$v" || { echo "profile-$p: re-run prompt lost: $f"; return 1; }
     done
@@ -137,7 +137,7 @@ prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""
 
 @test "a BUG re-run carries the replay when its commits miss the scenario's path" {
   rp bug "$(contract Validation "$AGAIN")" '{}' "$(prompt_js validation)"
-  for f in 'the replay is carried' 'return reproduction_status fixed, taken from the last green Validation' 'the HEAD it ran at under ## Scope'; do
+  for f in 'the replay is carried' 'return reproduction_status as it was in the last green Validation' '(fixed only if that Validation replayed, otherwise deferred-manual)' 'name that Validation with its HEAD under ## Scope'; do
     grep -qF -- "$f" <<<"${V[0]}" || { echo "the re-run BUG prompt lost: $f"; return 1; }
   done
   for c in "$FIRST" ''; do
