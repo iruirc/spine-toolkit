@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep skills conventions templates workflows commands
 # The project config is SPINE.md; CLAUDE-spine-toolkit.md is the name a project may still carry
 # until setup renames it (conventions/task-settings.md → Project config). The legacy name is
 # read where lookup and migration need it, and nowhere else: a skill or document that still

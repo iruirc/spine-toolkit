@@ -85,3 +85,29 @@ fixture() {   # <name> <mark> [walk-workflows]
   printf 'x=workflow-$p\n' >"$BATS_TEST_TMPDIR/w.test.bats"
   [ "$(sweep_walked "$BATS_TEST_TMPDIR/w.test.bats")" = skills ]
 }
+
+@test "a recursive scan of the repository root walks every directory" {
+  printf 'x="$(grep -rl foo "$ROOT" --exclude-dir=.git)"\n' >"$BATS_TEST_TMPDIR/g.test.bats"
+  [ "$(sweep_walked "$BATS_TEST_TMPDIR/g.test.bats" | tr '\n' ' ')" = "$SWEEP_DIRS " ]
+  printf 'x="$(grep -rn --exclude-dir=.git \\\n  -e . "${ROOT}" | wc -l)"\n' >"$BATS_TEST_TMPDIR/g2.test.bats"
+  [ "$(sweep_walked "$BATS_TEST_TMPDIR/g2.test.bats" | tr '\n' ' ')" = "$SWEEP_DIRS " ]
+  printf 'x="$(find "$ROOT" -name "*.md")"\n' >"$BATS_TEST_TMPDIR/g3.test.bats"
+  [ "$(sweep_walked "$BATS_TEST_TMPDIR/g3.test.bats" | tr '\n' ' ')" = "$SWEEP_DIRS " ]
+}
+
+@test "git grep over the repository walks every directory" {
+  printf 'x="$(git -C "$ROOT" grep -l foo)"\n' >"$BATS_TEST_TMPDIR/gg.test.bats"
+  [ "$(sweep_walked "$BATS_TEST_TMPDIR/gg.test.bats" | tr '\n' ' ')" = "$SWEEP_DIRS " ]
+}
+
+@test "a scan of one directory under the root does not walk the others" {
+  printf 'x="$(grep -rl foo "$ROOT/skills")"\nfind "$ROOT/scripts" -type f\n' >"$BATS_TEST_TMPDIR/one.test.bats"
+  [ "$(sweep_walked "$BATS_TEST_TMPDIR/one.test.bats")" = skills ]
+}
+
+@test "a recursive grep handed bare directory words walks each of them, over continued lines too" {
+  printf "hits=\"\$(cd \"\$ROOT\" && grep -rniE 'a|b' \\\\\n    skills commands README.md)\"\n" >"$BATS_TEST_TMPDIR/bare.test.bats"
+  [ "$(sweep_walked "$BATS_TEST_TMPDIR/bare.test.bats" | tr '\n' ' ')" = "skills commands " ]
+  printf 'echo skills commands\n' >"$BATS_TEST_TMPDIR/echo.test.bats"
+  [ -z "$(sweep_walked "$BATS_TEST_TMPDIR/echo.test.bats")" ]
+}
