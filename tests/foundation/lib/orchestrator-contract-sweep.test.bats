@@ -5,12 +5,6 @@
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   SKILL="$ROOT/skills/orchestrator/SKILL.md"
-  LINT="$ROOT/scripts/lint-manifest.sh"
-  CONTRACT="$ROOT/conventions/platform-contract.md"
-  VOCABULARY="$(sed -n 's/^ROLES="\(.*\)"$/\1/p' "$LINT")"
-  AGENT_KEYS="$(grep -m1 '^agents={' "$SKILL" \
-    | sed 's/^agents={//; s/}$//' | tr ',' '\n' | sed 's/:.*//' | tr -d ' ' | tr '\n' ' ')"
-  AGENT_KEYS="${AGENT_KEYS% }"
 }
 
 # A section's body, heading excluded, up to the next H2. $2 carries its own "## ".

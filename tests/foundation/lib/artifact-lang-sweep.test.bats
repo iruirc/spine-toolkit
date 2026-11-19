@@ -4,13 +4,6 @@
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  LINT="$ROOT/scripts/lint-artifact-lang.sh"
-  FIX="$ROOT/tests/fixtures/artifact-lang"
-  PROJ="$BATS_TEST_TMPDIR/proj"
-  TASK="$PROJ/Tasks/ACTIVE/042-promo"
-  mkdir -p "$TASK"
-  printf '## Project settings\n\n[LANG] = [ru]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
-  printf '[TASK_TYPE] = [BUG]\n' >"$TASK/Task.md"
 }
 
 @test "every profile names the language in words, and says it again after the body" {

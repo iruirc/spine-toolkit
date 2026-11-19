@@ -4,7 +4,6 @@
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  SKILL="$ROOT/skills/task-walkthrough/SKILL.md"
 }
 
 @test "every profile script hands the resolved depth to the writing agent" {

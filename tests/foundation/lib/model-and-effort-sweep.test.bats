@@ -5,7 +5,6 @@
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   RULE="$ROOT/conventions/stage-dispatch.md"
-  TPL="$ROOT/templates/spine-md/en.md"
 }
 
 section() { awk -v h="$2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }

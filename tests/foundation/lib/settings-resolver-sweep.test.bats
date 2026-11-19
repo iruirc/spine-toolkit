@@ -4,13 +4,6 @@
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  RESOLVE="$ROOT/scripts/resolve-settings.sh"
-  PROJ="$BATS_TEST_TMPDIR/proj"
-  TASK="$PROJ/Tasks/ACTIVE/042-a-task"
-  mkdir -p "$TASK"
-  printf '# CLAUDE-spine-toolkit.md\n\n## Task defaults\n\n[WORKFLOW_MODE] = [manual]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
-  printf '[TASK_TYPE] = [BUG]\n[NEED_TEST] = [true]\n' >"$TASK/Task.md"
-  ERR="$BATS_TEST_TMPDIR/err"
 }
 
 field() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1]])' "$1"; }

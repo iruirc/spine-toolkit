@@ -4,12 +4,6 @@
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  LINT="$ROOT/scripts/lint-artifact-budget.sh"
-  PROJ="$BATS_TEST_TMPDIR/proj"
-  TASK="$PROJ/Tasks/ACTIVE/042-a-task"
-  mkdir -p "$TASK"
-  printf '## Task defaults\n\n[SCALE] = [lite]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
-  printf '[TASK_TYPE] = [BUG]\n[NEED_TEST] = [true]\n' >"$TASK/Task.md"
 }
 
 @test "every profile script reads the ceilings from the contract's budgets" {

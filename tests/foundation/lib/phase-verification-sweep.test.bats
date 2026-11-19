@@ -4,7 +4,6 @@
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  SKILL="$ROOT/skills/phase-verification/SKILL.md"
   PROFILES="feature bug refactor test"
 }
 

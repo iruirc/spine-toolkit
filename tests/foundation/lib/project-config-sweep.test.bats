@@ -4,7 +4,6 @@
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  TPL="$ROOT/templates/spine-md/en.md"
 }
 
 # The three scans below ask what files core HAS, and that is the index plus

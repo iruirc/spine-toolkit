@@ -4,7 +4,6 @@
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  SKILL="$ROOT/skills/test-authoring/SKILL.md"
 }
 
 # A section's body, heading excluded, up to the next H2.

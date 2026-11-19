@@ -4,7 +4,6 @@
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  ORCH="$ROOT/skills/orchestrator/SKILL.md"
 }
 
 @test "every workflow skill allows a contract as text" {

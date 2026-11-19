@@ -4,7 +4,6 @@
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  SKILL="$ROOT/skills/task-documents/SKILL.md"
   ANCHORS='### Expected behaviour|### Questions for Research|### Acceptance'
 }
 
