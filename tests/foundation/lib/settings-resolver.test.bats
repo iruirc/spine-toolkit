@@ -514,7 +514,8 @@ FIELDS
   for p in "$ROOT"/workflows/profile-*.js; do
     n=$((n + 1))
     for token in '[DRIVE_APP]' '[MANUAL_CHECKS]' '[PHASE_VERIFICATION]' '## Validation'; do
-      ! grep -qF "$token" "$p" || { echo "$(basename "$p") still spells the chain for $token"; return 1; }
+      # `## Validation's regression` is a section of the phase-verification skill, not a config block.
+      ! sed "s/## Validation's regression//g" "$p" | grep -qF "$token" || { echo "$(basename "$p") still spells the chain for $token"; return 1; }
     done
   done
   [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
