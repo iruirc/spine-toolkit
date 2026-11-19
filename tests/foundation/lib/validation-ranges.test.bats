@@ -79,6 +79,8 @@ prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""
   for p in $RANGED; do
     rp "$p" "$(contract Validation ", \"action\": \"catch-up\"$AGAIN")" '{}' "$(prompt_js validation)"
     grep -qF "This run catches up commits that landed after the task's Done" <<<"${V[0]}" || { echo "profile-$p: not told it catches up"; return 1; }
+    grep -qF 'Packages/Core: d4..HEAD (0 commits)' <<<"${V[0]}" || { echo "profile-$p: the delta range is gone"; return 1; }
+    if grep -qF 'Run every module of the set.' <<<"${V[0]}"; then echo "profile-$p: a catch-up is told to run the whole set"; return 1; fi
   done
 }
 
@@ -112,5 +114,34 @@ prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""
     if grep -qE 'VALIDATION_SCOPE|REVIEW_VALIDATION' <<<"$(sed -n '/── end prelude/,$p' "$ROOT/workflows/profile-$p.js")"; then
       echo "profile-$p.js uses a Validation helper"; return 1
     fi
+  done
+}
+
+@test "a repository with no known base is counted as changed, never skipped" {
+  blind='{"since": "base", "repos": {".": {"range": "a1..HEAD", "commits": 3, "state": "ok"}, "Packages/Core": {"range": null, "commits": null, "state": "unknown"}}}'
+  member=", \"validation_ranges\": {\"task\": $blind, \"rerun\": null}"
+  for p in $RANGED; do
+    rp "$p" "$(contract Validation "$member")" '{}' "$(prompt_js validation)"
+    grep -qF 'Packages/Core: no known base — count that repository as changed and say so under ## Scope' <<<"${V[0]}" || { echo "profile-$p: no clause for the unknown repository"; return 1; }
+  done
+}
+
+@test "a re-run says where the last green Validation's counts are" {
+  for p in $RANGED; do
+    rp "$p" "$(contract Validation "$AGAIN")" '{}' "$(prompt_js validation)"
+    grep -qF '/p/Tasks/ACTIVE/001-x/Validation.md holds — read it before you overwrite it' <<<"${V[0]}" || { echo "profile-$p: no pointer to the last Validation.md"; return 1; }
+    rp "$p" "$(contract Validation "$AGAIN, \"archive_paths\": [\"/p/Tasks/ACTIVE/001-x/_archive/Validation-2026-11-19T100000.md\"]")" '{}' "$(prompt_js validation)"
+    grep -qF '_archive/Validation-2026-11-19T100000.md holds' <<<"${V[0]}" || { echo "profile-$p: the archived Validation is not named"; return 1; }
+  done
+}
+
+@test "a BUG re-run carries the replay when its commits miss the scenario's path" {
+  rp bug "$(contract Validation "$AGAIN")" '{}' "$(prompt_js validation)"
+  for f in 'the replay is carried' 'return reproduction_status fixed, taken from the last green Validation' 'the HEAD it ran at under ## Scope'; do
+    grep -qF -- "$f" <<<"${V[0]}" || { echo "the re-run BUG prompt lost: $f"; return 1; }
+  done
+  for c in "$FIRST" ''; do
+    rp bug "$(contract Validation "$c")" '{}' "$(prompt_js validation)"
+    if grep -qF 'the replay is carried' <<<"${V[0]}"; then echo "a first BUG Validation may carry its replay"; return 1; fi
   done
 }
