@@ -129,7 +129,7 @@ FAKE
   run --separate-stderr "$R/scripts/test-foundation.sh" touched docs/nothing.md
   [ "$status" -eq 0 ]
   [ ! -e "$BATS_TEST_TMPDIR/bats-args" ]
-  [[ "$stderr" == *"touched: docs/nothing.md -> no test names it"* ]]
+  grep -qF -- "touched: docs/nothing.md -> no test names it" <<<"$stderr"
   [[ "$stderr" == *"touched: no test names these files"* ]]
 }
 
