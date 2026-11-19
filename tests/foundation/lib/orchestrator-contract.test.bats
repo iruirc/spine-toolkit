@@ -583,6 +583,10 @@ section() {
                "status directory is replaced by \`*\`" "'…/Tasks/*/<task folder>'" '--since <now>'; do
     grep -qF -- "$token" <<<"$para" || { echo "the Stage leftovers paragraph does not name $token"; return 1; }
   done
+  grep -qF 'stop it with `TaskStop` on its background task' <<<"$para" \
+    || { echo "the Stage leftovers paragraph does not say how the orchestrator stops its watch"; return 1; }
+  grep -qF 'never through `pkill` or `pgrep`' <<<"$para" \
+    || { echo "the Stage leftovers paragraph does not forbid finding a watch by pattern"; return 1; }
   grep -qF "is **Stage leftovers**'s, before \`stage_error_prompt\`" "$SKILL" \
     || { echo "Error mid-range does not hand the failed stage's leftovers to Stage leftovers"; return 1; }
 }

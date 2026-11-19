@@ -278,6 +278,17 @@ transcript() {
   [ "$status" -eq 5 ] || { echo "$output"; return 1; }
 }
 
+# A watch outlived the Claude Code session that started it: the session closed mid-stage, the
+# watch went to PID 1 and stayed until --idle, and the next session's diff called it a leftover.
+@test "the watch exits 6 once the session that started it is gone" {
+  { row 200 1 09:00:00 claude; } >"$T/ps"
+  export STAGE_LEFTOVERS_POLL=0
+  transcript a1 mcp__x__y 60 pending
+  touch -t 200001010000 "$T/wf/agent-a1.jsonl" "$T/wf"
+  run "$SL" watch --dir "$T/wf" --stall 300 --idle 1
+  [ "$status" -eq 6 ] && [ "$output" = "session gone pid=100" ] || { echo "$output"; return 1; }
+}
+
 # A stage's load generator, `( busy loop ) &` in a Bash-tool command, went to PID 1 when the shell
 # exited, and diff said nothing while 84 such processes held the machine for half an hour.
 # The snapshot is taken at 14:00, the diff runs at 15:00; the caller's shell is 170.
@@ -312,6 +323,15 @@ orphans() {
   STAGE_LEFTOVERS_SELF=171 run "$SL" diff "$T/snap"
   [[ "$output" != *"pid=15"* && "$output" != *"pid=16"* && "$output" != *"pid=17"* \
      && "$output" != *"pid=181"* && "$output" != *"pid=19"* ]] || { echo "$output"; return 1; }
+}
+
+@test "a watch orphaned to PID 1 is not a leftover; the stage's own orphan beside it is" {
+  orphans
+  { orow 165 160 14:30:00 '/usr/bin/python3 - watch --dir /x --stall 300 --idle 1800'
+    orow 141 140 14:30:00 'sleep 301'; } >>"$T/ps"
+  STAGE_LEFTOVERS_SELF=171 run "$SL" diff "$T/snap"
+  [ "$status" -eq 1 ] && [ "${#lines[@]}" -eq 1 ] && [[ "${lines[0]}" == "process pid=141 "* ]] \
+    || { echo "$output"; return 1; }
 }
 
 # --- The session above the script: Claude Code or Codex CLI (runtimes/codex-cli.md → Scripts) ---

@@ -6,7 +6,7 @@
 #        scripts/stage-leftovers.sh diff [--out] <file>
 #        scripts/stage-leftovers.sh kill <pid>:<start>…
 #        scripts/stage-leftovers.sh watch --dir <transcript dir> --stall <s> --idle <s> [--since <epoch>]
-# Exit: diff 0 nothing, 1 findings; kill 0; watch 4 stalled call, 5 idle. 2: usage, any subcommand.
+# Exit: diff 0 nothing, 1 findings; kill 0; watch 4 stalled call, 5 idle, 6 session gone. 2: usage, any subcommand.
 set -uo pipefail
 
 [ $# -ge 1 ] || { sed -n '5,9p' "$0" >&2; exit 2; }
@@ -189,8 +189,13 @@ def shell_orphans(doc, table):
         names = {m.group(1) for p in groups[pgid] for m in [SNAPSHOT.search(table[p][3])] if m}
         return bool(names) and bool(mine) and not names & mine
 
+    # A watch is the orchestrator's own, not the stage's, wherever it ended up.
+    watches = set()
+    for pid in table:
+        if WATCH.search(table[pid][3]):
+            watches |= {pid} | descendants(table, pid)[0]
     found = []
-    for pid in sorted(table):
+    for pid in sorted(set(table) - watches):
         ppid, start, _cpu, _cmd, pgid, uid = table[pid]
         if (ppid == 1 and pgid != pid and pgid not in table and uid == os.getuid()
                 and start >= doc["taken"] and not foreign(pgid)):
@@ -323,8 +328,17 @@ def watch(args):
     since = float(opts["--since"])  # "wait more": silence counts from here, not from the call
     if not os.path.isdir(root):
         usage("no transcript dir %s" % root)
+    # A watch outlives a session that closed mid-stage, and nobody is left to wake: it ends with it.
+    # The start time tells the session from a later process given its pid.
+    table = procs()
+    sess = session_pid(table)
+    born = table[sess][1] if sess in table else None
     while True:
         now = float(os.environ.get("STAGE_LEFTOVERS_NOW") or time.time())
+        table = procs()
+        if born is None or sess not in table or abs(table[sess][1] - born) > 1:
+            print("session gone pid=%d" % sess)
+            sys.exit(6)
         names = [n for n in os.listdir(root) if n.startswith("agent-") and n.endswith(".jsonl")]
         newest = max([os.path.getmtime(os.path.join(root, n)) for n in names] + [os.path.getmtime(root)])
         for name in sorted(names):
@@ -332,8 +346,6 @@ def watch(args):
             # Bash has its own tool timeout and long-run.sh its own --stall; only an MCP call has neither.
             if call and call[0].startswith("mcp__") and now - max(call[1], since) > stall:
                 print("hung agent=%s tool=%s age=%s" % (name[6:-6], call[0], age(now - call[1])))
-                table = procs()
-                sess = session_pid(table)
                 below, _ = descendants(table, sess)
                 mine = own_chain(table, sess)
                 for pid in sorted(below - mine):

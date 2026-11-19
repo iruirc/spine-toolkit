@@ -1032,7 +1032,10 @@ that reparented, the file an edit the user made while the stage ran.
 Under Method A, once `Workflow` has accepted the call, start
 `stage-leftovers.sh watch --dir <transcript dir> --stall <60 × long_run.stall> --idle <60 × long_run.max>`
 through `Bash` with `run_in_background`, the transcript dir being the one the `Workflow` result
-names. Its exit wakes you; stop it yourself when the workflow's own notification arrives first. Exit
+names. Its exit wakes you. When the workflow's own notification arrives first,
+stop it with `TaskStop` on its background task — never through `pkill` or `pgrep`: its command
+line names no task, and a pattern finds the watches of every session on the machine. A watch whose
+session has closed exits by itself (6). Exit
 4 means an agent's `mcp__*` call has had no answer for longer than `stall`: report its first line
 with key `stage_call_hung` (`{agent}`, `{tool}`, `{age}`), the `proc` lines under it as printed,
 and AUQ: `stage_call_hung_option_kill` (`stage-leftovers.sh kill` on the process the user picks —
