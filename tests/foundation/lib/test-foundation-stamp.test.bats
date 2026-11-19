@@ -133,10 +133,10 @@ FAKE
   [[ "$stderr" == *"touched: no test names these files"* ]]
 }
 
-@test "touched without files is a usage error" {
+@test "touched without files on a clean tree runs nothing and passes" {
   run --separate-stderr "$R/scripts/test-foundation.sh" touched
-  [ "$status" -eq 2 ]
-  [[ "$stderr" == *"usage:"* ]]
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"touched: nothing differs from HEAD"* ]]
   [ ! -e "$BATS_TEST_TMPDIR/bats-args" ]
 }
 
