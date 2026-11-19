@@ -260,7 +260,7 @@ a `]`, which closes the field, and the brief quotes it in `«»`, so a `»` insi
 `[PHASE_VERIFICATION] = [proportional|full]` · **Defined by:** the `phase-verification` skill
 
 How much each phase checks before it commits: `proportional` — only what the phase can break, at the
-rung its `**Verification:**` line in `Plan.md` names, with the full regression left to Validation;
+rung its `**Verification:**` line in `Plan.md` names, with the regression left to Validation (its set is defined under `## Validation's regression` in the skill);
 `full` — the full regression in every phase, for a project whose whole suite is cheap enough that
 repeating it costs nothing. There is no `off`. The rungs and how a planner picks one are fixed by
 the `phase-verification` skill, not by this field.

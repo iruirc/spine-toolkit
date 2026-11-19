@@ -74,13 +74,13 @@ section() { # $1 = file, $2 = heading text without "## "
 
 @test "Review's findings are named and none of them blocks" {
   rev="$(section "$SKILL" 'Review')"
-  grep -qF 'None of them blocks' <<<"$rev" || { echo "the findings may block"; return 1; }
+  grep -qF 'None of the first four blocks' <<<"$rev" || { echo "the findings may block"; return 1; }
   grep -qF '`blocking_findings`' <<<"$rev" || { echo "nothing keeps them out of blocking_findings"; return 1; }
 }
 
 @test "the skill stays within its budget and ships no locales" {
   n="$(wc -l < "$SKILL" | tr -d ' ')"
-  [ "$n" -le 90 ] || { echo "SKILL.md is $n lines, budget 90"; return 1; }
+  [ "$n" -le 110 ] || { echo "SKILL.md is $n lines, budget 110"; return 1; }
   [ ! -d "$ROOT/skills/phase-verification/locales" ] || { echo "phase-verification must not carry locales/"; return 1; }
 }
 

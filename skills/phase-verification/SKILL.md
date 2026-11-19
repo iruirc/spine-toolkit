@@ -1,11 +1,11 @@
 ---
 name: phase-verification
-description: "Use at Plan to decide how much each phase checks before it commits, at the implementing stage to run exactly that, and at Review to judge the choice. The rung follows from what a phase changes for the modules that depend on it, never from how risky the edit feels, and the full regression belongs to Validation. Governed by `[PHASE_VERIFICATION]` in Task.md and the project config."
+description: "Use at Plan to decide how much each phase checks before it commits, at the implementing stage to run exactly that, and at Review to judge the choice. The rung follows from what a phase changes for the modules that depend on it, never from how risky the edit feels, and the regression belongs to Validation, whose set this skill also defines. Governed by `[PHASE_VERIFICATION]` in Task.md and the project config."
 ---
 
 # Phase Verification
 
-Every phase ends buildable, green and committed, so it can be reverted or bisected on its own. This skill decides how much "green" means. Too little, and a break surfaces at Validation across a dozen commits; too much, and every phase re-runs what Validation is about to run anyway. **The full regression belongs to Validation. A phase checks what it can break.**
+Every phase ends buildable, green and committed, so it can be reverted or bisected on its own. This skill decides how much "green" means. Too little, and a break surfaces at Validation across a dozen commits; too much, and every phase re-runs what Validation is about to run anyway. **The full regression belongs to Validation. A phase checks what it can break.** What Validation runs is defined under `## Validation's regression`.
 
 ## Terms
 
@@ -54,7 +54,21 @@ Under it, one checkbox per check the line names; the platform agent writes the c
 
 - **Plan** chooses the rung and writes the line and its checkboxes.
 - **The implementing stage** runs what the line names. A phase with no line resolves the switch below, derives its rung from its own diff by the questions above — or writes `full` — and adds the line before any check runs. A diff that reaches further than its line raises the line in the same phase commit and runs the higher check. Raising stays within `internal` → `surface` → `behaviour`; nobody lowers a rung.
-- **Validation** is unchanged: it runs the full regression.
+- **Validation** runs the regression defined under `## Validation's regression`, not the whole workspace.
+
+## Validation's regression
+
+What Validation runs is the task's regression: everything the task's changes can reach.
+
+1. every module the task changed: commits in its ranges, or uncommitted edits; a change to only a module's tests counts;
+2. every module that depends on one of them, transitively, among the task's checkouts;
+3. the application, or the build that ships them, when any module of the set is in its graph.
+
+A module whose code and dependencies did not change is neither built nor tested: its result cannot differ from the last green run. A file several modules share (a dependency lock file, a common build or lint configuration) changes every module that reads it. A project without modules runs its whole suite. The unit is the module: tests inside a module are not picked.
+
+**A re-run** recomputes the set from the task's ranges and runs only the modules the commits after the last green Validation reach, with the same closure over dependents. Every other module of the set is `carried`: it keeps the count of that Validation and its HEAD. There is no separate list of when a full regression is needed: a changed build manifest or public API makes the module changed, its dependents join the closure, and the run widens by itself. The driver scenario repeats only when the new commits touch the UI layer or a path the scenario walks.
+
+The owner's directive never narrows the regression. The owner may widen it: a run of the whole workspace is legitimate, but it is not Validation's and belongs before packages are released. The project's own whole-workspace script is not run by Validation without the owner asking.
 
 ## Dependents with no aggregate build
 
@@ -77,10 +91,12 @@ The value arrives in the contract as `phase_verification`; `conventions/task-set
 
 ## Review
 
-Three findings, read against `Plan.md` and the diff:
+Five findings, read against `Plan.md`, the diff and `Validation.md`:
 
 1. a phase with no `**Verification:**` line;
 2. an under-claimed rung — the questions above, asked of the phase's diff, give a higher rung than its line;
-3. at `proportional`, a phase that repeats the full regression — a `full` line, or checkboxes that run the whole suite.
+3. at `proportional`, a phase that repeats the full regression — a `full` line, or checkboxes that run the whole suite;
+4. a module outside the set that Validation ran — Minor, with its cost in time from the log;
+5. a module of the set that Validation did not run — Major.
 
-None of them blocks, and none goes into `blocking_findings`. Review runs after Validation has passed, so the code is already proven; these say the plan chose badly, and they exist so the next plan and the measurement can see it.
+None of the first four blocks, and none goes into `blocking_findings`. Review runs after Validation has passed, so the code is already proven; these say the plan chose badly, and they exist so the next plan and the measurement can see it. Finding 5 blocks and goes into `blocking_findings`: it is the one exception, because a module no run has touched is not proven.

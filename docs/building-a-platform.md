@@ -35,7 +35,7 @@ repository it is working in.
 | Eleven topic names its methodology skills ask for | The skills that answer them |
 | The project config file `SPINE.md` and its core blocks | The `## Stack` and `## Modules` blocks |
 
-Core's stage briefs are written to stay tool-agnostic on purpose — "a build and a full test run are
+Core's stage briefs are written to stay tool-agnostic on purpose — "a build and a test run of the regression set are
 mandatory", never the name of a build tool. `tests/foundation/lib/dispatch-vocabulary.test.bats`
 fails the build if an ecosystem's vocabulary leaks into a workflow skill, a profile script, the
 orchestrator, or an agent brief. That guard is what makes a second platform possible at all.
@@ -144,7 +144,7 @@ Three things every role agent needs:
    `Task.md`, `Research.md` or `Plan.md` carries, and what it leaves to the others, arrives in
    core's brief through `spine-toolkit:task-documents`; do not give your agent a document shape of
    its own.
-3. **Bring the tooling.** Core's brief says "run a full test run"; only your agent knows this
+3. **Bring the tooling.** Core's brief says "run the regression set"; only your agent knows this
    ecosystem's test runner, and only your validator can drive a running instance of the app. The
    same split holds per phase: core names a `**Verification:**` rung — `surface` means a build of
    every dependent — and your agent turns it into the narrowest command that covers it

@@ -97,7 +97,7 @@ such as reading build logs, gets a lighter one there as core's default. A model 
 for every project that leaves the role at `session`, whatever model its session runs.
 `lint-manifest.sh` rejects either.
 
-Core's stage briefs say what a role must accomplish and never how: "a build and a full test run are
+Core's stage briefs say what a role must accomplish and never how: "a build and a test run of the regression set are
 mandatory", never the name of a build tool. Only the agent behind the role knows how this ecosystem's
 projects get built and tested, and it brings that knowledge itself — which is why nothing here asks a
 platform to declare how it builds or how it tests.

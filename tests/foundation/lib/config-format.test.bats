@@ -8,10 +8,11 @@ setup() { ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)";
 
 # Every mention of the config's `## <block>` in $2, minus the headings of $2 that merely begin with
 # that word or name a task file (`## Validation.md`) — and minus `## Language Resolution`, a contract
-# section every localized skill carries.
+# section every localized skill carries, and `## Validation's regression`, the section of the
+# phase-verification skill that defines what Validation runs.
 mentions() {
   command grep -nE "(^|[^#])## $1([^A-Za-z]|\$)" "$2" \
-    | command grep -vE "## Language Resolution|^[0-9]+:#+ $1( [A-Za-z]|\.md\$)"
+    | command grep -vE "## Language Resolution|## Validation's regression|^[0-9]+:#+ $1( [A-Za-z]|\.md\$)"
 }
 
 @test "no core surface tells a reader to find a moved block of the config" {
