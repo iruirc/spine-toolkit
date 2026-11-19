@@ -600,3 +600,63 @@ PY
   run "$LINT" --current "$TASK"
   [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
 }
+
+core() { # a package Packages/Core with one commit, exported as C1
+  mkdir -p "$PROJ/Packages/Core"
+  printf '## Paths\n\n- External packages: /Packages/*\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf 'Tasks/\nPackages/\n' >"$PROJ/.gitignore"
+  git -C "$PROJ/Packages/Core" init -q -b main
+  echo c >"$PROJ/Packages/Core/c.txt"; git -C "$PROJ/Packages/Core" add c.txt
+  git -C "$PROJ/Packages/Core" -c user.name=t -c user.email=t@t commit -qm c
+  C1="$(git -C "$PROJ/Packages/Core" rev-parse --short HEAD)"
+}
+
+@test "a name that is no repository of the task is a finding, in a heading and in the header" {
+  walkthrough deep "$(printf '### 1. `other@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")"
+  python3 -c 'import sys; p=sys.argv[1]; t=open(p).read(); open(p,"w").write(t.replace("| `proj` |", "| `nope` |", 1))' "$TASK/Walkthrough.md"
+  run "$LINT" "$TASK"
+  grep -qxF 'Walkthrough.md: repository: other is not a repository of the task (### 1)' <<<"$output" \
+    && grep -qxF 'Walkthrough.md: repository: nope is not a repository of the task (header nope)' <<<"$output" \
+    || { echo "$output"; return 1; }
+}
+
+@test "a sha of another repository is a finding, each end of a range on its own" {
+  core
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second\n\n### 3. `proj@%s` — core\n\n### Bookkeeping\n\n- `Core@%s..%s` — both.' "$A1" "$A2" "$C1" "$A1" "$A2")"
+  run "$LINT" "$TASK"
+  for l in "repository: $C1 is not in proj (### 3)" "repository: $A1 is not in Core (Bookkeeping)" "repository: $A2 is not in Core (Bookkeeping)"; do
+    grep -qxF "Walkthrough.md: $l" <<<"$output" || { echo "$output"; return 1; }
+  done
+}
+
+@test "a multi-repository walkthrough with right names is clean" {
+  core
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `Core@%s` — core\n\n### 3. `proj@%s` — second' "$A1" "$C1" "$A2")"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "a sha nowhere outside ## Commits is not a repository finding" {
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "--current reports a wrong repository" {
+  core
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `Core@%s` — second' "$A1" "$A2")"
+  run "$LINT" --current "$TASK"
+  grep -qxF "Walkthrough.md: repository: $A2 is not in Core (### 2)" <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "a path name of colliding checkouts is a repository" {
+  core
+  mkdir -p "$PROJ/Vendor/Core"
+  printf '## Paths\n\n- External packages: /Packages/*\n- External packages: /Vendor/*\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  git -C "$PROJ/Vendor/Core" init -q -b main
+  echo v >"$PROJ/Vendor/Core/v.txt"; git -C "$PROJ/Vendor/Core" add v.txt
+  git -C "$PROJ/Vendor/Core" -c user.name=t -c user.email=t@t commit -qm v
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `Packages/Core@%s` — core\n\n### 3. `proj@%s` — second' "$A1" "$C1" "$A2")"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}

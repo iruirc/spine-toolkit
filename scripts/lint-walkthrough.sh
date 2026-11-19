@@ -4,8 +4,9 @@ set -euo pipefail
 # Checks a task's Walkthrough.md against the task's history and against its own header: a commit
 # ## Commits names that a reset or a squash dropped, a section the skill requires for the file's
 # depth, a deep section that holds more than one commit, and a commit of a declared range that the
-# body never names — what a patch that cut the file short leaves behind. Its classes: unreachable,
-# section, heading, missing, count, range, behind, style.
+# body never names — what a patch that cut the file short leaves behind — and a commit reference
+# whose repository does not hold it. Its classes: unreachable, section, heading, missing, count,
+# range, behind, repository, style.
 #
 # The style class reads the prose, not the history: a sentence over words-per-sentence words (the
 # budget key of the task's directory, 30 unless a Task.md, an epic or the project sets it), an identifier
@@ -386,6 +387,24 @@ for repo, a, b, count in declared:
               for c in listed if not any(c.startswith(s) for s in covered)]
     if count.strip() != str(len(listed)):
         found.append('count: the header says %s, the range holds %d (%s)' % (count.strip(), len(listed), repo))
+
+# A reference names the repository that holds its commit. A sha no repository holds is not a wrong
+# name: ## Commits reports it as unreachable, and elsewhere it is left alone.
+known = {name for name, _ in repo_names()}
+refs = [r for r in references(text) if r[0] is not None]
+found += ['repository: %s is not a repository of the task (%s)' % (name, w) for name, _, _, w in refs if name not in known]
+found += ['repository: %s is not a repository of the task (header %s)' % (repo, repo) for repo, _, _, _ in declared if repo not in known]
+ends = sorted({s for name, a, b, _ in refs if name in known for s in (a, b) if s})
+held = {}
+if ends:
+    r = subprocess.run([RANGES, 'owners', TASK] + ends, capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.stderr.write(r.stderr)
+        sys.exit(2)
+    held = {line.split()[0]: set(line.split()[1:]) for line in r.stdout.splitlines()}
+for name, a, b, w in refs:
+    if name in known:
+        found += ['repository: %s is not in %s (%s)' % (s, name, w) for s in (a, b) if s and held.get(s) and name not in held[s]]
 
 # Style findings go to the writer once (spec D-7). --current decides whether the writer runs again,
 # so it judges the history and the coverage only: a style finding never makes a file stale.
