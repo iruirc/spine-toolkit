@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep skills templates
 # Codex CLI reads AGENTS.md and expands no @-imports, so the project config reaches it through a
 # sentence, not an import line. setup writes that sentence in Codex CLI only, once: the marker line
 # is what tells a later run the block is already there (spec: multi-llm milestone 2, section 4).

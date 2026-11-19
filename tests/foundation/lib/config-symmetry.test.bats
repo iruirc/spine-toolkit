@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep templates
 # The config's `## Task defaults` and the configuration doc are two halves of one vocabulary: a field
 # in one and not the other is a field a user can set in a project and not in a task, or the reverse,
 # and nothing but this test would say so. The task templates no longer list the fields; they point

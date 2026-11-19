@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep workflows
+# changed: sweep skills workflows
 # Every surface outside the profile that has to know QUICK exists: the orchestrator's tables and
 # gate, the settings chain's documents, task-new, the epic that runs it but never plans it, and the docs.
 
