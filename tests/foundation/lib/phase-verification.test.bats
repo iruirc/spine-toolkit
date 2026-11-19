@@ -114,8 +114,8 @@ bullet() { # $1 = SKILL.md, $2 = stage name
       || { echo "profile-$p.js: the Plan brief never asks for the line"; return 1; }
     grep -qF 'phase-verification skill' <<<"$b" \
       || { echo "profile-$p.js: the Plan brief does not point at the skill"; return 1; }
-    grep -qF 'The full regression belongs to Validation' <<<"$b" \
-      || { echo "profile-$p.js: the Plan brief does not hand the full run to Validation"; return 1; }
+    grep -qF 'The regression set belongs to Validation' <<<"$b" \
+      || { echo "profile-$p.js: the Plan brief does not hand the regression to Validation"; return 1; }
   done
 }
 

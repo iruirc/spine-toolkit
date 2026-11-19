@@ -170,10 +170,13 @@ const RANGES = A.review_ranges && A.review_ranges.repos && typeof A.review_range
 const PRIOR_REVIEW = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Review-[^/]*\.md$/.test(p))
 // This run commits code before Review, so the counts in review_ranges predate it.
 const CODE_RUNS = ['Fix', 'Execute', 'Refactor', 'Write', 'Edit'].some((s) => ORDER.includes(s) && runs(s))
-// One clause per repository, as review_ranges names them.
-const rangeList = () =>
-  Object.entries(RANGES.repos)
-    .map(([repo, r]) => (r.range ? `${repo}: ${r.range}${CODE_RUNS ? '' : ` (${r.commits} commit${r.commits === 1 ? '' : 's'})`}` : `${repo}: no known base — review this task's own commits there and say so under ### Scope`))
+// What Validation runs: the task's ranges, and where the last green Validation stood (null: run the whole set).
+const VR = RANGED && A.validation_ranges && A.validation_ranges.task && A.validation_ranges.task.repos && typeof A.validation_ranges.task.repos === 'object' && Object.keys(A.validation_ranges.task.repos).length ? A.validation_ranges : null
+const VR_RERUN = VR && VR.rerun && VR.rerun.repos && typeof VR.rerun.repos === 'object' && Object.keys(VR.rerun.repos).length ? VR.rerun : null
+// One clause per repository, as review_ranges names them; validation_ranges names them the same way.
+const rangeList = (r = RANGES, noBase = "review this task's own commits there and say so under ### Scope") =>
+  Object.entries(r.repos)
+    .map(([repo, x]) => (x.range ? `${repo}: ${x.range}${CODE_RUNS ? '' : ` (${x.commits} commit${x.commits === 1 ? '' : 's'})`}` : `${repo}: no known base — ${noBase}`))
     .join('; ')
 // What Review reads; an older orchestrator sends no ranges, and the stage's own wording stands.
 const reviewScope = (fallback) => {
@@ -186,7 +189,22 @@ const reviewScope = (fallback) => {
 const REVIEW_RECORD = RANGED
   ? `\n\nBefore you read the ranges, run "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind reviewed and keep what it prints; at the end, write those lines in the closing block of Review.md, exactly as printed; the first line stays the status line. Under ### Scope name the ranges you actually reviewed, per repository. A finding goes into done_findings only when editing files inside the task folder — Done.md, Plan.md, Walkthrough.md — closes it without a single code commit; anything that needs a code commit is a blocking finding. done_findings alone never make the verdict CHANGES_REQUESTED. List them under ## For Done in Review.md.`
   : ''
-const CATCH_UP_VALIDATION = CATCH_UP && RANGES ? `\n\nThis run catches up commits that landed after the task's Done: ${rangeList()}. Validate them at the depth the spine-toolkit:phase-verification skill gives their diff, and name that depth in Validation.md.` : ''
+const noBaseSet = "treat every commit of this task there as in the set and say so under ## Scope"
+const VALIDATION_SCOPE = !RANGED
+  ? ''
+  : `\n\n${CATCH_UP ? "This run catches up commits that landed after the task's Done; say so in ## Scope. " : ''}${
+      VR
+        ? `The task's commits, per repository: ${rangeList(VR.task, noBaseSet)}.${CODE_RUNS ? " The commits this run's own phases added are inside these ranges." : ''} A repository with commits in its range is changed, and the project root's own diff never shows another repository: "no file of that package in the diff" proves nothing. Add the uncommitted edits of every root. Build the regression set by the spine-toolkit:phase-verification skill, its ## Validation's regression section; how to find the modules and their dependents is your platform's.${
+            VR_RERUN
+              ? ` The last green Validation stood at: ${rangeList(VR_RERUN, noBaseSet)}. Re-run only the modules these commits reach, with the dependents of each; every other module of the set is carried — keep the count and the HEAD of that Validation and write \`carried <sha>\` in its Run cell; drive the app again only when these commits reach the UI layer or the path the scenario walks.`
+              : ' Run every module of the set.'
+          }`
+        : `The task's commits are not handed to you: run "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since base yourself and write what it prints under ## Scope. A repository with commits in its range is changed, and the project root's own diff never shows another repository. Add the uncommitted edits of every root, then build the regression set by the spine-toolkit:phase-verification skill, its ## Validation's regression section.`
+    } Write the set into ${DIR}/Validation.md as the ## Regression set section the task-documents skill's ## Validation.md describes. On PASSED, run "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind validated right before you finish and write the lines it prints in the closing block of Validation.md, exactly as printed; on FAILED or FLAKY write none. Then run "${core('scripts/lint-validation-scope.sh')}" ${DIR}, repair what it names once, run it again, and name what is left in the summary.`
+// Review reads Validation's record before it runs anything itself.
+const REVIEW_VALIDATION = RANGED
+  ? ` Before you re-run anything, read the ## Regression set of ${DIR}/Validation.md and run "${core('scripts/lint-validation-scope.sh')}" ${DIR}. When it prints nothing, run no suite yourself: take the counts from Validation.md. When it prints findings, re-run the modules they name; a module of the set Validation did not run is a Major finding and goes into blocking_findings, even when your re-run is green — unlike the plan findings above, this one blocks although Validation has passed. Check the set itself against the diff and the manifests: a dependent module it leaves out is a Major finding too. A run of modules outside the set is a Minor finding and never blocks. Re-running a test to confirm a finding of your own stays allowed.`
+  : ''
 // Done's share: close what Review left it, stamp where the repositories stand.
 const doneRecord = (handed) =>
   `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings.${walkthroughWriter() ? ` Never edit ${DIR}/Walkthrough.md: an item about it goes into walkthrough_findings instead, and under ## Review findings closed as handed to the walkthrough writer, who runs after you. Return committed_outside_tasks true when any commit you made changes a file outside the Tasks folder, false when none does: the writer runs only when it has something to do.` : ''} The closing block of Done.md holds the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names those ranges, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}${AFTER_DONE ? ` These fixes follow a catch-up: before you rewrite Done.md, run "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since done, then append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names the ranges it printed, marked ✅, with a **Verification:** line naming the depth Validation ran at.` : ''}`

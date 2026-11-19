@@ -108,8 +108,9 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
 @test "catch-up validates, reviews and closes only the delta" {
   delta='{"since": "done", "repos": {".": {"range": "d1..HEAD", "commits": 2, "state": "ok"}, "Packages/Core": {"range": "d2..HEAD", "commits": 1, "state": "ok"}}}'
   replies="{$PASSED, \"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\"}}"
+  vr="\"validation_ranges\": {\"task\": $TWO, \"rerun\": $delta}"
   for p in $RANGED; do
-    rp "$p" "$(contract Validation ", \"action\": \"catch-up\", \"review_ranges\": $delta")" "$replies" "$(prompt_js validation)" "$(prompt_js review)" "$(prompt_js done)"
+    rp "$p" "$(contract Validation ", \"action\": \"catch-up\", $vr, \"review_ranges\": $delta")" "$replies" "$(prompt_js validation)" "$(prompt_js review)" "$(prompt_js done)"
     v="${V[0]}"
     grep -qF 'catches up commits that landed after' <<<"$v" || { echo "profile-$p: validation is not told it catches up"; return 1; }
     grep -qF 'Packages/Core: d2..HEAD (1 commit)' <<<"$v" || { echo "profile-$p: validation lost a range"; return 1; }
@@ -124,7 +125,7 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
       || { echo "$(basename "$f"): no RANGED gate"; return 1; }
   done
   for p in research review epic; do
-    if grep -qE 'DONE_ARTIFACT|reviewScope\(|CATCH_UP_VALIDATION\}' <<<"$(sed -n '/── end prelude/,$p' "$ROOT/workflows/profile-$p.js")"; then
+    if grep -qE 'DONE_ARTIFACT|reviewScope\(|VALIDATION_SCOPE|REVIEW_VALIDATION' <<<"$(sed -n '/── end prelude/,$p' "$ROOT/workflows/profile-$p.js")"; then
       echo "profile-$p.js uses a ranged helper"; return 1
     fi
   done
