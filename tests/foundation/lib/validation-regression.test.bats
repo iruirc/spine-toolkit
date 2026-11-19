@@ -37,8 +37,18 @@ section() { # $1 file, $2 heading text: the body up to the next ## heading
 }
 
 @test "no core text asks Validation for a full test run" {
-  skip "until Task 6"
   run grep -rn 'full test run\|full regression' "$ROOT"/skills/workflow-* "$ROOT/workflows" \
     "$ROOT/conventions/stage-dispatch.md" "$ROOT/conventions/platform-contract.md"
   [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+}
+
+@test "every Method B Validation reads validation_ranges and Review reads its record" {
+  for p in feature bug refactor test quick; do
+    f="$ROOT/skills/workflow-$p/SKILL.md"
+    for t in '`validation_ranges`' '## Regression set' '`[VALIDATED_COMMIT]`' 'lint-validation-scope.sh' "## Validation's regression" 'module of the set that Validation did not run' '`blocking_findings`, even when the re-run is green'; do
+      grep -qF -- "$t" "$f" || { echo "workflow-$p/SKILL.md lost: $t"; return 1; }
+    done
+    ! grep -qF 'full test run' "$f" || { echo "workflow-$p/SKILL.md still asks for a full test run"; return 1; }
+  done
+  grep -qF 'validation_ranges.rerun' "$ROOT/conventions/stage-dispatch.md" || { echo "stage-dispatch.md does not name validation_ranges.rerun"; return 1; }
 }
