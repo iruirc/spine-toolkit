@@ -307,8 +307,9 @@ Algorithm:
            return {status: error, reason: error_stage_not_in_profile,
                    notes: locale `error_stage_not_in_profile` with placeholders filled}
 
-5.6. Record the base and compute the review ranges (FEATURE, BUG, REFACTOR, TEST, QUICK only;
-     every other profile gets review_ranges={} and no Base.md). It runs at every dispatch, so a
+5.6. Record the base and compute the review ranges and the validation ranges
+     (FEATURE, BUG, REFACTOR, TEST, QUICK only; every other profile gets review_ranges={},
+     validation_ranges={} and no Base.md). It runs at every dispatch, so a
      Review dispatched on its own (manual) is counted after the commits the earlier stages made:
    • the range includes the profile's code-changing stage (Execute / Fix / Refactor / Write / Edit),
      and there is no Plan.md yet or no phase of its progress table is marked ✅
@@ -327,6 +328,13 @@ Algorithm:
        ↓ a repository came back rewritten or unknown from either call — at --since base too,
          where there is nothing to rerun → announce `warn_review_ranges_full` with {repos}
    • otherwise review_ranges := {}
+   • the range includes Validation, or action=catch-up:
+       task  := bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since base
+       rerun := bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since validated
+                ↓ null when action is restart or restart-full,
+                  or any repository came back rewritten or unknown
+       validation_ranges := {task, rerun}
+   • otherwise validation_ranges := {}
    ↓ exit 2 from either call is a stop, as for resolve-settings.sh: report its stderr, dispatch nothing
 
 5.7. Resolve agents (per-role) — the map every stage dispatches through:
@@ -511,6 +519,7 @@ long_run={stall: 5, max: 30}
 plugin_root=/Users/<user>/.claude/plugins/cache/<marketplace>/spine-toolkit/<version>
 roots=[/Users/<user>/App, /Users/<user>/Packages/Net]
 review_ranges={"since": "reviewed", "repos": {".": {"range": "1a2b3c4..HEAD", "commits": 2, "state": "ok"}}}
+validation_ranges={"task": {"since": "base", "repos": {".": {"range": "9f8e7d6..HEAD", "commits": 5, "state": "ok"}}}, "rerun": {"since": "validated", "repos": {".": {"range": "4c5d6e7..HEAD", "commits": 1, "state": "ok"}}}}
 fix_findings=[]
 fix_round=0
 after_done=false
@@ -593,7 +602,7 @@ size belongs to the task, not to one dispatch.
 
 `report` — whether the task leaves one topic report in a documentation component's places. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `auto` reaches the contract for TEST, FEATURE, RESEARCH and EPIC, because only the Plan stage can decide it, by `task-report` → `## When`; QUICK, BUG and REFACTOR resolve to `off` unless chosen, REVIEW always to `off`.
 
-`phase_verification` — how much each phase checks before it commits. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `proportional` leaves the full regression to Validation; `full` repeats it in every phase. The rungs themselves are `phase-verification`'s business, not this field's.
+`phase_verification` — how much each phase checks before it commits. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. `proportional` leaves Validation's regression to Validation; `full` repeats it in every phase. The rungs themselves are `phase-verification`'s business, not this field's.
 
 `security` — whether the security lens runs on a FEATURE, BUG or REFACTOR task. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile, and passed as resolved: `auto` reaches the contract, because what it becomes depends on what the task touches, and only the run's triage can find that out. `on` runs the lens without a triage; `off` runs neither. `scale` does not move it. The triage, the lens and what the writer does with them are the `security-lens` skill's.
 
@@ -607,7 +616,9 @@ size belongs to the task, not to one dispatch.
 
 `roots` — the folders a stage agent may search for a file, the core root aside: the project root, then every folder `## Paths` in the project config names under `External packages` or `Roots`, absolute. Printed by the same run of `resolve-settings.sh json`; always filled, for every profile. Method A passes the list as real JSON, Method B names it in its dispatch prompt (`conventions/stage-dispatch.md`); either way it becomes the brief's `Search roots:` line, which `conventions/agent-tooling.md` → Finding files turns into a rule. Absent, the brief names only the project root and the core root and the run goes on: unlike a missing `plugin_root`, a shorter list narrows the search without breaking it.
 
-`review_ranges` — what Review reads, per repository of the task, and what a `catch-up` validates: the JSON `task-ranges.sh ranges` printed in Resolution step 5.6, as described in `conventions/task-ranges.md`. `{}` when the range holds neither Review nor a catch-up, and for RESEARCH, REVIEW and EPIC. Method A passes the object as real JSON; Method B names each range in the Review stage's prompt (`conventions/stage-dispatch.md`).
+`review_ranges` — what Review reads, per repository of the task: the JSON `task-ranges.sh ranges` printed in Resolution step 5.6, as described in `conventions/task-ranges.md`. `{}` when the range holds neither Review nor a catch-up, and for RESEARCH, REVIEW and EPIC. Method A passes the object as real JSON; Method B names each range in the Review stage's prompt (`conventions/stage-dispatch.md`).
+
+`validation_ranges` — what Validation covers: `task`, the task's whole range (`--since base`), and `rerun`, the commits after the last green Validation (`--since validated`), both the JSON `task-ranges.sh ranges` printed in Resolution step 5.6. `{}` for RESEARCH, REVIEW and EPIC, and when the range holds no Validation. `rerun` is null when there is nothing to narrow from — a restart, or a repository whose record is rewritten or unknown — and null means the whole set. Method A passes the object as real JSON; Method B names both ranges in the Validation stage's prompt (`conventions/stage-dispatch.md`).
 
 `fix_findings`, `fix_round`, `after_done` — filled only when `action=fix-review`, as Gating sets them: the findings chosen, verbatim; the number of this fix phase across the task; whether `Done.md` exists, so that Done closes a catch-up the fixes interrupted. Any other action sends `[]`, `0` and `false`. Method A passes them as real JSON; Method B names the findings in the fix stage's prompt.
 

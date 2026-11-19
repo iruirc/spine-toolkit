@@ -18,6 +18,19 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   grep -qF '`review_ranges` — ' <<<"$c" || { echo "no review_ranges paragraph"; return 1; }
 }
 
+@test "the contract carries validation_ranges" {
+  c="$(section "$S" 'Outbound Contract')"
+  grep -qE '^validation_ranges=\{"task": ' <<<"$c" || { echo "example validation_ranges"; return 1; }
+  grep -qF '`validation_ranges` — ' <<<"$c" || { echo "no validation_ranges paragraph"; return 1; }
+  r="$(section "$S" 'Resolution Algorithm')"
+  for f in '--since validated' 'rerun' 'validation_ranges := {task, rerun}' 'validation_ranges := {}'; do
+    grep -qF -- "$f" <<<"$r" || { echo "step 5.6 lost: $f"; return 1; }
+  done
+  rr="$(grep -F '`review_ranges` — ' <<<"$c")"
+  ! grep -qF 'what a `catch-up` validates' <<<"$rr" || { echo "review_ranges still says what a catch-up validates"; return 1; }
+  grep -qF 'validation_ranges' "$ROOT/conventions/stage-dispatch.md" || { echo "Method B prompt does not name them"; return 1; }
+}
+
 @test "step 5.6 records the base and asks for the right --since" {
   r="$(section "$S" 'Resolution Algorithm')"
   grep -qF '5.6. Record the base and compute the review ranges' <<<"$r" || { echo "no step 5.6"; return 1; }
