@@ -145,3 +145,18 @@ prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""
     if grep -qF 'the replay is carried' <<<"${V[0]}"; then echo "a first BUG Validation may carry its replay"; return 1; fi
   done
 }
+
+@test "a carried replay passes on the statement of the Validation it is carried from" {
+  stmt='or, on a re-run that carries the replay, the statement of the Validation it is carried from, named under ## Scope'
+  keep="a carried deferred-manual keeps that Validation's replay case in"
+  rp bug "$(contract Validation "$AGAIN")" '{}' "$(prompt_js validation)"
+  for f in "$stmt" "$keep" 'and writes no new one'; do
+    grep -qF -- "$f" <<<"${V[0]}" || { echo "the re-run BUG prompt lost: $f"; return 1; }
+  done
+  for c in "$FIRST" ''; do
+    rp bug "$(contract Validation "$c")" '{}' "$(prompt_js validation)"
+    for f in "$stmt" "$keep"; do
+      if grep -qF -- "$f" <<<"${V[0]}"; then echo "a first BUG Validation is told: $f"; return 1; fi
+    done
+  done
+}
