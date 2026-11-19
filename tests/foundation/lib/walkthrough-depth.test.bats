@@ -462,10 +462,10 @@ NAMES
 
 @test "a refresh repairs every class the lint names, and deep is one commit per section" {
   refresh="$(awk '/^## Refreshing$/{f=1;next} /^## /{f=0} f' "$SKILL")"
-  for token in 'A line of class `unreachable`' '`section`' '`missing`' '`heading`' '`count`' 'a missing commit is appended'; do
+  for token in 'A line of class `unreachable`' '`section`' '`missing`' '`heading`' '`count`' '`repository`' 'a missing commit is appended'; do
     grep -qF -- "$token" <<<"$refresh" || { echo "## Refreshing does not name $token"; return 1; }
   done
-  grep -qF 'never one per phase: a heading names exactly one sha' "$SKILL" \
+  grep -qF 'never one per phase: a heading names exactly one commit, with its repository' "$SKILL" \
     || { echo "deep does not forbid a section per phase"; return 1; }
   grep -qF "and again after Done's own commits" "$SKILL" || { echo "the description still places the refresh before Done's commits"; return 1; }
   when="$(awk '/^## When to use$/{f=1;next} /^## /{f=0} f' "$SKILL")"
@@ -562,4 +562,11 @@ assert not cyr.search(en), 'deep.en.md holds Cyrillic'
 assert len(cyr.findall(ru)) > 2000, 'deep.ru.md is not written in Russian'
 PY
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "the skill names a commit with its repository, and forbids a commit-to-repository table" {
+  S="$ROOT/skills/task-walkthrough/SKILL.md"
+  grep -qF '`MyApp@d770f52`' "$S" && grep -qF 'MyApp@1a2b3c4..9f8e7d6' "$S" && grep -qF 'without repository' "$S" \
+    && ! grep -qF '| `app` |' "$S" || return 1
+  grep -qF 'repo@sha' "$ROOT/skills/task-documents/SKILL.md" || return 1
 }

@@ -96,6 +96,8 @@ Phases added later keep this shape: the progress table stays a top-level table i
 
 At `lite` the sections stay in the same order, inside the line ceiling that `scripts/lint-artifact-budget.sh` measures. `## Objections` and `## Estimate retrospective` are left out when they would be empty. The phase table keeps one line per phase, and each section is a few sentences, never a list of commits.
 
+A commit the text names carries its repository, as in `Walkthrough.md`: `repo@sha`, `MyApp@d770f52`, where `repo` is the name `scripts/task-ranges.sh names` prints. The `[DONE_COMMIT]` lines keep their own form.
+
 When `Done.md` already exists, every claim in it is checked against the current artifacts and the git log before it is kept, as the workflow skill's Done stage says. This template does not change that reconciliation.
 
 ## Review.md

@@ -85,14 +85,22 @@ nothing else:
    ```markdown
    | Repository | Range | Commits | ± lines |
    |---|---|---|---|
-   | `app` | `a1b2c3d..f6e5d4c` | 9 | +2358/−72 |
+   | `MyApp` | `a1b2c3d..f6e5d4c` | 9 | +2358/−72 |
    ```
 
-   `Range` is the first and the last of the task's own commits in that repository, both included, as in `[COVERS]`; `Commits` is how many that range holds, counted along the first parent.
+   `Repository` is the name of the checkout's folder, the project's own included; where two checkouts of the task share a folder name, it is the path from the project root. `scripts/task-ranges.sh names` prints these names. `Range` is the first and the last of the task's own commits in that repository, both included, as in `[COVERS]`; `Commits` is how many that range holds, counted along the first parent.
 
 4. one line naming where the statement and the verdicts live — `Task.md`, `Validation.md`,
    `Review.md`, `Done.md` — by name, never restated. The build verdict has one home and this is not
    it.
+
+Every other reference to a commit in the file names its repository by that name, as one token:
+`MyApp@d770f52`, or `MyApp@1a2b3c4..9f8e7d6` for a range. That holds in a task of one repository
+as much as in one of twenty, so the reader never has to guess where a sha lives, and the form does
+not change when a task grows. Two places stay bare: the `[COVERS]` line, whose shape is fixed, and
+the perimeter's `Range` cell, whose row already names the repository. `scripts/lint-walkthrough.sh`
+reports a reference without its repository as `style: commit reference without repository`, and
+one whose repository does not hold the commit as a `repository` line.
 
 What the header never holds is the bookkeeping of the run: which finding a later commit closed,
 which edit is not committed yet, why the file was refreshed. A finding closed by a commit is already
@@ -175,11 +183,11 @@ At `brief` every item keeps its before and after, on one numbered line, under th
 ```markdown
 A user sees one difference, at checkout.
 
-1. A promo code no longer discounts the delivery fee: 1170 → 1200 on the same order (commits a1b2c3d, e4f5a6b).
+1. A promo code no longer discounts the delivery fee: 1170 → 1200 on the same order (commits MyApp@a1b2c3d, MyApp@e4f5a6b).
 ```
 
-At `brief` the log is not numbered, so an item cites its commits by short sha. The shas go without
-backticks: this section holds no code span at either depth, and `scripts/lint-walkthrough.sh` names
+At `brief` the log is not numbered, so an item cites its commits by repository and short sha. They
+go without backticks: this section holds no code span at either depth, and `scripts/lint-walkthrough.sh` names
 one as a `style` line.
 
 ### `## Glossary` (`deep`)
@@ -251,20 +259,20 @@ Each row names its **trigger**: `implementation` (reality differed once the code
 
 ### `## Commits` — `brief`
 
-Per commit: short sha, subject, then what it does, which files carry it, and what it unlocks for the next one. Not a re-reading of the diff — the reason the commit exists. The bullet ends on `**Changes:**`, the items of `## What changed` it serves. A bullet that serves none ends on `**Changes:** —` and says why the commit exists.
+Per commit: the repository and short sha, `MyApp@a1b2c3d`, the subject, then what it does, which files carry it, and what it unlocks for the next one. Not a re-reading of the diff — the reason the commit exists. A task across several repositories keeps one list, in the order the commits were made, so the reader sees a commit in one repository open the way for the next in another. The bullet ends on `**Changes:**`, the items of `## What changed` it serves. A bullet that serves none ends on `**Changes:** —` and says why the commit exists.
 
 ```markdown
-- `a1b2c3d` `feat(domain): add CartReader` — introduces the read side as a protocol over the existing
+- `MyApp@a1b2c3d` `feat(domain): add CartReader` — introduces the read side as a protocol over the existing
   store, so the UI can move off `CartService` before the write side is touched. `Sources/Domain/Cart*`.
   **Changes:** 1.
 ```
 
 ### `## Commits` — `deep`
 
-One `###` section per commit — never one per phase: a heading names exactly one sha. Four parts open every section: the heading, which names what the commit did *in the reader's words* rather than repeating the subject; the subject itself on its own line; the files with their line counts, where a commit of tests alone says so; and `**Changes:**` — the items of `## What changed` the commit serves, or `—` when it serves none, and then its section says why it exists: preparation, a characterisation, a guard.
+One `###` section per commit — never one per phase: a heading names exactly one commit, with its repository. Four parts open every section: the heading, which names the commit as `MyApp@d770f52` and what the commit did *in the reader's words* rather than repeating the subject; the subject itself on its own line; the files with their line counts, where a commit of tests alone says so; and `**Changes:**` — the items of `## What changed` the commit serves, or `—` when it serves none, and then its section says why it exists: preparation, a characterisation, a guard.
 
 ```markdown
-### 3. `d770f52` — the one door untrusted data comes through
+### 3. `MyApp@d770f52` — the one door untrusted data comes through
 
 `feat(domain): sanitise untrusted cart payloads deterministically`
 
@@ -330,7 +338,7 @@ bookkeeping. At both depths these close `## Commits`, one line per commit or per
 ```markdown
 ### Bookkeeping
 
-- `1a2b3c4..9f8e7d6` — nine phase-closing commits in the task repository: plan checkboxes, `Docs.md` rows.
+- `MyApp@1a2b3c4..9f8e7d6` — nine phase-closing commits in the task repository: plan checkboxes, `Docs.md` rows.
 ```
 
 ### `## How it works`
@@ -389,7 +397,7 @@ The file is living, not append-once. On a stage that runs it when the file alrea
 1. Read `[COVERS]`. Its end already at the task's last commit, and `scripts/lint-walkthrough.sh` exits 0 → change nothing, report that. `[COVERS]` can match `HEAD` over a body that names commits long gone.
 2. Otherwise refresh, and treat the sections differently:
    - A line of class `unreachable` — a commit the task's history no longer holds, because a reset or a squash dropped it — first: its section or bullet in `## Commits` is removed, and a `### Bookkeeping` line or a perimeter row whose range starts or ends on it is rewritten to the commits that exist or removed. Append-only protects rework; it does not keep an account of what `git log` no longer shows. `## Plan vs. outcome` gains one row per repository with the trigger `history`: how many commits are gone, never why — the writer was not told.
-   - A line of any other class, next: `section` — the section is written back from git and `Plan.md`; `missing` and `heading` — a section, or a `brief` bullet, or a `### Bookkeeping` line for a commit that carries no engineering decision, for each commit named, split out of a section that held several; `count` — the header's number follows the history; `range` — the range is rewritten to the commits that exist, in the repository that holds them; `style` — the place named is rewritten by `## Style`: a long sentence is split, an identifier leaves `## What changed` or the subject position, and a `deep` commit section gains the `**In short:**` or `**How verified:**` it lacks. Append-only is not broken: a missing commit is appended, and a `style` repair edits a commit section in place without dropping what it says.
+   - A line of any other class, next: `section` — the section is written back from git and `Plan.md`; `missing` and `heading` — a section, or a `brief` bullet, or a `### Bookkeeping` line for a commit that carries no engineering decision, for each commit named, split out of a section that held several; `count` — the header's number follows the history; `range` — the range is rewritten to the commits that exist, in the repository that holds them; `style` — the place named is rewritten by `## Style`: a long sentence is split, an identifier leaves `## What changed` or the subject position, a `deep` commit section gains the `**In short:**` or `**How verified:**` it lacks, and a commit reference without its repository gains the `<name>@` its repository's name gives; `repository` — the name is corrected from `scripts/task-ranges.sh names`, or the reference moves to the repository that holds the commit. Append-only is not broken: a missing commit is appended, and a `style` repair edits a commit section in place without dropping what it says.
    - `## Commits` — **append only**, at both depths, except when the resolved depth changed — see below. It is a log; a rework commit arrives with its own reason (`addresses Review finding 2`) and does not overwrite its predecessors. New bookkeeping commits join `### Bookkeeping`.
    - `## Plan vs. outcome` — **accumulates**, each new row carrying its trigger. A round of fixes after Review is precisely the divergence worth keeping.
    - `## What changed`, `## Glossary`, `## Summary`, `## Commit order`, `## How it works`, `## Out of scope`, `## Follow-ups` — **rewritten** to the current state. The reader needs what is true now, not archaeology.
@@ -473,6 +481,7 @@ The reader and style rules every task artifact follows are in the `artifact-read
 - **Rewriting `## Commits` on refresh.** That erases the rework, which is the part worth having. The exceptions are a refresh at a depth the file was not written at, and when a commit is gone from history — see `## Refreshing`.
 - **Bookkeeping in the header.** Which finding which commit closed, what is not committed yet, why the file was refreshed. The header is the perimeter; the run's history belongs to `Done.md`, and a finding a commit closed is already a row of `## Plan vs. outcome`.
 - **An identifier as the subject.** "`CH4` proves …", "closes Minor 3". The reader was not there when the label was handed out. Say what it is, then cite it.
+- **A table mapping commits to repositories.** Every reference already says where its commit lives, `MyApp@d770f52`; a second map of the same facts, far from the sections, is what the form exists to replace.
 - **A change list that is a commit list.** A `## What changed` in commit order, or one restating the subjects, answers "what was committed" — the question the log below it already answers.
 
 ## What this skill does NOT do
