@@ -75,6 +75,14 @@ reachable from `HEAD` alone where `Base.md` has no line or the base is `rewritte
 branch holds is not reported while `HEAD` is elsewhere, nor one of the tasks repository's own. It is
 what `scripts/lint-walkthrough.sh` checks `Walkthrough.md` against.
 
+`names` prints `<name> <path>` for each repository of the task, the tasks repository included and
+last. The name is the folder of the checkout, the project root's included; where two checkouts
+share a folder name, each one's name is its path from the project root. It is the name a commit
+reference in `Walkthrough.md` carries, `<name>@<sha>`. `owners <sha>…` prints each sha followed by
+the names of the repositories whose history of the task holds it, by the test `unreachable`
+applies, and the sha alone when none does. `scripts/lint-walkthrough.sh` checks the name of every
+reference against it.
+
 `commits <a>..<b>` prints the commits of that range, `a` included, oldest first, along the first
 parent — a merge's upstream side is not the task's — from whichever repository of the task, the
 tasks repository included, holds both ends. It is how `scripts/lint-walkthrough.sh` reads the

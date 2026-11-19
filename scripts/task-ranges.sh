@@ -9,10 +9,12 @@
 #        scripts/task-ranges.sh unreachable <task-dir> <sha>...                   # shas not the task's
 #        scripts/task-ranges.sh commits <task-dir> <a>..<b>                       # a and what follows
 #        scripts/task-ranges.sh last <task-dir>                                   # newest own commit
+#        scripts/task-ranges.sh names <task-dir>                                  # repositories by folder
+#        scripts/task-ranges.sh owners <task-dir> <sha>...                        # which hold each sha
 # Exit:  0, or 2 on a usage error, a record it cannot read, or a recorded repository gone.
 set -euo pipefail
 
-[ "$#" -ge 2 ] || { echo "usage: $0 record|tips|ranges|dirty|count|unreachable|commits|last <task-dir> [--kind k | --since s | <repo> <sha> | <sha>... | <a>..<b>]" >&2; exit 2; }
+[ "$#" -ge 2 ] || { echo "usage: $0 record|tips|ranges|dirty|count|unreachable|commits|last|names|owners <task-dir> [--kind k | --since s | <repo> <sha> | <sha>... | <a>..<b>]" >&2; exit 2; }
 [ -d "$2" ] || { echo "not a directory: $2" >&2; exit 2; }
 resolver="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/resolve-settings.sh"
 paths="$("$resolver" raw "$2" Paths)" || exit 2
@@ -143,6 +145,34 @@ def with_own():
     return out
 
 
+_base = None
+
+
+def ours(rel, top, sha):
+    # A base the history no longer holds bounds nothing: reachable from HEAD is all that is left.
+    global _base
+    if _base is None:
+        _base = recorded('BASE', 'Base.md')
+    full, base = git(top, 'rev-parse', '-q', '--verify', sha + '^{commit}'), _base.get(rel)
+    if not full:
+        return False
+    if git(top, 'merge-base', '--is-ancestor', full, 'HEAD') is None:
+        # A checkout switched to another branch, here or by another session, still holds it.
+        return bool(git(top, 'for-each-ref', '--contains', full, 'refs/heads'))
+    bounded = base and git(top, 'merge-base', '--is-ancestor', base, 'HEAD') is not None
+    return not bounded or git(top, 'merge-base', '--is-ancestor', full, base) is None
+
+
+def names():
+    # The name a commit reference in Walkthrough.md carries: the checkout's folder, or its path from
+    # the project root where two checkouts of the task share a folder name. The tasks repository last.
+    found = sorted(with_own().items(), key=lambda kv: (kv[0] is None, kv[0] or ''))
+    rels = {key: os.path.relpath(top, HOME) for key, top in found}
+    base = {key: os.path.basename(top) for key, top in found}
+    return {key: (rels[key] if list(base.values()).count(base[key]) > 1 else base[key], rels[key])
+            for key, _ in found}
+
+
 if CMD == 'record':
     if OPTS:
         die('usage: task-ranges.sh record <task-dir>')
@@ -219,23 +249,21 @@ elif CMD == 'last':
 elif CMD == 'unreachable':
     if not OPTS:
         die('usage: task-ranges.sh unreachable <task-dir> <sha>...')
-    rec = recorded('BASE', 'Base.md')
-
-    def ours(rel, top, sha):
-        # A base the history no longer holds bounds nothing: reachable from HEAD is all that is left.
-        full, base = git(top, 'rev-parse', '-q', '--verify', sha + '^{commit}'), rec.get(rel)
-        if not full:
-            return False
-        if git(top, 'merge-base', '--is-ancestor', full, 'HEAD') is None:
-            # A checkout switched to another branch, here or by another session, still holds it.
-            return bool(git(top, 'for-each-ref', '--contains', full, 'refs/heads'))
-        bounded = base and git(top, 'merge-base', '--is-ancestor', base, 'HEAD') is not None
-        return not bounded or git(top, 'merge-base', '--is-ancestor', full, base) is None
-
     checked = with_own()
     for sha in OPTS:
         if not any(ours(rel, top, sha) for rel, top in checked.items()):
             print(sha)
+elif CMD == 'names':
+    if OPTS:
+        die('usage: task-ranges.sh names <task-dir>')
+    for name, rel in names().values():
+        print('%s %s' % (name, rel))
+elif CMD == 'owners':
+    if not OPTS:
+        die('usage: task-ranges.sh owners <task-dir> <sha>...')
+    checked, named = with_own(), names()
+    for sha in OPTS:
+        print(' '.join([sha] + [named[rel][0] for rel, top in checked.items() if ours(rel, top, sha)]))
 elif CMD == 'commits':
     m = re.fullmatch(r'([0-9a-f]{7,40})\.\.([0-9a-f]{7,40})', OPTS[0]) if len(OPTS) == 1 else None
     if not m:

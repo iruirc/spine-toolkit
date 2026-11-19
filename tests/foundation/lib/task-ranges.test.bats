@@ -442,7 +442,37 @@ track_tasks() { # the tasks folder tracked by the project repository instead of 
 @test "the usage line names every command" {
   run "$TR" bogus
   [ "$status" -eq 2 ]
-  for c in record tips ranges dirty count unreachable commits last; do
+  for c in record tips ranges dirty count unreachable commits last names owners; do
     grep -qF "$c" <<<"$output" || { echo "usage lacks $c: $output"; return 1; }
   done
+}
+
+@test "names prints each repository of the task by its checkout folder" {
+  run "$TR" names "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "$(printf 'proj .\nCore Packages/Core\nTasks Tasks')" ] || { echo "$output"; return 1; }
+}
+
+@test "names gives checkouts that share a folder name their paths" {
+  mkdir -p "$PROJ/Vendor/Core"
+  printf '## Paths\n\n- External packages: /Packages/*\n- External packages: /Vendor/*\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  repo "$PROJ/Vendor/Core" v.txt
+  run "$TR" names "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  grep -qxF 'Packages/Core Packages/Core' <<<"$output" && grep -qxF 'Vendor/Core Vendor/Core' <<<"$output" \
+    && grep -qxF 'proj .' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "owners names the repository that holds each sha, and none for a stranger" {
+  "$TR" record "$TASK"
+  commit "$PROJ/Packages/Core" c.txt; C="$(git -C "$PROJ/Packages/Core" rev-parse --short HEAD)"
+  commit "$PROJ/Tasks" t.txt; T="$(git -C "$PROJ/Tasks" rev-parse --short HEAD)"
+  run "$TR" owners "$TASK" "$C" deadbee1 "$T"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "$(printf '%s Core\ndeadbee1\n%s Tasks' "$C" "$T")" ] || { echo "$output"; return 1; }
+}
+
+@test "owners needs at least one sha" {
+  run "$TR" owners "$TASK"
+  [ "$status" -eq 2 ]
 }
