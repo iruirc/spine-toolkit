@@ -51,11 +51,16 @@ until it ends. Set `SPINE_SLEEP_LIMIT` (seconds) in the environment to raise the
 
 ### Codex CLI
 
+For a Kotlin project replace the third line with `codex plugin add spine-platform-kotlin@spine`.
+The last line is optional: with the driver, Validation drives the running app. The block carries no
+comments on purpose: zsh, the macOS default, passes a pasted `#` and the words after it on as
+arguments.
+
 ```bash
 codex plugin marketplace add iruirc/spine-marketplace
 codex plugin add spine-toolkit@spine
-codex plugin add spine-platform-swift@spine     # or spine-platform-kotlin@spine
-codex plugin add spine-driver-mobile@spine      # optional: Validation drives the running app
+codex plugin add spine-platform-swift@spine
+codex plugin add spine-driver-mobile@spine
 ```
 
 Start a new Codex session in the project, then run `$spine-toolkit:setup`. Besides `SPINE.md`, it
