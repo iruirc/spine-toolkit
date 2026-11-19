@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills
 # Codex CLI sees this plugin through .codex-plugin/plugin.json and loads only its skills/.
 # A skill the orchestrator drives must not be picked by Codex on its own from its description:
 # a workflow run that way skips the orchestrator's resolution and dispatch. Codex reads

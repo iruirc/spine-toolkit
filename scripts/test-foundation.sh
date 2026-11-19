@@ -3,8 +3,8 @@
 # Usage: scripts/test-foundation.sh [unit|all|changed [--list]|touched [<file>...]]
 #   changed  runs the test files that name what the branch touched since its merge base with
 #            $TEST_BASE (default main), or on main what is not pushed; uncommitted and untracked
-#            files count. A change under skills/ conventions/ templates/ workflows/ commands/ also
-#            runs the sweeps, the tests marked '# changed: sweep' in their first 10 lines. A change
+#            files count. A change under a directory also runs the sweeps whose mark names it, the
+#            tests with '# changed: sweep <dir>...' in their first 10 lines. A change
 #            to a helper or a fixture runs the whole lib/ directory. A file no test names is
 #            reported on stderr and runs nothing. --list prints the selection, one path per line,
 #            instead of running it.
@@ -52,14 +52,17 @@ diff_files() {   # <repo> <base>
 
 # Prints the bats arguments for the changed files, one per line, and why to stderr.
 changed_suites() {
-  local files f name picked all=0 selected="" sweeps=""
+  local files f name picked all=0 selected="" sweeps="" line top
   files="$(diff_files "$root" "${TEST_BASE:-main}")" || exit 2
   if [ -z "$files" ]; then
     echo "changed: nothing differs from ${TEST_BASE:-main}" >&2
     return 0
   fi
+  # Each mark is read once, into one "<file><TAB><dirs>" line per sweep.
   for f in "$lib"/*.bats; do
-    if head -10 "$f" | grep -qx '# changed: sweep'; then sweeps="$sweeps"$'\n'"$f"; fi
+    line="$(head -10 "$f" | grep -E '^# changed: sweep( |$)' | head -1 || true)"
+    [ -n "$line" ] || continue
+    sweeps="$sweeps"$'\n'"$f"$'\t'"${line#\# changed: sweep}"
   done
   while IFS= read -r f; do
     [ -n "$f" ] || continue
@@ -82,10 +85,11 @@ changed_suites() {
       *)
         picked="$(grep -lF -- "$f" "$lib"/*.bats 2>/dev/null || true)" ;;
     esac
-    case "$f" in
-      skills/*|conventions/*|templates/*|workflows/*|commands/*)
-        picked="$picked"$'\n'"$sweeps" ;;
-    esac
+    top="${f%%/*}"
+    if [ "$top" != "$f" ]; then
+      picked="$picked"$'\n'"$(printf '%s\n' "$sweeps" | awk -F'\t' -v top="$top" \
+        'NF == 2 { n = split($2, d, " "); for (i = 1; i <= n; i++) if (d[i] == top) { print $1; break } }')"
+    fi
     picked="$(printf '%s\n' "$picked" | sed '/^$/d' | sort -u)"
     if [ -z "$picked" ]; then
       echo "changed: $f -> no test names it" >&2

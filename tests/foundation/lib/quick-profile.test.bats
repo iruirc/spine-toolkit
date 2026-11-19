@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep workflows
 # The QUICK profile driven through its script with stubbed agents: one Edit behind an entry check,
 # then Validation, Review and Done, and nothing at all when the check fails.
 

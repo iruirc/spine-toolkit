@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills workflows
 # The walkthrough check reads, revises, and reads once more only when the first read found more than
 # three places — never a third round. Driven through the scripts with stubbed agents, so a loop that
 # drifts from task-walkthrough's ## Check fails here. The shared writer block is pinned byte-equal

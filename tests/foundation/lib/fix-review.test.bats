@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep workflows
 # One round of the fix loop, driven through the scripts with stubbed agents: the findings become
 # one phase, and nothing downstream runs on a phase that did not commit.
 

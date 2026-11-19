@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills
 # The loop lives in the orchestrator: it picks the findings, counts the rounds and decides whether
 # auto goes round again. These hold each of those decisions to its words.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills workflows
 # The axis promises cheaper, not looser. Everything else about scale is prose a reviewer
 # reads once; this is the half a reviewer cannot see, because gating one more stage on
 # lite looks exactly like the gating that is correct three lines above it.

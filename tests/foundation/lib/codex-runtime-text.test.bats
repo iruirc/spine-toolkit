@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills conventions workflows
 # The orchestrator and the skills it loads name Claude Code tools. Outside Claude Code the host
 # reads runtimes/<runtime>.md, which maps each of them (spec: multi-llm milestone 2). The runtime
 # id is stated once, in the orchestrator's Runtime paragraph, and every place that names a Claude

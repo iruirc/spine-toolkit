@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills templates workflows commands
 # A step's [STATUS] is written by task-new and task-move, shown by task-status and
 # read back by the epic's step walker through a schema enum. Six copies of one
 # vocabulary: a value one of them lacks is a step the walker cannot report.

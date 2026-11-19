@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep workflows
 # What Validation is told about the task's commits and the regression set, and what Review reads
 # before it re-runs anything — driven through the scripts with stubbed agents, so a prompt that
 # loses a range or a rule fails here.

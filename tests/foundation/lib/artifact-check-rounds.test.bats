@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills workflows
 # The fresh-reader check of Plan.md and Done.md (artifact_check): one read by a new agent of the
 # writer's role, then at most one revision, never a second read. Driven through the scripts with
 # stubbed agents, so a loop that drifts from artifact-reader's ## Check fails here. The shared block

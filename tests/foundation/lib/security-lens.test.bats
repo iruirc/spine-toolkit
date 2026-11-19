@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills workflows
 # The security lens is the one look at security a task gets before its code is written, and
 # whether it runs follows from what the task touches, never from its size. This suite holds the
 # rule's text and every surface that points at it.

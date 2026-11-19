@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills workflows
 # What Validation runs was "the full regression", and three agents read it three ways. The skill that
 # already holds Perimeter and Dependent now defines the task's regression, and the text that used to
 # ask Validation for a full run points there.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills conventions commands
 # Core composes the briefs a platform's agents execute. A tool or framework name
 # in one of them is not a slip of prose: it is core telling somebody else's
 # validator that two Apple-only MCP tools are mandatory, on an Android project, in

@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills workflows
 # D12: a ceiling stated in a brief and never measured is the class of directive this
 # repository has already watched go unobserved. The script is the measurement, so the
 # script is what a test has to drive — and the last test here is what stops the two

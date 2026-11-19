@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep workflows
 # The task's topic report under Method A (spine-toolkit:task-report): the prelude's REPORT constant,
 # the Plan and Review clauses, the `report` dispatch at the end of the implementing stage and before
 # Done, and the link lint in Done's brief. Driven through profile-test.js with stubbed agents.

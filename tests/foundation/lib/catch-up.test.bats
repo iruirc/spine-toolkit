@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills
 # The orchestrator is the only side with a filesystem: it records the base, computes the
 # ranges and notices commits after Done. If it stops doing any of it, Review goes blind again.
 

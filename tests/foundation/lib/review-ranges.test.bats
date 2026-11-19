@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep workflows
 # What Review reads, what it may hand to Done, and how a catch-up runs — driven through the
 # scripts themselves with stubbed agents, so a prompt that loses a range fails here.
 

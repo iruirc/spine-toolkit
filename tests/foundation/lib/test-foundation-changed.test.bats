@@ -30,7 +30,8 @@ setup() {
   printf '# names scripts/a.sh and scripts/café.sh\n' >"$lib/a.test.bats"
   printf '# names skills/task-report/ and skills/task-report/SKILL.md\n' >"$lib/report.test.bats"
   printf '# names skills/task-report-x\n' >"$lib/report-x.test.bats"
-  printf '#!/usr/bin/env bats\n# changed: sweep\n' >"$lib/sweep.test.bats"
+  printf '#!/usr/bin/env bats\n# changed: sweep workflows\n' >"$lib/sweep.test.bats"
+  printf '#!/usr/bin/env bats\n# changed: sweep skills conventions\n' >"$lib/sweep-skills.test.bats"
   printf '# names nothing\n' >"$lib/other.test.bats"
   printf '# names scripts/a.sh\n' >"$lib/with space.test.bats"
   git -C "$R" init -q -b main
@@ -74,11 +75,11 @@ names() {
   [ "$(names)" = $'a.test.bats\nwith space.test.bats' ]
 }
 
-@test "a skill file selects its skill's tests and the sweeps" {
+@test "a skill file selects its skill's tests and the skills sweep, not the workflows sweep" {
   echo more >>"$R/skills/task-report/SKILL.md"
   changed
   [ "$status" -eq 0 ]
-  [ "$(names)" = $'report.test.bats\nsweep.test.bats' ]
+  [ "$(names)" = $'report.test.bats\nsweep-skills.test.bats' ]
 }
 
 @test "a renamed script still selects the tests that name the old path" {
@@ -89,12 +90,12 @@ names() {
   [ "$(names)" = $'a.test.bats\nwith space.test.bats' ]
 }
 
-@test "an untracked file under skills selects the sweeps" {
+@test "an untracked file under skills selects the skills sweep" {
   mkdir -p "$R/skills/new"
   echo n >"$R/skills/new/SKILL.md"
   changed
   [ "$status" -eq 0 ]
-  [ "$(names)" = "sweep.test.bats" ]
+  [ "$(names)" = "sweep-skills.test.bats" ]
 }
 
 @test "a changed test file selects itself" {
@@ -111,32 +112,33 @@ names() {
   [ "$(names)" = "DIR" ]
 }
 
-@test "a conventions file selects the sweeps" {
+@test "a conventions file selects the skills sweep" {
   echo more >>"$R/conventions/layout.md"
   changed
   [ "$status" -eq 0 ]
-  [ "$(names)" = "sweep.test.bats" ]
+  [ "$(names)" = "sweep-skills.test.bats" ]
 }
 
-@test "a template file selects the sweeps" {
+@test "a template file selects no sweep when none walks templates" {
   echo more >>"$R/templates/task.md"
   changed
   [ "$status" -eq 0 ]
-  [ "$(names)" = "sweep.test.bats" ]
+  [ -z "$output" ]
+  [[ "$stderr_text" == *"templates/task.md -> no test names it"* ]]
 }
 
-@test "a workflow script selects the sweeps" {
+@test "a workflow script selects the workflows sweep only" {
   echo more >>"$R/workflows/profile-x.js"
   changed
   [ "$status" -eq 0 ]
   [ "$(names)" = "sweep.test.bats" ]
 }
 
-@test "a command file selects the sweeps" {
+@test "a command file selects no sweep when none walks commands" {
   echo more >>"$R/commands/setup.md"
   changed
   [ "$status" -eq 0 ]
-  [ "$(names)" = "sweep.test.bats" ]
+  [ -z "$output" ]
 }
 
 @test "a path with a non-ASCII name selects the test that names it" {

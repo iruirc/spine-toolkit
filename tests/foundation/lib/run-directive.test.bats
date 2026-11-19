@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills conventions workflows
 # The owner's words for one run reach every stage agent in the words conventions/stage-dispatch.md
 # gives them, and only when there are any: an empty contract field leaves every brief as it was.
 

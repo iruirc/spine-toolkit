@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep workflows
 # sync-workflow-prelude.sh copies workflow-src/prelude.js into every workflows/profile-*.js between the
 # prelude markers. Each test changes one thing in a copy of the tree and expects the script to write,
 # report or refuse exactly that.

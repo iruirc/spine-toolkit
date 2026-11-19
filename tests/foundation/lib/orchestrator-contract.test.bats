@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills conventions templates workflows commands
 # The role vocabulary is declared in three places that must agree: the lint that
 # validates a platform's manifest, the `agents=` map the orchestrator hands to
 # every executor, and the contract doc a third party writes a platform from.

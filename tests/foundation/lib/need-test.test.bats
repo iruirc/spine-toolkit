@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills workflows
 # need_test=false reached one sentence of one prompt, and a task that owed no test shipped
 # one. The rule lives in test-authoring; these tests hold it there and hold every stage
 # that has to act on it.

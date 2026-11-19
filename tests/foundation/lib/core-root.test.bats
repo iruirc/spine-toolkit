@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep workflows
 # A stage agent searched the whole disk for conventions/i18n.md: the brief named it relative to a
 # root the agent was never told. The contract carries the root; the prelude names it once.
 

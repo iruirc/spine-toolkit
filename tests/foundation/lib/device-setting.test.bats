@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills conventions workflows
 # The device every build and test of a stage runs on reaches every stage agent in the words
 # conventions/stage-dispatch.md → Device gives, and only when a device or a command to find one is
 # set: at auto with no command, every brief is what it was.

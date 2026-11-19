@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep
+# changed: sweep skills conventions workflows
 bats_require_minimum_version 1.5.0
 # A subagent's model and effort come from one rule (conventions/stage-dispatch.md → Model and effort)
 # and one resolver (scripts/resolve-settings.sh). These tests hold every surface that restates a piece
