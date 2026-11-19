@@ -123,7 +123,9 @@ helper_loaders() {   # <repo-relative helper path>
   name="${1##*/}"; name="${name%.*}"
   seen=" $name "; todo="$name"
   while [ -n "$todo" ]; do
+    todo="${todo# }"
     name="${todo%% *}"; todo="${todo#"$name"}"; todo="${todo# }"
+    [ -n "$name" ] || continue
     grep -lF -- "helpers/$name" "$lib"/*.bats 2>/dev/null || true
     for h in "$root"/tests/foundation/helpers/*; do
       [ -f "$h" ] && grep -qF -- "helpers/$name" "$h" || continue
