@@ -4,7 +4,7 @@
 
 | Repository | Range | Commits | ± lines |
 |---|---|---|---|
-| `.` | `a1b2c3d..e4f5a6b` | 2 | +210/−14 |
+| `MyApp` | `a1b2c3d..e4f5a6b` | 2 | +210/−14 |
 
 > **How to read.** Start with What changed, then read the commits in order. Every `CartService` name in a quote is a reference only.
 
@@ -43,7 +43,7 @@
 
 ## Commits
 
-### 1. `a1b2c3d` — the discount reads goods only
+### 1. `MyApp@a1b2c3d` — the discount reads goods only
 
 `fix(cart): take the promo discount from the goods total`
 
@@ -67,7 +67,7 @@ let total = goods - discount(goods) + delivery
 
 **How verified:** the new test fails on the old code and passes now.
 
-### 2. `e4f5a6b` — delivery joins after rounding
+### 2. `MyApp@e4f5a6b` — delivery joins after rounding
 
 `fix(cart): add delivery after rounding`
 
@@ -75,8 +75,8 @@ let total = goods - discount(goods) + delivery
 
 ### Bookkeeping
 
-- `a1b2c3d..e4f5a6b` — two commits.
-- `0a1b2c3` — formatting only
+- `MyApp@a1b2c3d..e4f5a6b` — two commits.
+- `MyApp@0a1b2c3` — formatting only
 
 ## Plan vs. outcome notes
 

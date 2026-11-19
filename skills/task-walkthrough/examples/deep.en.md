@@ -96,7 +96,7 @@ The kind comes first because it is the only thing the other two share. Without i
 
 ## Commits
 
-### 1. `3f1a2b4` — every cart line says what it is
+### 1. `shop@3f1a2b4` — every cart line says what it is
 
 `feat(cart): store the kind of every cart line`
 
@@ -129,7 +129,7 @@ The kind comes first because it is the only thing the other two share. Without i
 
 The catalogue already knows which product is delivery, so a lookup looked cheaper. But a product can leave the catalogue while it sits in a saved cart. Its line would then have no kind, and the whole cart would fail to total.
 
-### 2. `5d6e7f8` — a promo code is taken from the goods alone
+### 2. `shop@5d6e7f8` — a promo code is taken from the goods alone
 
 `fix(cart): take the promo discount from the goods lines only`
 
@@ -167,7 +167,7 @@ The cases the tests hold, for the hardest of the three rules:
 
 The obvious patch was to keep the old discount and return 10% of the delivery afterwards. That works for a percentage only. A fixed code has no share of the delivery to return, so the second row of the table would stay wrong.
 
-### 3. `9a0b1c2` — checkout shows what the code was taken from
+### 3. `shop@9a0b1c2` — checkout shows what the code was taken from
 
 `feat(checkout): show delivery as its own line below the discount`
 
@@ -196,7 +196,7 @@ A footnote saying "delivery is not discounted" states the rule. It does not show
 
 ### Bookkeeping
 
-- `4e5f6a7` — plan checkboxes ticked for the three phases (+3/−3).
+- `shop@4e5f6a7` — plan checkboxes ticked for the three phases (+3/−3).
 
 ## How it works
 

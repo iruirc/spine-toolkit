@@ -50,7 +50,7 @@ walkthrough() {
       printf '\n## %s\n\n' "$s"
       case "$s" in
         Commits) printf '%s\n' "$2" | awk '{ print } /^### [0-9]/ { print "\n**In short:** x." }' ;;
-        'How it works') printf -- '- Only `%s` is named here.\n' "$GONE" ;;
+        'How it works') printf -- '- Only `proj@%s` is named here.\n' "$GONE" ;;
         *) printf 'x\n' ;;
       esac
     done
@@ -58,7 +58,7 @@ walkthrough() {
 }
 
 @test "a deep section and a bookkeeping range naming a dropped commit are findings" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n- `%s` inside a section is prose, not a log line.\n\n### 2. `%s` — second\n\n### 3. `%s` — dropped\n\n### Bookkeeping\n\n- `%s..%s` — two commits.' "$A1" "$GONE" "$A2" "$GONE" "$A2" "$GONE")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n- `proj@%s` inside a section is prose, not a log line.\n\n### 2. `proj@%s` — second\n\n### 3. `proj@%s` — dropped\n\n### Bookkeeping\n\n- `proj@%s..%s` — two commits.' "$A1" "$GONE" "$A2" "$GONE" "$A2" "$GONE")"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
   [ "$output" = "$(printf 'Walkthrough.md: unreachable: %s is not in the task'"'"'s history (### 3)\nWalkthrough.md: unreachable: %s is not in the task'"'"'s history (Bookkeeping)' "$GONE" "$GONE")" ] \
@@ -66,29 +66,29 @@ walkthrough() {
 }
 
 @test "a brief log line naming a dropped commit is a finding" {
-  walkthrough brief "$(printf -- '- `%s` `feat: a` — first.\n- `%s` `feat: b` — second.\n- `%s` `feat: c` — dropped.' "$A1" "$A2" "$GONE")"
+  walkthrough brief "$(printf -- '- `proj@%s` `feat: a` — first.\n- `proj@%s` `feat: b` — second.\n- `proj@%s` `feat: c` — dropped.' "$A1" "$A2" "$GONE")"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
   [ "$output" = "Walkthrough.md: unreachable: $GONE is not in the task's history (brief)" ] || { echo "$output"; return 1; }
 }
 
 @test "grouped and prefixed headings and multi-sha lines are read whole" {
-  walkthrough deep "$(printf '### 10–14. `%s`, `%s` — grouped\n\n### 18. app **`%s`** — prefixed\n\n### Bookkeeping\n\n- `%s`, `%s` (`app`) — two lines.' "$A1" "$GONE" "$A2" "$A2" "$GONE")"
+  walkthrough deep "$(printf '### 10–14. `proj@%s`, `proj@%s` — grouped\n\n### 18. app **`%s`** — prefixed\n\n### Bookkeeping\n\n- `proj@%s`, `proj@%s` (`app`) — two lines.' "$A1" "$GONE" "$A2" "$A2" "$GONE")"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
-  [ "$output" = "$(printf 'Walkthrough.md: unreachable: %s is not in the task'"'"'s history (### 10–14)\nWalkthrough.md: unreachable: %s is not in the task'"'"'s history (Bookkeeping)\nWalkthrough.md: heading: 2 commits in one section (### 10–14)' "$GONE" "$GONE")" ] \
+  [ "$output" = "$(printf 'Walkthrough.md: unreachable: %s is not in the task'"'"'s history (### 10–14)\nWalkthrough.md: unreachable: %s is not in the task'"'"'s history (Bookkeeping)\nWalkthrough.md: heading: 2 commits in one section (### 10–14)\nWalkthrough.md: style: commit reference without repository (### 18)' "$GONE" "$GONE")" ] \
     || { echo "$output"; return 1; }
 }
 
 @test "a longer fence holding a shorter one does not hide what follows it" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n````markdown\n```swift\nlet x = 1\n````\n\n### 2. `%s` — second\n\n### 3. `%s` — dropped' "$A1" "$A2" "$GONE")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n````markdown\n```swift\nlet x = 1\n````\n\n### 2. `proj@%s` — second\n\n### 3. `proj@%s` — dropped' "$A1" "$A2" "$GONE")"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
   [ "$output" = "Walkthrough.md: unreachable: $GONE is not in the task's history (### 3)" ] || { echo "$output"; return 1; }
 }
 
 @test "a file cut short from a heading its own text mentions is a finding" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\nThe deferred part went to ## Follow-ups.\n\n### 2. `%s` — second' "$A1" "$A2")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\nThe deferred part went to ## Follow-ups.\n\n### 2. `proj@%s` — second' "$A1" "$A2")"
   python3 - "$TASK/Walkthrough.md" <<'PY'
 import sys
 p = sys.argv[1]
@@ -102,7 +102,7 @@ PY
 }
 
 @test "a deep file may leave out its glossary and How it works" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")"
   python3 - "$TASK/Walkthrough.md" <<'PY2'
 import re, sys
 p = sys.argv[1]
@@ -116,78 +116,78 @@ PY2
 }
 
 @test "a numbered deep heading with no sha is a finding" {
-  walkthrough deep "$(printf '### 1. The first change\n\n**Files:** `.` `%s`\n\n### 2. `%s` — second' "$A1" "$A2")"
+  walkthrough deep "$(printf '### 1. The first change\n\n**Files:** `.` `proj@%s`\n\n### 2. `proj@%s` — second' "$A1" "$A2")"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
   [ "$output" = "$(printf 'Walkthrough.md: heading: 0 commits in one section (### 1)\nWalkthrough.md: missing: %s is not named in ## Commits (proj)' "$A1")" ] || { echo "$output"; return 1; }
 }
 
 @test "a deep section per phase instead of per commit is a finding" {
-  walkthrough deep "$(printf '### 1. Phase one — `%s`, `%s`' "$A1" "$A2")"
+  walkthrough deep "$(printf '### 1. Phase one — `proj@%s`, `proj@%s`' "$A1" "$A2")"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
   [ "$output" = 'Walkthrough.md: heading: 2 commits in one section (### 1)' ] || { echo "$output"; return 1; }
 }
 
 @test "a header count the range does not hold is a finding" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")" "" 3
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")" "" 3
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
   [ "$output" = 'Walkthrough.md: count: the header says 3, the range holds 2 (proj)' ] || { echo "$output"; return 1; }
 }
 
 @test "a header with no perimeter is a finding" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")" -
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")" -
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
   [ "$output" = 'Walkthrough.md: section: no perimeter table with Range and Commits (header)' ] || { echo "$output"; return 1; }
 }
 
 @test "a perimeter ending on a dropped commit is a finding, not an error" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")" "$A1..$GONE" 3
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")" "$A1..$GONE" 3
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
   [ "$output" = "Walkthrough.md: unreachable: $GONE is not in the task's history (header proj)" ] || { echo "$output"; return 1; }
 }
 
 @test "whole files at both depths pass silently, bookkeeping ranges included" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### Bookkeeping\n\n- `%s` — one commit.' "$A1" "$A2")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### Bookkeeping\n\n- `proj@%s` — one commit.' "$A1" "$A2")"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "deep: $status $output"; return 1; }
-  walkthrough deep "$(printf '### Bookkeeping\n\n- `%s..%s` — two commits.' "$A1" "$A2")"
+  walkthrough deep "$(printf '### Bookkeeping\n\n- `proj@%s..%s` — two commits.' "$A1" "$A2")"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "a range: $status $output"; return 1; }
-  walkthrough brief "$(printf -- '- `%s` `feat: a` — first.\n- `%s` `feat: b` — second.' "$A1" "$A2")"
+  walkthrough brief "$(printf -- '- `proj@%s` `feat: a` — first.\n- `proj@%s` `feat: b` — second.' "$A1" "$A2")"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "brief: $status $output"; return 1; }
   [ -z "$output" ] || { echo "$output"; return 1; }
 }
 
 @test "a range no repository holds is a finding, not an error" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### Bookkeeping\n\n- `%s..%s` — written backwards.' "$A1" "$A2" "$A1")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### Bookkeeping\n\n- `proj@%s..%s` — written backwards.' "$A1" "$A2" "$A1")"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
   [ "$output" = "$(printf 'Walkthrough.md: range: %s..%s is not a range of one repository (Bookkeeping)\nWalkthrough.md: missing: %s is not named in ## Commits (proj)' "$A2" "$A1" "$A2")" ] || { echo "$output"; return 1; }
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")" "$A2..$A1"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")" "$A2..$A1"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "header: $status $output"; return 1; }
   [ "$output" = "Walkthrough.md: range: $A2..$A1 is not a range of one repository (header proj)" ] || { echo "$output"; return 1; }
 }
 
 @test "a bullet wrapped onto a second line is read whole" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### Bookkeeping\n\n- Two phase-closing commits in the task repository,\n  `%s` among them.' "$A1" "$A2")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### Bookkeeping\n\n- Two phase-closing commits in the task repository,\n  `proj@%s` among them.' "$A1" "$A2")"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
 }
 
 @test "a table after the perimeter is not read as its rows" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")"
   python3 - "$TASK/Walkthrough.md" "$A1" "$GONE" <<'PY2'
 import sys
 p, a, gone = sys.argv[1:]
 s = open(p, encoding='utf-8').read()
 i = s.index('\n## What changed')
-extra = '\n| Build | Where | Runs | Result |\n|---|---|---|---|\n| ci | `%s..%s` | 1 | green |\n' % (a, gone)
+extra = '\n| Build | Where | Runs | Result |\n|---|---|---|---|\n| ci | `proj@%s..%s` | 1 | green |\n' % (a, gone)
 open(p, 'w', encoding='utf-8').write(s[:i] + extra + s[i:])
 PY2
   run "$LINT" "$TASK"
@@ -197,7 +197,7 @@ PY2
 @test "no walkthrough, no base and an epic are not measured" {
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "no file: $status $output"; return 1; }
-  walkthrough deep "$(printf '### 1. `%s` — dropped' "$GONE")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — dropped' "$GONE")"
   printf '[TASK_TYPE] = [EPIC]\n' >"$TASK/Task.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "epic: $status $output"; return 1; }
@@ -208,7 +208,7 @@ PY2
 }
 
 @test "--current passes a file naming the newest commit, and a later code commit puts it behind" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")"
   run "$LINT" --current "$TASK"
   [ "$status" -eq 0 ] || { echo "current: $status $output"; return 1; }
   # Done's own report lands in the tasks folder: not a commit the file owes a line.
@@ -229,7 +229,7 @@ PY2
   run "$LINT" --current "$TASK"
   [ "$status" -eq 1 ] || { echo "no file: $status $output"; return 1; }
   grep -qF 'Walkthrough.md: behind: no file, no Base.md, or an EPIC' <<<"$output" || { echo "$output"; return 1; }
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second\n\n### 3. `%s` — dropped' "$A1" "$A2" "$GONE")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second\n\n### 3. `proj@%s` — dropped' "$A1" "$A2" "$GONE")"
   run "$LINT" --current "$TASK"
   [ "$status" -eq 1 ] || { echo "a finding: $status $output"; return 1; }
   grep -qF 'unreachable' <<<"$output" || { echo "$output"; return 1; }
@@ -340,13 +340,13 @@ styled() {
   run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
   [ "$output" = "Walkthrough.md: style: sentence starts with an identifier (## Summary)" ] || { echo "$output"; return 1; }
-  styled x x "$(printf -- '- `a1b2c3d` `feat: a` — first, see `CartTotals` and `CartStore`.\n- `a1b2c3d..e4f5a6b` — two commits.')"
+  styled x x "$(printf -- '- `MyApp@a1b2c3d` `feat: a` — first, see `CartTotals` and `CartStore`.\n- `MyApp@a1b2c3d..e4f5a6b` — two commits.')"
   run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
   [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
 }
 
 @test "style: a brief log bullet that names a type and closes on a path is a log line" {
-  styled x x "$(printf -- '- `a1b2c3d` `feat(domain): add CartReader` — introduces the read side, so the UI can\n  move off `CartService` before the write side is touched. `Sources/Domain/Cart*`.\n  **Changes:** 1.')"
+  styled x x "$(printf -- '- `MyApp@a1b2c3d` `feat(domain): add CartReader` — introduces the read side, so the UI can\n  move off `CartService` before the write side is touched. `Sources/Domain/Cart*`.\n  **Changes:** 1.')"
   run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
   [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
 }
@@ -362,21 +362,21 @@ styled() {
 }
 
 @test "style: a deep commit section without In short is a finding, Bookkeeping is not" {
-  styled x x "$(printf '### 1. `a1b2c3d` — first\n\nText.\n\n### Bookkeeping\n\n- `a1b2c3d` — formatting.')"
+  styled x x "$(printf '### 1. `MyApp@a1b2c3d` — first\n\nText.\n\n### Bookkeeping\n\n- `MyApp@a1b2c3d` — formatting.')"
   run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
   [ "$output" = "Walkthrough.md: style: missing **In short:** (### 1)" ] || { echo "$output"; return 1; }
 }
 
 @test "style: a commit section with sub-headings also needs How verified" {
-  styled x x "$(printf '### 1. `a1b2c3d` — first\n\n**In short:** one.\n\n#### What appeared\n\nText.\n\n### 2. `e4f5a6b` — second\n\n**In short:** two.\n\n#### What appeared\n\nText.\n\n**How verified:** a test.\n\n### 3. `0a1b2c3` — third\n\n**In short:** three.')"
+  styled x x "$(printf '### 1. `MyApp@a1b2c3d` — first\n\n**In short:** one.\n\n#### What appeared\n\nText.\n\n### 2. `MyApp@e4f5a6b` — second\n\n**In short:** two.\n\n#### What appeared\n\nText.\n\n**How verified:** a test.\n\n### 3. `MyApp@0a1b2c3` — third\n\n**In short:** three.')"
   run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
   [ "$output" = "Walkthrough.md: style: missing **How verified:** (### 1)" ] || { echo "$output"; return 1; }
 }
 
 @test "style: a brief file needs no commit labels" {
-  styled x x "$(printf -- '- `a1b2c3d` `feat: a` — first.\n- `e4f5a6b` `feat: b` — second.')"
+  styled x x "$(printf -- '- `MyApp@a1b2c3d` `feat: a` — first.\n- `MyApp@e4f5a6b` `feat: b` — second.')"
   run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
   [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
 }
@@ -412,7 +412,7 @@ styled() {
 }
 
 @test "style: a task directory reports the style findings after the history ones" {
-  walkthrough brief "$(printf -- '- `%s` `feat: a` — first.\n- `%s` `feat: b` — second.' "$A1" "$A2")"
+  walkthrough brief "$(printf -- '- `proj@%s` `feat: a` — first.\n- `proj@%s` `feat: b` — second.' "$A1" "$A2")"
   sed -i.bak 's/^x$/The total comes from `A` and `B` and `C`./' "$TASK/Walkthrough.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
@@ -423,7 +423,7 @@ styled() {
 # Style findings reach the writer once (spec D-7): --current decides whether Done dispatches the
 # writer again, so a style finding left after the implementing stage must not make the file stale.
 @test "--current ignores a style finding: the file is current, with no output" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")"
   sed -i.bak 's/^x$/The total comes from `A` and `B` and `C`./' "$TASK/Walkthrough.md"
   run "$LINT" --current "$TASK"
   [ "$status" -eq 0 ] || { echo "a style finding made the file stale: $status $output"; return 1; }
@@ -431,7 +431,7 @@ styled() {
 }
 
 @test "the same style finding is still reported without --current" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")"
   sed -i.bak 's/^x$/The total comes from `A` and `B` and `C`./' "$TASK/Walkthrough.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
@@ -455,7 +455,7 @@ fifteen() { printf 'one two three four five six seven eight nine ten eleven twel
 }
 
 @test "style: a task directory reads its own words-per-sentence" {
-  walkthrough brief "$(printf -- '- `%s` `feat: a` — first.\n- `%s` `feat: b` — second.' "$A1" "$A2")"
+  walkthrough brief "$(printf -- '- `proj@%s` `feat: a` — first.\n- `proj@%s` `feat: b` — second.' "$A1" "$A2")"
   sed -i.bak "s/^x\$/$(fifteen)/" "$TASK/Walkthrough.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
@@ -482,14 +482,14 @@ fifteen() { printf 'one two three four five six seven eight nine ten eleven twel
   run "$BATS_TEST_TMPDIR/scripts/lint-walkthrough.sh" --style "$BATS_TEST_TMPDIR/w.md"
   [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
   [[ "$output" == *"lint-walkthrough.sh: resolve-settings.sh failed for $BATS_TEST_TMPDIR"* ]] || { echo "$output"; return 1; }
-  walkthrough brief "$(printf -- '- `%s` `feat: a` — first.\n- `%s` `feat: b` — second.' "$A1" "$A2")"
+  walkthrough brief "$(printf -- '- `proj@%s` `feat: a` — first.\n- `proj@%s` `feat: b` — second.' "$A1" "$A2")"
   run "$BATS_TEST_TMPDIR/scripts/lint-walkthrough.sh" "$TASK"
   [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
   [[ "$output" == *"lint-walkthrough.sh: resolve-settings.sh failed for $TASK"* ]] || { echo "$output"; return 1; }
 }
 
 @test "a walkthrough ending in a closing block passes, and COVERS stays on line 2" {
-  walkthrough deep "$(printf '### 1. `%s` — first\n\n### Bookkeeping\n\n- `%s` — one commit.' "$A1" "$A2")"
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### Bookkeeping\n\n- `proj@%s` — one commit.' "$A1" "$A2")"
   printf '\n**Run:** drive_app=off; directive: «leave the cart package alone»\n**Device:** Phone B, set by this run\n' >>"$TASK/Walkthrough.md"
   [ "$(sed -n 2p "$TASK/Walkthrough.md" | cut -c1-9)" = '[COVERS] ' ]
   run "$LINT" "$TASK"
@@ -507,7 +507,7 @@ fifteen() { printf 'one two three four five six seven eight nine ten eleven twel
   printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [words-per-sentence: 12]\n' >"$BATS_TEST_TMPDIR/d/Task.md"
   run "$LINT" --words-per-sentence 15 --style "$BATS_TEST_TMPDIR/d/Walkthrough.md"
   [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
-  walkthrough brief "$(printf -- '- `%s` `feat: a` — first.\n- `%s` `feat: b` — second.' "$A1" "$A2")"
+  walkthrough brief "$(printf -- '- `proj@%s` `feat: a` — first.\n- `proj@%s` `feat: b` — second.' "$A1" "$A2")"
   sed -i.bak "s/^x\$/$(fifteen)/" "$TASK/Walkthrough.md"
   run "$LINT" --words-per-sentence 12 "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
@@ -544,4 +544,59 @@ fifteen() { printf 'one two three four five six seven eight nine ten eleven twel
   walkthrough deep "$(printf '### 1. `proj@%s` — first' "$A1")" "$A1..$A1" 1
   run "$LINT" --current "$TASK"
   grep -qxF "Walkthrough.md: behind: $A2 is not named in ## Commits (proj)" <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "a bare reference is a style line wherever it stands" {
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `proj@%s` — second\n\n### Bookkeeping\n\n- `%s` — again.' "$A1" "$A2" "$A2")"
+  python3 - "$TASK/Walkthrough.md" "$A1" <<'PY'
+import sys
+p, s = sys.argv[1], sys.argv[2]
+t = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(t.replace('## Plan vs. outcome\n\nx', '## Plan vs. outcome\n\n| Planned | Landed | Why | Trigger |\n|---|---|---|---|\n| a | b `%s` | c | Review |' % s, 1))
+PY
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  for w in '## Plan vs. outcome' '### 1' 'Bookkeeping'; do
+    grep -qxF "Walkthrough.md: style: commit reference without repository ($w)" <<<"$output" || { echo "$output"; return 1; }
+  done
+  [ "$(grep -c 'without repository' <<<"$output")" -eq 3 ] || { echo "$output"; return 1; }
+}
+
+@test "a brief log line and a What changed sha without a repository are style lines" {
+  walkthrough brief "$(printf -- '- `%s` `feat: a` — first.\n- `proj@%s` `feat: b` — second.' "$A1" "$A2")"
+  python3 - "$TASK/Walkthrough.md" "$A1" "$A2" <<'PY'
+import sys
+p, a, b = sys.argv[1:]
+t = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(t.replace('## What changed\n\nx', '## What changed\n\n1. A change (commits %s, proj@%s).' % (a, b), 1))
+PY
+  run "$LINT" "$TASK"
+  [ "$(grep -c 'without repository' <<<"$output")" -eq 2 ] || { echo "$output"; return 1; }
+  grep -qxF 'Walkthrough.md: style: commit reference without repository (brief)' <<<"$output" \
+    && grep -qxF 'Walkthrough.md: style: commit reference without repository (## What changed)' <<<"$output" \
+    || { echo "$output"; return 1; }
+}
+
+@test "a hex word without a digit is not a commit reference" {
+  printf '# W\n\n## What changed\n\n1. The cafebabe and facade cases.\n' >"$BATS_TEST_TMPDIR/w.md"
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "COVERS, the perimeter's Range and a fence need no repository" {
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n```\ngit show %s\n`%s`\n```\n\n### 2. `proj@%s` — second' "$A1" "$A1" "$A1" "$A2")"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "--style reports a bare reference too" {
+  printf '# W\n\n## Summary\n\nThe change `%s` moved it.\n' "$A1" >"$BATS_TEST_TMPDIR/w.md"
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$output" = "Walkthrough.md: style: commit reference without repository (## Summary)" ] || { echo "$output"; return 1; }
+}
+
+@test "--current says nothing about a bare reference" {
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")"
+  run "$LINT" --current "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
 }

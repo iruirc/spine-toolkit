@@ -11,6 +11,8 @@ set -euo pipefail
 # budget key of the task's directory, 30 unless a Task.md, an epic or the project sets it), an identifier
 # in ## What changed, a sentence that starts with an identifier or holds more than two, and, at
 # deep, a commit section without **In short:** (or, with sub-headings, without **How verified:**).
+# A commit reference without its repository — `name@sha` everywhere but the [COVERS] line and the
+# perimeter's Range cell — is a style line too.
 # What counts as prose is scripts/lib/prose.py, the same text lint-artifact-lang.sh measures.
 #
 # With --current it also asks whether the file is up to date: every repository's newest own commit
@@ -179,6 +181,40 @@ def is_deep(entries):
     return False
 
 
+# ## What changed holds no code span, so a commit there is named bare: `name@sha`, or a lone sha.
+BARE_REF = re.compile(r'(?<![\w@./-])(?:(%s)@)?(%s)(?:\.\.(%s))?(?![\w@])' % (NAME, SHA, SHA))
+HEX_WORD = re.compile(r'^(?=.*[0-9])(?=.*[a-f])')
+
+
+def references(text):
+    """(name, a, b, where) per commit reference outside fences: name None when the reference
+    carries none. The [COVERS] line and the perimeter's rows need none: the anchor's shape is fixed,
+    and a perimeter row names its repository in its first cell."""
+    out, section = [], None
+    for level, title, lines in outline(text):
+        if level == 2:
+            section = title[3:].strip()
+        if level <= 1:
+            where, lines = 'header', [l for l in lines if not l.startswith('[COVERS]') and not l.lstrip().startswith('|')]
+        elif section == 'Commits' and level == 2:
+            where = 'brief'
+        elif section == 'Commits' and title == '### Bookkeeping':
+            where = 'Bookkeeping'
+        elif section == 'Commits' and level == 3:
+            where = place(title)
+        elif section == 'Commits' and level > 3:
+            pass  # a sub-heading belongs to the commit section above it
+        else:
+            where = '## ' + section if section else 'header'
+        for line in ([title] if level else []) + lines:
+            out += [(m.group(1), m.group(2), m.group(3), where) for m in TOKEN.finditer(line)]
+            if section == 'What changed':
+                plain = SPAN.sub(' ', line)
+                out += [(m.group(1), m.group(2), m.group(3), where) for m in BARE_REF.finditer(plain)
+                        if m.group(1) or HEX_WORD.match(m.group(2))]
+    return out
+
+
 def style(text, deep, limit):
     out = []
     for title, body in chunks(text):
@@ -242,6 +278,8 @@ def style(text, deep, limit):
                 out.append('style: missing **In short:** (%s)' % where)
             if subs and not any('**How verified:**' in line for line in body):
                 out.append('style: missing **How verified:** (%s)' % where)
+    out += ['style: commit reference without repository (%s)' % where
+            for name, _, _, where in references(text) if name is None]
     return out
 
 

@@ -4,7 +4,7 @@
 
 | Repository | Range | Commits | ± lines |
 |---|---|---|---|
-| `.` | `a1b2c3d..e4f5a6b` | 2 | +210/−14 |
+| `MyApp` | `a1b2c3d..e4f5a6b` | 2 | +210/−14 |
 
 > **How to read.** Сначала раздел «What changed», затем коммиты по порядку. Имя `CartService` в цитате лишь ссылка.
 
@@ -43,7 +43,7 @@
 
 ## Commits
 
-### 1. `a1b2c3d` — скидка читает только товары
+### 1. `MyApp@a1b2c3d` — скидка читает только товары
 
 `fix(cart): take the promo discount from the goods total`
 
@@ -67,7 +67,7 @@ let total = goods - discount(goods) + delivery
 
 **How verified:** новый тест падает на старом коде и проходит на новом.
 
-### 2. `e4f5a6b` — доставка после округления
+### 2. `MyApp@e4f5a6b` — доставка после округления
 
 `fix(cart): add delivery after rounding`
 
@@ -75,7 +75,7 @@ let total = goods - discount(goods) + delivery
 
 ### Bookkeeping
 
-- `a1b2c3d..e4f5a6b` — два коммита.
+- `MyApp@a1b2c3d..e4f5a6b` — два коммита.
 
 ## Notes
 
