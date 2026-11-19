@@ -62,8 +62,9 @@ changed_suites() {
   fi
   # Each mark is read once, into one "<file><TAB><dirs>" line per sweep.
   for f in "$lib"/*.bats; do
-    line="$(head -10 "$f" | grep -E '^# changed: sweep( |$)' | head -1 || true)"
+    line="$(head -10 "$f" | grep -E '^# changed: sweep([[:blank:]]|$)' | head -1 || true)"
     [ -n "$line" ] || continue
+    line="${line//$'\t'/ }"   # a tab would split the record below into three fields
     sweeps="$sweeps"$'\n'"$f"$'\t'"${line#\# changed: sweep}"
   done
   while IFS= read -r f; do
