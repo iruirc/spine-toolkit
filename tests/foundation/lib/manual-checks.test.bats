@@ -416,6 +416,24 @@ PY
   grep -qF '`S1` and on in `brief` and in a pass file' <<<"$(skill_section '## Grounding')" || { echo "## Grounding leaves out the pass file"; return 1; }
 }
 
+@test "a scene takes its data the way the build gives it to a tester, and the project's CLAUDE.md names how" {
+  # The ## Structure fence holds ## lines of its own, so the rule is read as its paragraph.
+  s="$(grep -F "**A scene's data**" "$SKILL")"
+  for token in 'the way the build gives it to a tester' "the developer's machine" 'a camera' '**dev-only:**' "project's \`CLAUDE.md\`"; do
+    grep -qF -- "$token" <<<"$s" || { echo "the scene's data rule does not say $token"; return 1; }
+  done
+  grep -qF "a scene that takes its data from the developer's machine or a camera" <<<"$(skill_section '## Review')" \
+    || { echo "## Review: no finding for a scene's data"; return 1; }
+}
+
+@test "a session of the pass groups its cases by scene and names where a person can stop" {
+  c="$(skill_section '## Collective pass')"
+  for token in 'start from one scene run together' '`Stops: before <step>/MC-<n> (~<time>), …`' 'from the start of the session' \
+               'no stop inside the `first` or the `last` cases' 'a session of one scene has no `Stops:` line' 'build no scene again'; do
+    grep -qF -- "$token" <<<"$c" || { echo "## Collective pass does not say: $token"; return 1; }
+  done
+}
+
 @test "a refresh re-checks only the cases whose code moved" {
   r="$(skill_section '## Refreshing')"
   [ -n "$r" ] || { echo "no ## Refreshing"; return 1; }
