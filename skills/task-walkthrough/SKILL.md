@@ -100,7 +100,8 @@ as much as in one of twenty, so the reader never has to guess where a sha lives,
 not change when a task grows. Two places stay bare: the `[COVERS]` line, whose shape is fixed, and
 the perimeter's `Range` cell, whose row already names the repository. `scripts/lint-walkthrough.sh`
 reports a reference without its repository as `style: commit reference without repository`, and
-one whose repository does not hold the commit as a `repository` line.
+one whose repository does not hold the commit as a `repository` line. A perimeter row whose name is
+no repository of the task is a `style` line: a file written before these names keeps its facts.
 
 What the header never holds is the bookkeeping of the run: which finding a later commit closed,
 which edit is not committed yet, why the file was refreshed. A finding closed by a commit is already

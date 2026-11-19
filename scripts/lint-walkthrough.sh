@@ -183,7 +183,7 @@ def is_deep(entries):
 
 
 # ## What changed holds no code span, so a commit there is named bare: `name@sha`, or a lone sha.
-BARE_REF = re.compile(r'(?<![\w@./-])(?:(%s)@)?(%s)(?:\.\.(%s))?(?![\w@])' % (NAME, SHA, SHA))
+BARE_REF = re.compile(r'(?<![\w@./-])(?:(%s)@)?(%s)(?:\.\.(%s))?(?![\w@]|\.\w)' % (NAME, SHA, SHA))
 HEX_WORD = re.compile(r'^(?=.*[0-9])(?=.*[a-f])')
 
 
@@ -389,12 +389,11 @@ for repo, a, b, count in declared:
         found.append('count: the header says %s, the range holds %d (%s)' % (count.strip(), len(listed), repo))
 
 # A reference names the repository that holds its commit. A sha no repository holds is not a wrong
-# name: ## Commits reports it as unreachable, and elsewhere it is left alone.
+# name: ## Commits reports it as unreachable, and elsewhere it is left alone — `lodash@1234567` is a
+# version, not a commit.
 known = {name for name, _ in repo_names()}
 refs = [r for r in references(text) if r[0] is not None]
-found += ['repository: %s is not a repository of the task (%s)' % (name, w) for name, _, _, w in refs if name not in known]
-found += ['repository: %s is not a repository of the task (header %s)' % (repo, repo) for repo, _, _, _ in declared if repo not in known]
-ends = sorted({s for name, a, b, _ in refs if name in known for s in (a, b) if s})
+ends = sorted({s for _, a, b, _ in refs for s in (a, b) if s})
 held = {}
 if ends:
     r = subprocess.run([RANGES, 'owners', TASK] + ends, capture_output=True, text=True)
@@ -402,6 +401,8 @@ if ends:
         sys.stderr.write(r.stderr)
         sys.exit(2)
     held = {line.split()[0]: set(line.split()[1:]) for line in r.stdout.splitlines()}
+found += ['repository: %s is not a repository of the task (%s)' % (name, w) for name, a, b, w in refs
+          if name not in known and any(held.get(s) for s in (a, b) if s)]
 for name, a, b, w in refs:
     if name in known:
         found += ['repository: %s is not in %s (%s)' % (s, name, w) for s in (a, b) if s and held.get(s) and name not in held[s]]
@@ -409,6 +410,9 @@ for name, a, b, w in refs:
 # Style findings go to the writer once (spec D-7). --current decides whether the writer runs again,
 # so it judges the history and the coverage only: a style finding never makes a file stale.
 if not CURRENT:
+    # A perimeter row from before repositories were named by folder (`.`, `app`) is the file's form,
+    # not its facts: it never makes the file stale.
+    found += ['style: %s is not a repository of the task (header %s)' % (repo, repo) for repo, _, _, _ in declared if repo not in known]
     found += style(text, deep, WPS or words_per_sentence(TASK, 'lint-walkthrough.sh'))
 
 if CURRENT:

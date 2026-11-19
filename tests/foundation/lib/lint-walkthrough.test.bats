@@ -616,7 +616,7 @@ core() { # a package Packages/Core with one commit, exported as C1
   python3 -c 'import sys; p=sys.argv[1]; t=open(p).read(); open(p,"w").write(t.replace("| `proj` |", "| `nope` |", 1))' "$TASK/Walkthrough.md"
   run "$LINT" "$TASK"
   grep -qxF 'Walkthrough.md: repository: other is not a repository of the task (### 1)' <<<"$output" \
-    && grep -qxF 'Walkthrough.md: repository: nope is not a repository of the task (header nope)' <<<"$output" \
+    && grep -qxF 'Walkthrough.md: style: nope is not a repository of the task (header nope)' <<<"$output" \
     || { echo "$output"; return 1; }
 }
 
@@ -657,6 +657,27 @@ core() { # a package Packages/Core with one commit, exported as C1
   echo v >"$PROJ/Vendor/Core/v.txt"; git -C "$PROJ/Vendor/Core" add v.txt
   git -C "$PROJ/Vendor/Core" -c user.name=t -c user.email=t@t commit -qm v
   walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `Packages/Core@%s` — core\n\n### 3. `proj@%s` — second' "$A1" "$C1" "$A2")"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "--current passes an old file whose perimeter names the project as ." {
+  walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")"
+  python3 -c 'import sys; p=sys.argv[1]; t=open(p).read(); open(p,"w").write(t.replace("| `proj` |", "| `.` |", 1))' "$TASK/Walkthrough.md"
+  run "$LINT" --current "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "an address in What changed is not a commit reference" {
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")"
+  python3 -c 'import sys; p=sys.argv[1]; t=open(p).read(); open(p,"w").write(t.replace("## What changed\n\nx", "## What changed\n\nMail to dev@%s.com now arrives." % sys.argv[2], 1))' "$TASK/Walkthrough.md" "$A1"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "a name@version no repository holds is not a repository finding" {
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")"
+  python3 -c 'import sys; p=sys.argv[1]; t=open(p).read(); open(p,"w").write(t.replace("## Summary\n\nx", "## Summary\n\nThe pin moved to `lodash@1234567` here.", 1))' "$TASK/Walkthrough.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
 }
