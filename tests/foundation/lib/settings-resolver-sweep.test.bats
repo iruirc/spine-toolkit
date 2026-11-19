@@ -20,7 +20,11 @@ field() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1]])'
     n=$((n + 1))
     for token in '[DRIVE_APP]' '[MANUAL_CHECKS]' '[PHASE_VERIFICATION]' '## Validation'; do
       # `## Validation's regression` is a section of the phase-verification skill, not a config block.
-      ! sed "s/## Validation's regression//g" "$p" | grep -qF "$token" || { echo "$(basename "$p") still spells the chain for $token"; return 1; }
+      ! sed "s/## Validation's regression//g" "$p" | grep -qF "$token" || {
+        echo "$(basename "$p") still spells the chain for $token"
+        [ "$token" != '## Validation' ] || echo 'hint: "## Validation" reads as a section of the config, and the config has no such section any more: its settings are [FIELD] = [value] lines. Name a stage without "##" (the Validation stage) and a task file as Validation.md.'
+        return 1
+      }
     done
   done
   [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }

@@ -15,12 +15,34 @@ mentions() {
     | command grep -vE "## Language Resolution|## Validation's regression|^[0-9]+:#+ $1( [A-Za-z]|\.md\$)"
 }
 
+# Prints each mention of `## $1` in $2 as `<file>:<line>: <text>`, then the hint, and returns 1; returns 0
+# when there is none. A finding that only says "still names" leaves the reader to guess what to write instead.
+report_mentions() {
+  local found l
+  found="$(mentions "$1" "$2")" || true
+  [ -n "$found" ] || return 0
+  while IFS= read -r l; do printf '%s:%s: %s\n' "$2" "${l%%:*}" "${l#*:}"; done <<<"$found"
+  printf 'hint: "## %s" reads as a section of the config, and the config has no such section any more: its settings are [FIELD] = [value] lines. Name a stage without "##" (the Validation stage) and a task file as Validation.md.\n' "$1"
+  return 1
+}
+
+@test "a mention of a moved block prints the line and the hint" {
+  printf '%s\n' 'see ## Validation for the setting' >"$BATS_TEST_TMPDIR/x.md"
+  run report_mentions Validation "$BATS_TEST_TMPDIR/x.md"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'x.md:1: see ## Validation for the setting'* ]]
+  [[ "$output" == *'hint: "## Validation" reads as a section of the config, and the config has no such section any more: its settings are [FIELD] = [value] lines. Name a stage without "##" (the Validation stage) and a task file as Validation.md.'* ]]
+  printf '%s\n' "the ## Validation's regression section" >"$BATS_TEST_TMPDIR/x.md"
+  run report_mentions Validation "$BATS_TEST_TMPDIR/x.md"
+  [ "$status" -eq 0 ]
+}
+
 @test "no core surface tells a reader to find a moved block of the config" {
   n=0
   while IFS= read -r f; do
     n=$((n + 1))
     for block in Language Mode Progress Scale Reporting Validation Docs Budgets Models Effort; do
-      [ -z "$(mentions "$block" "$f")" ] || { echo "$f still names ## $block"; return 1; }
+      report_mentions "$block" "$f" || return 1
     done
   done < <(find "$ROOT/skills" "$ROOT/conventions" "$ROOT/commands" "$ROOT/docs" -name '*.md')
   [ "$n" -ge 60 ] || { echo "scanned $n file(s), expected at least 60"; return 1; }
@@ -31,7 +53,7 @@ mentions() {
   for f in "$ROOT"/scripts/*.sh "$ROOT"/workflows/*.js; do
     n=$((n + 1))
     for block in Language Mode Progress Scale Reporting Validation Docs Budgets Models Effort; do
-      [ -z "$(mentions "$block" "$f")" ] || { echo "$f still names ## $block"; return 1; }
+      report_mentions "$block" "$f" || return 1
     done
   done
   [ "$n" -ge 10 ] || { echo "scanned $n file(s), expected at least 10"; return 1; }
