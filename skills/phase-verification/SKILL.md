@@ -5,7 +5,7 @@ description: "Use at Plan to decide how much each phase checks before it commits
 
 # Phase Verification
 
-Every phase ends buildable, green and committed, so it can be reverted or bisected on its own. This skill decides how much "green" means. Too little, and a break surfaces at Validation across a dozen commits; too much, and every phase re-runs what Validation is about to run anyway. **The full regression belongs to Validation. A phase checks what it can break.** What Validation runs is defined under `## Validation's regression`.
+Every phase ends buildable, green and committed, so it can be reverted or bisected on its own. This skill decides how much "green" means. Too little, and a break surfaces at Validation across a dozen commits; too much, and every phase re-runs what Validation is about to run anyway. **The task's regression belongs to Validation. A phase checks what it can break.** What Validation runs is defined under `## Validation's regression`.
 
 ## Terms
 

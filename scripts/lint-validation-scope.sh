@@ -34,7 +34,7 @@ import json, os, re, subprocess, sys
 RANGES, TASK = sys.argv[1], os.path.realpath(sys.argv[2])
 HEADER = ['Repository', 'Module', 'Why', 'Run', 'Tests', 'HEAD', 'Log']
 SHA = re.compile(r'[0-9a-f]{7,40}')
-CARRIED = re.compile(r'carried\s+(\S+)')
+CARRIED = re.compile(r'carried\s+`?([^\s`]+)`?')
 RECORD = re.compile(r'^\[VALIDATED_COMMIT\]\s*=\s*(.*)$')
 
 

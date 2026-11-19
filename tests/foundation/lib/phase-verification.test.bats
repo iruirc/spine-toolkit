@@ -20,8 +20,8 @@ section() { # $1 = file, $2 = heading text without "## "
   grep -q '^name: phase-verification$' "$SKILL" || { echo "frontmatter name is not phase-verification"; return 1; }
 }
 
-@test "the skill hands the full regression to Validation" {
-  grep -qF 'The full regression belongs to Validation.' "$SKILL" \
+@test "the skill hands the regression to Validation" {
+  grep -qF "The task's regression belongs to Validation." "$SKILL" \
     || { echo "nothing says a phase does not repeat Validation's run"; return 1; }
 }
 

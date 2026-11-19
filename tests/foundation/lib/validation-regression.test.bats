@@ -19,6 +19,7 @@ section() { # $1 file, $2 heading text: the body up to the next ## heading
   for f in 'every module the task changed' 'depends on one of them, transitively' 'the application' 'neither built nor tested' 'carried'; do
     grep -qF "$f" <<<"$sec" || { echo "the section lost: $f"; return 1; }
   done
+  ! grep -qF 'The full regression belongs to Validation' "$SKILL" || { echo "the intro still says the full regression belongs to Validation"; return 1; }
   who="$(section "$SKILL" 'Who does what')"
   ! grep -qF 'it runs the full regression' <<<"$who" || { echo "Who does what still says it runs the full regression"; return 1; }
   grep -qF "Validation's regression" <<<"$who" || { echo "Who does what does not point at the section"; return 1; }

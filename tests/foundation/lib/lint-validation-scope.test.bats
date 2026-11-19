@@ -271,4 +271,8 @@ finds() { # the lint's output has a finding of this class
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ -z "$output" ] || { echo "$output"; return 1; }
+  vmd PASSED "$(app_row)" "$(row Packages/Core Core "carried \`$(head7 "$PROJ/Packages/Core")\`" 7 "$(head7 "$PROJ/Packages/Core")" validation-evidence/t/core.log)"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ] || { echo "$output"; return 1; }
 }
