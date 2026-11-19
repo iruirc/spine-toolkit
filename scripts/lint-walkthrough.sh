@@ -77,7 +77,9 @@ from prose import chunks, sentences, words, units, words_per_sentence, LEAD, SUB
 SHA = r'[0-9a-f]{7,40}'
 # Every backticked sha or sha range on a line, wherever it sits: a heading may put a word or bold
 # markup before one.
-TOKEN = re.compile(r'`(%s)(?:\.\.(%s))?`' % (SHA, SHA))
+# A reference names its repository, `<name>@<sha>`: the name task-ranges.sh names prints.
+NAME = r'[A-Za-z0-9._/-]+'
+TOKEN = re.compile(r'`(?:(%s)@)?(%s)(?:\.\.(%s))?`' % (NAME, SHA, SHA))
 NUMBER = re.compile(r'^###\s+([\d\u2013-]+)')
 FENCE = re.compile(r'^\s*(`{3,}|~{3,})')
 # task-walkthrough, ## Structure: the sections each depth always carries; the glossary and
@@ -117,6 +119,15 @@ def span(a, b, where):
     return r.stdout.split()
 
 
+def repo_names():
+    """(name, path) per repository of the task, as task-ranges.sh names prints them."""
+    r = subprocess.run([RANGES, 'names', TASK], capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.stderr.write(r.stderr)
+        sys.exit(2)
+    return [tuple(line.split(' ', 1)) for line in r.stdout.splitlines()]
+
+
 def cells(line):
     return [c.strip() for c in line.strip().strip('|').split('|')]
 
@@ -124,9 +135,9 @@ def cells(line):
 # The style pass. Prose is what scripts/lib/prose.py keeps: no code, tables, quotes or headings.
 SPAN = re.compile(r'`[^`\n]*`')
 # A commit log line (brief ## Commits, ### Bookkeeping) starts on a sha or a range by design.
-SHA_SPAN = re.compile(r'^`%s(?:\.\.%s)?`$' % (SHA, SHA))
+SHA_SPAN = re.compile(r'^`(?:%s@)?%s(?:\.\.%s)?`$' % (NAME, SHA, SHA))
 BARE = re.compile(r'^(?:`[XS]`[\s.,;:!?]*)+$')
-LOG_LINE = re.compile(r'^`%s(?:\.\.%s)?`' % (SHA, SHA))
+LOG_LINE = re.compile(r'^`(?:%s@)?%s(?:\.\.%s)?`' % (NAME, SHA, SHA))
 
 
 def outline(text):
@@ -289,13 +300,13 @@ for line in open(path, encoding='utf-8'):
             continue
         m = NUMBER.match(line)
         where = '### ' + m.group(1) if m else '###'
-        found = [t.groups() for t in TOKEN.finditer(line)]
+        found = [t.group(2, 3) for t in TOKEN.finditer(line)]
         headers.append((where, len(found), bool(m)))
         named += [(t, where) for t in found]
     elif where in (None, 'Bookkeeping') and (line.startswith('- ') or (bullet and line.startswith('  ') and line.strip())):
         # Bullets inside a commit's own section are its prose, not the log; a wrapped bullet is one.
         bullet = where or 'brief'
-        named += [(t.groups(), bullet) for t in TOKEN.finditer(line)]
+        named += [(t.group(2, 3), bullet) for t in TOKEN.finditer(line)]
         continue
     bullet = None
 
@@ -306,7 +317,7 @@ declared = []
 for row in perimeter:
     m = TOKEN.search(row[columns[0]]) if len(row) > max(columns) else None
     if m:
-        declared.append((row[0].strip('`'), m.group(1), m.group(2) or m.group(1), row[columns[1]]))
+        declared.append((row[0].strip('`'), m.group(2), m.group(3) or m.group(2), row[columns[1]]))
 
 ends = sorted({s for (a, b), _ in named for s in (a, b) if s} | {s for _, a, b, _ in declared for s in (a, b)})
 gone = set(ranges('unreachable', TASK, *ends)) if ends else set()
@@ -348,7 +359,9 @@ if CURRENT:
     if r.returncode != 0:
         sys.stderr.write(r.stderr)
         sys.exit(2)
+    by_path = {rel: name for name, rel in repo_names()}
     for repo, sha in (line.rsplit(' ', 1) for line in r.stdout.splitlines()):
+        repo = by_path.get(repo, repo)
         if sha == 'unknown':
             found.append('behind: no base to find the newest commit by (%s)' % repo)
         elif not any(sha.startswith(s) for s in covered):

@@ -44,7 +44,7 @@ walkthrough() {
   local range="${3:-$A1..$A2}" count="${4:-2}" s
   {
     printf '# Walkthrough\n[COVERS] = %s..%s\n\n' "$A1" "$A2"
-    [ "$range" = - ] || printf '| Repository | Range | Commits | ± lines |\n|---|---|---|---|\n| `.` | `%s` | %s | +2/−0 |\n' "$range" "$count"
+    [ "$range" = - ] || printf '| Repository | Range | Commits | ± lines |\n|---|---|---|---|\n| `proj` | `%s` | %s | +2/−0 |\n' "$range" "$count"
     for s in 'What changed' Glossary Summary 'Commit order' 'Plan vs. outcome' Commits 'How it works' 'Out of scope' Follow-ups; do
       [ "$1" = deep ] || case "$s" in Glossary | 'Commit order' | 'Out of scope') continue ;; esac
       printf '\n## %s\n\n' "$s"
@@ -97,7 +97,7 @@ open(p, 'w', encoding='utf-8').write(s[:s.index('## Follow-ups')].rstrip() + '\n
 PY
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
-  [ "$output" = "$(printf 'Walkthrough.md: section: missing (## Out of scope)\nWalkthrough.md: missing: %s is not named in ## Commits (.)' "$A2")" ] \
+  [ "$output" = "$(printf 'Walkthrough.md: section: missing (## Out of scope)\nWalkthrough.md: missing: %s is not named in ## Commits (proj)' "$A2")" ] \
     || { echo "$output"; return 1; }
 }
 
@@ -119,7 +119,7 @@ PY2
   walkthrough deep "$(printf '### 1. The first change\n\n**Files:** `.` `%s`\n\n### 2. `%s` — second' "$A1" "$A2")"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
-  [ "$output" = "$(printf 'Walkthrough.md: heading: 0 commits in one section (### 1)\nWalkthrough.md: missing: %s is not named in ## Commits (.)' "$A1")" ] || { echo "$output"; return 1; }
+  [ "$output" = "$(printf 'Walkthrough.md: heading: 0 commits in one section (### 1)\nWalkthrough.md: missing: %s is not named in ## Commits (proj)' "$A1")" ] || { echo "$output"; return 1; }
 }
 
 @test "a deep section per phase instead of per commit is a finding" {
@@ -133,7 +133,7 @@ PY2
   walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")" "" 3
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
-  [ "$output" = 'Walkthrough.md: count: the header says 3, the range holds 2 (.)' ] || { echo "$output"; return 1; }
+  [ "$output" = 'Walkthrough.md: count: the header says 3, the range holds 2 (proj)' ] || { echo "$output"; return 1; }
 }
 
 @test "a header with no perimeter is a finding" {
@@ -147,7 +147,7 @@ PY2
   walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")" "$A1..$GONE" 3
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
-  [ "$output" = "Walkthrough.md: unreachable: $GONE is not in the task's history (header .)" ] || { echo "$output"; return 1; }
+  [ "$output" = "Walkthrough.md: unreachable: $GONE is not in the task's history (header proj)" ] || { echo "$output"; return 1; }
 }
 
 @test "whole files at both depths pass silently, bookkeeping ranges included" {
@@ -167,11 +167,11 @@ PY2
   walkthrough deep "$(printf '### 1. `%s` — first\n\n### Bookkeeping\n\n- `%s..%s` — written backwards.' "$A1" "$A2" "$A1")"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
-  [ "$output" = "$(printf 'Walkthrough.md: range: %s..%s is not a range of one repository (Bookkeeping)\nWalkthrough.md: missing: %s is not named in ## Commits (.)' "$A2" "$A1" "$A2")" ] || { echo "$output"; return 1; }
+  [ "$output" = "$(printf 'Walkthrough.md: range: %s..%s is not a range of one repository (Bookkeeping)\nWalkthrough.md: missing: %s is not named in ## Commits (proj)' "$A2" "$A1" "$A2")" ] || { echo "$output"; return 1; }
   walkthrough deep "$(printf '### 1. `%s` — first\n\n### 2. `%s` — second' "$A1" "$A2")" "$A2..$A1"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "header: $status $output"; return 1; }
-  [ "$output" = "Walkthrough.md: range: $A2..$A1 is not a range of one repository (header .)" ] || { echo "$output"; return 1; }
+  [ "$output" = "Walkthrough.md: range: $A2..$A1 is not a range of one repository (header proj)" ] || { echo "$output"; return 1; }
 }
 
 @test "a bullet wrapped onto a second line is read whole" {
@@ -220,7 +220,7 @@ PY2
   commit d.txt; d="$(git -C "$PROJ" rev-parse --short=7 HEAD)"
   run "$LINT" --current "$TASK"
   [ "$status" -eq 1 ] || { echo "a code commit: $status $output"; return 1; }
-  grep -qF "Walkthrough.md: behind: $d is not named in ## Commits (.)" <<<"$output" || { echo "$output"; return 1; }
+  grep -qF "Walkthrough.md: behind: $d is not named in ## Commits (proj)" <<<"$output" || { echo "$output"; return 1; }
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "without --current: $status $output"; return 1; }
 }
@@ -526,4 +526,22 @@ fifteen() { printf 'one two three four five six seven eight nine ten eleven twel
   done
   run "$LINT" --words-per-sentence
   [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+}
+
+@test "a prefixed reference names the commit it holds" {
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second\n\n### Bookkeeping\n\n- `proj@%s..%s` — both again.' "$A1" "$A2" "$A1" "$A2")"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "a prefixed reference in prose is a commit, not an identifier" {
+  printf '# W\n\n## Summary\n\nThe change `proj@%s` moved the check, and `proj@%s` and `proj@%s` followed it.\n' "$A1" "$A2" "$A1" >"$BATS_TEST_TMPDIR/w.md"
+  run "$LINT" --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+}
+
+@test "behind names the repository by its folder" {
+  walkthrough deep "$(printf '### 1. `proj@%s` — first' "$A1")" "$A1..$A1" 1
+  run "$LINT" --current "$TASK"
+  grep -qxF "Walkthrough.md: behind: $A2 is not named in ## Commits (proj)" <<<"$output" || { echo "$output"; return 1; }
 }
