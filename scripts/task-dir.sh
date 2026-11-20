@@ -11,12 +11,14 @@
 # the current directory by default. An argument with a "/" is a path, relative to the current
 # directory; any other is a task id, matched as <id>-* at the top of Tasks and in a status folder,
 # and as <id>.step or <id>-*.step at any depth below. A folder whose whole name is the id — a root task
-# by its full name, an epic's 2.step — wins over the folders it only begins. A Tasks that is a dangling
-# link is a stop: a Tasks further up belongs to another project.
+# by its full name, an epic's 2.step — wins over the folders it only begins. A path names a task only
+# where it holds a Task.md, and a status folder that cannot be read is passed over. A Tasks that is a
+# dangling link is a stop: a Tasks further up belongs to another project.
 #
 # Usage: scripts/task-dir.sh <task_id | path> [--from <dir>]
 # Exit:  0 the task folder on stdout, absolute, through Tasks;
-#        2 usage, no Tasks at or above --from, a Tasks that is not a folder, or a path that is not one;
+#        2 usage, no Tasks at or above --from, a Tasks that is not a folder, or a path that is not one
+#          or holds no Task.md;
 #        3 no folder for the id;
 #        4 more than one folder for the id — every one on stdout, a line each;
 #        5 a path under neither the Tasks folder nor the folder it links to.
@@ -73,14 +75,18 @@ if '/' in ARG:
     # A `..` after a link names the folder the filesystem reaches, not the one normpath leaves: the
     # lexical spelling stands only where it names the same folder.
     if under(lexical, TASKS) and os.path.isdir(lexical) and os.path.samefile(lexical, ARG):
-        print(lexical)
-        sys.exit(0)
-    real, real_tasks = os.path.realpath(ARG), os.path.realpath(TASKS)
-    if under(real, real_tasks):
+        found = lexical
+    else:
+        real, real_tasks = os.path.realpath(ARG), os.path.realpath(TASKS)
+        if not under(real, real_tasks):
+            fail(5, '%s is not under %s' % (ARG, TASKS))
         rest = os.path.relpath(real, real_tasks)
-        print(TASKS if rest == '.' else os.path.join(TASKS, rest))
-        sys.exit(0)
-    fail(5, '%s is not under %s' % (ARG, TASKS))
+        found = TASKS if rest == '.' else os.path.join(TASKS, rest)
+    # Tasks itself, a status folder, an _archive: under Tasks, but nothing a run can be given.
+    if not os.path.isfile(os.path.join(found, 'Task.md')):
+        fail(2, 'not a task folder, no Task.md: %s' % ARG)
+    print(found)
+    sys.exit(0)
 
 exact, begun = {}, {}
 
@@ -89,10 +95,19 @@ def keep(path, name):
     (exact if name == ARG else begun).setdefault(os.path.realpath(path), path)
 
 
-for depth in (TASKS, *(os.path.join(TASKS, s) for s in sorted(os.listdir(TASKS)))):
-    if not os.path.isdir(depth):
+def listing(folder):
+    """A folder's names, or none where it cannot be read: os.walk below passes such a folder over too."""
+    try:
+        return sorted(os.listdir(folder))
+    except OSError:
+        return []
+
+
+# A child of Tasks with a Task.md is a root task, not a status folder: its subfolders are not tasks by id.
+for depth in (TASKS, *(os.path.join(TASKS, s) for s in listing(TASKS))):
+    if not os.path.isdir(depth) or (depth != TASKS and os.path.isfile(os.path.join(depth, 'Task.md'))):
         continue
-    for name in sorted(os.listdir(depth)):
+    for name in listing(depth):
         if not name.endswith('.step') and (name == ARG or name.startswith(ARG + '-')) \
                 and os.path.isdir(os.path.join(depth, name)):
             keep(os.path.join(depth, name), name)

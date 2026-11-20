@@ -154,6 +154,7 @@ layouts() { printf '%s\n' "$W/down/proj|$W/down/proj-tasks" "$W/up/a/b/proj|$W/u
 @test "the same N.step in two epics: ambiguous by name, found by the path the epic hands over" {
   while IFS='|' read -r P R; do
     mkdir -p "$R/ACTIVE/007-alpha/2.step" "$R/ACTIVE/008-beta/2.step"
+    : >"$R/ACTIVE/008-beta/2.step/Task.md"
     run --separate-stderr "$TD" 2.step --from "$P"
     [ "$status" -eq 4 ] || { echo "$P: $status $output"; return 1; }
     run --separate-stderr "$TD" "$P/Tasks/ACTIVE/008-beta/2.step" --from "$P"
@@ -174,4 +175,35 @@ layouts() { printf '%s\n' "$W/down/proj|$W/down/proj-tasks" "$W/up/a/b/proj|$W/u
   ln -s ../../ext "$W/down/proj-tasks/DONE"
   run --separate-stderr "$TD" 03 --from "$W/down/proj"
   [ "$status" -eq 0 ] && [ "$output" = "$W/down/proj/Tasks/DONE/050-gamma/03-ui.step" ] || { echo "$status $output $stderr"; return 1; }
+}
+
+@test "a path to a folder that holds no Task.md is exit 2: Tasks, a status folder" {
+  while IFS='|' read -r P R; do
+    for given in "$P/Tasks/" "$P/Tasks/ACTIVE" "$R/ACTIVE"; do
+      run --separate-stderr "$TD" "$given" --from "$P"
+      [ "$status" -eq 2 ] || { echo "$given: $status $output"; return 1; }
+      grep -qF 'not a task folder' <<<"$stderr" || { echo "$given: $stderr"; return 1; }
+    done
+  done < <(layouts)
+}
+
+@test "a root task at the top of Tasks is not a status folder: its subfolders are not found by id" {
+  while IFS='|' read -r P R; do
+    mkdir -p "$R/026-top/01-sub"
+    printf '[TASK_TYPE] = [FEATURE]\n' >"$R/026-top/Task.md"
+    printf '[TASK_TYPE] = [FEATURE]\n' >"$R/026-top/01-sub/Task.md"
+    run --separate-stderr "$TD" 01 --from "$P"
+    [ "$status" -eq 3 ] || { echo "$P: $status $output"; return 1; }
+    run --separate-stderr "$TD" 026 --from "$P"
+    [ "$status" -eq 0 ] && [ "$output" = "$P/Tasks/026-top" ] || { echo "$P: $status $output $stderr"; return 1; }
+  done < <(layouts)
+}
+
+@test "an unreadable status folder is passed over, not a traceback" {
+  [ "$(id -u)" -ne 0 ] || skip "root reads a folder with mode 000"
+  mkdir -p "$W/down/proj-tasks/LOCKED/009-x"
+  chmod 000 "$W/down/proj-tasks/LOCKED"
+  run --separate-stderr "$TD" 007 --from "$W/down/proj"
+  chmod 755 "$W/down/proj-tasks/LOCKED"
+  [ "$status" -eq 0 ] && [ "$output" = "$W/down/proj/Tasks/ACTIVE/007-alpha" ] || { echo "$status $output $stderr"; return 1; }
 }
