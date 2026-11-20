@@ -236,13 +236,15 @@ record_green_tree() {   # <line>
 }
 
 # Prints the newest tree in the history of HEAD that is the first field of a stamp line: the tree
-# a verified run takes its difference from. Exits 1 when there is none.
+# a verified run takes its difference from. Exits 1 when there is none. awk reads the log to its
+# end: stopping at the match would leave git log writing to a closed pipe, and its SIGPIPE would
+# fail the pipeline under pipefail.
 verified_base() {
   local stamp t
   stamp="$(stamp_path)" || return 1
   [ -f "$stamp" ] || return 1
   t="$(git -C "$root" log --format=%T HEAD 2>/dev/null |
-    awk 'NR == FNR { seen[$1] = 1; next } ($1 in seen) { print; exit }' "$stamp" -)" || return 1
+    awk 'NR == FNR { seen[$1] = 1; next } !found && ($1 in seen) { print; found = 1 }' "$stamp" -)" || return 1
   [ -n "$t" ] || return 1
   printf '%s\n' "$t"
 }
