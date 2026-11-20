@@ -3,9 +3,11 @@ set -euo pipefail
 
 # Checks the ## Regression set table a validator writes into a task's Validation.md against the
 # task's history: a repository the task changed that the table leaves out, a ran row without a test
-# count or a log, a ran row that a later code commit made stale, a repository carried whole from
-# earlier Validations although it changed since, and a PASSED status without the records the next
-# Validation narrows from. Its classes: section, missing, count, log, stale, carried, record.
+# count or a log, a ran row that a later code commit made stale, a carried row whose sha is not in
+# the history, and a PASSED or PASSED_WITH_FLAKES status without the records the next Validation
+# narrows from. Its classes: section, missing, count, log, stale, carried, record. A repository
+# carried whole from earlier runs although it changed since gets a line of a further class, reach,
+# which is not a finding (below).
 #
 # It works on repositories, never on modules: which module of a repository should have run is the
 # module graph, and the reviewer checks that. A repository counts as changed when
@@ -17,14 +19,20 @@ set -euo pipefail
 #
 # A carried row is judged per repository, never per row: a repository whose modules were carried from
 # different Validations (one module re-run after a commit, the other carried from before it) is
-# current, and it is a finding only when every carried row of it has commits after its sha and the
-# repository has no ran row. A carried sha that is not in the history is a finding of its own, per row.
+# current. A carried sha that is not in the history is a finding of its own, per row. A Run is
+# "carried <sha>", optionally followed by its source, "(phase <id>)" or "(validation)".
+#
+# A repository whose every carried row has commits after its sha, and which has no ran row, is a
+# reach line per row, not a finding: whether those commits touch a module the carried run covers is
+# the module graph, which this lint does not see, and Review confirms it from the diff. The line is
+# informational, "Validation.md: reach: <n> commits after <sha> in <repo>, confirm the diff does not
+# reach <module> (<where>)", and it does not change the exit code.
 #
 # The table format is in skills/task-documents/SKILL.md, in its Validation.md section.
 #
 # Usage: scripts/lint-validation-scope.sh <task-dir>
-# Exit:  0 nothing found, or nothing to measure (no Validation.md);
-#        1 one line per finding, "Validation.md: <class>: <what> (<where>)";
+# Exit:  0 nothing found, or nothing to measure (no Validation.md); reach lines alone are still 0;
+#        1 one line per finding, "Validation.md: <class>: <what> (<where>)", then the reach lines;
 #        2 usage, or task-ranges.sh could not answer.
 
 HERE="$(dirname -- "${BASH_SOURCE[0]}")"
@@ -44,7 +52,7 @@ import json, os, re, subprocess, sys
 RANGES, GIVEN, TASK = sys.argv[1], sys.argv[2], os.path.realpath(sys.argv[2])
 HEADER = ['Repository', 'Module', 'Why', 'Run', 'Tests', 'HEAD', 'Log']
 SHA = re.compile(r'[0-9a-f]{7,40}')
-CARRIED = re.compile(r'carried\s+`?([^\s`]+)`?')
+CARRIED = re.compile(r'carried\s+`?([^\s`]+)`?(?:\s+\((?:phase\s+\S+|validation)\))?')
 RECORD = re.compile(r'^\[VALIDATED_COMMIT\]\s*=\s*(.*)$')
 
 
@@ -111,7 +119,7 @@ if table:
     found += ['missing: %s has changes and no row (## Regression set)' % rel for rel in sorted(changed - listed)]
 
 ran = {r[0] for r in rows if r[3] == 'ran'}
-carried = {}  # repository -> [(commits after the sha, sha, where)], rewritten shas left out
+carried = {}  # repository -> [(commits after the sha, sha, module, where)], rewritten shas left out
 for repo, module, why, run, tests, head, log, where in rows:
     if run == 'ran':
         if not re.fullmatch(r'\d+', tests):
@@ -130,20 +138,21 @@ for repo, module, why, run, tests, head, log, where in rows:
         continue
     m = CARRIED.fullmatch(run)
     if not m or not SHA.fullmatch(m.group(1)):
-        found.append('section: Run is "%s", not ran or carried <sha> (%s)' % (run, where))
+        found.append('section: Run is "%s", not ran or carried <sha> [(phase <id>) | (validation)] (%s)' % (run, where))
         continue
     n = ask('count', repo, m.group(1))
     if n == 'rewritten':
         found.append('carried: %s is not in the history of %s (%s)' % (m.group(1), repo, where))
     else:
-        carried.setdefault(repo, []).append((n, m.group(1), where))
+        carried.setdefault(repo, []).append((n, m.group(1), module if module not in ('', '—', '-') else repo, where))
 
+reach = []
 for repo, held in carried.items():
-    if repo not in ran and all(n != '0' for n, _, _ in held):
-        found += ['carried: %s commits after %s, every carried row of the repository is behind, and no ran row (%s)' % (n, sha, where) for n, sha, where in held]
+    if repo not in ran and all(n != '0' for n, _, _, _ in held):
+        reach += ['reach: %s commits after %s in %s, confirm the diff does not reach %s (%s)' % (n, sha, repo, module, where) for n, sha, module, where in held]
 
-# A PASSED Validation leaves the records the next one narrows from, one per repository it covered.
-if lines and re.match(r'\[VALIDATION_STATUS\]\s*=\s*PASSED\b', lines[0].strip()):
+# A PASSED or PASSED_WITH_FLAKES Validation leaves the records the next one narrows from, one per repository it covered.
+if lines and re.match(r'\[VALIDATION_STATUS\]\s*=\s*PASSED(?:_WITH_FLAKES)?\b', lines[0].strip()):
     recorded = set()
     for line in lines:
         m = RECORD.match(line.strip())
@@ -152,7 +161,7 @@ if lines and re.match(r'\[VALIDATION_STATUS\]\s*=\s*PASSED\b', lines[0].strip())
             recorded.add(v.group(1) or '.')
     found += ['record: no [VALIDATED_COMMIT] line for %s (closing block)' % repo for repo in sorted(listed - recorded)]
 
-if found:
-    print('\n'.join('Validation.md: ' + f for f in found))
-    sys.exit(1)
+if found or reach:
+    print('\n'.join('Validation.md: ' + f for f in found + reach))
+sys.exit(1 if found else 0)
 PY

@@ -42,7 +42,7 @@ app_row() { row . App ran 12 "$(head7 "$PROJ")" validation-evidence/t/app.log; }
 core_row() { row Packages/Core Core ran 7 "$(head7 "$PROJ/Packages/Core")" validation-evidence/t/core.log; }
 
 # vmd <status> <row>...: a Validation.md with the header, the rows, Not reached and, for PASSED,
-# the records the validator writes into the closing block
+# PASSED_WITH_FLAKES, the records the validator writes into the closing block
 vmd() {
   local status="$1"
   shift
@@ -51,7 +51,7 @@ vmd() {
     printf '| Repository | Module | Why | Run | Tests | HEAD | Log |\n|---|---|---|---|---|---|---|\n'
     printf '%s\n' "$@"
     printf '\nNot reached: none\n'
-    if [ "$status" = PASSED ]; then printf '\n'; "$TR" tips "$TASK" --kind validated; fi
+    if [ "$status" = PASSED ] || [ "$status" = PASSED_WITH_FLAKES ]; then printf '\n'; "$TR" tips "$TASK" --kind validated; fi
   } >"$TASK/Validation.md"
 }
 
@@ -175,15 +175,15 @@ finds() { # the lint's output has a finding of this class
   [ -z "$output" ] || { echo "$output"; return 1; }
 }
 
-@test "a wholly carried repository with new commits is a finding" {
+@test "a wholly carried repository with new commits is a reach line, not a finding" {
   commit "$PROJ" a.txt
   old="$(head7 "$PROJ/Packages/Core")"
   commit "$PROJ/Packages/Core" c.txt
   vmd FAILED "$(app_row)" "$(row Packages/Core Core "carried $old" 7 "$old" validation-evidence/t/core.log)"
   run "$LINT" "$TASK"
-  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
-  finds carried
-  grep -q 'carried:.*Packages/Core' <<<"$output" || { echo "$output"; return 1; }
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  grep -q '^Validation.md: reach:.*Packages/Core' <<<"$output" || { echo "$output"; return 1; }
+  ! grep -q 'carried:' <<<"$output" || { echo "$output"; return 1; }
 }
 
 @test "a carried row next to a ran row of the same repository passes" {
@@ -209,7 +209,7 @@ finds() { # the lint's output has a finding of this class
   [ -z "$output" ] || { echo "$output"; return 1; }
 }
 
-@test "a repository whose every carried row is behind and has no ran row is a finding per row" {
+@test "a repository whose every carried row is behind gets a reach line per row" {
   commit "$PROJ" a.txt
   s1="$(head7 "$PROJ/Packages/Core")"
   commit "$PROJ/Packages/Core" c.txt
@@ -217,8 +217,28 @@ finds() { # the lint's output has a finding of this class
   commit "$PROJ/Packages/Core" d.txt
   vmd FAILED "$(app_row)" "$(row Packages/Core A "carried $s2" 7 "$s2" validation-evidence/t/core.log)" "$(row Packages/Core B "carried $s1" 3 "$s1" validation-evidence/t/core.log)"
   run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  [ "$(grep -c '^Validation.md: reach:' <<<"$output")" -eq 2 ] || { echo "$output"; return 1; }
+}
+
+@test "carried rows name their source" {
+  commit "$PROJ" a.txt
+  old="$(head7 "$PROJ/Packages/Core")"
+  vmd PASSED "$(app_row)" "$(row Packages/Core A "carried $old (phase 1)" 7 "$old" validation-evidence/t/core.log)" "$(row Packages/Core B "carried $old (validation)" 3 "$old" validation-evidence/t/core.log)"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  [ -z "$output" ] || { echo "$output"; return 1; }
+}
+
+@test "a reach line next to a finding keeps exit 1" {
+  commit "$PROJ" a.txt
+  old="$(head7 "$PROJ/Packages/Core")"
+  commit "$PROJ/Packages/Core" c.txt
+  vmd FAILED "$(row . App ran — "$(head7 "$PROJ")" validation-evidence/t/app.log)" "$(row Packages/Core Core "carried $old (validation)" 7 "$old" validation-evidence/t/core.log)"
+  run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
-  [ "$(grep -c '^Validation.md: carried:' <<<"$output")" -eq 2 ] || { echo "$output"; return 1; }
+  finds count
+  finds reach
 }
 
 @test "a carried repository nothing changed in after its sha passes" {
@@ -237,6 +257,14 @@ finds() { # the lint's output has a finding of this class
   grep -q 'carried:.*deadbee' <<<"$output" || { echo "$output"; return 1; }
 }
 
+@test "a carried sha off the history is a finding whatever its source" {
+  commit "$PROJ" a.txt
+  vmd FAILED "$(app_row)" "$(row Packages/Core Core "carried deadbee (phase 2)" 7 deadbee validation-evidence/t/core.log)"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  grep -q 'carried:.*deadbee' <<<"$output" || { echo "$output"; return 1; }
+}
+
 @test "PASSED without validated records is a record finding" {
   commit "$PROJ" a.txt
   commit "$PROJ/Packages/Core" c.txt
@@ -249,6 +277,20 @@ finds() { # the lint's output has a finding of this class
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
   ! grep -q 'record:' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "PASSED_WITH_FLAKES without validated records is a record finding" {
+  commit "$PROJ" a.txt
+  commit "$PROJ/Packages/Core" c.txt
+  vmd FAILED "$(app_row)" "$(core_row)"
+  sed -i.bak 's/FAILED/PASSED_WITH_FLAKES/' "$TASK/Validation.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  finds record
+  vmd PASSED_WITH_FLAKES "$(app_row)" "$(core_row)"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  [ -z "$output" ] || { echo "$output"; return 1; }
 }
 
 @test "a PASSED record that lacks one repository of the table names it" {
