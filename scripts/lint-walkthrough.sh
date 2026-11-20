@@ -20,29 +20,35 @@ set -euo pipefail
 # named in ## Commits. Nothing to measure is then a finding, since there is nothing up to date.
 # --current leaves the style class out: its verdict is the history and the coverage only.
 #
+# With --history-only it leaves out the coverage classes, missing, count, range and behind: what is
+# named in ## Commits still has to be in the history, but a file that stops short of the newest
+# commits is not a finding. A stage boundary asks that question; only Done asks the other one.
+#
 # With --style it runs only the style pass, on one file: no task dir, no git.
 #
 # With --words-per-sentence <n>, a positive integer, in either mode, n replaces the threshold the
 # directory resolves to: the run's own budget, which a directory cannot know. Every usage text names
 # it in each form; with --current, which leaves the style class out, it is accepted and changes nothing.
 #
-# Usage: scripts/lint-walkthrough.sh [--words-per-sentence <n>] [--current] <task-dir>
+# Usage: scripts/lint-walkthrough.sh [--words-per-sentence <n>] [--current | --history-only] <task-dir>
 #        scripts/lint-walkthrough.sh --style [--words-per-sentence <n>] <path-to-Walkthrough.md>
 # Exit:  0 nothing found, or nothing to measure (no Walkthrough.md, no Base.md, an EPIC);
 #        1 one line per finding, "Walkthrough.md: <class>: <what> (<where>)";
-#        2 usage, a --style argument that is not a file, or task-ranges.sh could not answer.
+#        2 usage (--history-only with --current or --style included), a --style argument that is not a file, or task-ranges.sh could not answer.
 
 HERE="$(dirname -- "${BASH_SOURCE[0]}")"
 # Every usage error prints both forms; n is named in each mode it works in.
 usage() {
-  echo "usage: $0 [--words-per-sentence <n>] [--current] <task-dir>" >&2
+  echo "usage: $0 [--words-per-sentence <n>] [--current | --history-only] <task-dir>" >&2
   echo "       $0 --style [--words-per-sentence <n>] <path-to-Walkthrough.md>" >&2
   echo "       (n: a positive integer)" >&2
   exit 2
 }
 current=0
+history=0
 mode=task
-# --words-per-sentence may stand anywhere before the path; the rest of the parsing never sees it.
+# --words-per-sentence and --history-only may stand anywhere before the path; the rest of the parsing
+# never sees them.
 wps=
 args=()
 while [ "$#" -gt 0 ]; do
@@ -50,6 +56,9 @@ while [ "$#" -gt 0 ]; do
     case "${2:-}" in '' | *[!0-9]* | 0*) usage ;; esac
     wps="$2"
     shift 2
+  elif [ "$1" = --history-only ]; then
+    history=1
+    shift
   else
     args+=("$1")
     shift
@@ -57,21 +66,24 @@ while [ "$#" -gt 0 ]; do
 done
 set -- ${args[@]+"${args[@]}"}
 if [ "${1:-}" = --style ]; then
+  [ "$history" -eq 0 ] || usage
   mode=style
   shift
   [ "$#" -eq 1 ] || usage
   [ -f "$1" ] || { echo "not a file: $1" >&2; exit 2; }
 else
   [ "${1:-}" = --current ] && { current=1; shift; }
+  [ "$history" -eq 0 ] || [ "$current" -eq 0 ] || usage
   [ "$#" -eq 1 ] || usage
   [ -d "$1" ] || { echo "not a directory: $1" >&2; exit 2; }
 fi
 
-python3 - "$HERE/task-ranges.sh" "$1" "$current" "$HERE/lib" "$mode" "$wps" <<'PY'
+python3 - "$HERE/task-ranges.sh" "$1" "$current" "$HERE/lib" "$mode" "$wps" "$history" <<'PY'
 import os, re, subprocess, sys
 
 RANGES, TASK, CURRENT, MODE = sys.argv[1], sys.argv[2], sys.argv[3] == '1', sys.argv[5]
 WPS = int(sys.argv[6]) if sys.argv[6] else None
+HISTORY = sys.argv[7] == '1'
 # chunks() and the sentence helpers are shared with the other artifact lints. No bytecode: a python
 # without a cache prefix would otherwise leave scripts/lib/__pycache__ in the plugin.
 sys.dont_write_bytecode = True
@@ -284,7 +296,13 @@ def style(text, deep, limit):
     return out
 
 
+# What --history-only leaves out: the classes that ask whether the file reaches the newest commits.
+COVERAGE = ('missing', 'count', 'range', 'behind')
+
+
 def report(found):
+    if HISTORY:
+        found = [f for f in found if f.split(':', 1)[0] not in COVERAGE]
     if found:
         print('\n'.join('Walkthrough.md: ' + f for f in found))
         sys.exit(1)
@@ -428,7 +446,5 @@ if CURRENT:
         elif not any(sha.startswith(s) for s in covered):
             found.append('behind: %s is not named in ## Commits (%s)' % (sha[:7], repo))
 
-if found:
-    print('\n'.join('Walkthrough.md: ' + f for f in found))
-    sys.exit(1)
+report(found)
 PY

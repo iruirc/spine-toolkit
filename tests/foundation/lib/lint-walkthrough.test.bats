@@ -244,17 +244,48 @@ PY2
   [ "$status" -eq 2 ] || { echo "--current alone: $status"; return 1; }
 }
 
+@test "--history-only stays quiet about a file behind the task's last commit" {
+  walkthrough deep "$(printf '### 1. `proj@%s` — first' "$A1")"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "without the flag: $status $output"; return 1; }
+  grep -qF "Walkthrough.md: missing: $A2 is not named in ## Commits (proj)" <<<"$output" || { echo "$output"; return 1; }
+  run "$LINT" --history-only "$TASK"
+  [ "$status" -eq 0 ] || { echo "with the flag: $status $output"; return 1; }
+  [ -z "$output" ] || { echo "$output"; return 1; }
+}
+
+@test "--history-only still reports a commit history no longer holds" {
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second\n\n### 3. `proj@%s` — dropped' "$A1" "$A2" "$GONE")"
+  run "$LINT" --history-only "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Walkthrough.md: unreachable: $GONE is not in the task's history (### 3)" ] || { echo "$output"; return 1; }
+}
+
+@test "--history-only with --current or --style is a usage error" {
+  walkthrough deep "$(printf '### 1. `proj@%s` — first\n\n### 2. `proj@%s` — second' "$A1" "$A2")"
+  styled x x x
+  run "$LINT" --history-only --current "$TASK"
+  [ "$status" -eq 2 ] || { echo "history then current: $status $output"; return 1; }
+  run "$LINT" --current --history-only "$TASK"
+  [ "$status" -eq 2 ] || { echo "current then history: $status $output"; return 1; }
+  run "$LINT" --history-only --style "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 2 ] || { echo "history then style: $status $output"; return 1; }
+  run "$LINT" --style --history-only "$BATS_TEST_TMPDIR/w.md"
+  [ "$status" -eq 2 ] || { echo "style then history: $status $output"; return 1; }
+  grep -qF 'usage: ' <<<"$output" || { echo "$output"; return 1; }
+}
+
 @test "every usage text names --words-per-sentence <n>, in task mode, with --current and in --style" {
-  for args in "" "--current" "--style" "--style --words-per-sentence 12"; do
+  for args in "" "--current" "--history-only" "--style" "--style --words-per-sentence 12"; do
     run "$LINT" $args
     [ "$status" -eq 2 ] || { echo "'$args': $status $output"; return 1; }
     grep -qF 'usage: ' <<<"$output" || { echo "'$args': $output"; return 1; }
-    [ "$(grep -cF -- '[--words-per-sentence <n>] [--current] <task-dir>' <<<"$output")" -eq 1 ] || { echo "'$args' task line: $output"; return 1; }
+    [ "$(grep -cF -- '[--words-per-sentence <n>] [--current | --history-only] <task-dir>' <<<"$output")" -eq 1 ] || { echo "'$args' task line: $output"; return 1; }
     [ "$(grep -cF -- '--style [--words-per-sentence <n>] <path-to-Walkthrough.md>' <<<"$output")" -eq 1 ] || { echo "'$args' style line: $output"; return 1; }
   done
   run "$LINT" --words-per-sentence 0 "$TASK"
   [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
-  grep -qF -- '[--words-per-sentence <n>] [--current] <task-dir>' <<<"$output" || { echo "$output"; return 1; }
+  grep -qF -- '[--words-per-sentence <n>] [--current | --history-only] <task-dir>' <<<"$output" || { echo "$output"; return 1; }
 }
 
 # The style class: how the prose of the file reads, not what it says about the history.
