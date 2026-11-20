@@ -48,7 +48,7 @@ field() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1]])'
       || { echo "$(basename "$p"): manual_checks_pass is not guarded"; return 1; }
     grep -qxF "const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'" "$p" \
       || { echo "$(basename "$p"): phase_verification is not guarded"; return 1; }
-    grep -qxF "const WALKTHROUGH_CHECK = A.walkthrough_check === 'on' ? 'on' : 'off'" "$p" \
+    grep -qxF "const WALKTHROUGH_CHECK = ['on', 'once'].includes(A.walkthrough_check) ? A.walkthrough_check : 'off'" "$p" \
       || { echo "$(basename "$p"): walkthrough_check is not guarded"; return 1; }
     grep -qxF "const ARTIFACT_CHECK = A.artifact_check === 'on' ? 'on' : 'off'" "$p" \
       || { echo "$(basename "$p"): artifact_check is not guarded"; return 1; }

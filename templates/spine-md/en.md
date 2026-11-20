@@ -31,7 +31,7 @@
 [PHASE_VERIFICATION] = [proportional]  # proportional | full
 [FIX_ROUNDS] = [2]                     # a whole number, 0 turns the auto loop off
 [WALKTHROUGH] = [deep]                 # brief | deep | off
-[WALKTHROUGH_CHECK] = [auto]           # auto | on | off
+[WALKTHROUGH_CHECK] = [auto]           # auto | on | once | off
 [ARTIFACT_CHECK] = [auto]              # auto | on | off
 [SECURITY] = [auto]                    # auto | on | off
 [DOCS] = [on]                          # on | off

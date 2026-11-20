@@ -86,7 +86,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   [ "$(field mode <<<"$output")" = manual ] || { echo "$output"; return 1; }
   [ "$(field scale <<<"$output")" = full ] || { echo "$output"; return 1; }
   [ "$(field walkthrough <<<"$output")" = deep ] || { echo "$output"; return 1; }
-  [ "$(field walkthrough_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(field walkthrough_check <<<"$output")" = once ] || { echo "$output"; return 1; }
   [ "$(field artifact_check <<<"$output")" = on ] || { echo "$output"; return 1; }
   [ "$(field drive_app <<<"$output")" = auto ] || { echo "$output"; return 1; }
   [ "$(field manual_checks <<<"$output")" = auto ] || { echo "$output"; return 1; }
@@ -526,7 +526,7 @@ FIELDS
     || { echo "read-steps never asks for the step's own depth and check"; return 1; }
   grep -qF "device: st.device === undefined ? DEVICE || 'auto' : st.device," "$E" && grep -qF "device_source: DEVICE_SOURCE || '—'," "$E" \
     || { echo "profile-epic.js does not forward the device to a step"; return 1; }
-  grep -qF "walkthrough_check: { type: 'string', enum: ['on', 'off']" "$E" \
+  grep -qF "walkthrough_check: { type: 'string', enum: ['on', 'once', 'off']" "$E" \
     || { echo "the step record has no walkthrough_check"; return 1; }
   grep -qF "artifact_check: { type: 'string', enum: ['on', 'off']" "$E" \
     || { echo "the step record has no artifact_check"; return 1; }
@@ -640,11 +640,26 @@ FIELDS
 
 @test "walkthrough_check follows the depth when nobody chose it" {
   run "$RESOLVE" json "$TASK"
-  [ "$(field walkthrough_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(field walkthrough_check <<<"$output")" = once ] || { echo "$output"; return 1; }
   [ "$(source_of walkthrough_check <<<"$output")" = walkthrough ] || { echo "$output"; return 1; }
   printf '[TASK_TYPE] = [BUG]\n[WALKTHROUGH] = [brief]\n' >"$TASK/Task.md"
   run "$RESOLVE" json "$TASK"
   [ "$(field walkthrough_check <<<"$output")" = off ] || { echo "$output"; return 1; }
+}
+
+@test "a task's [WALKTHROUGH_CHECK] = [once] resolves to once, even at brief" {
+  printf '[TASK_TYPE] = [BUG]\n[WALKTHROUGH] = [brief]\n[WALKTHROUGH_CHECK] = [once]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field walkthrough_check <<<"$output")" = once ] || { echo "$output"; return 1; }
+  [ "$(source_of walkthrough_check <<<"$output")" = task ] || { echo "$output"; return 1; }
+}
+
+@test "a run's walkthrough_check=once does not bring back a walkthrough that is off" {
+  printf '[TASK_TYPE] = [BUG]\n[WALKTHROUGH] = [off]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK" --set walkthrough_check=once
+  [ "$(field walkthrough <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(field walkthrough_check <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(source_of walkthrough_check <<<"$output")" = walkthrough ] || { echo "$output"; return 1; }
 }
 
 @test "a chosen walkthrough_check beats the depth" {
@@ -675,7 +690,7 @@ FIELDS
   run "$RESOLVE" show "$TASK"
   ! grep -q '^\[WALKTHROUGH_CHECK\]' <<<"$output" || { echo "$output"; return 1; }
   run "$RESOLVE" show "$TASK" --all
-  grep -qE '^\[WALKTHROUGH_CHECK\] += \[on\] +# walkthrough: deep$' <<<"$output" || { echo "$output"; return 1; }
+  grep -qE '^\[WALKTHROUGH_CHECK\] += \[once\] +# walkthrough: deep$' <<<"$output" || { echo "$output"; return 1; }
 }
 
 @test "a step inherits the epic's walkthrough_check" {
@@ -1152,7 +1167,7 @@ $BATS_TEST_TMPDIR/assets"
   run "$RESOLVE" json "$TASK" --set walkthrough=deep
   [ "$(field walkthrough <<<"$output")" = deep ] || { echo "$output"; return 1; }
   [ "$(source_of walkthrough <<<"$output")" = run ] || { echo "$output"; return 1; }
-  [ "$(field walkthrough_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(field walkthrough_check <<<"$output")" = once ] || { echo "$output"; return 1; }
 }
 
 @test "a QUICK task stays lite whatever the run says, and says why" {

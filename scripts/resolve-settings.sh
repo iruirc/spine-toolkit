@@ -31,7 +31,7 @@ set -euo pipefail
 # Key by key: --set, this run's own word -> Task.md [FIELD] -> for a .step/ folder, the epic's Task.md above it -> the project
 # config in the nearest directory holding SPINE.md or CLAUDE-spine-toolkit.md -> the defaults below. walkthrough has one more step: off when the
 # resolved scale is lite, which beats the project and loses to the task's own [WALKTHROUGH].
-# walkthrough_check then follows it: auto is on at deep and off at brief, and off where no file is written.
+# walkthrough_check then follows it: auto is once at deep and off at brief, and off where no file is written.
 # artifact_check follows the final scale: auto is on at full and off at lite.
 # report follows the profile: auto is off for QUICK, BUG and REFACTOR, off always for REVIEW, and stays auto for the rest.
 ROLES="architect developer tester reviewer refactorer validator security diagnostics"
@@ -239,7 +239,7 @@ SCALARS = (
     ('settings_report', 'SETTINGS_REPORT', ['diff', 'full', 'off'], 'diff'),
     ('scale', 'SCALE', ['lite', 'full'], 'full'),
     ('walkthrough', 'WALKTHROUGH', ['brief', 'deep', 'off'], 'deep'),
-    ('walkthrough_check', 'WALKTHROUGH_CHECK', ['auto', 'on', 'off'], 'auto'),
+    ('walkthrough_check', 'WALKTHROUGH_CHECK', ['auto', 'on', 'once', 'off'], 'auto'),
     ('artifact_check', 'ARTIFACT_CHECK', ['auto', 'on', 'off'], 'auto'),
     ('report', 'REPORT', ['auto', 'on', 'off'], 'auto'),
     ('drive_app', 'DRIVE_APP', ['auto', 'off'], 'auto'),
@@ -534,7 +534,7 @@ if resolved['scale'] == 'lite' and sources['walkthrough'] in ('default', 'projec
 CHOSEN = {'walkthrough_check': resolved['walkthrough_check'], 'artifact_check': resolved['artifact_check'],
           'report': resolved['report']}
 chosen, depth = CHOSEN['walkthrough_check'], resolved['walkthrough']
-check = 'off' if depth == 'off' else ('on' if depth == 'deep' else 'off') if chosen == 'auto' else chosen
+check = 'off' if depth == 'off' else ('once' if depth == 'deep' else 'off') if chosen == 'auto' else chosen
 if check != chosen:
     show_source['walkthrough_check'] = ('walkthrough: %s' % depth if chosen == 'auto' else
                                         'walkthrough: off (%s: %s)' % (sources['walkthrough_check'], chosen))

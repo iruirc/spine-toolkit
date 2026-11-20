@@ -409,10 +409,10 @@ A refresh that finds the file at the other depth rewrites it to the resolved one
 ## Check
 
 `[WALKTHROUGH_CHECK]` decides whether the file is read back by someone who was not there; it reaches
-a run as the contract's `walkthrough_check`, `on` or `off`. `auto`, its default, is `on` at `deep`
-and `off` at `brief`, and nothing is checked where `[WALKTHROUGH]` wrote nothing.
+a run as the contract's `walkthrough_check`, `on`, `once` or `off`. `auto`, its default, is `once` at
+`deep` and `off` at `brief`, and nothing is checked where `[WALKTHROUGH]` wrote nothing.
 
-When it is `on`, every write that changed the file is followed by a read. A refresh that changed
+When it is `on` or `once`, every write that changed the file is followed by a read. A refresh that changed
 nothing is not checked. The writer never checks its own file: the dispatcher does — the profile
 script under Method A, the workflow skill's main context under Method B.
 
@@ -440,7 +440,10 @@ place named; where the retelling misreads a change, the text that led it there i
 `[COVERS]` stays. `## Commits` is edited in place — this is the same version of the file, not a
 refresh, so the append-only rule does not apply.
 
-**At most two rounds.** When the first read listed three places or fewer, what is left after the
+**At `once`, one read and one revision.** The revised file is not read again, however many places the
+first read named. The run notes one line: how many places were named and whether the file was revised.
+
+**At `on`, at most two rounds.** When the first read listed three places or fewer, what is left after the
 revision is not checked again. When the first read listed more than three places, the revised file
 is read once more by a fresh reader, and the writer revises once more from that second read —
 never a third. The count that decides is the first read's, so a second read that lists more still

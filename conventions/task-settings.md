@@ -102,8 +102,9 @@ config is checked *after* the gate, so it never overrides `lite` the way the tas
 (the second decision below).
 
 `walkthrough_check` follows the depth it checks. Its chain is the ordinary one and ends at `auto`,
-but only `on` or `off` leaves the resolver: `auto` becomes `on` where `walkthrough` resolved to
-`deep` and `off` where it resolved to `brief`. Wherever `walkthrough` resolves to `off` — the `lite`
+but only `on`, `once` or `off` leaves the resolver: `auto` becomes `once` where `walkthrough` resolved
+to `deep` and `off` where it resolved to `brief`. `once` is one read and one revision; `on` adds a
+second round when the first read named more than three places. Wherever `walkthrough` resolves to `off` — the `lite`
 gate included — `walkthrough_check` is `off` as well, there being no file to check. Where that
 overrode a chosen `on`, or where the value came from `auto`, the source reads `walkthrough`, and
 `show` names the value that was displaced.
@@ -149,7 +150,7 @@ answers.
 | `settings_report` | — | `[SETTINGS_REPORT]` | `diff` `full` `off` | `diff` |
 | `scale` | `[SCALE]` | `[SCALE]` | `lite` `full` | `full`; always `lite` for a `QUICK` task |
 | `walkthrough` | `[WALKTHROUGH]` | `[WALKTHROUGH]` | `brief` `deep` `off` | `off` when `scale` is `lite`, else `deep` |
-| `walkthrough_check` | `[WALKTHROUGH_CHECK]` | `[WALKTHROUGH_CHECK]` | `auto` `on` `off` | `auto`: `on` at `deep`, `off` at `brief`; `off` wherever `walkthrough` is `off` |
+| `walkthrough_check` | `[WALKTHROUGH_CHECK]` | `[WALKTHROUGH_CHECK]` | `auto` `on` `once` `off` | `auto`: `once` at `deep`, `off` at `brief`; `off` wherever `walkthrough` is `off` |
 | `artifact_check` | `[ARTIFACT_CHECK]` | `[ARTIFACT_CHECK]` | `auto` `on` `off` | `auto`: `on` at `full`, `off` at `lite` |
 | `report` | `[REPORT]` | `[REPORT]` | `auto` `on` `off` | `auto`: stays `auto` for `TEST`, `FEATURE`, `RESEARCH`, `EPIC`; `off` for `QUICK`, `BUG`, `REFACTOR`; always `off` for `REVIEW` |
 | `drive_app` | `[DRIVE_APP]` | `[DRIVE_APP]` | `auto` `off` | `auto` |

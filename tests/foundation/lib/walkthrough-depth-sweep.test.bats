@@ -38,7 +38,7 @@ setup() {
   n=0
   for p in "$ROOT"/workflows/profile-*.js; do
     n=$((n + 1))
-    for line in "if (WALKTHROUGH_CHECK === 'on' && w.changed !== false) await checkWalkthrough(stage, agentType, depth, extra)" \
+    for line in "if (WALKTHROUGH_CHECK !== 'off' && w.changed !== false) await checkWalkthrough(stage, agentType, depth, extra)" \
                 'return w' \
                 "label: 'walkthrough:check'" "label: 'walkthrough:revise'" \
                 "schema: COLD_READ, ...tuning(WALKTHROUGH_AGENT, 'light')" \

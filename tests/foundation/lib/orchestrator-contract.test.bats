@@ -451,8 +451,8 @@ section() {
   grep -qF 'state it in the final report instead' <<<"$d" || { echo "quiet no longer names the method"; return 1; }
 }
 
-@test "the outbound contract carries walkthrough_check, on or off and never auto" {
-  grep -qxF 'walkthrough_check=on|off' "$SKILL" || { echo "no walkthrough_check= line in the contract block"; return 1; }
+@test "the outbound contract carries walkthrough_check, on, once or off and never auto" {
+  grep -qxF 'walkthrough_check=on|once|off' "$SKILL" || { echo "no walkthrough_check= line in the contract block"; return 1; }
   para="$(awk '/^`walkthrough_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   [ -n "$para" ] || { echo "no \`walkthrough_check\` paragraph in the Outbound Contract"; return 1; }
   for token in 'resolve-settings.sh json' 'Always filled' '`auto` never reaches the contract' \

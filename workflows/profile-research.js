@@ -94,7 +94,7 @@ const MANUAL_CHECKS_CHECK = A.manual_checks_check === 'off' ? 'off' : 'on'
 const MANUAL_CHECKS_STYLE = A.manual_checks_style === 'full' ? 'full' : 'brief'
 const MANUAL_CHECKS_PASS = A.manual_checks_pass === 'end' ? 'end' : 'per-step'
 const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'
-const WALKTHROUGH_CHECK = A.walkthrough_check === 'on' ? 'on' : 'off'
+const WALKTHROUGH_CHECK = ['on', 'once'].includes(A.walkthrough_check) ? A.walkthrough_check : 'off'
 const ARTIFACT_CHECK = A.artifact_check === 'on' ? 'on' : 'off'
 // Whether Walkthrough.md names the task's newest commit: the orchestrator's measure before the run,
 // then each writer's result. Done's own commits are the one thing left that can move past it.
@@ -572,11 +572,13 @@ const MANUAL_CHECKS_REVISED = {
   },
 }
 
-// A reader with none of the writer's context, then a revision; a second round only when the first
-// read listed more than three places, never a third: task-walkthrough → ## Check.
+// A reader with none of the writer's context, then a revision. At `once` that is all; at `on` a second
+// round follows only when the first read listed more than three places, never a third:
+// task-walkthrough → ## Check.
 const checkWalkthrough = async (stage, agentType, depth, extra) => {
   let first = 0
-  for (let round = 1; round <= 2; round++) {
+  const rounds = WALKTHROUGH_CHECK === 'on' ? 2 : 1
+  for (let round = 1; round <= rounds; round++) {
     const tag = round === 1 ? 'Walkthrough.md check' : 'Walkthrough.md second check'
     if (!(await walkthroughRound(stage, agentType, depth, extra, tag, (n) => (first = first || n)))) return
     if (first <= 3) return
@@ -736,7 +738,7 @@ Change no production code and no tests.`,
   }
   log(`Walkthrough.md: ${w.summary || 'written'}`)
   if (w.lint) result.notes.push(`Walkthrough.md lint: ${w.lint}`)
-  if (WALKTHROUGH_CHECK === 'on' && w.changed !== false) await checkWalkthrough(stage, agentType, depth, extra)
+  if (WALKTHROUGH_CHECK !== 'off' && w.changed !== false) await checkWalkthrough(stage, agentType, depth, extra)
   return w
 }
 

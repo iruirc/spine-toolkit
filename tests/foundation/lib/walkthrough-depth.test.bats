@@ -253,7 +253,7 @@ NAMES
   ck="$(awk '/^## Check$/{f=1;next} /^## /{f=0} f' "$SKILL")"
   for token in '`walkthrough_check`' '`[WALKTHROUGH_CHECK]`' 'The writer never checks its own file' \
                'reads `Walkthrough.md` and nothing else' '`retelling`' '`unclear`' '**Revision.**' \
-               '**At most two rounds.**' 'append-only rule does not apply'; do
+               '**At `on`, at most two rounds.**' '**At `once`, one read and one revision.**' 'append-only rule does not apply'; do
     grep -qF "$token" <<<"$ck" || { echo "## Check does not say $token"; return 1; }
   done
 }
@@ -341,15 +341,15 @@ NAMES
 
 @test "the check's field is offered and documented wherever a setting is" {
   T="$ROOT/templates/spine-md/en.md"
-  grep -qE '^\[WALKTHROUGH_CHECK\] = \[auto\] +# auto \| on \| off$' "$T" \
+  grep -qE '^\[WALKTHROUGH_CHECK\] = \[auto\] +# auto \| on \| once \| off$' "$T" \
     || { echo "the config template does not ship auto beside the three values"; return 1; }
   config_doc_offers WALKTHROUGH_CHECK || { echo "the doc does not let a task override the field"; return 1; }
   D="$ROOT/docs/configuration.md"
   grep -qxF '### [WALKTHROUGH_CHECK]' "$D" || { echo "docs/configuration.md has no section for the field"; return 1; }
-  grep -qF '`[WALKTHROUGH_CHECK] = [auto|on|off]`' "$D" || { echo "the override spelling is missing"; return 1; }
-  grep -qF '`[WALKTHROUGH_CHECK] = [<auto|on|off>]`' "$ROOT/skills/task-new/SKILL.md" \
+  grep -qF '`[WALKTHROUGH_CHECK] = [auto|on|once|off]`' "$D" || { echo "the override spelling is missing"; return 1; }
+  grep -qF '`[WALKTHROUGH_CHECK] = [<auto|on|once|off>]`' "$ROOT/skills/task-new/SKILL.md" \
     || { echo "task-new does not offer the field"; return 1; }
-  grep -qF '| `walkthrough_check` | `[WALKTHROUGH_CHECK]` | `[WALKTHROUGH_CHECK]` | `auto` `on` `off` |' \
+  grep -qF '| `walkthrough_check` | `[WALKTHROUGH_CHECK]` | `[WALKTHROUGH_CHECK]` | `auto` `on` `once` `off` |' \
     "$ROOT/conventions/task-settings.md" || { echo "task-settings.md has no row for the field"; return 1; }
 }
 

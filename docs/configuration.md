@@ -305,23 +305,24 @@ out-rank it, while the task's own `[WALKTHROUGH]` is read before it and wins out
 
 ### [WALKTHROUGH_CHECK]
 
-**Values:** `auto` `on` `off` · **Default:** `auto` — `on` at `deep`, `off` at `brief` ·
-**Task override:** `[WALKTHROUGH_CHECK] = [auto|on|off]` · **Defined by:** the `task-walkthrough`
+**Values:** `auto` `on` `once` `off` · **Default:** `auto` — `once` at `deep`, `off` at `brief` ·
+**Task override:** `[WALKTHROUGH_CHECK] = [auto|on|once|off]` · **Defined by:** the `task-walkthrough`
 skill, `## Check`
 
 Whether `Walkthrough.md` is read back by a reader with none of the writer's context, and revised
 from what that reader could not follow. The reader is a fresh agent of the writer's role that
 opens the file and nothing else. It retells every item of `## What changed` and names each place it
-had to guess; an empty list ends the check, otherwise the writer fixes the places named. At most two
+had to guess; an empty list ends the check, otherwise the writer fixes the places named. At `once`
+that is one read and one revision, however many places the read named. At `on` there are at most two
 rounds: when the first read named more than three places, a second fresh reader reads the revised
 file and the writer revises once more, never a third time. The run notes how many places each round
 found.
 
-`auto` follows the depth `[WALKTHROUGH]` resolves to: `on` at `deep`, `off` at `brief`. `on` checks
-a `brief` file too; `off` never checks. Where `[WALKTHROUGH]` resolves to `off` — a `lite` task
+`auto` follows the depth `[WALKTHROUGH]` resolves to: `once` at `deep`, `off` at `brief`. `on` and
+`once` check a `brief` file too; `off` never checks. Where `[WALKTHROUGH]` resolves to `off` — a `lite` task
 included — nothing is checked, whatever this field says. The check costs one `light` dispatch per
-write that changed the file, and one more writer dispatch when it finds something; a second round
-adds one of each.
+write that changed the file, and one more writer dispatch when it finds something; at `on`, a second
+round adds one of each.
 
 ### [ARTIFACT_CHECK]
 

@@ -18,11 +18,14 @@ block() {
   awk '/^const WALKTHROUGH_ARTIFACT = \{$/ { f = 1 } f { print } f && /^  return w$/ { getline; print; exit }' "$1"
 }
 
+# The check value is $1, `on` unless a test says otherwise.
+# $1 is the value of the check, `on` unless a test names another.
 contract() {
-  printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "Review", "stage_scope": "forward", "review_ranges": %s, "walkthrough": "deep", "walkthrough_check": "on"}' "$AGENTS" "$TWO"
+  printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "Review", "stage_scope": "forward", "review_ranges": %s, "walkthrough": "deep", "walkthrough_check": "%s"}' "$AGENTS" "$TWO" "${1:-on}"
 }
 
-run_profile() { node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" "$(contract)" "$2"; }
+# $3 is the value of the check, `on` unless a test names another.
+run_profile() { node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" "$(contract "${3:-on}")" "$2"; }
 
 pick() { node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8")); const v = eval(process.argv[1]); console.log(typeof v === "string" ? v : JSON.stringify(v))' "$1"; }
 
@@ -102,6 +105,28 @@ order() { pick "o.calls.map((c) => c.label).filter((l) => l.startsWith('walkthro
   done
 }
 
+@test "once: twelve unclear places get one revision and no second read" {
+  for p in $WRITERS; do
+    out="$(run_profile "$p" "{$BASE, \"walkthrough:check\": $(read_with 12)}" once)"
+    [ "$(order <<<"$out")" = 'walkthrough walkthrough:check walkthrough:revise' ] || { echo "profile-$p: dispatched $(order <<<"$out")"; return 1; }
+    ! grep -qF 'second check' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: a second round is noted"; return 1; }
+  done
+}
+
+@test "once with nothing unclear ends after the read" {
+  for p in $WRITERS; do
+    out="$(run_profile "$p" "{$BASE, \"walkthrough:check\": $(read_with 0)}" once)"
+    [ "$(order <<<"$out")" = 'walkthrough walkthrough:check' ] || { echo "profile-$p: dispatched $(order <<<"$out")"; return 1; }
+  done
+}
+
+@test "off dispatches no check at all" {
+  for p in $WRITERS; do
+    out="$(run_profile "$p" "{$BASE, \"walkthrough:check\": $(read_with 12)}" off)"
+    [ "$(order <<<"$out")" = 'walkthrough' ] || { echo "profile-$p: dispatched $(order <<<"$out")"; return 1; }
+  done
+}
+
 @test "the skill says a first revision that changed nothing or returned nothing ends the check" {
   S="$ROOT/skills/task-walkthrough/SKILL.md"
   ck="$(awk '/^## Check$/{f=1;next} f&&/^## /{exit} f' "$S" | tr '\n' ' ')"
@@ -121,7 +146,7 @@ order() { pick "o.calls.map((c) => c.label).filter((l) => l.startsWith('walkthro
 @test "the skills and the configuration reference describe two bounded rounds, not one" {
   for s in workflow-bug workflow-feature workflow-epic workflow-refactor workflow-test orchestrator; do
     S="$ROOT/skills/$s/SKILL.md"
-    grep -qF 'when that first read named more than three places, once more from a second fresh read, never a third' "$S" \
+    grep -qF 'that first read named more than three places, once more from a second fresh read, never a third' "$S" \
       || { echo "$s: the second round is not stated"; return 1; }
     ! grep -qF 'the writer revises once from what that reader could not follow' "$S" || { echo "$s: still one round"; return 1; }
   done
@@ -129,4 +154,13 @@ order() { pick "o.calls.map((c) => c.label).filter((l) => l.startsWith('walkthro
   ck="$(awk '/^### \[WALKTHROUGH_CHECK\]$/{f=1;next} /^### /{f=0} f' "$C")"
   grep -qF 'when the first read named more than three places' <<<"$ck" || { echo "configuration.md: the second round is not stated"; return 1; }
   ! grep -qF 'One round,' <<<"$ck" || { echo "configuration.md: still one round"; return 1; }
+  grep -qF 'at `on`' <<<"$ck" || { echo "configuration.md: the second round is not tied to on"; return 1; }
+  grep -qF '`once`' <<<"$ck" || { echo "configuration.md: once is not named"; return 1; }
+  ck="$(awk '/^## Check$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/task-walkthrough/SKILL.md" | tr '\n' ' ')"
+  grep -qF '**At `on`, at most two rounds.**' <<<"$ck" || { echo "task-walkthrough: the second round is not tied to on"; return 1; }
+  grep -qF '**At `once`, one read and one revision.**' <<<"$ck" || { echo "task-walkthrough: once is not described"; return 1; }
+  for s in workflow-bug workflow-feature workflow-epic workflow-refactor workflow-test orchestrator; do
+    grep -qF 'when `walkthrough_check` is `on`' "$ROOT/skills/$s/SKILL.md" || { echo "$s: the second round is not tied to on"; return 1; }
+    grep -qF '`once`' "$ROOT/skills/$s/SKILL.md" || { echo "$s: once is not named"; return 1; }
+  done
 }
