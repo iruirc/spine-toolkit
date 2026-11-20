@@ -1,6 +1,6 @@
 ---
 name: task-walkthrough
-description: "Use at the end of an implementing stage (Execute / Fix / Refactor / Write), and again after Done's own commits, to write or refresh `Walkthrough.md` — the human-facing account of what a task actually landed. It opens with what changed, before and after, then goes to the depth the axis resolves to: `deep`, a section per commit with the failure each one is written against; `brief`, a summary with a commit log; or `off`, not written at all. Governed by `[WALKTHROUGH]` and `[WALKTHROUGH_CHECK]` in Task.md and the project config."
+description: "Use after Done's own commits — and at the end of an implementing stage (Execute / Fix / Refactor / Write) only under `[WALKTHROUGH_WHEN]` = `stage` — to write or refresh `Walkthrough.md`, the human-facing account of what a task actually landed. It opens with what changed, before and after, then goes to the depth the axis resolves to: `deep`, a section per commit with the failure each one is written against; `brief`, a summary with a commit log; or `off`, not written at all. Governed by `[WALKTHROUGH]`, `[WALKTHROUGH_WHEN]` and `[WALKTHROUGH_CHECK]` in Task.md and the project config."
 ---
 
 # Task Walkthrough
@@ -462,8 +462,10 @@ is read once more by a fresh reader, and the writer revises once more from that 
 never a third. The count that decides is the first read's, so a second read that lists more still
 ends the check after its revision. When the first revision changed nothing or returned nothing, there
 is no second read: a fresh reader would only meet the text the first one already judged. The run notes one line per round: how many places were named and
-whether the file was revised. A failure of any of these dispatches is noted and stops nothing, as a
-failure of the write does.
+whether the file was revised.
+
+At `once` and at `on` alike, a failure of any read or revision dispatch of the check is noted and
+stops nothing, as a failure of the write does.
 
 ## Not applicable
 

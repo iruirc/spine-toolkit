@@ -170,6 +170,16 @@ mapping_rows() {
     || { echo "setup has no rule for the pre-split line"; return 1; }
 }
 
+@test "the pre-split line's value replaces the template's two check lines, never follows them" {
+  # config_value takes a field's first line, so two lines appended after the template's [auto] ones
+  # would be shadowed, and a carried [ARTIFACT_CHECK] = [off] would silently become auto.
+  flat="$(tr '\n' ' ' <"$SKILL" | tr -s ' ')"
+  grep -qF "The two replace the template's own \`[PLAN_CHECK]\` and \`[DONE_CHECK]\` lines, in their place, and are never appended after them" <<<"$flat" \
+    || { echo "the Block-to-field rule does not replace the template's lines"; return 1; }
+  grep -qF "its value replaces the template's \`[PLAN_CHECK]\` and \`[DONE_CHECK]\` lines where they stand" <<<"$flat" \
+    || { echo "State C(c) does not replace the template's lines"; return 1; }
+}
+
 @test "the migration's two counts of the fields at their default agree: twenty-eight, and [SCALE] apart" {
   grep -qF 'Twenty-eight agree' "$SKILL" || { echo "the absent-field paragraph does not say twenty-eight agree"; return 1; }
   tr '\n' ' ' <"$SKILL" | tr -s ' ' | grep -qF "the template's line for twenty-eight of them, \`full\` for \`[SCALE]\`" \

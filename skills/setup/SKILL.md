@@ -190,7 +190,8 @@ anything — which is what lets F, G and C take the language and the platform fr
         as it was.
      c. Ask qM, qP, qMS — qMS only when the config holds no `[MANUAL_CHECKS_STYLE]` line.
         A config that holds the line keeps its value, and the rewritten file carries it over. A
-        `[ARTIFACT_CHECK]` line is carried over as the two lines it now is (Block-to-field mapping).
+        `[ARTIFACT_CHECK]` line is carried over as the two lines it now is: its value replaces the
+        template's `[PLAN_CHECK]` and `[DONE_CHECK]` lines where they stand (Block-to-field mapping).
      d. Backup-and-overwrite → rename SPINE.md → SPINE.md.bak (timestamp on collision). Then
         render the toolkit template and write it to SPINE.md (overwrite).
      e. Self-heal CLAUDE.md: if the `@./SPINE.md` line is missing, run the
@@ -568,7 +569,10 @@ resolver's own output for each is the derived `on`/`off`, which is never what th
 
 A `[ARTIFACT_CHECK] = [X]` line is written as two lines, `[PLAN_CHECK] = [X]` and `[DONE_CHECK] = [X]`,
 with the same `X`, wherever setup rewrites a config that holds it: `[ARTIFACT_CHECK]` is the pre-split
-spelling of the two. The resolver still reads it, and says so on every run until the line is gone.
+spelling of the two. The two replace the template's own `[PLAN_CHECK]` and `[DONE_CHECK]` lines, in
+their place, and are never appended after them: the resolver takes a field's first line, so an
+appended one would be shadowed by the template's `auto`. The resolver still reads `[ARTIFACT_CHECK]`,
+and says so on every run where it says `on` or `off`, until the line is gone.
 
 ### Preamble handling
 

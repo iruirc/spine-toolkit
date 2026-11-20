@@ -752,7 +752,7 @@ FIELDS
   grep -qF '`[WALKTHROUGH_WHEN] = [stage|done]`' "$D" || { echo "the override spelling is missing"; return 1; }
   grep -qF '`[WALKTHROUGH_WHEN] = [<stage|done>]`' "$ROOT/skills/task-new/SKILL.md" \
     || { echo "task-new does not offer the field"; return 1; }
-  grep -qF '[WALKTHROUGH_WHEN] = [done]                # stage | done' "$ROOT/templates/spine-md/en.md" \
+  grep -qF '[WALKTHROUGH_WHEN] = [done]            # stage | done' "$ROOT/templates/spine-md/en.md" \
     || { echo "the config template does not ship the field"; return 1; }
   config_doc_offers WALKTHROUGH_WHEN || { echo "the doc does not let a task override the field"; return 1; }
 }
@@ -828,6 +828,25 @@ FIELDS
   grep -qxF "$PROJ/CLAUDE-spine-toolkit.md: '[ARTIFACT_CHECK]' is the pre-split spelling, read as [PLAN_CHECK] and [DONE_CHECK]" "$ERR" \
     || { cat "$ERR"; return 1; }
   ! grep -q '"artifact_check"' <<<"$out" || { echo "the json still has artifact_check: $out"; return 1; }
+}
+
+@test "an [ARTIFACT_CHECK] auto says nothing and follows the scale, at every link and from --set" {
+  # The 2.42.0 template wrote [ARTIFACT_CHECK] = [auto] into every config: an auto there is what the
+  # split fields say by default, so a warning for it would be noise on every run.
+  printf '## Task defaults\n\n[ARTIFACT_CHECK] = [Auto]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  for f in plan_check done_check; do
+    [ "$(field $f <<<"$out")" = on ] || { echo "$f: $out"; return 1; }
+  done
+  ! grep -q 'pre-split spelling' "$ERR" || { cat "$ERR"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n[ARTIFACT_CHECK] = [auto]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" --set artifact_check=auto 2>"$ERR")"
+  for f in plan_check done_check; do
+    [ "$(field $f <<<"$out")" = off ] || { echo "$f: $out"; return 1; }
+  done
+  ! grep -q 'pre-split spelling' "$ERR" || { cat "$ERR"; return 1; }
+  run "$RESOLVE" show "$TASK"
+  ! grep -q 'pre-split spelling' <<<"$output" || { echo "$output"; return 1; }
 }
 
 @test "[RF 3] a project [ARTIFACT_CHECK] off and a task [PLAN_CHECK] on check the plan, not the report, with one warning" {

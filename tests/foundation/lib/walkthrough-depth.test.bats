@@ -377,7 +377,11 @@ NAMES
   done
   grep -qF 'never one per phase: a heading names exactly one commit, with its repository' "$SKILL" \
     || { echo "deep does not forbid a section per phase"; return 1; }
-  grep -qF "and again after Done's own commits" "$SKILL" || { echo "the description still places the refresh before Done's commits"; return 1; }
+  desc="$(grep -m1 '^description:' "$SKILL")"
+  grep -qF "Use after Done's own commits — and at the end of an implementing stage (Execute / Fix / Refactor / Write) only under \`[WALKTHROUGH_WHEN]\` = \`stage\`" <<<"$desc" \
+    || { echo "the description does not lead with Done, or places the refresh before Done's commits"; return 1; }
+  grep -qF "Governed by \`[WALKTHROUGH]\`, \`[WALKTHROUGH_WHEN]\` and \`[WALKTHROUGH_CHECK]\`" <<<"$desc" \
+    || { echo "the description does not name [WALKTHROUGH_WHEN]"; return 1; }
   when="$(awk '/^## When to use$/{f=1;next} /^## /{f=0} f' "$SKILL")"
   grep -qF 'Done itself never edits this file' <<<"$when" || { echo "## When to use does not keep Done out of the file"; return 1; }
 }

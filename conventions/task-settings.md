@@ -122,8 +122,9 @@ dispatched: a task raised to `full` mid-run is checked from the next run on, onc
 stands in its `Task.md`. An explicit `on` or `off` stands at either scale. Where the value
 came from `auto`, the source reads `scale` and `show` names the scale it followed.
 `[ARTIFACT_CHECK]` is their pre-split spelling: at each link both chains read the field's own line first
-and `[ARTIFACT_CHECK]` after it, so a nearer pre-split line beats a farther split one. A hit on it is
-reported once per source, the source keeps its name, and `show` marks it `artifact_check`.
+and `[ARTIFACT_CHECK]` after it, so a nearer pre-split line beats a farther split one. A hit on it that
+says `on` or `off` is reported once per source (an `auto` is what the two say by default, so it is
+read without a word), the source keeps its name, and `show` marks it `artifact_check`.
 
 `report` follows the profile. Its chain is the ordinary one and ends at `auto`. `auto` leaves the resolver
 as `auto` for `TEST`, `FEATURE`, `RESEARCH` and `EPIC`, and the Plan stage decides by `task-report` →

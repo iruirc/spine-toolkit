@@ -548,4 +548,8 @@ The pre-split spelling of `[PLAN_CHECK]` and `[DONE_CHECK]`, from when one field
 still read: at each link of the chain, a `Task.md` or the project config, each of the two fields
 takes its own line first and `[ARTIFACT_CHECK]` after it, so `[ARTIFACT_CHECK] = [off]` in the
 project and `[PLAN_CHECK] = [on]` in a `Task.md` check the plan and not the report. The resolver
-says once per source that it read the pre-split spelling; `/setup` rewrites the line as the two.
+says once per source that it read the pre-split spelling, where the line says `on` or `off`; an
+`auto` there is what the two fields say by default, so it is read without a word. To migrate,
+replace the `[ARTIFACT_CHECK] = [X]` line by hand with the two lines `[PLAN_CHECK] = [X]` and
+`[DONE_CHECK] = [X]`; where the file already holds those two lines, put `X` in them and delete the
+`[ARTIFACT_CHECK]` line.

@@ -34,7 +34,8 @@ set -euo pipefail
 # walkthrough_check then follows it: auto is once at deep and off at brief, and off where no file is written.
 # walkthrough_when says which stage writes the file: done, the default, only Done; stage, the implementing stage too.
 # plan_check and done_check follow the final scale: auto is on at full and off at lite. [ARTIFACT_CHECK], their
-# pre-split spelling, is read for both at each link after the field's own line, and said once per source.
+# pre-split spelling, is read for both at each link after the field's own line, and said once per source
+# where it says on or off: an auto there is what the split fields say by default.
 # report follows the profile: auto is off for QUICK, BUG and REFACTOR, off always for REVIEW, and stays auto for the rest.
 ROLES="architect developer tester reviewer refactorer validator security diagnostics"
 # A `platform` left by 1.11.0 reads as if its line were absent, not as `session`, so the key takes
@@ -284,9 +285,10 @@ FIELD_SYNONYMS = {'plan_check': 'ARTIFACT_CHECK', 'done_check': 'ARTIFACT_CHECK'
 SPLIT_WARNED = set()
 
 
-def warn_split(source):
-    """Say once per source that it still writes the pre-split field, however many fields read it."""
-    if source not in SPLIT_WARNED:
+def warn_split(source, value):
+    """Say once per source that it still writes the pre-split field, however many fields read it.
+    An auto changes nothing the split fields do not already say by default, so it is applied silently."""
+    if value != 'auto' and source not in SPLIT_WARNED:
         SPLIT_WARNED.add(source)
         print("%s: '[ARTIFACT_CHECK]' is the pre-split spelling, read as [PLAN_CHECK] and [DONE_CHECK]" % source,
               file=sys.stderr)
@@ -514,7 +516,7 @@ for name, field, values, default in SCALARS:
         via = name in SYNONYM_RUN
         value = accept(name, values, RUN_SCALARS[name], '--set %s' % (synonym.lower() if via else name))
         if via and value is not None:
-            warn_split('--set')
+            warn_split('--set', value)
             show_source[name] = 'run: artifact_check'
         # A run may raise the size of a task, never lower one a task file already raised
         # (conventions/task-scale.md → The ratchet): the file cannot say whose word it was.
@@ -537,7 +539,7 @@ for name, field, values, default in SCALARS:
             continue
         source = label
         if spelling != field:
-            warn_split("the epic's Task.md" if label == 'epic' else 'Task.md')
+            warn_split("the epic's Task.md" if label == 'epic' else 'Task.md', value)
             show_source[name] = '%s: artifact_check' % label
         break
     if value is None:
@@ -548,7 +550,7 @@ for name, field, values, default in SCALARS:
                 if value is not None:
                     source = 'project'
                     if spelling != field:
-                        warn_split(CFG)
+                        warn_split(CFG, value)
                         show_source[name] = 'project: artifact_check'
                     break
     resolved[name], sources[name], defaults[name] = (default if value is None else value), source, default

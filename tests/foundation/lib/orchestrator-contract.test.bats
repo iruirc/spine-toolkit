@@ -509,6 +509,24 @@ section() {
   done
 }
 
+@test "the pre-split announcement says to replace the line by hand, not to run /setup" {
+  # /setup reaches an existing config only through Overwrite, which resets most fields: it is no way
+  # to migrate one line.
+  en="$(awk '/^## warn_artifact_check_pre_split$/{p=1;next} /^## /{p=0} p' "$ROOT/skills/orchestrator/locales/en.md")"
+  ru="$(awk '/^## warn_artifact_check_pre_split$/{p=1;next} /^## /{p=0} p' "$ROOT/skills/orchestrator/locales/ru.md")"
+  grep -qF 'replace the `[ARTIFACT_CHECK] = [X]` line by hand' <<<"$en" || { echo "en.md: $en"; return 1; }
+  grep -qF 'замените вручную строку `[ARTIFACT_CHECK] = [X]`' <<<"$ru" || { echo "ru.md: $ru"; return 1; }
+  for body in "$en" "$ru"; do
+    grep -qF '`[PLAN_CHECK] = [X]`' <<<"$body" && grep -qF '`[DONE_CHECK] = [X]`' <<<"$body" \
+      || { echo "the announcement does not name the two lines: $body"; return 1; }
+    ! grep -qF '/setup' <<<"$body" || { echo "the announcement still points to /setup: $body"; return 1; }
+  done
+  ! grep -qF '`/setup` rewrites the line as the two' "$ROOT/docs/configuration.md" \
+    || { echo "docs/configuration.md still points to /setup"; return 1; }
+  tr '\n' ' ' <"$ROOT/docs/configuration.md" | tr -s ' ' | grep -qF 'replace the `[ARTIFACT_CHECK] = [X]` line by hand' \
+    || { echo "docs/configuration.md does not say to replace the line by hand"; return 1; }
+}
+
 @test "the outbound contract carries manual_checks_check, on or off" {
   grep -qxF 'manual_checks_check=on|off' "$SKILL" || { echo "no manual_checks_check= line in the contract block"; return 1; }
   para="$(awk '/^`manual_checks_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"

@@ -220,8 +220,11 @@ landmarks() { pick "o.calls.map((c) => c.label).filter((l) => ['walkthrough', 'r
   for p in $WRITERS; do
     S="$ROOT/skills/workflow-$p/SKILL.md"
     grep -qF 'when the contract'"'"'s `walkthrough_when` is `stage`' "$S" || { echo "workflow-$p: the stage writes regardless of walkthrough_when"; return 1; }
-    grep -qF 'At `walkthrough_when` = `done`, the default, this is the first write, over the task'"'"'s whole range.' "$S" \
+    grep -qF 'At `walkthrough_when` = `done`, the default, this is usually the first write, over the task'"'"'s whole range; where the file already exists' "$S" \
       || { echo "workflow-$p: Done is not said to write the whole range"; return 1; }
+    grep -qF 'it is refreshed by `task-walkthrough` → `## Refreshing`.' "$S" \
+      || { echo "workflow-$p: Done does not send an existing file to ## Refreshing"; return 1; }
+    ! grep -qF 'the default, this is the first write' "$S" || { echo "workflow-$p: Done is still said to be always the first write"; return 1; }
   done
 }
 
@@ -244,4 +247,12 @@ landmarks() { pick "o.calls.map((c) => c.label).filter((l) => ['walkthrough', 'r
       done
     done
   done
+}
+
+@test "a failed dispatch of the check stops nothing at once as well as at on" {
+  S="$ROOT/skills/task-walkthrough/SKILL.md"
+  on="$(awk '/^\*\*At `on`, at most two rounds\.\*\*/{f=1} f&&/^$/{exit} f' "$S")"
+  ! grep -qF 'stops nothing' <<<"$on" || { echo "the failure rule still sits inside the on paragraph"; return 1; }
+  tr '\n' ' ' <"$S" | tr -s ' ' | grep -qF 'At `once` and at `on` alike, a failure of any read or revision dispatch of the check is noted and stops nothing' \
+    || { echo "no failure rule covers both rounds"; return 1; }
 }
