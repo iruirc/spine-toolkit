@@ -197,9 +197,10 @@ prompt_of() { node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8"
   grep -qF 'lint-artifact-readability.sh" --words-per-sentence 22 /p/t/Done.md once.' <<<"$d" || { echo "$d" | tail -n 3; return 1; }
   d="$(run_one feature Done '' | prompt_of done)"
   grep -qF 'lint-artifact-readability.sh" --words-per-sentence 30 /p/t/Done.md once.' <<<"$d" || { echo "$d" | tail -n 3; return 1; }
+  # Two in the writer's brief, one in the patch's.
   for p in feature bug refactor test quick epic research review; do
-    [ "$(grep -cF "\"\${core('scripts/lint-walkthrough.sh')}\" --words-per-sentence \${BUDGETS['words-per-sentence']} \${DIR}" "$ROOT/workflows/profile-$p.js")" -eq 2 ] \
-      || { echo "profile-$p.js: the walkthrough writer runs its lint without the run's words-per-sentence"; return 1; }
+    [ "$(grep -cF "\"\${core('scripts/lint-walkthrough.sh')}\" --words-per-sentence \${BUDGETS['words-per-sentence']} \${DIR}" "$ROOT/workflows/profile-$p.js")" -eq 3 ] \
+      || { echo "profile-$p.js: the walkthrough writer or its patch runs its lint without the run's words-per-sentence"; return 1; }
   done
 }
 

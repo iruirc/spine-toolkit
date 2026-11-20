@@ -170,12 +170,61 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
     [ "${V[2]}" = stop ] || { echo "profile-$p: ${V[3]}"; return 1; }
     [ "${V[4]}" = true ] \
       || { echo "profile-$p: Done need not say whether it committed"; return 1; }
-    for why in "$approved, $busy" "$handed"; do
-      rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "{$why}" "$(count_js walkthrough)"
-      [ "${V[0]}" = 1 ] || { echo "profile-$p: no writer for {$why}"; return 1; }
-    done
+    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "{$approved, $busy}" "$(count_js walkthrough)"
+    [ "${V[0]}" = 1 ] || { echo "profile-$p: no writer after a Done that committed outside the tasks"; return 1; }
+    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "{$handed}" "$(count_js walkthrough)" "$(count_js walkthrough:patch)"
+    [ "${V[0]}" = 0 ] || { echo "profile-$p: a current file was rewritten for a Review finding"; return 1; }
+    [ "${V[1]}" = 1 ] || { echo "profile-$p: the finding was not patched"; return 1; }
     rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" "{$approved, $idle}" "$(count_js walkthrough)"
     [ "${V[0]}" = 1 ] || { echo "profile-$p: no writer without the orchestrator's measure"; return 1; }
+  done
+}
+
+# A Done that committed nothing outside the tasks, over a current file, with Review findings for it.
+patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch reply
+  printf '{"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s", "done_findings": %s}, "done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": false, "walkthrough_findings": %s}, "walkthrough:patch": %s}' "$1" "$1" "$2"
+}
+
+@test "a patch that closed every finding leaves nothing unclosed" {
+  item='name the third commit in ## Commits'
+  patched="{\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"closed_findings\": [\"$item\"]}"
+  replies="$(patch_replies "[\"$item\"]" "$patched")"
+  for p in $RANGED quick; do
+    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "$replies" \
+      'o.result.next_recommended_action' 'o.result' 'o.result.notes'
+    [ "${V[0]}" = stop ] || { echo "profile-$p: ${V[1]}"; return 1; }
+    grep -qF 'Walkthrough.md patched: 1 of 1 Review finding(s) closed.' <<<"${V[2]}" \
+      || { echo "profile-$p: the patch is not noted"; return 1; }
+  done
+}
+
+@test "a patch that closed fewer findings leaves the rest unclosed" {
+  # [RF 4]: what the patch did not close goes to unclosed() and stops the run as Done's own would.
+  one='name the third commit in ## Commits'
+  two='define the cache key in ## Glossary'
+  patched="{\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"closed_findings\": [\"$one\"]}"
+  replies="$(patch_replies "[\"$one\", \"$two\"]" "$patched")"
+  for p in $RANGED quick; do
+    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "$replies" \
+      'o.result.next_recommended_action' 'o.result' 'o.result.notes'
+    [ "${V[0]}" = ask_user ] || { echo "profile-$p: ${V[1]}"; return 1; }
+    grep -qF "$two" <<<"${V[2]}" || { echo "profile-$p: the note does not name the open finding"; return 1; }
+    grep -qF 'Walkthrough.md patched: 1 of 2 Review finding(s) closed.' <<<"${V[2]}" \
+      || { echo "profile-$p: the patch is not noted"; return 1; }
+  done
+}
+
+@test "a patch that returned nothing is noted and stops nothing" {
+  # The patch itself never ends the run, as a writer that returned nothing does not; its findings stay
+  # open, so unclosed() asks, as for that writer.
+  item='name the third commit in ## Commits'
+  for p in $RANGED quick; do
+    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "$(patch_replies "[\"$item\"]" null)" \
+      'o.result.next_recommended_action' 'o.result' 'o.result.notes' 'o.result.status || ""'
+    [ "${V[0]}" = ask_user ] || { echo "profile-$p: ${V[1]}"; return 1; }
+    [ "${V[3]}" != error ] || { echo "profile-$p: an empty patch ended the run in an error"; return 1; }
+    grep -qF 'The walkthrough patch returned nothing' <<<"${V[2]}" || { echo "profile-$p: the empty patch is not noted"; return 1; }
+    grep -qF "$item" <<<"${V[2]}" || { echo "profile-$p: the note does not name the open finding"; return 1; }
   done
 }
 

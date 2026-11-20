@@ -56,6 +56,7 @@ KIND_OF_LABEL = (
     (r'done', 'done'),
     (r'walkthrough', 'walkthrough'),
     (r'walkthrough:revise', 'walkthrough'),
+    (r'walkthrough:patch', 'walkthrough'),
     (r'walkthrough:check', 'light'),
     (r'security:triage', 'light'),
     (r'manual-checks:check', 'light'),

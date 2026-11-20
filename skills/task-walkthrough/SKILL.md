@@ -20,6 +20,7 @@ Commit messages do not make this artifact redundant. `conventions/commit-message
 
 - After `Done` has made its own commits — the one write at `[WALKTHROUGH_WHEN] = [done]`, the default, over the task's whole range; Done itself never edits this file
 - End of the implementing stage too, only at `[WALKTHROUGH_WHEN] = [stage]`: `Execute` (FEATURE), `Fix` (BUG), `Refactor` (REFACTOR), `Write` (TEST), `Edit` (QUICK); the write after `Done` then refreshes it, since documentation and tracker commits land after it
+- At `Done`, when Review left findings about a file that is already current and Done committed nothing outside `Tasks/` — a patch, not a refresh; see **Patching**
 - At `Done` only, for EPIC — see **EPIC**
 - Not for RESEARCH or REVIEW — see **Not applicable**
 
@@ -408,6 +409,16 @@ The file is living, not append-once. On a stage that runs it when the file alrea
 
 A refresh that finds the file at the other depth rewrites it to the resolved one rather than mixing the two. Raising `brief` to `deep` means going back to `git show` for the commits already logged — the existing bullets are not enough to expand from, and expanding them from memory invents content.
 
+## Patching
+
+At `Done`, Review's findings about `Walkthrough.md` reach the writer as one patch rather than a refresh when three things hold: the file is already current — `[COVERS]` ends at the task's last commit and nothing but `style` lines stood against it — Done committed nothing outside `Tasks/`, and at least one finding is about this file. Otherwise the findings ride on a refresh, as above.
+
+- **What to touch.** Only the places the findings name. A finding that needs a fact the file lacks takes it from the task's own commits, with `git log` and `git show`.
+- **What not to touch.** `[COVERS]`, `## Commits`, and every section no finding names. No new commit arrived, so there is nothing to append and no range to move.
+- **Then.** Run `scripts/lint-walkthrough.sh` once, with `--words-per-sentence` from the contract's `budgets`, and return what it printed. Return the findings the patch closed, worded as given; a finding left out stays open, and the run asks about it as it does for one Done left open.
+
+No fresh reader follows a patch, at any `[WALKTHROUGH_CHECK]`. A patch is not a new version of the file: it changes the places a reviewer already named. A reader of the whole file would reopen sections already checked, at the cost of a full round, to judge a few lines.
+
 ## Check
 
 `[WALKTHROUGH_CHECK]` decides whether the file is read back by someone who was not there; it reaches
@@ -415,7 +426,7 @@ a run as the contract's `walkthrough_check`, `on`, `once` or `off`. `auto`, its 
 `deep` and `off` at `brief`, and nothing is checked where `[WALKTHROUGH]` wrote nothing.
 
 When it is `on` or `once`, every write that changed the file is followed by a read. A refresh that changed
-nothing is not checked. The writer never checks its own file: the dispatcher does — the profile
+nothing is not checked. Nor is a patch for Review's findings — see **Patching**. The writer never checks its own file: the dispatcher does — the profile
 script under Method A, the workflow skill's main context under Method B.
 
 **The reader** is a fresh dispatch of the writer's own role; the fresh dispatch is where its lack of

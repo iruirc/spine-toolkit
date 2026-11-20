@@ -242,10 +242,14 @@ const doneRecord = (handed) =>
 const walkthroughWriter = () =>
   !!WALKTHROUGH_AGENT && A.walkthrough !== 'off' && A.walkthrough !== false && !!A.agents[WALKTHROUGH_AGENT] && A.agents[WALKTHROUGH_AGENT] !== '—'
 // Review's done_findings that Done did not report closed, counting those it handed to a walkthrough
-// writer that changed the file; none when Review did not run in this invocation.
+// writer that changed the file, or those a patch reports closed; none when Review did not run in this
+// invocation.
 const unclosed = (review, done, w) => {
   if (!review || !Array.isArray(review.done_findings)) return []
-  const handed = w && w.artifact_path && w.changed !== false && done && Array.isArray(done.walkthrough_findings) ? done.walkthrough_findings.length : 0
+  const handed =
+    w && w.patched === true
+      ? Array.isArray(w.closed_findings) ? w.closed_findings.length : 0
+      : w && w.artifact_path && w.changed !== false && done && Array.isArray(done.walkthrough_findings) ? done.walkthrough_findings.length : 0
   return review.done_findings.slice((done && Array.isArray(done.closed_findings) ? done.closed_findings.length : 0) + handed)
 }
 // A report an earlier Done left is claims to check, never a draft to confirm.
@@ -524,6 +528,12 @@ const WALKTHROUGH_ARTIFACT = {
   },
 }
 
+// A patch returns the Review findings it closed, so unclosed() can count what is left.
+const PATCH_ARTIFACT = {
+  ...WALKTHROUGH_ARTIFACT,
+  properties: { ...WALKTHROUGH_ARTIFACT.properties, closed_findings: { type: 'array', items: { type: 'string' } } },
+}
+
 const COLD_READ = {
   type: 'object',
   additionalProperties: false,
@@ -751,6 +761,35 @@ Change no production code and no tests.`,
   if (w.lint) result.notes.push(`Walkthrough.md lint: ${w.lint}`)
   if (WALKTHROUGH_CHECK !== 'off' && w.changed !== false) await checkWalkthrough(stage, agentType, depth, extra)
   return w
+}
+
+// Review findings about a Walkthrough.md that is already current, after a Done that committed nothing
+// outside the Tasks folder: one patch of the places they name, task-walkthrough → ## Patching. It is
+// the same version of the file, so no fresh reader follows it at any WALKTHROUGH_CHECK.
+const patchWalkthrough = async (findings) => {
+  const agentType = A.agents[WALKTHROUGH_AGENT]
+  const w = await agent(
+    brief(
+      'Done',
+      `Patch ${DIR}/Walkthrough.md by applying the spine-toolkit:task-walkthrough skill, its ## Patching section: the file already covers the task's last commit, and Review left the findings below about it. Change only the places they name; leave every other section as it is, and leave [COVERS] and ## Commits untouched. Where a finding needs a fact the file lacks, take it from the task's own commits with git log and git show.
+
+Review findings:
+${findings.map((f, i) => `${i + 1}. ${f}`).join('\n')}
+
+Then run "${core('scripts/lint-walkthrough.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR} once and return what it printed in lint. Return changed true when you edited the file, and in closed_findings every finding above you closed, worded as it is given. Change no production code and no tests.`,
+    ),
+    { label: 'walkthrough:patch', phase: 'Done', agentType, schema: PATCH_ARTIFACT, ...tuning(WALKTHROUGH_AGENT, 'walkthrough') },
+  )
+  // As after a write: a line other than style means the file is not current.
+  walkthroughCurrent = !!(w && w.artifact_path) && !String(w.lint || '').split('\n').some((l) => l.trim() && !l.trim().startsWith('Walkthrough.md: style: '))
+  if (!w || !w.artifact_path) {
+    result.notes.push('The walkthrough patch returned nothing, so the Review findings about Walkthrough.md stay open.')
+    return null
+  }
+  const closed = Array.isArray(w.closed_findings) ? w.closed_findings : []
+  result.notes.push(`Walkthrough.md patched: ${closed.length} of ${findings.length} Review finding(s) closed.`)
+  if (w.lint) result.notes.push(`Walkthrough.md lint: ${w.lint}`)
+  return { ...w, closed_findings: closed, patched: true }
 }
 
 // The task's topic report (spine-toolkit:task-report). Plan decides and Review checks through the two
@@ -1132,7 +1171,8 @@ if (runs('Done')) {
   const handed = Array.isArray(done.walkthrough_findings) ? done.walkthrough_findings : []
   const idle = walkthroughWriter() && walkthroughCurrent && done.committed_outside_tasks === false && !handed.length
   if (idle) result.notes.push("Walkthrough.md already names the task's newest commit and Done committed nothing outside the Tasks folder, so its writer was not run.")
-  const w = idle ? null : await writeWalkthrough('Done', handed.length ? `Close these Review findings in the file, even when [COVERS] already ends at the last commit: ${handed.join('; ')}` : '')
+  const patch = walkthroughWriter() && walkthroughCurrent && done.committed_outside_tasks === false && handed.length > 0
+  const w = idle ? null : patch ? await patchWalkthrough(handed) : await writeWalkthrough('Done', handed.length ? `Close these Review findings in the file, even when [COVERS] already ends at the last commit: ${handed.join('; ')}` : '')
   const open = unclosed(review, done, w)
   if (open.length) {
     result.notes.push(`Done left ${open.length} of Review's done_findings unclosed: ${open.join('; ')}. Close them in the task's files, then run Done again.`)

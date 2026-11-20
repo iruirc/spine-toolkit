@@ -145,8 +145,8 @@ it, through one rule. `models` and `effort` resolve like every other task settin
 does with the result. A dispatch is one of five kinds:
 
 - `stage` — the work a stage exists for: investigation, plan, a phase, validation, review.
-- `walkthrough` — writing `Walkthrough.md`, and revising it after its check: `walkthrough`,
-  `walkthrough:revise`.
+- `walkthrough` — writing `Walkthrough.md`, revising it after its check, and patching it for Review's
+  findings at Done: `walkthrough`, `walkthrough:revise`, `walkthrough:patch`.
 - `done` — writing the final report, which on a Done run again is checking a report against the
   task: `done`.
 - `light` — work the script's own prompt defines that still takes judgement: `walkthrough:check`,

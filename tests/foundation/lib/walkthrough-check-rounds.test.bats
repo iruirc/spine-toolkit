@@ -224,3 +224,24 @@ landmarks() { pick "o.calls.map((c) => c.label).filter((l) => ['walkthrough', 'r
       || { echo "workflow-$p: Done is not said to write the whole range"; return 1; }
   done
 }
+
+@test "a patch for Review findings runs no fresh reader at any walkthrough_check" {
+  # A patch is the same version of the file: a reader of the whole file would reopen checked sections.
+  item='name the third commit in ## Commits'
+  replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$item\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"committed_outside_tasks\": false, \"walkthrough_findings\": [\"$item\"]}, \"walkthrough:patch\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"closed_findings\": [\"$item\"]}, \"walkthrough:check\": $(read_with 12)}"
+  for check in on once; do
+    c="$(contract "$check" | sed 's/}$/, "walkthrough_current": true, "models": {"walkthrough": "m-walkthrough", "light": "m-light"}}/')"
+    for p in $WRITERS; do
+      out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$p.js" "$c" "$replies")"
+      after="$(pick "(l => l.slice(l.indexOf('done') + 1).join(' '))(o.calls.map((c) => c.label))" <<<"$out")"
+      [ "$after" = 'walkthrough:patch' ] || { echo "profile-$p at $check: after done dispatched '$after'"; return 1; }
+      ! grep -qF 'Walkthrough.md check' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p at $check: a check is noted"; return 1; }
+      [ "$(pick "o.calls.find((c) => c.label === 'walkthrough:patch').model" <<<"$out")" = m-walkthrough ] \
+        || { echo "profile-$p at $check: the patch does not take the walkthrough model"; return 1; }
+      prompt="$(pick "o.calls.find((c) => c.label === 'walkthrough:patch').prompt" <<<"$out")"
+      for f in '## Patching' "$item" '[COVERS]' 'lint-walkthrough.sh'; do
+        grep -qF -- "$f" <<<"$prompt" || { echo "profile-$p at $check: the patch prompt lost: $f"; return 1; }
+      done
+    done
+  done
+}
