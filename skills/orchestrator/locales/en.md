@@ -6,6 +6,14 @@ Specify task number, e.g. `run 026` / `/spine-toolkit:task-run 026`.
 ## error_task_not_found
 Task `{task_id}` not found in `Tasks/`.
 
+## error_task_ambiguous
+More than one task matches `{task_id}`:
+{matches}
+Name it by its full folder name or path.
+
+## error_task_outside_tasks
+`{path}` is not a task under `{tasks}`. Open the task through this project's `Tasks` folder.
+
 ## error_no_project_config
 This project has no `SPINE.md`, so nothing says which platform serves it — and without a platform there is no agent to dispatch a stage to. Run `/setup` to attach the toolkit to this project (it also migrates a config left over from an earlier toolkit version), or the platform plugin's project-init entry point if the project itself does not exist yet. Then run the task again.
 

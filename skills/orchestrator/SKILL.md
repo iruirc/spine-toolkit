@@ -206,9 +206,19 @@ Algorithm:
 ```
 1. Validate & find task folder:
    • If task_id is not provided → error using key `error_no_task_id` and stop.
-   • Otherwise — locate the folder Tasks/<STATUS>/<task_id>-*/ (scan Tasks/**/<task_id>-* across all STATUS folders).
-   • For steps: Tasks/**/<parent_id>-*/.../<step_id>.step/
-   ↓ if not found → error using key `error_task_not_found` with placeholder `{task_id}`
+   • Otherwise — one call, with the task_id or the path the request gave:
+       bash "<core root>/scripts/task-dir.sh" <task_id or path> --from <the session's folder>
+     It looks in the nearest Tasks at or above the session's folder — Tasks/<task_id>-*/, Tasks/<STATUS>/<task_id>-*/,
+     and a step's <step_id>.step/ or <step_id>-*.step/ at any depth — and turns a path into its spelling through
+     Tasks, the physical path behind a linked Tasks included.
+   • The path it prints is task_dir for every later step, the Outbound Contract and Run.json — never a path the
+     request spelled another way: the config is found along task_dir, and a task repository behind a Tasks link
+     has none above its physical path.
+   ↓ exit 3 → error using key `error_task_not_found` with placeholder `{task_id}`
+   ↓ exit 4 → error using key `error_task_ambiguous`: `{task_id}`, `{matches}` = the lines it printed
+   ↓ exit 5 → error using key `error_task_outside_tasks`: `{path}` as given, `{tasks}` = the session's Tasks
+   ↓ exit 2 → report the script's own stderr
+   ↓ any non-zero exit is a stop: dispatch nothing
 
 2. Resolve TASK_TYPE → profile
    • Read Task.md, extract the [TASK_TYPE] field

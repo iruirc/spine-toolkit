@@ -619,3 +619,16 @@ PY
   ! grep -qF 'follows the opening block' <<<"$para" || { echo "the experiment line waits for the block"; return 1; }
   ! grep -qF 'no second opening block' "$SKILL" || { echo "a dispatch in a turn of its own is said to have no block"; return 1; }
 }
+
+@test "Resolution step 1 finds the task folder with task-dir.sh and maps every refusal to a key" {
+  step="$(awk '/^1\. Validate & find task folder/{f=1} f&&/^2\. /{exit} f' "$SKILL")"
+  [ -n "$step" ] || { echo "no step 1"; return 1; }
+  grep -qF 'scripts/task-dir.sh' <<<"$step" || { echo "step 1 does not call task-dir.sh"; return 1; }
+  grep -qF -- '--from' <<<"$step" || { echo "step 1 does not pass --from"; return 1; }
+  for k in error_task_not_found error_task_ambiguous error_task_outside_tasks; do
+    grep -qF "$k" <<<"$step" || { echo "step 1 lacks $k"; return 1; }
+    for l in en ru; do
+      grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l lacks $k"; return 1; }
+    done
+  done
+}
