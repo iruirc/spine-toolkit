@@ -44,7 +44,7 @@ prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""
     rp "$p" "$(contract Validation "$AGAIN")" '{}' "$(prompt_js validation)"
     v="${V[0]}"
     for f in 'The last green Validation stood at: .: c3..HEAD (2 commits); Packages/Core: d4..HEAD (0 commits).' \
-             'Re-run only the modules these commits reach, the uncommitted edits of every root included' 'carried' \
+             'Re-run only the modules these commits reach that no later phase ran: line carries, the uncommitted edits of every root included' 'carried' \
              'drive the app again only when these commits reach the UI layer or the path the scenario walks'; do
       grep -qF -- "$f" <<<"$v" || { echo "profile-$p: re-run prompt lost: $f"; return 1; }
     done
@@ -179,10 +179,41 @@ prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""
     for p in $RANGED; do
       rp "$p" "$(contract Validation "$c")" '{}' "$(prompt_js validation)"
       for f in 'a ran: line under a phase checkbox in /p/Tasks/ACTIVE/001-x/Plan.md' 'carried <sha> (phase <N>)' 'carried <sha> (validation)' \
-               'A module that failed in an earlier Validation runs again.'; do
+               'A module red in the latest Validation that ran it runs again.' \
+               'Lines of class reach are not findings: leave them for Review'; do
         grep -qF -- "$f" <<<"${V[0]}" || { echo "profile-$p: validation prompt lost: $f"; return 1; }
       done
+      if grep -qF 'A module that failed in an earlier Validation' <<<"${V[0]}"; then echo "profile-$p: the old carried rule"; return 1; fi
     done
+  done
+}
+
+@test "a first Validation runs every other module and says which Validation it carries from" {
+  for p in $RANGED; do
+    rp "$p" "$(contract Validation "$FIRST")" '{}' "$(prompt_js validation)"
+    grep -qF 'Run every other module of the set.' <<<"${V[0]}" || { echo "profile-$p: lost: run every other module"; return 1; }
+    if grep -qF 'Run every module of the set.' <<<"${V[0]}"; then echo "profile-$p: a first run is told to run the whole set"; return 1; fi
+    grep -qF 'earlier Validation — /p/Tasks/ACTIVE/001-x/Validation.md, read it before you overwrite it — whatever its status' <<<"${V[0]}" || { echo "profile-$p: the carried source names no file"; return 1; }
+    rp "$p" "$(contract Validation "$FIRST, \"archive_paths\": [\"/p/Tasks/ACTIVE/001-x/_archive/Validation-2026-11-19T100000.md\"]")" '{}' "$(prompt_js validation)"
+    grep -qF 'earlier Validation — its archived copy /p/Tasks/ACTIVE/001-x/_archive/Validation-2026-11-19T100000.md — whatever its status' <<<"${V[0]}" || { echo "profile-$p: the archived source is not named"; return 1; }
+  done
+}
+
+@test "a re-run leaves a module a later phase ran to that phase, and names the Validation it carries from" {
+  for p in $RANGED; do
+    rp "$p" "$(contract Validation "$AGAIN")" '{}' "$(prompt_js validation)"
+    for f in 'that no later phase ran: line carries' 'write `carried <sha> (validation)` in its Run cell'; do
+      grep -qF -- "$f" <<<"${V[0]}" || { echo "profile-$p: re-run prompt lost: $f"; return 1; }
+    done
+  done
+}
+
+@test "the brief reads in document order: the set, then the failures outside the task" {
+  for p in $RANGED; do
+    rp "$p" "$(contract Validation "$FIRST")" '{}' "$(prompt_js validation)"
+    set_at="$(grep -bo 'as the ## Regression set section' <<<"${V[0]}" | head -1 | cut -d: -f1)"
+    out_at="$(grep -bo 'Classify every failing test' <<<"${V[0]}" | head -1 | cut -d: -f1)"
+    [ -n "$set_at" ] && [ -n "$out_at" ] && [ "$set_at" -lt "$out_at" ] || { echo "profile-$p: the failures come before the set"; return 1; }
   done
 }
 
@@ -198,8 +229,9 @@ prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""
 @test "Review confirms reach lines and the failures outside the task" {
   for p in $RANGED; do
     rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" '{}' "$(prompt_js review)"
-    for f in 'Lines of class reach are not findings' '## Outside the task' 'blocking_findings' 'When it prints no finding, run no suite yourself'; do
+    for f in 'Lines of class reach are not findings' '## Outside the task' 'blocking_findings' 'When it prints no finding, run no suite yourself' 'from the diff and the manifests that'; do
       grep -qF -- "$f" <<<"${V[0]}" || { echo "profile-$p: review prompt lost: $f"; return 1; }
     done
+    if grep -qF 'When it prints nothing' <<<"${V[0]}"; then echo "profile-$p: the old no-output rule"; return 1; fi
   done
 }
