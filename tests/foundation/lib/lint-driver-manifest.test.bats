@@ -18,7 +18,7 @@ teardown() { rm -rf "$TMP"; }
 @test "passes on the fixture driver" {
   run "$LINT" "$TMP/d"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"driver manifest OK"* ]]
+  [[ "$output" == *"driver manifest OK"* ]] || false
 }
 
 @test "exits 2 without an argument" {
@@ -30,35 +30,35 @@ teardown() { rm -rf "$TMP"; }
   rm -f "$M"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"no manifest skill"* ]]
+  [[ "$output" == *"no manifest skill"* ]] || false
 }
 
 @test "fails when the Driver block is missing" {
   sed -i.bak '/^## Driver$/d' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"Driver"* ]]
+  [[ "$output" == *"Driver"* ]] || false
 }
 
 @test "fails when namespace is absent" {
   sed -i.bak '/^namespace[[:space:]]*=/d' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"namespace"* ]]
+  [[ "$output" == *"namespace"* ]] || false
 }
 
 @test "fails when namespace is declared twice" {
   awk '{ print } /^namespace/{ print "namespace = second" }' "$M" > "$M.new" && mv "$M.new" "$M"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"namespace"* ]]
+  [[ "$output" == *"namespace"* ]] || false
 }
 
 @test "fails when namespace is malformed" {
   sed -i.bak 's/^namespace = neutral/namespace = 9Neutral!/' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"malformed"* ]]
+  [[ "$output" == *"malformed"* ]] || false
 }
 
 @test "prose inside a block is not read as a row" {
@@ -75,7 +75,7 @@ teardown() { rm -rf "$TMP"; }
   sed -i.bak 's/^## Capabilities: android-device$/## Capabilities: gamma-tv/' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"gamma-tv"* ]]
+  [[ "$output" == *"gamma-tv"* ]] || false
 }
 
 @test "fails when a declared target has no capabilities block" {
@@ -84,21 +84,21 @@ teardown() { rm -rf "$TMP"; }
   awk '/^## Capabilities: android-device$/{skip=1} /^## Procedure$/{skip=0} !skip' "$M" > "$M.new" && mv "$M.new" "$M"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"android-device"* ]]
+  [[ "$output" == *"android-device"* ]] || false
 }
 
 @test "fails when a capability is outside the vocabulary" {
   sed -i.bak 's/^launch stop install reset_state$/launch stop install teleport/' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"teleport"* ]]
+  [[ "$output" == *"teleport"* ]] || false
 }
 
 @test "fails when a target is declared twice" {
   awk '{ print } /^android-device$/{ print "android-device" }' "$M" > "$M.new" && mv "$M.new" "$M"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"android-device"* ]]
+  [[ "$output" == *"android-device"* ]] || false
 }
 
 @test "accepts a namespace list" {
@@ -112,21 +112,21 @@ teardown() { rm -rf "$TMP"; }
   sed -i.bak 's/^namespace = .*/namespace = alpha, alpha/' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"alpha"* ]]
+  [[ "$output" == *"alpha"* ]] || false
 }
 
 @test "fails when a namespace list has an empty element" {
   sed -i.bak 's/^namespace = .*/namespace = alpha, , beta/' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"empty element"* ]]
+  [[ "$output" == *"empty element"* ]] || false
 }
 
 @test "fails when a target is not a known surface" {
   sed -i.bak 's/^android-emulator$/toaster/' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"outside the surface vocabulary: toaster"* ]]
+  [[ "$output" == *"outside the surface vocabulary: toaster"* ]] || false
 }
 
 @test "fails when a target row carries a right-hand side" {
@@ -135,7 +135,7 @@ teardown() { rm -rf "$TMP"; }
   sed -i.bak 's/^android-emulator$/android-emulator = fixture/' "$M" && rm -f "$M.bak"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"retired 'target = ecosystem'"* ]]
+  [[ "$output" == *"retired 'target = ecosystem'"* ]] || false
 }
 
 @test "fails when the core dependency uses the string form" {
@@ -148,7 +148,7 @@ json.dump(d, open(p, "w"), indent=2)
 PY
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"dependenc"* ]]
+  [[ "$output" == *"dependenc"* ]] || false
 }
 
 @test "fails when plugin.json has no name" {
@@ -161,7 +161,7 @@ json.dump(d, open(p, "w"), indent=2)
 PY
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"name"* ]]
+  [[ "$output" == *"name"* ]] || false
 }
 
 # A driver may ship its MCP server as .mcp.json (multi-llm milestone 4). Its keys must be
@@ -195,21 +195,21 @@ add_plugin_form() {
   mcp other pkg@1.2.3; add_plugin_form
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"'other' is not in namespace"* ]]
+  [[ "$output" == *"'other' is not in namespace"* ]] || false
 }
 
 @test "fails when the plugin form of a key is not in namespace" {
   mcp neutral pkg@1.2.3
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"plugin_fixture-driver_neutral"* ]]
+  [[ "$output" == *"plugin_fixture-driver_neutral"* ]] || false
 }
 
 @test "reads a bare server map" {
   mcp other pkg@1.2.3 bare; add_plugin_form
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"'other'"* ]]
+  [[ "$output" == *"'other'"* ]] || false
 }
 
 @test "fails on a caret range" {
@@ -252,14 +252,14 @@ add_plugin_form() {
   printf '{' > "$TMP/d/.mcp.json"
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *".mcp.json"* ]]
+  [[ "$output" == *".mcp.json"* ]] || false
 }
 
 @test "fails on a \${…} reference in env (Codex passes it literally)" {
   printf '{"mcpServers": {"neutral": {"command": "npx", "args": ["-y", "pkg@1.2.3"], "env": {"X": "${X:-}"}, "env_vars": ["X"]}}}\n' > "$TMP/d/.mcp.json"; add_plugin_form
   run "$LINT" "$TMP/d"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"env_vars"* ]]
+  [[ "$output" == *"env_vars"* ]] || false
 }
 
 # The resolver reads the first prefix in namespace as the server key (conventions/driver-contract.md,

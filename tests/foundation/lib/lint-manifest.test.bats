@@ -28,7 +28,7 @@ teardown() { rm -rf "$TMP"; }
   sed -i.bak '/^## Topics$/d' "$TMP/p/skills/manifest/SKILL.md" && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"Topics"* ]]
+  [[ "$output" == *"Topics"* ]] || false
 }
 
 @test "fails when a role is outside the core vocabulary" {
@@ -40,14 +40,14 @@ teardown() { rm -rf "$TMP"; }
   mv "$TMP/p/skills/manifest/SKILL.md.new" "$TMP/p/skills/manifest/SKILL.md"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"plumber"* ]]
+  [[ "$output" == *"plumber"* ]] || false
 }
 
 @test "fails when a named agent has no file" {
   sed -i.bak 's|fixture-platform:fixture-architect|fixture-platform:ghost|' "$TMP/p/skills/manifest/SKILL.md" && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"ghost"* ]]
+  [[ "$output" == *"ghost"* ]] || false
 }
 
 @test "fails when an agent is named in another plugin's namespace" {
@@ -56,7 +56,7 @@ teardown() { rm -rf "$TMP"; }
   sed -i.bak 's|fixture-platform:fixture-|other-platform:fixture-|g' "$TMP/p/skills/manifest/SKILL.md" && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"outside this plugin's namespace"* ]]
+  [[ "$output" == *"outside this plugin's namespace"* ]] || false
 }
 
 @test "a digit in a plugin or agent name is legal" {
@@ -75,14 +75,14 @@ teardown() { rm -rf "$TMP"; }
   sed -i.bak '/^validator /d' "$TMP/p/skills/manifest/SKILL.md" && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"validator"* ]]
+  [[ "$output" == *"validator"* ]] || false
 }
 
 @test "no manifest skill fails with a clear message" {
   rm -rf "$TMP/p/skills/manifest"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"no manifest skill"* ]]
+  [[ "$output" == *"no manifest skill"* ]] || false
 }
 
 @test "fails when a role is mapped to an empty value" {
@@ -92,7 +92,7 @@ teardown() { rm -rf "$TMP"; }
     && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"validator"* ]]
+  [[ "$output" == *"validator"* ]] || false
 }
 
 @test "fails per role, not silently, when the Roles table has no assignment lines" {
@@ -107,7 +107,7 @@ teardown() { rm -rf "$TMP"; }
   # `[ ]`, not `[[ ]]`: a failing `[[ ]]` anywhere but a test's last line does
   # not trip bats' set -e, so it asserts nothing.
   [ "${output#*architect}" != "$output" ]
-  [[ "$output" == *"init"* ]]
+  [[ "$output" == *"init"* ]] || false
 }
 
 @test "passes when the Roles table is tab-aligned instead of space-aligned" {
@@ -128,7 +128,7 @@ teardown() { rm -rf "$TMP"; }
     && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"fixture-setpu"* ]]
+  [[ "$output" == *"fixture-setpu"* ]] || false
 }
 
 @test "fails when an entrypoint is mapped to an empty value" {
@@ -136,7 +136,7 @@ teardown() { rm -rf "$TMP"; }
     && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"setup"* ]]
+  [[ "$output" == *"setup"* ]] || false
 }
 
 @test "fails when an entrypoint name is outside the core vocabulary" {
@@ -146,7 +146,7 @@ teardown() { rm -rf "$TMP"; }
     && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"setpu"* ]]
+  [[ "$output" == *"setpu"* ]] || false
 }
 
 @test "fails when a role fans out on ecosystem" {
@@ -157,21 +157,21 @@ teardown() { rm -rf "$TMP"; }
   perl -i -pe 's/^developer\[widget=alpha\]/developer[ecosystem=fixture]/' "$TMP/p/skills/manifest/SKILL.md"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"ecosystem"* ]]
+  [[ "$output" == *"ecosystem"* ]] || false
 }
 
 @test "fails when a role fans out on an axis the manifest does not declare" {
   perl -i -pe 's/^developer\[widget=alpha\]/developer[gadget=alpha]/' "$TMP/p/skills/manifest/SKILL.md"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"gadget"* ]]
+  [[ "$output" == *"gadget"* ]] || false
 }
 
 @test "fails when a fan-out value is not one the axis lists" {
   perl -i -pe 's/^developer\[widget=alpha\]/developer[widget=gamma]/' "$TMP/p/skills/manifest/SKILL.md"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"gamma"* ]]
+  [[ "$output" == *"gamma"* ]] || false
 }
 
 @test "fails on two Roles rows with the same left-hand side" {
@@ -181,7 +181,7 @@ teardown() { rm -rf "$TMP"; }
   perl -i -pe 's/^developer\[widget=beta\] /developer[widget=alpha] /' "$TMP/p/skills/manifest/SKILL.md"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"duplicate"* ]]
+  [[ "$output" == *"duplicate"* ]] || false
 }
 
 @test "a broken fan-out row is reported with its qualifier, not just its role" {
@@ -191,7 +191,7 @@ teardown() { rm -rf "$TMP"; }
     "$TMP/p/skills/manifest/SKILL.md"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"developer[widget=beta]"* ]]
+  [[ "$output" == *"developer[widget=beta]"* ]] || false
 }
 
 @test "passes when the optional Driver block is absent" {
@@ -209,7 +209,7 @@ teardown() { rm -rf "$TMP"; }
     "$TMP/p/skills/manifest/SKILL.md" && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"default"* ]]
+  [[ "$output" == *"default"* ]] || false
 }
 
 @test "fails when the Driver block declares an unknown key" {
@@ -240,7 +240,7 @@ teardown() { rm -rf "$TMP"; }
     && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"toaster"* ]]
+  [[ "$output" == *"toaster"* ]] || false
 }
 
 @test "fails when a surface is a truncated prefix of a real one" {
@@ -250,7 +250,7 @@ teardown() { rm -rf "$TMP"; }
     && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"ios"* ]]
+  [[ "$output" == *"ios"* ]] || false
 }
 
 @test "fails when a surface name carries internal whitespace" {
@@ -260,7 +260,7 @@ teardown() { rm -rf "$TMP"; }
     && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"mac os"* ]]
+  [[ "$output" == *"mac os"* ]] || false
 }
 
 @test "fails when the Driver block declares a default and no surfaces" {
@@ -270,7 +270,7 @@ teardown() { rm -rf "$TMP"; }
     && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"no surfaces row"* ]]
+  [[ "$output" == *"no surfaces row"* ]] || false
 }
 
 @test "the surfaces requirement does not reach a manifest with no Driver block" {
@@ -296,9 +296,9 @@ PY
     && rm -f "$TMP/p/skills/manifest/SKILL.md.bak"
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"surfaces"* ]]
-  [[ "$output" == *"plumber"* ]]
-  [[ "$output" != *"unbound variable"* ]]
+  [[ "$output" == *"surfaces"* ]] || false
+  [[ "$output" == *"plumber"* ]] || false
+  [[ "$output" != *"unbound variable"* ]] || false
 }
 
 frontmatter_add() { # $1 = agent file, $2 = line inserted right after the name line
@@ -309,21 +309,21 @@ frontmatter_add() { # $1 = agent file, $2 = line inserted right after the name l
   frontmatter_add "$TMP/p/agents/fixture-architect.md" 'model: opus'
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"agent pins model 'opus'"*"fixture-platform:fixture-architect"* ]]
+  [[ "$output" == *"agent pins model 'opus'"*"fixture-platform:fixture-architect"* ]] || false
 }
 
 @test "fails when a Roles agent pins sonnet, the lighter model core defaults a role to" {
   frontmatter_add "$TMP/p/agents/fixture-architect.md" 'model: sonnet'
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"agent pins model 'sonnet', which belongs to the project's [MODELS]"*"fixture-platform:fixture-architect"* ]]
+  [[ "$output" == *"agent pins model 'sonnet', which belongs to the project's [MODELS]"*"fixture-platform:fixture-architect"* ]] || false
 }
 
 @test "fails when a Roles agent pins an effort" {
   frontmatter_add "$TMP/p/agents/fixture-architect.md" 'effort: high'
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"agent pins an effort"*"fixture-platform:fixture-architect"* ]]
+  [[ "$output" == *"agent pins an effort"*"fixture-platform:fixture-architect"* ]] || false
 }
 
 @test "a model line in an agent's body is not its frontmatter" {
@@ -349,5 +349,5 @@ frontmatter_add() { # $1 = agent file, $2 = line inserted right after the name l
   frontmatter_add "$TMP/p/agents/fixture-architect.md" 'model: opus'
   run "$LINT" "$TMP/p"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"agent pins model 'opus'"* ]]
+  [[ "$output" == *"agent pins model 'opus'"* ]] || false
 }

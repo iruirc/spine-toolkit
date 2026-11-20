@@ -61,21 +61,26 @@ diff_files() {   # <repo> <base>
 
 # The tests that name the skill a file under skills/ belongs to: skills/<name> followed by
 # anything but [a-z0-9-], so that task-report does not pick the tests of task-report-x. A test that
-# reads "$ROOT/skills/<s>/locales/$l.md" through a variable names the skill, not the file.
-skill_tests() {   # <file under skills/>
+# reads "$ROOT/skills/<s>/locales/$l.md" through a variable names the skill, not the file. It looks
+# in the given test files, or in lib/ without them.
+skill_tests() {   # <file under skills/> [<test file>...]
   local name
-  name="${1#skills/}"; name="${name%%/*}"
+  name="${1#skills/}"; name="${name%%/*}"; shift
   name="$(printf '%s' "$name" | sed 's/[][\\.*^$+?(){}|]/\\&/g')"
-  grep -lE -- "skills/$name([^a-z0-9-]|\$)" "$lib"/*.bats 2>/dev/null || true
+  [ "$#" -gt 0 ] || set -- "$lib"/*.bats
+  grep -lE -- "skills/$name([^a-z0-9-]|\$)" "$@" 2>/dev/null || true
 }
 
 # Reads the changed files from stdin, one per line, and prints the bats arguments for them, one
 # per line, and why to stderr, each line starting with <label>.
 changed_suites() {   # <label>
-  local label="$1" files f picked all=0 selected="" sweeps="" line top
+  local label="$1" files f picked all=0 selected="" sweeps="" line top tests
   files="$(cat)"
+  # Every suite `all` runs is searched, so an integration suite is not left out once one exists.
+  tests=("$lib"/*.bats)
+  [ -d "$root/tests/foundation/integration" ] && tests+=("$root/tests/foundation/integration"/*.bats)
   # Each mark is read once, into one "<file><TAB><dirs>" line per sweep.
-  for f in "$lib"/*.bats; do
+  for f in "${tests[@]}"; do
     line="$(head -10 "$f" | grep -E '^# changed: sweep([[:blank:]]|$)' | head -1 || true)"
     [ -n "$line" ] || continue
     line="${line//$'\t'/ }"   # a tab would split the record below into three fields
@@ -87,7 +92,7 @@ changed_suites() {   # <label>
     case "$f" in
       tests/foundation/helpers/*|tests/foundation/fixtures/*|tests/fixtures/*)
         echo "$label: $f -> all of tests/foundation/lib" >&2; all=1; continue ;;
-      tests/foundation/lib/*.bats)
+      tests/foundation/lib/*.bats|tests/foundation/integration/*.bats)
         if [ -f "$root/$f" ]; then
           echo "$label: $f -> itself" >&2
           selected="$selected"$'\n'"$root/$f"
@@ -95,9 +100,9 @@ changed_suites() {   # <label>
           echo "$label: $f -> removed, nothing to run" >&2
         fi
         continue ;;
-      skills/*) picked="$(skill_tests "$f")" ;;
+      skills/*) picked="$(skill_tests "$f" "${tests[@]}")" ;;
       *)
-        picked="$(grep -lF -- "$f" "$lib"/*.bats 2>/dev/null || true)" ;;
+        picked="$(grep -lF -- "$f" "${tests[@]}" 2>/dev/null || true)" ;;
     esac
     top="${f%%/*}"
     if [ "$top" != "$f" ]; then
@@ -113,7 +118,7 @@ changed_suites() {   # <label>
     fi
   done <<< "$files"
   if [ "$all" -eq 1 ]; then
-    printf '%s\n' "$lib"
+    printf '%s\n' "${suites[@]}"
     return 0
   fi
   printf '%s\n' "$selected" | sed '/^$/d' | sort -u

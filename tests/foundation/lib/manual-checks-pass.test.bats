@@ -18,19 +18,19 @@ js() { PYTHONIOENCODING=utf-8 python3 -c 'import json,sys; d=json.load(sys.stdin
 @test "no arguments is a usage error, exit 2" {
   run "$PASS"
   [ "$status" -eq 2 ]
-  [[ "$output" == *usage* ]]
+  [[ "$output" == *usage* ]] || false
 }
 
 @test "an unknown command is a usage error, exit 2" {
   run "$PASS" explode "$EPIC"
   [ "$status" -eq 2 ]
-  [[ "$output" == *usage* ]]
+  [[ "$output" == *usage* ]] || false
 }
 
 @test "an epic that is no directory is a usage error, exit 2" {
   run "$PASS" collect "$EPIC/nowhere"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"not a directory"* ]]
+  [[ "$output" == *"not a directory"* ]] || false
 }
 
 @test "collect lists the open cases in the order of steps and ids" {
@@ -261,7 +261,7 @@ PY2
   cp -R "$EPIC" "$BATS_TEST_TMPDIR/before"
   run "$PASS" writeback "$EPIC"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"writeback: unmarked: 02/MC-1"* ]]
+  [[ "$output" == *"writeback: unmarked: 02/MC-1"* ]] || false
   diff -r "$EPIC" "$BATS_TEST_TMPDIR/before"
 }
 
@@ -269,7 +269,7 @@ PY2
   sed -i.bak -e 's/ · 02\/MC-1 PASS/ · 02\/MC-1 __/' -e 's/ · 02\/MC-3 DROPPED ([^)]*)/ · 02\/MC-3 __/' "$EPIC/ManualChecks.md"
   run "$PASS" writeback "$EPIC"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"writeback: unmarked: 02/MC-1, 02/MC-3"* ]]
+  [[ "$output" == *"writeback: unmarked: 02/MC-1, 02/MC-3"* ]] || false
 }
 
 @test "writeback keeps the lines of a step file that carry no mark" {
@@ -294,7 +294,7 @@ PY2
   cp -R "$EPIC" "$BATS_TEST_TMPDIR/before"
   run "$PASS" writeback "$EPIC"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"writeback: no place for: 09/MC-1"* ]]
+  [[ "$output" == *"writeback: no place for: 09/MC-1"* ]] || false
   diff -r "$EPIC" "$BATS_TEST_TMPDIR/before"
 }
 
@@ -462,7 +462,7 @@ PY2
   cp -R "$EPIC" "$BATS_TEST_TMPDIR/before"
   run "$PASS" writeback "$EPIC"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"writeback: unmarked: 02/MC-3"* ]]
+  [[ "$output" == *"writeback: unmarked: 02/MC-3"* ]] || false
   diff -r "$EPIC" "$BATS_TEST_TMPDIR/before"
 }
 
@@ -486,7 +486,7 @@ PY2
   cp -R "$EPIC" "$BATS_TEST_TMPDIR/before"
   run "$PASS" writeback "$EPIC"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"writeback: unmarked: 02/MC-3"* ]]
+  [[ "$output" == *"writeback: unmarked: 02/MC-3"* ]] || false
   diff -r "$EPIC" "$BATS_TEST_TMPDIR/before"
 }
 
@@ -522,7 +522,7 @@ open(p, 'w', encoding='utf-8').write(s)
 PY2
   run "$PASS" writeback "$EPIC"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"writeback: unmarked: 01/MC-1, 01/MC-2, 02/MC-1, 02/MC-2, 02/MC-3"* ]]
+  [[ "$output" == *"writeback: unmarked: 01/MC-1, 01/MC-2, 02/MC-1, 02/MC-2, 02/MC-3"* ]] || false
 }
 
 # A bug step Done created sets per-step for itself and walks its own case inside the step; its

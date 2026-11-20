@@ -23,7 +23,7 @@ teardown() { rm -rf "$TMP"; }
 @test "exits 2 without --core" {
   run "$LINT" "$TMP/p"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"--core is required"* ]]
+  [[ "$output" == *"--core is required"* ]] || false
 }
 
 @test "exits 2 on an unknown option" {
@@ -34,7 +34,7 @@ teardown() { rm -rf "$TMP"; }
 @test "names the exact floor tag when core is a checkout" {
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"spine-toolkit 2.0.0"* ]]
+  [[ "$output" == *"spine-toolkit 2.0.0"* ]] || false
 }
 
 @test "degrades to the directory as it sits when core is not a checkout" {
@@ -46,7 +46,7 @@ teardown() { rm -rf "$TMP"; }
   cp "$ROOT/.claude-plugin/plugin.json" "$TMP/core/.claude-plugin/plugin.json"
   run "$LINT" "$TMP/p" --core "$TMP/core"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"NOT the declared floor"* ]]
+  [[ "$output" == *"NOT the declared floor"* ]] || false
 }
 
 @test "fails when the dependency is declared as a bare string" {
@@ -60,7 +60,7 @@ teardown() { rm -rf "$TMP"; }
 JSON
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"no version floor"* ]]
+  [[ "$output" == *"no version floor"* ]] || false
 }
 
 @test "fails when there is no dependency on core at all" {
@@ -73,7 +73,7 @@ JSON
 JSON
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"no version floor"* ]]
+  [[ "$output" == *"no version floor"* ]] || false
 }
 
 @test "fails when a namespaced reference names a skill core does not have" {
@@ -81,8 +81,8 @@ JSON
     "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"ops-checklists"* ]]
-  [[ "$output" == *"does not exist"* ]]
+  [[ "$output" == *"ops-checklists"* ]] || false
+  [[ "$output" == *"does not exist"* ]] || false
 }
 
 @test "the violation names the file and the line" {
@@ -90,7 +90,7 @@ JSON
     "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"agents/fixture-architect.md:"* ]]
+  [[ "$output" == *"agents/fixture-architect.md:"* ]] || false
 }
 
 @test "reads a reference outside backticks too" {
@@ -100,7 +100,7 @@ JSON
     >> "$TMP/p/agents/fixture-architect.md"
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"ghost-skill"* ]]
+  [[ "$output" == *"ghost-skill"* ]] || false
 }
 
 @test "a skill that exists only after the floor is a violation" {
@@ -112,7 +112,7 @@ JSON
     "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
   run "$LINT" "$TMP/p" --core "$ROOT" --ref 1.0.0
   [ "$status" -eq 1 ]
-  [[ "$output" == *"manual-checks"* ]]
+  [[ "$output" == *"manual-checks"* ]] || false
 }
 
 @test "the declared floor alone, with no --ref, is what a violation is measured against" {
@@ -125,8 +125,8 @@ JSON
     "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"manual-checks"* ]]
-  [[ "$output" == *"spine-toolkit 1.0.0"* ]]
+  [[ "$output" == *"manual-checks"* ]] || false
+  [[ "$output" == *"spine-toolkit 1.0.0"* ]] || false
 }
 
 @test "fails when a hyphenated core skill is named bare in backticks" {
@@ -134,8 +134,8 @@ JSON
     "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"bare"* ]]
-  [[ "$output" == *"ops-checklist"* ]]
+  [[ "$output" == *"bare"* ]] || false
+  [[ "$output" == *"ops-checklist"* ]] || false
 }
 
 @test "a single-word core skill name stays legal bare" {
@@ -151,7 +151,7 @@ JSON
 @test "the namespaced form is not mistaken for a bare one" {
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 0 ]
-  [[ "$output" != *"bare"* ]]
+  [[ "$output" != *"bare"* ]] || false
 }
 
 @test "a hyphenated name that is not a core skill is left alone" {
@@ -166,11 +166,11 @@ JSON
   # a degraded one under a success exit code.
   run "$LINT" "$TMP/p" --core "$ROOT" --ref no-such-thing
   [ "$status" -eq 2 ]
-  [[ "$output" == *"no-such-thing does not resolve"* ]]
+  [[ "$output" == *"no-such-thing does not resolve"* ]] || false
 }
 
 @test "--ref takes any committish, not only a tag" {
   run "$LINT" "$TMP/p" --core "$ROOT" --ref HEAD
   [ "$status" -eq 0 ]
-  [[ "$output" == *"spine-toolkit HEAD"* ]]
+  [[ "$output" == *"spine-toolkit HEAD"* ]] || false
 }

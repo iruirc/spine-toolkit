@@ -30,7 +30,7 @@ setup() {
   [ -n "$TOPICS" ]
   IFS='|' read -r -a topics <<<"$TOPICS"
   [ "${#topics[@]}" -ge 5 ]
-  [[ "$TOPICS" == *"state management"* ]]
+  [[ "$TOPICS" == *"state management"* ]] || false
 }
 
 @test "method skills name no platform skill" {

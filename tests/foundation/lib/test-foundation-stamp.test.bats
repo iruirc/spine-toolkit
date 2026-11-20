@@ -100,7 +100,7 @@ FAKE
   mkdir "$S"
   run --separate-stderr "$R/scripts/test-foundation.sh" all
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"test-foundation: could not record the verified tree"* ]]
+  [[ "$stderr" == *"test-foundation: could not record the verified tree"* ]] || false
 }
 
 @test "touched runs the tests that name the files, not the whole lib for a fixture" {
@@ -108,7 +108,7 @@ FAKE
   [ "$status" -eq 0 ]
   # the manifest test holds the shorter path only, so it is not chosen; other and lib/ are not either
   [ "$(cat "$BATS_TEST_TMPDIR/bats-args")" = "$R/tests/foundation/lib/driver.test.bats" ]
-  [[ "$stderr" == *"touched: tests/fixtures/fixture-driver/.claude-plugin/plugin.json -> "* ]]
+  [[ "$stderr" == *"touched: tests/fixtures/fixture-driver/.claude-plugin/plugin.json -> "* ]] || false
 }
 
 @test "touched with a shorter path also runs the tests that hold the longer one" {
@@ -130,7 +130,7 @@ FAKE
   [ "$status" -eq 0 ]
   [ ! -e "$BATS_TEST_TMPDIR/bats-args" ]
   grep -qF -- "touched: docs/nothing.md -> no test names it" <<<"$stderr"
-  [[ "$stderr" == *"touched: no test names these files"* ]]
+  [[ "$stderr" == *"touched: no test names these files"* ]] || false
 }
 
 @test "touched without files on a clean tree runs nothing and passes" {
