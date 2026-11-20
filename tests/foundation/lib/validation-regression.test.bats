@@ -52,3 +52,35 @@ section() { # $1 file, $2 heading text: the body up to the next ## heading
   done
   grep -qF 'validation_ranges.rerun' "$ROOT/conventions/stage-dispatch.md" || { echo "stage-dispatch.md does not name validation_ranges.rerun"; return 1; }
 }
+
+subsection() { # $1 file, $2 heading text: the body up to the next ## or ### heading
+  awk -v h="### $2" '$0==h{f=1;next} f&&/^##/{exit} f' "$1"
+}
+
+@test "phase-verification classifies failures outside the task" {
+  grep -qxF '### Failures outside the task' "$SKILL" || { echo "no ### Failures outside the task"; return 1; }
+  sec="$(subsection "$SKILL" 'Failures outside the task')"
+  for t in 'usage search' 'Doubt keeps it inside' 'even when the test is in the registry' 'a missing registry is an empty one' \
+    '`PASSED_WITH_FLAKES`' '`FAILED` > `FLAKY` > `PASSED_WITH_FLAKES` > `PASSED`' 'up to 3' 'first green' 'no second full run' \
+    '`outside_failures`' '`known_failures_cleared`' '`known`' '`flaky`' '`red`' 'conventions/known-failures.md'; do
+    grep -qF -- "$t" <<<"$sec" || { echo "the subsection lost: $t"; return 1; }
+  done
+  [ "$(grep -c '^|' <<<"$sec")" -eq 8 ] || { echo "the status table is not a header, a rule and six rows"; return 1; }
+}
+
+@test "a re-run carries green whole-module runs of phases and of earlier Validations" {
+  sec="$(section "$SKILL" "Validation's regression")"
+  for t in '`ran:`' 'carried <sha> (phase <N>)' 'carried <sha> (validation)' 'whatever its status' 'latest'; do
+    grep -qF -- "$t" <<<"$sec" || { echo "the re-run paragraph lost: $t"; return 1; }
+  done
+}
+
+@test "task-documents defines ## Outside the task" {
+  doc="$ROOT/skills/task-documents/SKILL.md"
+  sec="$(section "$doc" 'Validation.md')"
+  grep -qF '`| Repository | Module | Test | Outcome | Entry | Why outside | Runs |`' <<<"$sec" \
+    || { echo "no ## Outside the task header"; return 1; }
+  for t in '`## Outside the task`' '`carried <sha> (phase <N>)`' '`carried <sha> (validation)`' '`reach`' '`PASSED_WITH_FLAKES`'; do
+    grep -qF -- "$t" <<<"$sec" || { echo "Validation.md section lost: $t"; return 1; }
+  done
+}

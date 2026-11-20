@@ -66,9 +66,30 @@ What Validation runs is the task's regression: everything the task's changes can
 
 A module whose code and dependencies did not change is neither built nor tested: its result cannot differ from the last green run. A file several modules share (a dependency lock file, a common build or lint configuration) changes every module that reads it. A project without modules runs its whole suite. The unit is the module: tests inside a module are not picked.
 
-**A re-run** recomputes the set from the task's ranges and runs only the modules the commits after the last green Validation reach, with the same closure over dependents. Every other module of the set is `carried`: it keeps the count of that Validation and its HEAD. There is no separate list of when a full regression is needed: a changed build manifest or public API makes the module changed, its dependents join the closure, and the run widens by itself. The driver scenario repeats only when the new commits touch the UI layer or a path the scenario walks.
+**A re-run** recomputes the set from the task's ranges and runs only the modules no earlier green run covers. A green run of a whole module covers it when no commit after that run's sha, and no uncommitted edit, reaches the module or its dependencies. There are two sources: a phase's `ran:` line under its checkbox in `Plan.md`, written `carried <sha> (phase <N>)`, and a green `ran` row of an earlier `Validation.md`, the archived copy or the current file, whatever its status, written `carried <sha> (validation)`. Of several sources the latest wins. A module that was red in an earlier Validation always runs again. A carried module keeps its source's count, HEAD and log. There is no separate list of when a full regression is needed: a changed build manifest or public API makes the module changed, its dependents join the closure, and the run widens by itself. The driver scenario repeats only when the new commits touch the UI layer or a path the scenario walks.
 
 The owner's directive never narrows the regression. The owner may widen it: a run of the whole workspace is legitimate, but it is not Validation's and belongs before packages are released. The project's own whole-workspace script is not run by Validation without the owner asking.
+
+### Failures outside the task
+
+A failing test is **outside the task** when it does not reach the symbols the task's diff changed: neither its file nor anything it calls contains them. The module is not the boundary: every module of the set is reachable from the change by definition. Decide it by the same usage search the rungs ask for, and write the reason in one sentence. Doubt keeps it inside.
+
+The registry of failures the owner has accepted is the file the contract names in `known_failures`; its form is `conventions/known-failures.md`, and a missing registry is an empty one. Read its first table only; a failure matches an entry by repository, module and test. Validation never writes it.
+
+A failure outside the task that is not a `permanent` entry gets a retry: its failed classes only, in a separate run, up to 3 times, and the first green stops. There is no second full run. That it failed under the load of the full regression is written as an observation, not a condition.
+
+| Failure | Status | `outcome` |
+|---|---|---|
+| inside the task | `FAILED`, even when the test is in the registry | — |
+| outside, a `permanent` entry, still failing | `PASSED`, known, `KF-<N>` | `known` |
+| outside, a `flaky` entry, the retry green | `PASSED`, known flaky, `KF-<N>` | `known` |
+| outside, no entry, the retry green | `PASSED_WITH_FLAKES` | `flaky` |
+| outside, the retry red, no entry or a `flaky` one | `FAILED` | `red` |
+| TEST: a test the task added is unstable | `FLAKY` | — |
+
+The status is the worst of the rows: `FAILED` > `FLAKY` > `PASSED_WITH_FLAKES` > `PASSED`. `PASSED_WITH_FLAKES` names its failures, it does not hide them.
+
+Every failure outside the task is a row of `## Outside the task` in `Validation.md` (`skills/task-documents/SKILL.md`) and an item of the return field `outside_failures`: `{repository, module, test, outcome, entry}`, `entry` the entry's ID or `—`. A test of a `permanent` entry that passed in this Validation is a line `KF-<N> no longer fails` under that table, and the ID goes into `known_failures_cleared`.
 
 ## Dependents with no aggregate build
 

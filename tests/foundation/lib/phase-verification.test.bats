@@ -79,7 +79,7 @@ section() { # $1 = file, $2 = heading text without "## "
 
 @test "the skill stays within its budget and ships no locales" {
   n="$(wc -l < "$SKILL" | tr -d ' ')"
-  [ "$n" -le 110 ] || { echo "SKILL.md is $n lines, budget 110"; return 1; }
+  [ "$n" -le 130 ] || { echo "SKILL.md is $n lines, budget 130"; return 1; }
   [ ! -d "$ROOT/skills/phase-verification/locales" ] || { echo "phase-verification must not carry locales/"; return 1; }
 }
 
