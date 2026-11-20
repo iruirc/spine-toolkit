@@ -185,7 +185,7 @@ answers.
 | `model_tiers` | — | `[MODEL_TIERS]`, entries `fast@<runtime>: <model>`; the project config only | tier `fast`; a runtime with a `runtimes/<id>.json`; a model of that runtime's `models`, not one it reads as `session`, or `session` itself | none: a `fast` with no line for the runtime reads as `session` |
 | `effort` | `[EFFORT]` | `[EFFORT]`, entries `<key>: <value>` | the runtime's `effort` list (`runtimes/<id>.json`); `session` always | `session` |
 | `long_run` | `[LONG_RUN]` | `[LONG_RUN]`, entries `<key>: <minutes>` | keys `stall` `max`, a whole number of minutes > 0 | `stall: 5, max: 30` |
-| `known_failures` | — | `## Paths`, line `- Known failures: <path>` | a path: absolute, `~`, or from the project root; the file need not exist | `<project root>/Tasks/KnownFailures.md`; `""` with no config |
+| `known_failures` | — | `## Paths`, line `- Known failures: <path>` | a path from the project root, a leading `/` included, or from `~`; the file need not exist | `<project root>/Tasks/KnownFailures.md`; `""` with no config |
 
 `driver` walks this same chain but never rides the Outbound Contract: a workflow script must not
 gate on it, so it stays a pre-flight concern of the orchestrator alone

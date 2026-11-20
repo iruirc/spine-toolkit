@@ -111,7 +111,7 @@ manual
 
 ## Paths
 
-(optional: "- Sources: /Sources", "- Tests: /Tests", "- External packages: /Packages/*", "- Roots: ../design-assets", "- Known failures: Tasks/KnownFailures.md"
+(optional: "- Sources: /Sources", "- Tests: /Tests", "- External packages: /Packages/*", "- Roots: ../design-assets", "- Known failures: /Tasks/KnownFailures.md"
 
 `External packages` may repeat and its value is a glob resolved from the project root. Every
 directory it resolves to is a checkout the project builds against; a checkout carrying its own
@@ -126,7 +126,8 @@ project root and every external package it is where a stage agent may search for
 nowhere else. It stays read-only in Codex CLI.
 
 `Known failures` names the file where the project keeps the failures that are not any task's
-(`conventions/known-failures.md`): absolute, or relative to the project root. Left out, it is
+(`conventions/known-failures.md`), written from the project root as `External packages` is — a
+leading `/` is the project root too — or from the home folder with `~`. Left out, it is
 `Tasks/KnownFailures.md`; a file that is not there yet is an empty registry.)
 
 ## Orchestration

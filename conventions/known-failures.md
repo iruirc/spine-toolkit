@@ -8,7 +8,8 @@ No script parses it.
 ## The file
 
 One file per project, wherever its working copies are. The line `- Known failures: <path>` in the
-project config's `## Paths` names it, absolute or from the project root; without the line it is
+project config's `## Paths` names it from the project root, a leading `/` included as in `External
+packages`, or from the home folder with `~`; without the line it is
 `<project root>/Tasks/KnownFailures.md`. The resolved absolute path reaches every stage as the
 contract field `known_failures` (`conventions/task-settings.md`). A missing registry is an empty one,
 never an error.
@@ -20,7 +21,7 @@ One table, one entry per row:
 ```
 | ID | Repository | Module | Tests | Kind | Cause | Passes where | Accepted | Remove when |
 |---|---|---|---|---|---|---|---|---|
-| KF-1 | Packages/Core | Core | RenderTimingTests, PlayerHostTests/testFirstFrame | permanent | needs the application host, which the module's own test run lacks | the application's test run, 168 tests, 0 failures | owner, 2026-11-12, 0042/Questions.md | the tests move under the app host |
+| KF-1 | Packages/Core | Core | HostedViewTests | permanent | needs an app host | under the app host, 0 failures | owner, 2026-01-01, 0001/Questions.md | the tests move under the app host |
 ```
 
 - `ID` — `KF-<N>`, never reused: `Validation.md` and `Questions.md` refer to it.

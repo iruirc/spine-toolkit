@@ -209,7 +209,7 @@ finds() { # the lint's output has a finding of this class
   [ -z "$output" ] || { echo "$output"; return 1; }
 }
 
-@test "a repository whose every carried row is behind gets a reach line per row" {
+@test "a repository with no ran row whose every carried row is behind gets a reach line per row" {
   commit "$PROJ" a.txt
   s1="$(head7 "$PROJ/Packages/Core")"
   commit "$PROJ/Packages/Core" c.txt
@@ -219,6 +219,30 @@ finds() { # the lint's output has a finding of this class
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
   [ "$(grep -c '^Validation.md: reach:' <<<"$output")" -eq 2 ] || { echo "$output"; return 1; }
+  grep -qxF "Validation.md: reach: 1 commits after $s2 in Packages/Core, confirm the diff does not reach A (row Packages/Core, A)" <<<"$output" || { echo "$output"; return 1; }
+  grep -qxF "Validation.md: reach: 2 commits after $s1 in Packages/Core, confirm the diff does not reach B (row Packages/Core, B)" <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "a phase carry behind HEAD gets a reach line even beside a ran row of its repository" {
+  # one repository: phase 1 ran Core whole, phase 2 committed elsewhere in it, and Validation ran
+  # another module and carried Core from phase 1
+  commit "$PROJ" core.txt
+  s1="$(head7 "$PROJ")"
+  commit "$PROJ" app.txt
+  vmd FAILED "$(app_row)" "$(row . Core "carried $s1 (phase 1)" 7 "$s1" validation-evidence/t/core.log)"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  [ "$output" = "Validation.md: reach: 1 commits after $s1 in ., confirm the diff does not reach Core (row ., Core)" ] || { echo "$output"; return 1; }
+}
+
+@test "a validation carry behind HEAD beside a ran row of its repository gets no reach line" {
+  commit "$PROJ" core.txt
+  s1="$(head7 "$PROJ")"
+  commit "$PROJ" app.txt
+  vmd FAILED "$(app_row)" "$(row . Core "carried $s1 (validation)" 7 "$s1" validation-evidence/t/core.log)" "$(row . Lib "carried $s1" 3 "$s1" validation-evidence/t/core.log)"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  [ -z "$output" ] || { echo "$output"; return 1; }
 }
 
 @test "carried rows name their source" {

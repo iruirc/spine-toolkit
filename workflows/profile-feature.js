@@ -391,6 +391,13 @@ const flakeNote = (v) => {
   const n = (v.outside_failures || []).filter((f) => f && f.outcome === 'flaky').length
   result.notes.push(`Validation passed with ${n} flake(s) outside the task.`)
 }
+// What the workflow returns of a Validation: the orchestrator prints outside_failures and offers
+// the registry additions and removals from them, so every finish after Validation carries all three.
+const validationOut = (v) => ({
+  validation_status: v ? v.validation_status : null,
+  outside_failures: (v && v.outside_failures) || [],
+  known_failures_cleared: (v && v.known_failures_cleared) || [],
+})
 
 // The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
 // the stage that made it onward, including the artifact that stage is about to write. A contract
@@ -1217,7 +1224,7 @@ Change no production code and no tests. Return the same status you wrote on the 
 
   if (!passed(validation.validation_status)) {
     result.notes.push(`Validation returned ${validation.validation_status}; Review and Done were not run.`)
-    return finish('ask_user', { validation_status: validation.validation_status })
+    return finish('ask_user', validationOut(validation))
   }
   flakeNote(validation)
   if (MANUAL_CHECKS_CHECK === 'on' && validation.manual_checks && validation.manual_checks.length && validation.manual_checks_changed !== false) {
@@ -1249,7 +1256,7 @@ Write it by applying the spine-toolkit:task-documents skill, its Review.md secti
 
   if (review.review_status !== 'APPROVED') {
     result.notes.push(`Review returned ${review.review_status}; Done was not run.`)
-    return finish('ask_user', { review_status: review.review_status, blocking_findings: review.blocking_findings || [], done_findings: review.done_findings || [] })
+    return finish('ask_user', { ...(validation ? validationOut(validation) : {}), review_status: review.review_status, blocking_findings: review.blocking_findings || [], done_findings: review.done_findings || [] })
   }
 }
 
@@ -1283,6 +1290,6 @@ When ${DIR}/Plan.md has a ## Estimation section, a ## Estimate retrospective sec
 }
 
 return finish(result.last_completed_stage === 'Done' ? 'stop' : 'continue', {
-  validation_status: validation ? validation.validation_status : null,
+  ...validationOut(validation),
   review_status: review ? review.review_status : null,
 })

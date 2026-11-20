@@ -776,16 +776,18 @@ def search_roots():
 
 def known_failures():
     """Not a setting either: where the project keeps its failures outside a task
-    (conventions/known-failures.md). ## Paths names it under Known failures, absolute, with ~ or
-    from the project root; else Tasks/KnownFailures.md there. A path, whether or not the file
-    exists: no config, no path."""
+    (conventions/known-failures.md). ## Paths names it under Known failures from the project root,
+    a leading / included, as External packages is written, or from the home folder with ~; else
+    Tasks/KnownFailures.md there. A path, whether or not the file exists: no config, no path."""
     if not CFG:
         return ''
     home = os.path.dirname(CFG)
     for line in block(CFG, 'Paths'):
         m = re.match(r'^-\s*Known failures:\s*(.+?)\s*$', line)
         if m:
-            return os.path.normpath(os.path.join(home, os.path.expanduser(m.group(1))))
+            p = m.group(1)
+            p = os.path.expanduser(p) if p.startswith('~') else p.lstrip('/')
+            return os.path.normpath(os.path.join(home, p))
     return os.path.join(home, 'Tasks', 'KnownFailures.md')
 
 

@@ -45,7 +45,9 @@ Every other block of the file — `## Persona`, `## Rules`, `## Platform`, `## A
 exception feeds every task: the folders `## Paths` names under `External packages` and `Roots`,
 with the project root, are the only places a stage agent may search for a file. A second one:
 `Known failures` names the project's registry of failures outside a task (`conventions/known-failures.md`),
-`Tasks/KnownFailures.md` when left out; the resolver prints its path as `known_failures`.
+written from the project root as `External packages` is, a leading `/` included, or from the home
+folder with `~`, and `Tasks/KnownFailures.md` when left out; the resolver prints its absolute path
+as `known_failures`.
 
 Validation reads that registry and never writes it. Its status line takes four values: `PASSED`,
 `PASSED_WITH_FLAKES`, `FAILED` and `FLAKY`. `PASSED_WITH_FLAKES` means the task's own checks passed

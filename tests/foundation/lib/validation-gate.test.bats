@@ -67,6 +67,19 @@ gate() {
   done
 }
 
+@test "the workflow result carries outside_failures and known_failures_cleared after Validation" {
+  CLEARED='"known_failures_cleared": ["KF-2"]'
+  for p in $RANGED; do
+    for s in PASSED_WITH_FLAKES FAILED; do
+      rp "$p" "$(contract Validation)" "{\"validation\": $(validation_reply "$s" ", $FLAKES2, $CLEARED"), \"review\": $APPROVED}" \
+        'o.result.outside_failures.map((f) => f.outcome).join(" ")' 'o.result.known_failures_cleared.join(" ")' 'o.result.validation_status'
+      [ "${V[0]}" = 'flaky flaky known' ] || { echo "profile-$p $s: outside_failures: ${V[0]}"; return 1; }
+      [ "${V[1]}" = KF-2 ] || { echo "profile-$p $s: known_failures_cleared: ${V[1]}"; return 1; }
+      [ "${V[2]}" = "$s" ] || { echo "profile-$p $s: validation_status: ${V[2]}"; return 1; }
+    done
+  done
+}
+
 @test "a TEST run passes with flakes and stops on FLAKY, though both are unstable" {
   gate test PASSED_WITH_FLAKES ", $FLAKES1"
   grep -qw review <<<"${V[0]}" || { echo "PASSED_WITH_FLAKES stopped TEST: ${V[0]}"; return 1; }
@@ -98,9 +111,10 @@ epic() { node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/p
 
 @test "an epic step that passed with flakes is not a failed step" {
   steps='"execute:read-steps": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "FEATURE", "status": "PENDING"}]}'
-  out="$(epic "$(epic_contract Execute)" "{$steps, \"workflow:spine-toolkit:profile-feature\": {\"status\": \"ok\", \"next_recommended_action\": \"stop\", \"validation_status\": \"PASSED_WITH_FLAKES\", \"review_status\": \"APPROVED\"}}")"
+  out="$(epic "$(epic_contract Execute)" "{$steps, \"workflow:spine-toolkit:profile-feature\": {\"status\": \"ok\", \"next_recommended_action\": \"stop\", \"validation_status\": \"PASSED_WITH_FLAKES\", $FLAKES2, \"review_status\": \"APPROVED\"}}")"
   node -e 'const o = JSON.parse(process.argv[1]); const r = o.result
-    if (r.failed_steps.length || r.completed_steps.map((s) => s.step_id).join() !== "1.step" || !o.calls.some((c) => c.label === "execute:tick:1.step")) { console.log(JSON.stringify(r)); process.exit(1) }' "$out"
+    if (r.failed_steps.length || r.completed_steps.map((s) => s.step_id).join() !== "1.step" || !o.calls.some((c) => c.label === "execute:tick:1.step")) { console.log(JSON.stringify(r)); process.exit(1) }
+    if (!r.notes.includes("step 1.step: Validation passed with 2 flake(s) outside the task.")) { console.log("no step flake note: " + r.notes); process.exit(1) }' "$out"
 }
 
 @test "an epic step that ended FLAKY is still a failed step" {
@@ -131,7 +145,8 @@ epic() { node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/p
   for f in 'already carries the line [VALIDATION_STATUS] = PASSED or [VALIDATION_STATUS] = PASSED_WITH_FLAKES' \
            'return already_passed true, validation_status as that line says' \
            'A status FAILED or FLAKY there means the earlier pass did not complete' \
-           '[VALIDATION_STATUS] = PASSED | PASSED_WITH_FLAKES | FAILED | FLAKY'; do
+           '[VALIDATION_STATUS] = PASSED | PASSED_WITH_FLAKES | FAILED | FLAKY' \
+           'This pass runs no regression, so it never writes PASSED_WITH_FLAKES itself'; do
     grep -qF -- "$f" <<<"${V[2]}" || { echo "the Acceptance brief lost: $f"; return 1; }
   done
 }

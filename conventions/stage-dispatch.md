@@ -35,6 +35,7 @@ Long-running commands: follow {core}/conventions/agent-tooling.md → Long-runni
 
 A Review stage's prompt also names every range of the task's `review_ranges`, worded as the Method A Review prompt words it.
 A Validation stage's prompt names the range of the task's `validation_ranges.task` and, when it is not null, of `validation_ranges.rerun`, worded as the Method A Validation prompt words them; a null `rerun` means every module of the set that no carried run covers — a phase's `ran:` line or a green row of an earlier `Validation.md`.
+A Validation stage's prompt also names the task's `known_failures` registry, worded as the Method A brief words it: "The project's known failures registry is <path>; a missing file is an empty registry.", or "The project keeps no known failures registry." when `known_failures` is empty.
 
 ## Owner's directive
 

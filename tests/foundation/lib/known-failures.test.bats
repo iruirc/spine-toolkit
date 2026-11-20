@@ -113,3 +113,28 @@ outside_gate() {
     ! grep -qE 'null means the whole set|runs the whole set' "$ROOT/$f" || { echo "$f still says the whole set"; return 1; }
   done
 }
+
+@test "a Method B Validation prompt names the registry as the Method A brief words it" {
+  conv="$ROOT/conventions/stage-dispatch.md"
+  for t in '`known_failures`' "The project's known failures registry is <path>; a missing file is an empty registry." \
+    'The project keeps no known failures registry.'; do
+    grep -qF -- "$t" "$conv" || { echo "stage-dispatch.md does not say: $t"; return 1; }
+  done
+  pre="$ROOT/workflow-src/prelude.js"
+  grep -qF "The project's known failures registry is \${KNOWN_FAILURES}; a missing file is an empty registry." "$pre" \
+    || { echo "the Method A brief no longer words the registry this way"; return 1; }
+  grep -qF "'The project keeps no known failures registry.'" "$pre" || { echo "the Method A brief lost the empty wording"; return 1; }
+}
+
+@test "a Method B Review runs no suite when the scope lint prints no finding, as Method A" {
+  for p in feature bug refactor test quick; do
+    f="$ROOT/skills/workflow-$p/SKILL.md"
+    grep -qF 'when it prints no finding the reviewer runs no suite' "$f" || { echo "workflow-$p: the Review rule"; return 1; }
+    ! grep -qF 'when it prints nothing the reviewer runs no suite' "$f" || { echo "workflow-$p: still 'prints nothing'"; return 1; }
+  done
+}
+
+@test "the registry's example row is a neutral one" {
+  grep -qF '| KF-1 | Packages/Core | Core | HostedViewTests | permanent | needs an app host | under the app host, 0 failures |' "$CONV" \
+    || { echo "the example row changed"; return 1; }
+}

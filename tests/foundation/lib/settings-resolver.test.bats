@@ -1176,15 +1176,16 @@ $BATS_TEST_TMPDIR/assets"
   ! grep -qi 'known_failures' <<<"$output" || { echo "$output"; return 1; }
 }
 
-@test "known_failures follows ## Paths, relative from the project root or absolute" {
+@test "known_failures follows ## Paths from the project root, a leading slash included, or from ~" {
   printf '## Paths\n\n- Known failures: Docs/Failing.md\n' >>"$PROJ/CLAUDE-spine-toolkit.md"
   run "$RESOLVE" json "$TASK"
   [ "$(field known_failures <<<"$output")" = "$PROJ/Docs/Failing.md" ] || { echo "$output"; return 1; }
-  printf '## Paths\n\n- Known failures: %s/shared/Failing.md\n' "$BATS_TEST_TMPDIR" >"$BATS_TEST_TMPDIR/paths"
-  printf '# CLAUDE-spine-toolkit.md\n\n## Task defaults\n\n[WORKFLOW_MODE] = [manual]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
-  cat "$BATS_TEST_TMPDIR/paths" >>"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '# CLAUDE-spine-toolkit.md\n\n## Task defaults\n\n[WORKFLOW_MODE] = [manual]\n\n## Paths\n\n- External packages: /Packages/*\n- Known failures: /Tasks/KnownFailures.md\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   run "$RESOLVE" json "$TASK"
-  [ "$(field known_failures <<<"$output")" = "$BATS_TEST_TMPDIR/shared/Failing.md" ] || { echo "$output"; return 1; }
+  [ "$(field known_failures <<<"$output")" = "$PROJ/Tasks/KnownFailures.md" ] || { echo "a leading slash is not the project root: $output"; return 1; }
+  printf '# CLAUDE-spine-toolkit.md\n\n## Task defaults\n\n[WORKFLOW_MODE] = [manual]\n\n## Paths\n\n- Known failures: ../shared/Failing.md\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field known_failures <<<"$output")" = "$(dirname "$PROJ")/shared/Failing.md" ] || { echo "$output"; return 1; }
   printf '# CLAUDE-spine-toolkit.md\n\n## Task defaults\n\n[WORKFLOW_MODE] = [manual]\n\n## Paths\n\n- Known failures: ~/Failing.md\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   HOME="$BATS_TEST_TMPDIR/home" run "$RESOLVE" json "$TASK"
   [ "$(field known_failures <<<"$output")" = "$BATS_TEST_TMPDIR/home/Failing.md" ] || { echo "$output"; return 1; }

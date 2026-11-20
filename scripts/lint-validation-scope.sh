@@ -22,9 +22,11 @@ set -euo pipefail
 # current. A carried sha that is not in the history is a finding of its own, per row. A Run is
 # "carried <sha>", optionally followed by its source, "(phase <id>)" or "(validation)".
 #
-# A repository whose every carried row has commits after its sha, and which has no ran row, is a
-# reach line per row, not a finding: whether those commits touch a module the carried run covers is
-# the module graph, which this lint does not see, and Review confirms it from the diff. The line is
+# A carried row is a reach line, not a finding, when its sha has later commits and either it comes
+# from a phase, "(phase <id>)", whatever ran rows its repository has, or its repository has no ran
+# row and every carried row of it is behind — the rule for "(validation)" and bare rows. Whether
+# those commits touch a module the carried run covers is the module graph, which this lint does not
+# see, and Review confirms it from the diff. The line is
 # informational, "Validation.md: reach: <n> commits after <sha> in <repo>, confirm the diff does not
 # reach <module> (<where>)", and it does not change the exit code.
 #
@@ -52,7 +54,7 @@ import json, os, re, subprocess, sys
 RANGES, GIVEN, TASK = sys.argv[1], sys.argv[2], os.path.realpath(sys.argv[2])
 HEADER = ['Repository', 'Module', 'Why', 'Run', 'Tests', 'HEAD', 'Log']
 SHA = re.compile(r'[0-9a-f]{7,40}')
-CARRIED = re.compile(r'carried\s+`?([^\s`]+)`?(?:\s+\((?:phase\s+\S+|validation)\))?')
+CARRIED = re.compile(r'carried\s+`?([^\s`]+)`?(?:\s+\((phase\s+\S+|validation)\))?')
 RECORD = re.compile(r'^\[VALIDATED_COMMIT\]\s*=\s*(.*)$')
 
 
@@ -119,7 +121,7 @@ if table:
     found += ['missing: %s has changes and no row (## Regression set)' % rel for rel in sorted(changed - listed)]
 
 ran = {r[0] for r in rows if r[3] == 'ran'}
-carried = {}  # repository -> [(commits after the sha, sha, module, where)], rewritten shas left out
+carried = {}  # repository -> [(commits after the sha, sha, module, where, from a phase)], rewritten shas left out
 for repo, module, why, run, tests, head, log, where in rows:
     if run == 'ran':
         if not re.fullmatch(r'\d+', tests):
@@ -144,12 +146,13 @@ for repo, module, why, run, tests, head, log, where in rows:
     if n == 'rewritten':
         found.append('carried: %s is not in the history of %s (%s)' % (m.group(1), repo, where))
     else:
-        carried.setdefault(repo, []).append((n, m.group(1), module if module not in ('', '—', '-') else repo, where))
+        carried.setdefault(repo, []).append((n, m.group(1), module if module not in ('', '—', '-') else repo, where, bool(m.group(2) and m.group(2).startswith('phase'))))
 
 reach = []
 for repo, held in carried.items():
-    if repo not in ran and all(n != '0' for n, _, _, _ in held):
-        reach += ['reach: %s commits after %s in %s, confirm the diff does not reach %s (%s)' % (n, sha, repo, module, where) for n, sha, module, where in held]
+    whole = repo not in ran and all(n != '0' for n, _, _, _, _ in held)
+    reach += ['reach: %s commits after %s in %s, confirm the diff does not reach %s (%s)' % (n, sha, repo, module, where)
+              for n, sha, module, where, phase in held if n != '0' and (phase or whole)]
 
 # A PASSED or PASSED_WITH_FLAKES Validation leaves the records the next one narrows from, one per repository it covered.
 if lines and re.match(r'\[VALIDATION_STATUS\]\s*=\s*PASSED(?:_WITH_FLAKES)?\b', lines[0].strip()):

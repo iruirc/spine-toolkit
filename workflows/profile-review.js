@@ -384,6 +384,13 @@ const flakeNote = (v) => {
   const n = (v.outside_failures || []).filter((f) => f && f.outcome === 'flaky').length
   result.notes.push(`Validation passed with ${n} flake(s) outside the task.`)
 }
+// What the workflow returns of a Validation: the orchestrator prints outside_failures and offers
+// the registry additions and removals from them, so every finish after Validation carries all three.
+const validationOut = (v) => ({
+  validation_status: v ? v.validation_status : null,
+  outside_failures: (v && v.outside_failures) || [],
+  known_failures_cleared: (v && v.known_failures_cleared) || [],
+})
 
 // The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
 // the stage that made it onward, including the artifact that stage is about to write. A contract

@@ -389,6 +389,13 @@ const flakeNote = (v) => {
   const n = (v.outside_failures || []).filter((f) => f && f.outcome === 'flaky').length
   result.notes.push(`Validation passed with ${n} flake(s) outside the task.`)
 }
+// What the workflow returns of a Validation: the orchestrator prints outside_failures and offers
+// the registry additions and removals from them, so every finish after Validation carries all three.
+const validationOut = (v) => ({
+  validation_status: v ? v.validation_status : null,
+  outside_failures: (v && v.outside_failures) || [],
+  known_failures_cleared: (v && v.known_failures_cleared) || [],
+})
 
 // The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
 // the stage that made it onward, including the artifact that stage is about to write. A contract
@@ -1476,6 +1483,11 @@ if (runs('Execute')) {
       }
 
       completed_steps.push({ step_id: st.step_id, task_id: st.task_id, status: 'ok' })
+      // A step that passed with flakes went on to Review and Done; its flakes stay visible in the epic.
+      if (r.validation_status === 'PASSED_WITH_FLAKES') {
+        const n = (r.outside_failures || []).filter((f) => f && f.outcome === 'flaky').length
+        result.notes.push(`step ${st.step_id}: Validation passed with ${n} flake(s) outside the task.`)
+      }
 
       // A step that raised itself mutated only its own run: this script has no filesystem, so the
       // write-back into that step's Task.md is owed to the orchestrator and travels as a note.
@@ -1536,6 +1548,8 @@ if (runs('Acceptance') && MANUAL_CHECKS_PASS === 'end' && branch !== 'pure_resea
 This epic walks its manual checks in one pass at the end: its steps wrote their cases and left them unwalked. Write ${DIR}/Validation.md; its FIRST LINE is required to be exactly:
 
 [VALIDATION_STATUS] = PASSED | PASSED_WITH_FLAKES | FAILED | FLAKY
+
+This pass runs no regression, so it never writes PASSED_WITH_FLAKES itself: that status appears here only as one read back from an existing Validation.md, as above. A pass that completes is PASSED; one that could not be run is FAILED.
 
 First run "${core('scripts/manual-checks-pass.sh')}" collect ${DIR}. It lists, as JSON, every case of every step that carries no mark yet, with its **Runner:**, **Device:** and **Order:**. When it lists none, write Validation.md as the status line PASSED and the single line "manual checks: none — no step left a case", write no ${PASS_FILE}, and return manual_checks empty and agent_verdicts 0.
 
