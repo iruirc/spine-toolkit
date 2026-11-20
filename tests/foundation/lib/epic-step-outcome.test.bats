@@ -46,6 +46,6 @@ failed_first() {
 }
 
 @test "Method B stops on a step that did not reach its end" {
-  grep -qF 'If the step returned `status=ok` with `next_recommended_action=ask_user`, or with a `validation_status` other than `PASSED` or a `review_status` other than `APPROVED`' "$ROOT/skills/workflow-epic/SKILL.md" \
+  grep -qF 'If the step returned `status=ok` with `next_recommended_action=ask_user`, or with a `validation_status` other than `PASSED` or `PASSED_WITH_FLAKES`, or a `review_status` other than `APPROVED`' "$ROOT/skills/workflow-epic/SKILL.md" \
     || { echo "Method B counts an unfinished step as done"; return 1; }
 }

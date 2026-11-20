@@ -352,6 +352,19 @@ I will fix them myself, then run redo Review
 ## quick_escalation_stop
 Task `{task_id}` is not a QUICK change: {reason}. Nothing was changed. Set `[TASK_TYPE]` in its `Task.md` to BUG, FEATURE or REFACTOR and run it again.
 
+## known_failures_outside
+Failures outside the task:
+{list}
+
+## known_failures_add_flaky
+Add the flaky ones to the known failures registry as `flaky`, then continue
+
+## known_failures_add_permanent
+Add the red ones to the known failures registry as `permanent`, then run Validation again
+
+## known_failures_cleared
+{ids} no longer fail: move them to `## Removed` of the registry, then continue
+
 ## auq_run_resume_question
 A previous run of this task ({started}) is not finished. It ran with settings: {settings}; owner's directive: {directive}. Apply them to this run?
 

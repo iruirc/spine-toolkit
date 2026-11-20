@@ -164,7 +164,7 @@ check() {
   grep -qF 'When the stage'"'"'s own status is `FAILED` or `FLAKY`, return `next_recommended_action=ask_user` with `last_completed_stage=Acceptance` and do not run Done' "$skill" \
     || { echo "workflow-epic does not stop for the user, with no Done, on a FAILED or FLAKY Acceptance"; return 1; }
   orch="$ROOT/skills/orchestrator/SKILL.md"
-  grep -qF 'every step is done, `manual_checks_pass` is `end` and the epic folder holds no `Validation.md` whose status line is `[VALIDATION_STATUS] = PASSED` → `Acceptance`' "$orch" \
+  grep -qF 'every step is done, `manual_checks_pass` is `end` and the epic folder holds no `Validation.md` whose status line is `[VALIDATION_STATUS] = PASSED` or `[VALIDATION_STATUS] = PASSED_WITH_FLAKES` → `Acceptance`' "$orch" \
     || { echo "State Detection does not route an epic to Acceptance"; return 1; }
   grep -qF "re-dispatch the epic by State Detection item 4's rule, applied directly" "$orch" \
     || { echo "the pending_steps re-dispatch does not say it bypasses the unticked Plan.md rows"; return 1; }

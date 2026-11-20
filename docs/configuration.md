@@ -47,6 +47,17 @@ with the project root, are the only places a stage agent may search for a file. 
 `Known failures` names the project's registry of failures outside a task (`conventions/known-failures.md`),
 `Tasks/KnownFailures.md` when left out; the resolver prints its path as `known_failures`.
 
+Validation reads that registry and never writes it. Its status line takes four values: `PASSED`,
+`PASSED_WITH_FLAKES`, `FAILED` and `FLAKY`. `PASSED_WITH_FLAKES` means the task's own checks passed
+and the only failures were flaky tests outside the task, each green on a separate retry; the run
+goes on as after `PASSED`, and its notes say `Validation passed with <n> flake(s) outside the task.`
+An entry is added and removed only on the owner's word, in `manual`, after Validation. After
+`PASSED_WITH_FLAKES` the orchestrator offers to add the flaky failures as `flaky` entries. After a
+`FAILED` whose every failure is outside the task, it offers to add them as `permanent` and run
+Validation again. When the test of a `permanent` entry passes, it offers to move the entry to
+`## Removed`. Consent writes the row, logs the decision in the task's `Questions.md` and commits the
+registry on its own. In `auto` the registry does not change.
+
 ## Project settings
 
 ### [LANG]

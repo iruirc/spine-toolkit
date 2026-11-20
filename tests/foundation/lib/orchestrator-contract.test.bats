@@ -698,3 +698,17 @@ PY
     done
   done
 }
+
+@test "the known_failures paragraph says how each method carries it" {
+  para="$(awk '/^`known_failures` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  for token in 'Method A' 'Method B' 'Validation'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the known_failures paragraph does not say $token"; return 1; }
+  done
+}
+
+@test "Method A's result names the fields of failures outside the task" {
+  para="$(grep -F '**Method A — reading the result.**' "$SKILL")"
+  for token in '`outside_failures`' '`known_failures_cleared`'; do
+    grep -qF -- "$token" <<<"$para" || { echo "Method A — reading the result does not name $token"; return 1; }
+  done
+}

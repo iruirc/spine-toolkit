@@ -352,6 +352,19 @@ Review требует изменений:
 ## quick_escalation_stop
 Задача `{task_id}` — не QUICK-правка: {reason}. Ничего не изменено. Поменяйте `[TASK_TYPE]` в её `Task.md` на BUG, FEATURE или REFACTOR и запустите заново.
 
+## known_failures_outside
+Падения вне задачи:
+{list}
+
+## known_failures_add_flaky
+Внести нестабильные в реестр известных падений как `flaky` и продолжить
+
+## known_failures_add_permanent
+Внести красные в реестр известных падений как `permanent` и повторить Validation
+
+## known_failures_cleared
+{ids} больше не падают: перенести их в `## Removed` реестра и продолжить
+
 ## auq_run_resume_question
 Прошлый прогон этой задачи ({started}) не закончен. Он шёл с настройками: {settings}; уточнение владельца: {directive}. Применить их к этому запуску?
 
