@@ -38,6 +38,11 @@ plan_brief() {
     || { echo "The rungs leave a project without modules in the all-tests defect"; return 1; }
 }
 
+@test "finding 3 of Review exempts a project without modules" {
+  f="$(grep -E '^3\. ' <<<"$(section "$SKILL" 'Review')")"
+  grep -qF 'a project without modules aside' <<<"$f" || { echo "finding 3: $f"; return 1; }
+}
+
 @test "the Plan brief of the four phased profiles says which tests a phase runs" {
   for p in $PROFILES; do
     b="$(plan_brief "$ROOT/workflows/profile-$p.js")"

@@ -215,10 +215,13 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   grep -qF 'Plan.md' <<<"$line" || { echo "the kind is not tied to Plan.md: $line"; return 1; }
   grep -qF 'all tests' <<<"$line" || { echo "the kind does not say what it is: $line"; return 1; }
   grep -qF 'not `full`' <<<"$line" || { echo "the kind is not keyed to the phase's own line: $line"; return 1; }
+  grep -qF 'says the project has no modules' <<<"$line" || { echo "the kind gives a project without modules no exception: $line"; return 1; }
   ! grep -qF 'proportional' <<<"$line" || { echo "the reader cannot see phase_verification: $line"; return 1; }
   for p in $SEVEN; do
     grep -qF 'suite in a phase, a phase checkbox in Plan.md' "$ROOT/workflows/profile-$p.js" \
       || { echo "profile-$p.js: the read prompt does not describe the kind"; return 1; }
+    grep -qF 'unless Plan.md says the project has no modules' "$ROOT/workflows/profile-$p.js" \
+      || { echo "profile-$p.js: the read prompt gives a project without modules no exception"; return 1; }
     grep -qF "whose **Verification:** line is not full" "$ROOT/workflows/profile-$p.js" \
       || { echo "profile-$p.js: the read prompt does not key the kind to the phase's line"; return 1; }
   done
