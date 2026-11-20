@@ -532,6 +532,8 @@ const runPhases = async (stage, roles, phases, guidance) => {
 Per item: complete it, then tick its checkbox "- [ ]" → "- [x]" in the phase's detail section of Plan.md.
 When every checkbox in the phase except its verification checks is ticked: build, run the checks its **Verification:** line names and tick each one as it passes, flip the phase's row in the top-level table ⬜ → ✅, git add the phase's files including the Plan.md updates, and commit. Commit autonomously — do not ask. A phase with no such line, or whose diff reaches further than its line says, gets the line written or raised by applying the phase-verification skill before the checks run; a rung is never lowered.
 
+A check that ran a whole module's tests green gets a record: after the commit, in the module's repository, add one line "ran: <repository> <module> HEAD <the phase commit's short sha> Executed <N> log phase-evidence/phase-${ph.id}/<module>.log" under that check's checkbox in Plan.md, N being the count of the run's result line, and copy the run's log to ${DIR}/phase-evidence/phase-${ph.id}/<module>.log; a run of named test classes gets none, and neither does a red run. The tasks folder is not a change, so the line goes in with the task's next commit. Validation carries the run instead of running the module again.
+
 ${guidance}
 
 The commit message is Conventional Commits: "<type>(<scope>): <imperative subject>", plus an optional body explaining WHY. NEVER put the task id, phase number, or ticket number in it — provenance lives in Plan.md, the branch name, and the PR. Full spec in ${core('conventions/commit-messages.md')}; if git log shows this project uses a different convention, follow the project. The same rule governs code comments: no task, phase, epic, or bug reference in production or test code, including assertion and failure message strings.
@@ -964,7 +966,7 @@ ${JSON.stringify({ risks: sec.risks, notes: sec.notes || '' }, null, 2)}`
 // holds the copies equal. A reader who did not follow the task reads the one file, then the writer
 // revises once: spine-toolkit:artifact-reader → ## Check. One read and at most one revision, so the
 // check keeps no round count; a dispatch that fails is noted and stops nothing.
-const ARTIFACT_KINDS = ['reread', 'undefined term', 'identifier subject', 'no reason', 'no proof']
+const ARTIFACT_KINDS = ['reread', 'undefined term', 'identifier subject', 'no reason', 'no proof', 'suite in a phase']
 const ARTIFACT_READ = {
   type: 'object',
   additionalProperties: false,
@@ -1011,7 +1013,7 @@ const checkArtifact = async (stage, role, agentType, file) => {
     agent(
       brief(
         stage,
-        `Apply the spine-toolkit:artifact-reader skill, its ## Check section, as the reader it describes: an owner who did not follow the task. Of the task and the repository, read ${file} and nothing else — open no other file of the task and no source file, and run no git command and no other command. Return retelling: in your own words, what was done (for a plan, what will be done), why, what is left, and what the owner must decide. Return unclear: every place you had to guess, each as a quote of at most one line, what is missing, and one kind — reread, a sentence you had to read twice; undefined term, a term, an identifier or a label used before anything says what it means; identifier subject, an identifier or a label as the subject of a sentence, where the thing it names should be; no reason, a decision, a phase or a change that does not say why, or a decision with no rejected alternative; no proof, a claim that something works, with no run, no count and no observed result. Return what you understood, not what you would change. Change nothing on disk.`,
+        `Apply the spine-toolkit:artifact-reader skill, its ## Check section, as the reader it describes: an owner who did not follow the task. Of the task and the repository, read ${file} and nothing else — open no other file of the task and no source file, and run no git command and no other command. Return retelling: in your own words, what was done (for a plan, what will be done), why, what is left, and what the owner must decide. Return unclear: every place you had to guess, each as a quote of at most one line, what is missing, and one kind — reread, a sentence you had to read twice; undefined term, a term, an identifier or a label used before anything says what it means; identifier subject, an identifier or a label as the subject of a sentence, where the thing it names should be; no reason, a decision, a phase or a change that does not say why, or a decision with no rejected alternative; no proof, a claim that something works, with no run, no count and no observed result; suite in a phase, a phase checkbox in Plan.md, and only there, that runs a full test plan of the app or all tests at proportional. Return what you understood, not what you would change. Change nothing on disk.`,
       ),
       { label: 'artifact:check', phase: stage, agentType, schema: ARTIFACT_READ, ...tuning(role, 'light') },
     ),

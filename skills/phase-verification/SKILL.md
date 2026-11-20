@@ -18,9 +18,11 @@ Each rung includes the one above it.
 
 | Rung | When | What runs |
 |---|---|---|
-| `internal` | nothing outside the perimeter can see the change | build and tests of the perimeter |
+| `internal` | nothing outside the perimeter can see the change | build and the tests of the perimeter |
 | `surface` | what dependents build against changes, but not what they observe: new API nobody calls yet, removal of something nobody calls any more, build configuration | + a build of every dependent — the narrowest build that covers them all |
 | `behaviour` | what dependents observe changes: the semantics of an existing call, a default value, a shared test fixture | + the tests of the dependents that observe it, by name — not all dependents |
+
+The tests of the perimeter are every test of the modules it edits: Validation counts that run. A dependent's tests are named by class, never run whole; a full test plan of the app, or all tests, in a phase's checkbox at `proportional` is finding 3 of `## Review`.
 
 ## Choosing the rung
 
@@ -49,6 +51,8 @@ The first line of every phase's detail section in `Plan.md`:
 ```
 
 Under it, one checkbox per check the line names; the platform agent writes the commands. The line is *what*, the checkbox is *how*. The line is written at `full` too, so a phase without one means the plan predates this rule or was written outside the pipeline — never a project's choice.
+
+A check that runs a module whole and green gets one more line under its checkbox, written after the phase commit (the tasks folder is no change) and committed with the next one: `ran: <repository> <module> HEAD <sha> Executed <N> log phase-evidence/phase-<id>/<module>.log`. `<sha>` is the phase commit, `<N>` the count of the run's result line, the log the run's copy in the task folder. A run of named classes, and a red run, get none. Validation carries the line (`## Validation's regression`).
 
 ## Who does what
 

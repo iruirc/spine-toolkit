@@ -13,8 +13,8 @@ load "$(dirname "$BATS_TEST_FILENAME")/../helpers/run-profile-read"
 setup_file() {
   local n
   for n in 0 1 2 3 6; do
-    export "READ_$n=$(node -e 'const n = +process.argv[1]; const kinds = ["reread", "undefined term", "identifier subject", "no reason", "no proof"]
-      console.log(JSON.stringify({ retelling: ["r"], unclear: Array.from({ length: n }, (_, i) => ({ quote: "q" + i, missing: "m" + i, kind: kinds[i % 5] })) }))' "$n")"
+    export "READ_$n=$(node -e 'const n = +process.argv[1]; const kinds = ["reread", "undefined term", "identifier subject", "no reason", "no proof", "suite in a phase"]
+      console.log(JSON.stringify({ retelling: ["r"], unclear: Array.from({ length: n }, (_, i) => ({ quote: "q" + i, missing: "m" + i, kind: kinds[i % 6] })) }))' "$n")"
   done
 }
 
@@ -184,29 +184,40 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   done
 }
 
-@test "the read prompt names the file, the owner who did not follow the task, and the five kinds" {
+@test "the read prompt names the file, the owner who did not follow the task, and the six kinds" {
   for s in Plan Done; do
     stage feature "$s" on "\"artifact:check\": $(read_with 0)" '' "o.calls.find((c) => c.label === 'artifact:check').prompt"
     c="${V[4]}"
     for token in "/p/Tasks/ACTIVE/001-x/$s.md and nothing else" 'owner who did not follow the task' \
                  'spine-toolkit:artifact-reader' '## Check' 'no git command' \
-                 'reread' 'undefined term' 'identifier subject' 'no reason' 'no proof' 'Change nothing on disk.'; do
+                 'reread' 'undefined term' 'identifier subject' 'no reason' 'no proof' 'suite in a phase' 'Change nothing on disk.'; do
       grep -qF "$token" <<<"$c" || { echo "the $s read prompt does not name: $token"; return 1; }
     done
   done
 }
 
-@test "the read schema carries the five kinds of artifact-reader's ## Check, in order" {
+@test "the read schema carries the six kinds of artifact-reader's ## Check, in order" {
   check="$(awk '/^## Check$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/artifact-reader/SKILL.md")"
   kinds="$(grep -oE '^  - `[a-z ]+`:' <<<"$check" | sed -E 's/^  - `([a-z ]+)`:$/\1/' | paste -sd, -)"
-  [ "$kinds" = 'reread,undefined term,identifier subject,no reason,no proof' ] || { echo "the skill lists: $kinds"; return 1; }
-  grep -qxF "const ARTIFACT_KINDS = ['reread', 'undefined term', 'identifier subject', 'no reason', 'no proof']" "$ROOT/workflows/profile-feature.js" \
+  [ "$kinds" = 'reread,undefined term,identifier subject,no reason,no proof,suite in a phase' ] || { echo "the skill lists: $kinds"; return 1; }
+  grep -qxF "const ARTIFACT_KINDS = ['reread', 'undefined term', 'identifier subject', 'no reason', 'no proof', 'suite in a phase']" "$ROOT/workflows/profile-feature.js" \
     || { echo "the script's kinds differ from the skill's"; return 1; }
   stage feature Done on "\"artifact:check\": $(read_with 0)" '' \
     "o.calls.find((c) => c.label === 'artifact:check').schema.properties.unclear.items.properties.kind.enum.join()" \
     "o.calls.find((c) => c.label === 'artifact:check').schema.properties.unclear.items.required.join()"
-  [ "${V[4]}" = 'reread,undefined term,identifier subject,no reason,no proof' ]
+  [ "${V[4]}" = 'reread,undefined term,identifier subject,no reason,no proof,suite in a phase' ]
   [ "${V[5]}" = 'quote,missing,kind' ]
+}
+
+@test "artifact-reader describes suite in a phase as a kind of Plan.md only" {
+  check="$(awk '/^## Check$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/artifact-reader/SKILL.md")"
+  line="$(grep -F '`suite in a phase`' <<<"$check")"
+  grep -qF 'Plan.md' <<<"$line" || { echo "the kind is not tied to Plan.md: $line"; return 1; }
+  grep -qF 'all tests' <<<"$line" || { echo "the kind does not say what it is: $line"; return 1; }
+  for p in $SEVEN; do
+    grep -qF 'suite in a phase, a phase checkbox in Plan.md' "$ROOT/workflows/profile-$p.js" \
+      || { echo "profile-$p.js: the read prompt does not describe the kind"; return 1; }
+  done
 }
 
 @test "the read is tuned light on the writer's role; the revision takes the writing stage's tuning" {
