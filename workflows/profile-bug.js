@@ -792,7 +792,8 @@ Then run "${core('scripts/lint-walkthrough.sh')}" --words-per-sentence ${BUDGETS
     result.notes.push('The walkthrough patch returned nothing, so the Review findings about Walkthrough.md stay open.')
     return null
   }
-  const closed = Array.isArray(w.closed_findings) ? w.closed_findings : []
+  // Only the findings it was handed, each once: an extra entry must not stand for one Done left open.
+  const closed = [...new Set((Array.isArray(w.closed_findings) ? w.closed_findings : []).filter((f) => findings.includes(f)))]
   result.notes.push(`Walkthrough.md patched: ${closed.length} of ${findings.length} Review finding(s) closed.`)
   if (w.lint) result.notes.push(`Walkthrough.md lint: ${w.lint}`)
   return { ...w, closed_findings: closed, patched: true }

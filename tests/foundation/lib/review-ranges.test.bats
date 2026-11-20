@@ -214,6 +214,21 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
   done
 }
 
+@test "a patch that reports findings it was not handed closes only its own" {
+  # [RF 4]: an extra or repeated entry must not stand for a finding Done left open.
+  mine='name the third commit in ## Commits'
+  done_own='swap the package commit in ## Release'
+  replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$mine\", \"$done_own\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"committed_outside_tasks\": false, \"walkthrough_findings\": [\"$mine\"]}, \"walkthrough:patch\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"closed_findings\": [\"$mine\", \"$mine\", \"$done_own\", \"an entry of its own\"]}}"
+  for p in $RANGED quick; do
+    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "$replies" \
+      'o.result.next_recommended_action' 'o.result' 'o.result.notes'
+    [ "${V[0]}" = ask_user ] || { echo "profile-$p: ${V[1]}"; return 1; }
+    grep -qF "$done_own" <<<"${V[2]}" || { echo "profile-$p: the note does not name Done's open finding"; return 1; }
+    grep -qF 'Walkthrough.md patched: 1 of 1 Review finding(s) closed.' <<<"${V[2]}" \
+      || { echo "profile-$p: the patch's count is not its own: ${V[2]}"; return 1; }
+  done
+}
+
 @test "a patch that returned nothing is noted and stops nothing" {
   # The patch itself never ends the run, as a writer that returned nothing does not; its findings stay
   # open, so unclosed() asks, as for that writer.
