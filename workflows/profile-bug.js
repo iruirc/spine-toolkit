@@ -229,20 +229,23 @@ const REVIEW_RECORD = RANGED
   ? `\n\nBefore you read the ranges, run "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind reviewed and keep what it prints; at the end, write those lines in the closing block of Review.md, exactly as printed; the first line stays the status line. Under ### Scope name the ranges you actually reviewed, per repository. A finding goes into done_findings only when editing files inside the task folder — Done.md, Plan.md, Walkthrough.md — closes it without a single code commit; anything that needs a code commit is a blocking finding. done_findings alone never make the verdict CHANGES_REQUESTED. List them under ## For Done in Review.md.`
   : ''
 const noBaseSet = 'count that repository as changed and say so under ## Scope'
+// Validation's share of the registry and of the runs it need not repeat; the rules are in the phase-verification skill.
+const FAILURES_OUTSIDE = `${KNOWN_FAILURES ? `The project's known failures registry is ${KNOWN_FAILURES}; a missing file is an empty registry.` : 'The project keeps no known failures registry.'} Classify every failing test by the spine-toolkit:phase-verification skill, its ### Failures outside the task: one outside the task is a row of ## Outside the task in ${DIR}/Validation.md, in the form the task-documents skill gives, and an item of outside_failures; a permanent entry whose test passed goes into known_failures_cleared. Never write the registry.`
+const CARRIED_RUNS = ` A green whole-module run that no later commit and no uncommitted edit reaches is carried, not run again: a ran: line under a phase checkbox in ${DIR}/Plan.md, written \`carried <sha> (phase <N>)\` in the Run cell, or a green ran row of an earlier Validation.md whatever its status, written \`carried <sha> (validation)\`. A module that failed in an earlier Validation runs again.`
 const VALIDATION_SCOPE = !RANGED
   ? ''
   : `\n\n${CATCH_UP ? "This run catches up commits that landed after the task's Done; say so in ## Scope. " : ''}${
       VR
-        ? `The task's commits, per repository: ${rangeList(VR.task, noBaseSet)}.${CODE_RUNS ? " The commits this run's own phases added are inside these ranges." : ''} A repository with commits in its range is changed, and the project root's own diff never shows another repository: "no file of that package in the diff" proves nothing. Add the uncommitted edits of every root. Build the regression set by the spine-toolkit:phase-verification skill, its ## Validation's regression section; how to find the modules and their dependents is your platform's.${
+        ? `The task's commits, per repository: ${rangeList(VR.task, noBaseSet)}.${CODE_RUNS ? " The commits this run's own phases added are inside these ranges." : ''} A repository with commits in its range is changed, and the project root's own diff never shows another repository: "no file of that package in the diff" proves nothing. Add the uncommitted edits of every root. Build the regression set by the spine-toolkit:phase-verification skill, its ## Validation's regression section; how to find the modules and their dependents is your platform's.${CARRIED_RUNS}${
             VR_RERUN
               ? ` The last green Validation stood at: ${rangeList(VR_RERUN, noBaseSet)}. Re-run only the modules these commits reach, the uncommitted edits of every root included, with the dependents of each; every other module of the set is carried — keep the count and the HEAD of that Validation, which ${PRIOR_VALIDATION ? `its archived copy ${PRIOR_VALIDATION} holds` : `${DIR}/Validation.md holds — read it before you overwrite it`}, and write \`carried <sha>\` in its Run cell; drive the app again only when these commits reach the UI layer or the path the scenario walks.`
-              : ' Run every module of the set.'
+              : ' Run every other module of the set.'
           }`
-        : `The task's commits are not handed to you: run "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since base yourself and write what it prints under ## Scope. A repository with commits in its range is changed, and the project root's own diff never shows another repository. Add the uncommitted edits of every root, then build the regression set by the spine-toolkit:phase-verification skill, its ## Validation's regression section.`
-    } Write the set into ${DIR}/Validation.md as the ## Regression set section, in the form the task-documents skill gives Validation.md. On PASSED, run "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind validated right before you finish and write the lines it prints in the closing block of Validation.md, exactly as printed; on FAILED or FLAKY write none. Then run "${core('scripts/lint-validation-scope.sh')}" ${DIR}, repair what it names once, run it again, and name what is left in the summary.`
+        : `The task's commits are not handed to you: run "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since base yourself and write what it prints under ## Scope. A repository with commits in its range is changed, and the project root's own diff never shows another repository. Add the uncommitted edits of every root, then build the regression set by the spine-toolkit:phase-verification skill, its ## Validation's regression section.${CARRIED_RUNS}`
+    } ${FAILURES_OUTSIDE} Write the set into ${DIR}/Validation.md as the ## Regression set section, in the form the task-documents skill gives Validation.md. On PASSED or PASSED_WITH_FLAKES, run "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind validated right before you finish and write the lines it prints in the closing block of Validation.md, exactly as printed; on FAILED or FLAKY write none. Then run "${core('scripts/lint-validation-scope.sh')}" ${DIR}, repair what it names once, run it again, and name what is left in the summary.`
 // Review reads Validation's record before it runs anything itself.
 const REVIEW_VALIDATION = RANGED
-  ? ` Before you re-run anything, read the ## Regression set of ${DIR}/Validation.md and run "${core('scripts/lint-validation-scope.sh')}" ${DIR}. When it prints nothing, run no suite yourself: take the counts from Validation.md. When it prints findings, re-run what they name — for a repository, the modules of the set in it; a module of the set Validation did not run is a Major finding and goes into blocking_findings, even when your re-run is green — unlike the plan findings above, this one blocks although Validation has passed. Check the set itself against the diff and the manifests: a dependent module it leaves out is a Major finding too. A run of modules outside the set is a Minor finding and never blocks. Re-running a test to confirm a finding of your own stays allowed.`
+  ? ` Before you re-run anything, read the ## Regression set of ${DIR}/Validation.md and run "${core('scripts/lint-validation-scope.sh')}" ${DIR}. When it prints no finding, run no suite yourself: take the counts from Validation.md. Lines of class reach are not findings: for each, confirm from the diff that the commits after the carried sha do not reach the module it names, and when they do, the carried row is a Major finding and goes into blocking_findings. When it prints findings, re-run what they name — for a repository, the modules of the set in it; a module of the set Validation did not run is a Major finding and goes into blocking_findings, even when your re-run is green — unlike the plan findings above, this one blocks although Validation has passed. Check the set itself against the diff and the manifests: a dependent module it leaves out is a Major finding too. A run of modules outside the set is a Minor finding and never blocks. Check each row of ## Outside the task in Validation.md against the diff and the spine-toolkit:phase-verification skill, its ### Failures outside the task: a failure the diff does reach, listed as outside, is a Major finding and goes into blocking_findings. Re-running a test to confirm a finding of your own stays allowed.`
   : ''
 // Done's share: close what Review left it, stamp where the repositories stand.
 const doneRecord = (handed) =>
@@ -336,7 +339,24 @@ const VALIDATION = {
   additionalProperties: false,
   required: ['validation_status', 'artifact_path', 'summary'],
   properties: {
-    validation_status: { type: 'string', enum: ['PASSED', 'FAILED', 'FLAKY'] },
+    validation_status: { type: 'string', enum: ['PASSED', 'PASSED_WITH_FLAKES', 'FAILED', 'FLAKY'] },
+    outside_failures: {
+      type: 'array',
+      description: 'every failing test outside the task; the rows of ## Outside the task',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['repository', 'module', 'test', 'outcome', 'entry'],
+        properties: {
+          repository: { type: 'string' },
+          module: { type: 'string' },
+          test: { type: 'string' },
+          outcome: { type: 'string', enum: ['known', 'flaky', 'red'] },
+          entry: { type: 'string', description: "the registry's KF-<N>, or —" },
+        },
+      },
+    },
+    known_failures_cleared: { type: 'array', items: { type: 'string' }, description: 'KF-<N> of each permanent entry whose test passed' },
     reproduction_status: { type: 'string', enum: ['fixed', 'still-reproduces', 'not-replayed', 'deferred-manual'] },
     artifact_path: { type: 'string' },
     ops_checklist_path: { type: 'string' },

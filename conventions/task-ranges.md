@@ -30,7 +30,7 @@ One line per repository, in this form:
 | `[BASE_COMMIT]` | `Base.md` | the orchestrator, `record` | once, when a run first includes a stage that changes code and no phase has landed yet |
 | `[REVIEWED_COMMIT]` | `Review.md`, in its closing block | the reviewer, from `tips --kind reviewed` | every Review |
 | `[DONE_COMMIT]` | `Done.md`, in its closing block | Done, from `tips --kind done` | every Done |
-| `[VALIDATED_COMMIT]` | `Validation.md`, in its closing block | the validator, from `tips --kind validated` | every Validation that ends PASSED |
+| `[VALIDATED_COMMIT]` | `Validation.md`, in its closing block | the validator, from `tips --kind validated` | every Validation that ends PASSED or PASSED_WITH_FLAKES |
 | `[REVIEW_FIXES]` | `Done.md`, in its closing block, after the `[DONE_COMMIT]` lines | Done, from `tips --kind done` | every Done |
 | `[BASE_DIRTY]` | `Base.md`, after the `[BASE_COMMIT]` lines | the orchestrator, `record` | with `[BASE_COMMIT]`, for each repository that had uncommitted changes then |
 
@@ -64,7 +64,7 @@ repository, the first wins. The orchestrator turns the result into the
 `unknown`, is its Resolution Algorithm, step 5.6; `fix-review` always asks for `--since reviewed`.
 `validated` reads `Validation.md` and has no fallback: with no `[VALIDATED_COMMIT]` line a
 repository is `unknown`, never measured from a merge base, because a Validation that did not end
-PASSED has validated nothing.
+PASSED or PASSED_WITH_FLAKES has validated nothing.
 
 `dirty` prints the name of each repository that has uncommitted changes, untracked files included,
 outside the tasks folder (a tasks folder inside the repository is left out of the check), one per
@@ -111,7 +111,7 @@ Validation reads the `validation_ranges` contract field, two ranges per reposito
 passing Validation (`--since validated`). `rerun` is null when there is nothing to narrow from — a
 restart, a `redo` of the Validation stage, a repository whose record is rewritten or unknown — and
 null means the whole set runs. The orchestrator computes both in its Resolution Algorithm, step 5.6,
-next to `review_ranges`. A Validation that ends PASSED writes its
+next to `review_ranges`. A Validation that ends PASSED or PASSED_WITH_FLAKES writes its
 `[VALIDATED_COMMIT]` lines in its closing block, from `tips --kind validated`.
 
 ## Review and Done

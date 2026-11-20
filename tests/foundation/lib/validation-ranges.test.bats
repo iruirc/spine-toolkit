@@ -30,7 +30,7 @@ prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""
     for f in "The task's commits, per repository: .: a1..HEAD (3 commits); Packages/Core: b2..HEAD (1 commit)." \
              "the project root's own diff never shows another repository" \
              "the spine-toolkit:phase-verification skill, its ## Validation's regression section" \
-             'Run every module of the set.' '## Regression set' \
+             'Run every other module of the set.' '## Regression set' \
              '"/core/scripts/task-ranges.sh" tips /p/Tasks/ACTIVE/001-x --kind validated' \
              '"/core/scripts/lint-validation-scope.sh" /p/Tasks/ACTIVE/001-x'; do
       grep -qF -- "$f" <<<"$v" || { echo "profile-$p: validation prompt lost: $f"; return 1; }
@@ -157,6 +157,49 @@ prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""
     rp bug "$(contract Validation "$c")" '{}' "$(prompt_js validation)"
     for f in "$stmt" "$keep"; do
       if grep -qF -- "$f" <<<"${V[0]}"; then echo "a first BUG Validation is told: $f"; return 1; fi
+    done
+  done
+}
+
+@test "Validation classifies failures against the registry from the contract" {
+  for p in $RANGED; do
+    rp "$p" "$(contract Validation ', "known_failures": "/p/Tasks/KnownFailures.md"')" '{}' "$(prompt_js validation)"
+    for f in "The project's known failures registry is /p/Tasks/KnownFailures.md; a missing file is an empty registry." \
+             'Failures outside the task' '## Outside the task'; do
+      grep -qF -- "$f" <<<"${V[0]}" || { echo "profile-$p: validation prompt lost: $f"; return 1; }
+    done
+    rp "$p" "$(contract Validation '')" '{}' "$(prompt_js validation)"
+    grep -qF 'The project keeps no known failures registry.' <<<"${V[0]}" || { echo "profile-$p: no word that there is no registry"; return 1; }
+    if grep -qF 'known failures registry is' <<<"${V[0]}"; then echo "profile-$p: a registry invented"; return 1; fi
+  done
+}
+
+@test "Validation carries green whole-module runs from phases and earlier Validations" {
+  for c in "$FIRST" "$AGAIN" ''; do
+    for p in $RANGED; do
+      rp "$p" "$(contract Validation "$c")" '{}' "$(prompt_js validation)"
+      for f in 'a ran: line under a phase checkbox in /p/Tasks/ACTIVE/001-x/Plan.md' 'carried <sha> (phase <N>)' 'carried <sha> (validation)' \
+               'A module that failed in an earlier Validation runs again.'; do
+        grep -qF -- "$f" <<<"${V[0]}" || { echo "profile-$p: validation prompt lost: $f"; return 1; }
+      done
+    done
+  done
+}
+
+@test "Validation records where it stood on PASSED_WITH_FLAKES too" {
+  for p in $RANGED; do
+    rp "$p" "$(contract Validation "$FIRST")" '{}' "$(prompt_js validation)"
+    grep -qF 'On PASSED or PASSED_WITH_FLAKES, run' <<<"${V[0]}" || { echo "profile-$p: PASSED_WITH_FLAKES writes no record"; return 1; }
+    if grep -qF 'On PASSED, run' <<<"${V[0]}"; then echo "profile-$p: only PASSED writes the record"; return 1; fi
+  done
+  grep -qF 'every Validation that ends PASSED or PASSED_WITH_FLAKES' "$ROOT/conventions/task-ranges.md" || { echo "task-ranges.md: the Records row"; return 1; }
+}
+
+@test "Review confirms reach lines and the failures outside the task" {
+  for p in $RANGED; do
+    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" '{}' "$(prompt_js review)"
+    for f in 'Lines of class reach are not findings' '## Outside the task' 'blocking_findings' 'When it prints no finding, run no suite yourself'; do
+      grep -qF -- "$f" <<<"${V[0]}" || { echo "profile-$p: review prompt lost: $f"; return 1; }
     done
   done
 }
