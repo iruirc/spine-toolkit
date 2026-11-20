@@ -246,9 +246,22 @@ mk_task() {
   grep -q "\"project_config\": \"$p/Tasks/CLAUDE-spine-toolkit.md\"" <<<"$output"
 }
 
-@test "no config at all: project_config is null" {
+@test "a task folder with no config above it is a stop, for every command" {
   p="$BATS_TEST_TMPDIR/p"; t="$(mk_task "$p")"
-  run "$ROOT/scripts/resolve-settings.sh" json "$t"
+  want="resolve-settings.sh: no project config (SPINE.md) at or above $t"
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" json "$t"
+  [ "$status" -eq 2 ] && [ "$stderr" = "$want" ] || { echo "json: $status $stderr"; return 1; }
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" show "$t"
+  [ "$status" -eq 2 ] && [ "$stderr" = "$want" ] || { echo "show: $status $stderr"; return 1; }
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" raw "$t" Platform
+  [ "$status" -eq 2 ] && [ "$stderr" = "$want" ] || { echo "raw: $status $stderr"; return 1; }
+  run --separate-stderr "$ROOT/scripts/resolve-settings.sh" open "$t" --method A --range Plan:Plan
+  [ "$status" -eq 2 ] || { echo "open: $status $stderr"; return 1; }
+}
+
+@test "a folder without Task.md and no config: project_config is null" {
+  d="$BATS_TEST_TMPDIR/plain"; mkdir -p "$d"
+  run "$ROOT/scripts/resolve-settings.sh" json "$d"
   [ "$status" -eq 0 ]
   grep -q '"project_config": null' <<<"$output"
 }

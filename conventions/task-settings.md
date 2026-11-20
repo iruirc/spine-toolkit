@@ -25,20 +25,25 @@ The lookup, in `scripts/resolve-settings.sh`:
 3. Both present: `SPINE.md`, and one stderr line —
    `project config: <abs>/SPINE.md selected, <abs>/CLAUDE-spine-toolkit.md ignored`. The two files
    are not compared: a project that keeps a stale copy beside the real one is told so, not stopped.
-4. Neither, up to the filesystem root: no config, and every field is its default.
+4. Neither, up to the filesystem root: no config. A folder holding `Task.md` is then a stop —
+   exit 2 and `resolve-settings.sh: no project config (SPINE.md) at or above <dir>` — because a
+   task with no config above it was reached by a path that missed its project. Any other folder
+   takes every field's default.
 
 So a legacy file in the task's own directory beats a `SPINE.md` above it: the boundary is the
 nearest directory holding either name. The resolver's `json` carries the selected file as
-`project_config`, an absolute path or `null`; a consumer that needs the file itself — not a value
-from it — takes the path from there rather than looking the name up a second time. `raw` reads the
-same file `json` selects.
+`project_config`, an absolute path or `null` (`null` only for a folder that is not a task); a
+consumer that needs the file itself — not a value from it — takes the path from there rather than
+looking the name up a second time. `raw` reads the same file `json` selects.
 
 A task reached through a symlink — a `Tasks` link from a checkout into a shared task repository,
 or a chain of them — is looked up along the path as given: the walk upward passes the link, not
 its target, and `project_config` names the file under the link. So a shared task repository with
-no config of its own takes the config of whichever checkout the task was opened through, and
-settles nothing when opened directly: give it its own `SPINE.md` and the settings stop depending on
-the way in. The relative paths of
+no config of its own takes the config of whichever checkout the task was opened through. Opened
+directly, it has no config above it and the resolver stops; the orchestrator never hands it such a
+path, because Resolution step 1 spells the task folder through the session's `Tasks`
+(`scripts/task-dir.sh`). Give the task repository its own `SPINE.md` and the settings stop depending
+on the way in. The relative paths of
 `## Paths` are another matter. They are resolved from the directory holding the config, the way the
 filesystem resolves them: through a link, then `..`. Every folder `roots` names is one that exists,
 and the same folder whichever way the task was reached — written without `..` where that names the

@@ -12,6 +12,8 @@
 #   dev/meta/Tasks -> ../Tasks
 #   dev/packages/core/
 
+bats_require_minimum_version 1.5.0
+
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   RESOLVE="$ROOT/scripts/resolve-settings.sh"
@@ -75,14 +77,16 @@ expected_roots() {
   [ "$(physical_roots <<<"$out")" = "$(expected_roots)" ] || { echo "$out"; return 1; }
 }
 
-@test "a task repository without a config takes the config of the checkout it was opened through" {
+@test "a task repository without a config takes the config of the checkout it was opened through, and stops when opened directly" {
   # The lookup walks the path as given (conventions/task-settings.md → Project config). Pinned, so
-  # a change to a physical walk is a decision someone makes, not a side effect.
+  # a change to a physical walk is a decision someone makes, not a side effect. Opened directly, the
+  # task has no config above it: a stop, never the defaults.
   rm "$W/tasks/SPINE.md"
   printf '[LANG] = [en]\n' >"$W/dev/app/SPINE.md"
   printf '[LANG] = [ru]\n' >"$W/dev/meta/SPINE.md"
-  out="$("$RESOLVE" json "$W/tasks/$T" 2>"$ERR")"
-  [ "$(field project_config <<<"$out")" = None ] || { echo "$out"; return 1; }
+  run --separate-stderr "$RESOLVE" json "$W/tasks/$T"
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+  grep -qF 'no project config (SPINE.md) at or above' <<<"$stderr" || { echo "$stderr"; return 1; }
   out="$("$RESOLVE" json "$W/dev/app/Tasks/$T" 2>"$ERR")"
   [ "$(field lang <<<"$out")" = en ] || { echo "$out"; return 1; }
   [ "$(field project_config <<<"$out")" -ef "$W/dev/app/SPINE.md" ] || { echo "$out"; return 1; }

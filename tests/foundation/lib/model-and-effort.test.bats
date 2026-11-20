@@ -198,6 +198,8 @@ PY
 rt_task() {
   local p="$1"; local t="$p/Tasks/ACTIVE/001-x"
   mkdir -p "$t"; cp "$ROOT/templates/task-md/task-root.md" "$t/Task.md"
+  # A task folder needs a config above it (resolve-settings.sh stops without one); a test writes its own over this.
+  : >"$p/SPINE.md"
   printf '%s' "$t"
 }
 json_field() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(eval(sys.argv[1], {"d": d}))' "$1"; }

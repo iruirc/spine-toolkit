@@ -24,7 +24,9 @@ set -euo pipefail
 #        scripts/resolve-settings.sh open --contract <file|-> --method A|B
 #                                                  # the same block, every fact from the Outbound Contract
 #        scripts/resolve-settings.sh raw  <dir> <block>        # the value lines of one config block
-# Exit:  0, or 2 on a usage error. One stderr line per entry it could not take at face value.
+# Exit:  0, or 2 on a usage error, or on a task folder (one holding Task.md) with no project config at or
+#        above it — a path that missed its project, never the defaults. One stderr line per entry it could not
+#        take at face value.
 #
 # Key by key: --set, this run's own word -> Task.md [FIELD] -> for a .step/ folder, the epic's Task.md above it -> the project
 # config in the nearest directory holding SPINE.md or CLAUDE-spine-toolkit.md -> the defaults below. walkthrough has one more step: off when the
@@ -436,6 +438,11 @@ def task_files():
 
 
 CFG, IGNORED_CFG = config_path(TARGET)
+# A task folder with no config above it was reached by a path that missed its project — the physical path
+# behind a linked Tasks, most often. The defaults would run the task in another language on other models.
+if not CFG and os.path.isfile(os.path.join(TARGET, 'Task.md')):
+    print('resolve-settings.sh: no project config (SPINE.md) at or above %s' % TARGET, file=sys.stderr)
+    sys.exit(2)
 if IGNORED_CFG:
     print('project config: %s selected, %s ignored' % (CFG, IGNORED_CFG), file=sys.stderr)
 refuse_old_format(CFG)

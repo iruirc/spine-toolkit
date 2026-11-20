@@ -448,6 +448,7 @@ fifteen() { printf 'one two three four five six seven eight nine ten eleven twel
   mv "$BATS_TEST_TMPDIR/w.md" "$BATS_TEST_TMPDIR/d/Walkthrough.md"
   run "$LINT" --style "$BATS_TEST_TMPDIR/d/Walkthrough.md"
   [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  : >"$BATS_TEST_TMPDIR/d/SPINE.md"
   printf '[TASK_TYPE] = [BUG]\n[BUDGETS] = [words-per-sentence: 12]\n' >"$BATS_TEST_TMPDIR/d/Task.md"
   run "$LINT" --style "$BATS_TEST_TMPDIR/d/Walkthrough.md"
   [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
