@@ -379,6 +379,15 @@ const REVIEW = {
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
 
+// The Validation gate. PASSED_WITH_FLAKES passes it: the only failures it carries are flaky tests
+// outside the task, which the note puts in front of the user instead of stopping before Review.
+const passed = (status) => status === 'PASSED' || status === 'PASSED_WITH_FLAKES'
+const flakeNote = (v) => {
+  if (!v || v.validation_status !== 'PASSED_WITH_FLAKES') return
+  const n = (v.outside_failures || []).filter((f) => f && f.outcome === 'flaky').length
+  result.notes.push(`Validation passed with ${n} flake(s) outside the task.`)
+}
+
 // The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
 // the stage that made it onward, including the artifact that stage is about to write. A contract
 // with no field is a run from before the axis existed, and full is what those runs did.
@@ -1125,7 +1134,7 @@ if (runs('Validation')) {
       'Validation',
       `Validate the change and write ${DIR}/Validation.md. Its FIRST LINE is required to be exactly:
 
-[VALIDATION_STATUS] = PASSED | FAILED | FLAKY
+[VALIDATION_STATUS] = PASSED | PASSED_WITH_FLAKES | FAILED | FLAKY
 
 For QUICK a build and a test run of the regression set are both mandatory, through this platform's own build and test tooling. There is no reproduction scenario to replay: the task had no Reproduce stage. The checks a person makes come from Plan.md ## Manual acceptance: drive a running instance of the app for them where this run can — drive_app is ${DRIVE_APP} — and otherwise put them into ${DIR}/ManualChecks.md and their titles into manual_checks. Each becomes a case only when it needs a person, by the manual-checks skill's ## Does this check need a person?; one this run checked itself is covered, named in ## Scope with its evidence, and any other goes to ## Not covered as automatable, not automated — you write no code. With manual_checks auto and no case left, write no ManualChecks.md: put the line "manual checks: none — <why>", naming what was covered and each automatable gap, in Validation.md and return manual_checks empty; always writes the file regardless, its ## Cases reading "none — <why>" when no case is left. Which driver condition applied comes back in driver_status, as ${core('conventions/driver-contract.md')} defines it. This run's manual_checks_style is ${MANUAL_CHECKS_STYLE}: write the file in that style, its [STYLE] line naming it. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure in each style — in full, QA test cases for a tester who knows the product but not the code, each an ### MC-<n>. case with the eleven fields that skill names; in brief, short ### MC-<n>. cases for a tester who knows the app but not the task, with the four fields of its ## Brief section — and the rules that decide whether a case can be executed at all. When the file is already there with a [COVERS] behind HEAD, refresh it by that skill's ## Refreshing section (a file in another style is rewritten whole in this run's style, its case ids kept) — the changed files are what git diff --name-only <the file's [COVERS]>..HEAD prints, never one commit's — and return manual_checks_changed false when no case was added, removed or rewritten — moving [COVERS] alone is no change. Then run "${core('scripts/lint-manual-checks.sh')}" on the file, repair every finding it prints, and run it again, as that skill's ## The lint and ## Grounding require.${PASS_NOTE}
 
@@ -1142,10 +1151,11 @@ Change no production code and no tests. Return the same status you wrote on the 
   if (validation.driver_status) {
     result.notes.push(`driver_status: ${validation.driver_status}`)
   }
-  if (validation.validation_status !== 'PASSED') {
+  if (!passed(validation.validation_status)) {
     result.notes.push(`Validation returned ${validation.validation_status}; Review and Done were not run.`)
     return finish('ask_user', { validation_status: validation.validation_status })
   }
+  flakeNote(validation)
   if (MANUAL_CHECKS_CHECK === 'on' && validation.manual_checks && validation.manual_checks.length && validation.manual_checks_changed !== false) {
     await checkManualChecks('Validation', 'validator', A.agents.validator, validation.manual_checks_path)
   }

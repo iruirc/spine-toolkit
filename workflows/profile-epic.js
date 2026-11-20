@@ -381,6 +381,15 @@ const REVIEW = {
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
 
+// The Validation gate. PASSED_WITH_FLAKES passes it: the only failures it carries are flaky tests
+// outside the task, which the note puts in front of the user instead of stopping before Review.
+const passed = (status) => status === 'PASSED' || status === 'PASSED_WITH_FLAKES'
+const flakeNote = (v) => {
+  if (!v || v.validation_status !== 'PASSED_WITH_FLAKES') return
+  const n = (v.outside_failures || []).filter((f) => f && f.outcome === 'flaky').length
+  result.notes.push(`Validation passed with ${n} flake(s) outside the task.`)
+}
+
 // The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
 // the stage that made it onward, including the artifact that stage is about to write. A contract
 // with no field is a run from before the axis existed, and full is what those runs did.
@@ -1457,7 +1466,7 @@ if (runs('Execute')) {
       }
       // A profile hands back a verdict it cannot act on as ok with ask_user; a REVIEW step records
       // CHANGES_REQUESTED and stops. Either way the step's work is unverified and stays unticked.
-      const verdict = [r.validation_status, r.review_status].find((v) => v && !['PASSED', 'APPROVED'].includes(v))
+      const verdict = [r.validation_status, r.review_status].find((v) => v && !(passed(v) || v === 'APPROVED'))
       if (r.next_recommended_action === 'ask_user' || verdict) {
         failed_steps.push({ step_id: st.step_id, task_id: st.task_id, error_reason: `${verdict || 'ask_user'}: ${r.notes || r.reason || 'no reason given'}` })
         for (const rest of walk.slice(i + 1)) if (!SKIP_STATUS.includes(rest.status)) pending_steps.push(toPending(rest))
@@ -1502,13 +1511,13 @@ const ACCEPTANCE = {
   additionalProperties: false,
   required: ['validation_status', 'artifact_path', 'manual_checks', 'agent_verdicts', 'summary'],
   properties: {
-    validation_status: { type: 'string', enum: ['PASSED', 'FAILED', 'FLAKY'] },
+    validation_status: { type: 'string', enum: ['PASSED', 'PASSED_WITH_FLAKES', 'FAILED', 'FLAKY'] },
     artifact_path: { type: 'string', description: "the epic's Validation.md" },
     manual_checks_path: { type: 'string', description: 'the pass file, when one was written' },
     manual_checks: { type: 'array', items: { type: 'string' }, description: 'the <step>/MC-<n> ids of the cases left for a person' },
     manual_checks_changed: { type: 'boolean', description: 'false when the pass file already held these cases as they are' },
     agent_verdicts: { type: 'integer', description: 'rows written under ## Agent verdicts' },
-    already_passed: { type: 'boolean', description: "true when the epic's Validation.md already carried [VALIDATION_STATUS] = PASSED and was left as it was" },
+    already_passed: { type: 'boolean', description: "true when the epic's Validation.md already carried [VALIDATION_STATUS] = PASSED or PASSED_WITH_FLAKES and was left as it was" },
     driver_status: VALIDATION.properties.driver_status,
     summary: { type: 'string' },
     directive_declined: DECLINED,
@@ -1520,11 +1529,11 @@ if (runs('Acceptance') && MANUAL_CHECKS_PASS === 'end' && branch !== 'pure_resea
   const acceptance = await agent(
     brief(
       'Acceptance',
-      `First read ${DIR}/Validation.md. When it exists and already carries the line [VALIDATION_STATUS] = PASSED, the pass ran before: change nothing, run nothing, and return already_passed true, validation_status PASSED, manual_checks empty and agent_verdicts 0. A status FAILED or FLAKY there means the earlier pass did not complete: return already_passed false, run the pass below as a fresh one, and rewrite the file. Everything below is for an epic whose pass has not completed yet.
+      `First read ${DIR}/Validation.md. When it exists and already carries the line [VALIDATION_STATUS] = PASSED or [VALIDATION_STATUS] = PASSED_WITH_FLAKES, the pass ran before: change nothing, run nothing, and return already_passed true, validation_status as that line says, manual_checks empty and agent_verdicts 0. A status FAILED or FLAKY there means the earlier pass did not complete: return already_passed false, run the pass below as a fresh one, and rewrite the file. Everything below is for an epic whose pass has not completed yet.
 
 This epic walks its manual checks in one pass at the end: its steps wrote their cases and left them unwalked. Write ${DIR}/Validation.md; its FIRST LINE is required to be exactly:
 
-[VALIDATION_STATUS] = PASSED | FAILED | FLAKY
+[VALIDATION_STATUS] = PASSED | PASSED_WITH_FLAKES | FAILED | FLAKY
 
 First run "${core('scripts/manual-checks-pass.sh')}" collect ${DIR}. It lists, as JSON, every case of every step that carries no mark yet, with its **Runner:**, **Device:** and **Order:**. When it lists none, write Validation.md as the status line PASSED and the single line "manual checks: none — no step left a case", write no ${PASS_FILE}, and return manual_checks empty and agent_verdicts 0.
 
@@ -1545,7 +1554,7 @@ Change no production code, no tests and no file of a step: the marks go back int
   } else {
     if (acceptance.driver_status) result.notes.push(`driver_status: ${acceptance.driver_status}`)
     log(`Acceptance: ${acceptance.agent_verdicts || 0} agent verdict(s), ${(acceptance.manual_checks || []).length} case(s) for a person`)
-    if (acceptance.validation_status !== 'PASSED') {
+    if (!passed(acceptance.validation_status)) {
       result.notes.push(`Acceptance returned ${acceptance.validation_status}; Done was not run.`)
       return finish('ask_user', { validation_status: acceptance.validation_status, branch, completed_steps, skipped_steps, failed_steps, pending_steps })
     }

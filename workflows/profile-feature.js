@@ -383,6 +383,15 @@ const REVIEW = {
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
 
+// The Validation gate. PASSED_WITH_FLAKES passes it: the only failures it carries are flaky tests
+// outside the task, which the note puts in front of the user instead of stopping before Review.
+const passed = (status) => status === 'PASSED' || status === 'PASSED_WITH_FLAKES'
+const flakeNote = (v) => {
+  if (!v || v.validation_status !== 'PASSED_WITH_FLAKES') return
+  const n = (v.outside_failures || []).filter((f) => f && f.outcome === 'flaky').length
+  result.notes.push(`Validation passed with ${n} flake(s) outside the task.`)
+}
+
 // The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
 // the stage that made it onward, including the artifact that stage is about to write. A contract
 // with no field is a run from before the axis existed, and full is what those runs did.
@@ -1183,7 +1192,7 @@ if (runs('Validation')) {
       'Validation',
       `Validate the feature and write ${DIR}/Validation.md. Its FIRST LINE is required to be exactly:
 
-[VALIDATION_STATUS] = PASSED | FAILED | FLAKY
+[VALIDATION_STATUS] = PASSED | PASSED_WITH_FLAKES | FAILED | FLAKY
 
 For FEATURE a build and a test run of the regression set are both mandatory, through whatever build and test tooling this platform prescribes. Driving a running instance of the app is mandatory when the feature has a UI layer — views, screens, navigation — and skipped for a purely domain or infrastructure feature; say which case this is and why. ${DRIVER_STOPS} Whichever it is, you drive nothing: write the UI cases a human has to run into ${DIR}/ManualChecks.md and return their titles in manual_checks${lite() ? '' : ', and mark the OpsChecklist item of each case you write Pending rather than Applicable'}. This run's manual_checks_style is ${MANUAL_CHECKS_STYLE}: write the file in that style, its [STYLE] line naming it. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure in each style — in full, QA test cases for a tester who knows the product but not the code, each an ### MC-<n>. case with the eleven fields that skill names; in brief, short ### MC-<n>. cases for a tester who knows the app but not the task, with the four fields of its ## Brief section — and the rules that decide whether a case can be executed at all. When the file is already there with a [COVERS] behind HEAD, refresh it by that skill's ## Refreshing section (a file in another style is rewritten whole in this run's style, its case ids kept) — the changed files are what git diff --name-only <the file's [COVERS]>..HEAD prints, never one commit's — and return manual_checks_changed false when no case was added, removed or rewritten — moving [COVERS] alone is no change. Then run "${core('scripts/lint-manual-checks.sh')}" on the file, repair every finding it prints, and run it again, as that skill's ## The lint and ## Grounding require. Its input is Plan.md ## Manual acceptance; when the plan carries no such section, say so in ## Scope and derive the cases yourself. Each of its lines, and each check you defer, becomes a case only when it needs a person, by the manual-checks skill's ## Does this check need a person?; one this run checked itself is covered, named in ## Scope with its evidence, and any other goes to ## Not covered as automatable, not automated — you write no code. With manual_checks auto and no case left, write no ManualChecks.md: put the line "manual checks: none — <why>", naming what was covered and each automatable gap, in Validation.md, mark the Manual test pass item of OpsChecklist.md N/A with that reason, and return manual_checks empty; always writes the file regardless, its ## Cases reading "none — <why>" when no case is left. Independently of that, manual_checks decides whether this file also covers a run you drove yourself: auto stops at the deferred checks above, always writes it on every UI-bearing run regardless, covering what the happy path did not reach and what driving the app cannot do at all. This run's manual_checks is ${MANUAL_CHECKS}.${lite() ? '' : `\n\nAlso apply the ops-checklist skill and write ${DIR}/OpsChecklist.md, marking every item Applicable with its verification evidence (file path, test name, commit ref), N/A with a reason, or Pending. A Pending item is not by itself a FAILED verdict — Pending items go to Review, which decides. Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/OpsChecklist.md once. Fix each finding once; do not run it again; name what is left in your summary.`}${PASS_NOTE}
 
@@ -1204,10 +1213,11 @@ Change no production code and no tests. Return the same status you wrote on the 
     result.notes.push(`driver_status: ${validation.driver_status}`)
   }
 
-  if (validation.validation_status !== 'PASSED') {
+  if (!passed(validation.validation_status)) {
     result.notes.push(`Validation returned ${validation.validation_status}; Review and Done were not run.`)
     return finish('ask_user', { validation_status: validation.validation_status })
   }
+  flakeNote(validation)
   if (MANUAL_CHECKS_CHECK === 'on' && validation.manual_checks && validation.manual_checks.length && validation.manual_checks_changed !== false) {
     await checkManualChecks('Validation', 'validator', A.agents.validator, validation.manual_checks_path)
   }

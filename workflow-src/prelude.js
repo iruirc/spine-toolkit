@@ -354,6 +354,15 @@ const REVIEW = {
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
 
+// The Validation gate. PASSED_WITH_FLAKES passes it: the only failures it carries are flaky tests
+// outside the task, which the note puts in front of the user instead of stopping before Review.
+const passed = (status) => status === 'PASSED' || status === 'PASSED_WITH_FLAKES'
+const flakeNote = (v) => {
+  if (!v || v.validation_status !== 'PASSED_WITH_FLAKES') return
+  const n = (v.outside_failures || []).filter((f) => f && f.outcome === 'flaky').length
+  result.notes.push(`Validation passed with ${n} flake(s) outside the task.`)
+}
+
 // The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
 // the stage that made it onward, including the artifact that stage is about to write. A contract
 // with no field is a run from before the axis existed, and full is what those runs did.

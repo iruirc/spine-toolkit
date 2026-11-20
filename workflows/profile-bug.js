@@ -385,6 +385,15 @@ const REVIEW = {
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
 
+// The Validation gate. PASSED_WITH_FLAKES passes it: the only failures it carries are flaky tests
+// outside the task, which the note puts in front of the user instead of stopping before Review.
+const passed = (status) => status === 'PASSED' || status === 'PASSED_WITH_FLAKES'
+const flakeNote = (v) => {
+  if (!v || v.validation_status !== 'PASSED_WITH_FLAKES') return
+  const n = (v.outside_failures || []).filter((f) => f && f.outcome === 'flaky').length
+  result.notes.push(`Validation passed with ${n} flake(s) outside the task.`)
+}
+
 // The size axis (conventions/task-scale.md). One way only, lite → full, and the flip applies from
 // the stage that made it onward, including the artifact that stage is about to write. A contract
 // with no field is a run from before the axis existed, and full is what those runs did.
@@ -1228,7 +1237,7 @@ if (runs('Validation')) {
       'Validation',
       `Validate the fix and write ${DIR}/Validation.md. Its FIRST LINE is required to be exactly:
 
-[VALIDATION_STATUS] = PASSED | FAILED | FLAKY
+[VALIDATION_STATUS] = PASSED | PASSED_WITH_FLAKES | FAILED | FLAKY
 
 For BUG a build and a test run of the regression set are both mandatory, through this platform's own build and test tooling, and so is a replay regardless of which layer changed — you drive a running instance of the app with whatever tooling this platform has for that, and walk the reproduction scenario from Reproduce.md against it. Validation is not PASSED without your own explicit statement that the bug no longer reproduces${VR_RERUN ? ' — or, on a re-run that carries the replay, the statement of the Validation it is carried from, named under ## Scope' : ''}.${VR_RERUN ? ` This is a re-run: when its commits do not reach the path the reproduction scenario walks, the replay is carried — return reproduction_status as it was in the last green Validation (fixed only if that Validation replayed, otherwise deferred-manual) and name that Validation with its HEAD under ## Scope; a carried deferred-manual keeps that Validation's replay case in ${DIR}/ManualChecks.md as it is, refreshed like any other case below, and writes no new one; when they do reach it, replay as described here.` : ''} Four things can suspend the replay, and all four hand it over the same way: drive_app resolving to off — this run's value is ${DRIVE_APP} — no driver resolving at all, a driver that cannot be reached for this run's surface — its server not connected, the module for that surface not installed, or that surface absent from this machine — or a driver that drives none of the surfaces this platform produces. The second of those reaches only a platform that takes part in the driver contract: a platform whose manifest declares no ## Driver block drives with its own tooling exactly as it did before this contract existed, and that cause fires for it only when it has no tooling to drive a running instance at all, which you announce as a declared deviation. Which driver condition applied comes back in driver_status — no driver, one that cannot be reached, or a mismatched one — while drive_app: off is the project's own setting rather than a driver condition and needs no such report; ${core('conventions/driver-contract.md')} has the full vocabulary and what each one means for the user. Whichever it is, return reproduction_status deferred-manual, put the replay steps into ${DIR}/ManualChecks.md and their titles into manual_checks, and claim nothing about whether the bug is fixed. This run's manual_checks_style is ${MANUAL_CHECKS_STYLE}: write the file in that style, its [STYLE] line naming it. Whenever you write that file, apply the manual-checks skill: it holds the artifact's structure in each style — in full, QA test cases for a tester who knows the product but not the code, each an ### MC-<n>. case with the eleven fields that skill names; in brief, short ### MC-<n>. cases for a tester who knows the app but not the task, with the four fields of its ## Brief section — and the rules that decide whether a case can be executed at all. When the file is already there with a [COVERS] behind HEAD, refresh it by that skill's ## Refreshing section (a file in another style is rewritten whole in this run's style, its case ids kept) — the changed files are what git diff --name-only <the file's [COVERS]>..HEAD prints, never one commit's — and return manual_checks_changed false when no case was added, removed or rewritten — moving [COVERS] alone is no change. Then run "${core('scripts/lint-manual-checks.sh')}" on the file, repair every finding it prints, and run it again, as that skill's ## The lint and ## Grounding require. Its input is Plan.md ## Manual acceptance; when the plan carries no such section, say so in ## Scope and derive the cases yourself. Each of its lines, and each check you defer, becomes a case only when it needs a person, by the manual-checks skill's ## Does this check need a person?; one this run checked itself is covered, named in ## Scope with its evidence, and any other goes to ## Not covered as automatable, not automated — you write no code. With manual_checks auto and no case left, write no ManualChecks.md: put the line "manual checks: none — <why>", naming what was covered and each automatable gap, in Validation.md, mark the Manual test pass item of OpsChecklist.md N/A with that reason, and return manual_checks empty; always writes the file regardless, its ## Cases reading "none — <why>" when no case is left. Reserve not-replayed for a replay that was expected of you and stayed inconclusive.${lite() ? '' : `\n\nAlso apply the ops-checklist skill, scoped to the categories the bug touched per the Secondary enumeration in Reproduce.md, and write ${DIR}/OpsChecklist.md. Full-checklist coverage is not required for BUG; the point is catching a regression in an adjacent behaviour. Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/OpsChecklist.md once. Fix each finding once; do not run it again; name what is left in your summary.`}${PASS_NOTE}
 
@@ -1257,10 +1266,11 @@ Change no production code and no tests. Return the same status you wrote on the 
   // deferred-manual means the replay was switched off, not that it failed: the steps are in
   // manual_checks and the user runs them, so the run carries on.
   const replayOk = validation.reproduction_status === 'fixed' || validation.reproduction_status === 'deferred-manual'
-  if (validation.validation_status !== 'PASSED' || !replayOk) {
+  if (!passed(validation.validation_status) || !replayOk) {
     result.notes.push(`Validation returned ${validation.validation_status} with reproduction_status ${validation.reproduction_status}; Review and Done were not run.`)
     return finish('ask_user', { validation_status: validation.validation_status })
   }
+  flakeNote(validation)
   if (MANUAL_CHECKS_CHECK === 'on' && validation.manual_checks && validation.manual_checks.length && validation.manual_checks_changed !== false) {
     await checkManualChecks('Validation', 'validator', A.agents.validator, validation.manual_checks_path)
   }
