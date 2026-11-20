@@ -88,3 +88,28 @@ outside_gate() {
     grep -qF -- "$t" "$doc" || { echo "docs/configuration.md does not say: $t"; return 1; }
   done
 }
+
+@test "the registry offers print only what is new, ask a removal on its own and never duplicate an entry" {
+  gate="$(outside_gate)"
+  for t in "whose outcome is \`flaky\` or \`red\`" "Items whose outcome is \`known\` are not printed" \
+    'a question of its own' '`known_failures_remove`' '`known_failures_keep`' 'two answers, never one' \
+    'replaces it — the `flaky` entry moves to `## Removed`' 'no two entries match the same repository, module and test' \
+    '`Remove when` from `Validation.md` where it names' 'else `—`'; do
+    grep -qF -- "$t" <<<"$gate" || { echo "the gate does not say: $t"; return 1; }
+  done
+  for key in known_failures_remove known_failures_keep; do
+    for l in en ru; do
+      grep -qx "## $key" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no $key"; return 1; }
+    done
+  done
+  for t in 'replaces it: the `flaky` entry moves to `## Removed`' 'no two' 'else `—`' 'a question of'; do
+    grep -qF -- "$t" "$CONV" || { echo "the convention lost: $t"; return 1; }
+  done
+}
+
+@test "a null rerun runs what no carried run covers, wherever the contract is described" {
+  for f in skills/orchestrator/SKILL.md conventions/task-ranges.md conventions/stage-dispatch.md; do
+    grep -qF 'no carried run covers' "$ROOT/$f" || { echo "$f does not say a null rerun keeps carried runs"; return 1; }
+    ! grep -qE 'null means the whole set|runs the whole set' "$ROOT/$f" || { echo "$f still says the whole set"; return 1; }
+  done
+}

@@ -110,7 +110,8 @@ Validation reads the `validation_ranges` contract field, two ranges per reposito
 `ranges`: `task`, the whole range of the task (`--since base`), and `rerun`, the range since the last
 passing Validation (`--since validated`). `rerun` is null when there is nothing to narrow from — a
 restart, a `redo` of the Validation stage, a repository whose record is rewritten or unknown — and
-null means the whole set runs. The orchestrator computes both in its Resolution Algorithm, step 5.6,
+null means every module of the set runs that no carried run covers: a phase's `ran:` line in
+`Plan.md`, or a green row of an earlier `Validation.md`. The orchestrator computes both in its Resolution Algorithm, step 5.6,
 next to `review_ranges`. A Validation that ends PASSED or PASSED_WITH_FLAKES writes its
 `[VALIDATED_COMMIT]` lines in its closing block, from `tips --kind validated`.
 

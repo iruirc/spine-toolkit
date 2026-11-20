@@ -201,7 +201,7 @@ const PRIOR_REVIEW = (Array.isArray(A.archive_paths) ? A.archive_paths : []).fin
 const PRIOR_VALIDATION = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Validation-[^/]*\.md$/.test(p))
 // This run commits code before Review, so the counts in review_ranges predate it.
 const CODE_RUNS = ['Fix', 'Execute', 'Refactor', 'Write', 'Edit'].some((s) => ORDER.includes(s) && runs(s))
-// What Validation runs: the task's ranges, and where the last green Validation stood (null: run the whole set).
+// What Validation runs: the task's ranges, and where the last green Validation stood (null: run every module no carried run covers).
 const VR = RANGED && A.validation_ranges && A.validation_ranges.task && A.validation_ranges.task.repos && typeof A.validation_ranges.task.repos === 'object' && Object.keys(A.validation_ranges.task.repos).length ? A.validation_ranges : null
 const VR_RERUN = VR && VR.rerun && VR.rerun.repos && typeof VR.rerun.repos === 'object' && Object.keys(VR.rerun.repos).length ? VR.rerun : null
 // One clause per repository, as review_ranges names them; validation_ranges names them the same way.

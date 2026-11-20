@@ -33,7 +33,8 @@ One table, one entry per row:
 - `Cause` and `Passes where` — from the `Validation.md` that found it, its Summary and the failure's
   prose: why it fails, and the run in which it passes.
 - `Accepted` — `owner, <date>, <task id>/Questions.md`, where the decision is logged.
-- `Remove when` — the change that would let the test pass where the regression runs it.
+- `Remove when` — the change that would let the test pass where the regression runs it, from the
+  `Validation.md` that found it when it names one, else `—` for the owner to fill in later.
 
 ## Removed
 
@@ -52,8 +53,10 @@ in `Validation.md` and in the run's report.
 - **Adding.** After `PASSED_WITH_FLAKES`, the orchestrator offers to add the failures outside the
   task whose outcome is `flaky` as `flaky` entries. After `FAILED` where every failure is outside the
   task with outcome `red`, it offers to add them as `permanent` and repeat Validation, which runs
-  only the failed modules again and carries the rest.
+  only the failed modules again and carries the rest. A `red` failure that matched a `flaky` entry
+  replaces it: the `flaky` entry moves to `## Removed` and the `permanent` one is added, so no two
+  entries match the same repository, module and test.
 - **Removing.** Only by observation. A test of a `permanent` entry that passed is named by Validation
-  (`KF-<N> no longer fails`) and returned in `known_failures_cleared`; the orchestrator offers to move
-  the entry to `## Removed`. A `flaky` entry is never removed this way: a green run of an unstable
+  (`KF-<N> no longer fails`) and returned in `known_failures_cleared`; the orchestrator asks, as a question of
+  its own, whether to move the entry to `## Removed`. A `flaky` entry is never removed this way: a green run of an unstable
   test proves nothing.

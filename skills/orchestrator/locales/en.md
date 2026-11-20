@@ -363,7 +363,13 @@ Add the flaky ones to the known failures registry as `flaky`, then continue
 Add the red ones to the known failures registry as `permanent`, then run Validation again
 
 ## known_failures_cleared
-{ids} no longer fail: move them to `## Removed` of the registry, then continue
+{ids} no longer fail. Move them to `## Removed` of the known failures registry?
+
+## known_failures_remove
+Move them to `## Removed`
+
+## known_failures_keep
+Keep them in the registry
 
 ## auq_run_resume_question
 A previous run of this task ({started}) is not finished. It ran with settings: {settings}; owner's directive: {directive}. Apply them to this run?
