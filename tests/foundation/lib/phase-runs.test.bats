@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep workflows skills
+# changed: sweep workflows
 # A phase that runs a whole module records the run under its check, so Validation carries it instead of
 # running the module again; the Plan brief and the rungs say which tests belong to a phase at all.
 
