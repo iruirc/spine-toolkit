@@ -534,6 +534,7 @@ effort={walkthrough: session, done: session, architect: session, developer: sess
 long_run={stall: 5, max: 30}
 plugin_root=/Users/<user>/.claude/plugins/cache/<marketplace>/spine-toolkit/<version>
 roots=[/Users/<user>/App, /Users/<user>/Packages/Net]
+known_failures=/Users/<user>/App/Tasks/KnownFailures.md
 review_ranges={"since": "reviewed", "repos": {".": {"range": "1a2b3c4..HEAD", "commits": 2, "state": "ok"}}}
 validation_ranges={"task": {"since": "base", "repos": {".": {"range": "9f8e7d6..HEAD", "commits": 5, "state": "ok"}}}, "rerun": {"since": "validated", "repos": {".": {"range": "4c5d6e7..HEAD", "commits": 1, "state": "ok"}}}}
 fix_findings=[]
@@ -635,6 +636,8 @@ size belongs to the task, not to one dispatch.
 `long_run` — how long a command a stage agent runs may stay silent (`stall`) and may run at all (`max`), in minutes. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile. The script hands both to every agent as the `--stall` and `--max` of `scripts/long-run.sh`, in seconds; Method A passes the object as real JSON, and Method B puts the same values, in seconds, in its dispatch prompt (`conventions/stage-dispatch.md`). When `stall` is not below `max`, the resolver's stderr line — `long_run: stall <n> is not below max <m>, the budget fires first` — is announced to the user as is; the values still apply as written.
 
 `roots` — the folders a stage agent may search for a file, the core root aside: the project root, then every folder `## Paths` in the project config names under `External packages` or `Roots`, absolute. Printed by the same run of `resolve-settings.sh json`; always filled, for every profile. Method A passes the list as real JSON, Method B names it in its dispatch prompt (`conventions/stage-dispatch.md`); either way it becomes the brief's `Search roots:` line, which `conventions/agent-tooling.md` → Finding files turns into a rule. Absent, the brief names only the project root and the core root and the run goes on: unlike a missing `plugin_root`, a shorter list narrows the search without breaking it.
+
+`known_failures` — the project's registry of failures outside a task (`conventions/known-failures.md`): the absolute path `## Paths` names under `Known failures`, else `Tasks/KnownFailures.md` under the project root; `""` when there is no project config. Printed by the same run of `resolve-settings.sh json`; always a string, for every profile. A path that does not exist is an empty registry.
 
 `review_ranges` — what Review reads, per repository of the task: the JSON `task-ranges.sh ranges` printed in Resolution step 5.6, as described in `conventions/task-ranges.md`. `{}` when the range holds neither Review nor a catch-up, and for RESEARCH, REVIEW and EPIC. Method A passes the object as real JSON; Method B names each range in the Review stage's prompt (`conventions/stage-dispatch.md`).
 

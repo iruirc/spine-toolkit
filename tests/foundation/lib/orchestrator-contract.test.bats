@@ -40,6 +40,16 @@ section() {
   done
 }
 
+@test "the outbound contract carries known_failures, a path to the project's registry" {
+  grep -qxF 'known_failures=/Users/<user>/App/Tasks/KnownFailures.md' "$SKILL" \
+    || { echo "no filled known_failures= line in the contract block"; return 1; }
+  para="$(awk '/^`known_failures` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`known_failures\` paragraph in the Outbound Contract"; return 1; }
+  for token in 'conventions/known-failures.md' 'resolve-settings.sh json' 'does not exist is an empty registry'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the known_failures paragraph does not say $token"; return 1; }
+  done
+}
+
 @test "the outbound contract carries scale, and its example line is filled" {
   grep -qxF 'scale=lite|full' "$SKILL" || {
     echo "no filled scale= line in the Outbound Contract block"; return 1

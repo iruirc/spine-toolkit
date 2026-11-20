@@ -8,7 +8,9 @@ set -euo pipefail
 # Usage: scripts/resolve-settings.sh json <task-dir> [--runtime <id>] [--set <field>[.<key>]=<value>]...
 #                                                  # every field as one JSON object, plus plugin_root,
 #                                                  # the core root it runs from, and roots, the folders
-#                                                  # a stage may search, project_config, the file
+#                                                  # a stage may search, known_failures, the path of
+#                                                  # the registry of failures outside a task ("" with
+#                                                  # no config), project_config, the file
 #                                                  # the settings came from, and runtime, the id
 #                                                  # whose runtimes/<id>.json gave the model and
 #                                                  # effort vocabulary (default claude-code), and
@@ -772,9 +774,24 @@ def search_roots():
     return roots
 
 
+def known_failures():
+    """Not a setting either: where the project keeps its failures outside a task
+    (conventions/known-failures.md). ## Paths names it under Known failures, absolute, with ~ or
+    from the project root; else Tasks/KnownFailures.md there. A path, whether or not the file
+    exists: no config, no path."""
+    if not CFG:
+        return ''
+    home = os.path.dirname(CFG)
+    for line in block(CFG, 'Paths'):
+        m = re.match(r'^-\s*Known failures:\s*(.+?)\s*$', line)
+        if m:
+            return os.path.normpath(os.path.join(home, os.path.expanduser(m.group(1))))
+    return os.path.join(home, 'Tasks', 'KnownFailures.md')
+
+
 if CMD == 'json':
     print(json.dumps(dict(resolved, sources=sources, plugin_root=os.environ['SPINE_CORE_ROOT'],
-                          roots=search_roots(), project_config=CFG, runtime=RUNTIME,
+                          roots=search_roots(), known_failures=known_failures(), project_config=CFG, runtime=RUNTIME,
                           model_tiers=MODEL_TIER_OF),
                      ensure_ascii=False, sort_keys=True))
     sys.exit(0)

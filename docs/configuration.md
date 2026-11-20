@@ -43,7 +43,9 @@ Every other block of the file — `## Persona`, `## Rules`, `## Platform`, `## A
 `## Modules`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`,
 `## Orchestration` — is read by a skill for its own purposes and holds no resolved field. One
 exception feeds every task: the folders `## Paths` names under `External packages` and `Roots`,
-with the project root, are the only places a stage agent may search for a file.
+with the project root, are the only places a stage agent may search for a file. A second one:
+`Known failures` names the project's registry of failures outside a task (`conventions/known-failures.md`),
+`Tasks/KnownFailures.md` when left out; the resolver prints its path as `known_failures`.
 
 ## Project settings
 

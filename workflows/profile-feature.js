@@ -120,6 +120,8 @@ const core = (p) => `${CORE}/${p}`
 const LONG_RUN = { stall: 5, max: 30, ...(A.long_run || {}) }
 // Where a stage may look for a file besides the core root; an older orchestrator sends none.
 const ROOTS = Array.isArray(A.roots) ? A.roots.filter((r) => typeof r === 'string' && r.startsWith('/')) : []
+// Where the project keeps its failures outside a task; '' when the contract has no config to read it from.
+const KNOWN_FAILURES = typeof A.known_failures === 'string' ? A.known_failures : ''
 
 // The owner's words for this run: conventions/stage-dispatch.md → Owner's directive, whose two
 // blocks these are, word for word. Empty, and every brief is what it was without them.

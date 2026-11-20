@@ -1169,6 +1169,39 @@ $BATS_TEST_TMPDIR/assets"
   [ "$(wc -l <"$ERR")" -eq 1 ] || { cat "$ERR"; return 1; }
 }
 
+@test "known_failures defaults to the Tasks folder of the project root" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(field known_failures <<<"$output")" = "$PROJ/Tasks/KnownFailures.md" ] || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK" --all
+  ! grep -qi 'known_failures' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "known_failures follows ## Paths, relative from the project root or absolute" {
+  printf '## Paths\n\n- Known failures: Docs/Failing.md\n' >>"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field known_failures <<<"$output")" = "$PROJ/Docs/Failing.md" ] || { echo "$output"; return 1; }
+  printf '## Paths\n\n- Known failures: %s/shared/Failing.md\n' "$BATS_TEST_TMPDIR" >"$BATS_TEST_TMPDIR/paths"
+  printf '# CLAUDE-spine-toolkit.md\n\n## Task defaults\n\n[WORKFLOW_MODE] = [manual]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  cat "$BATS_TEST_TMPDIR/paths" >>"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field known_failures <<<"$output")" = "$BATS_TEST_TMPDIR/shared/Failing.md" ] || { echo "$output"; return 1; }
+  printf '# CLAUDE-spine-toolkit.md\n\n## Task defaults\n\n[WORKFLOW_MODE] = [manual]\n\n## Paths\n\n- Known failures: ~/Failing.md\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  HOME="$BATS_TEST_TMPDIR/home" run "$RESOLVE" json "$TASK"
+  [ "$(field known_failures <<<"$output")" = "$BATS_TEST_TMPDIR/home/Failing.md" ] || { echo "$output"; return 1; }
+}
+
+@test "profile-epic.js forwards known_failures" {
+  E="$ROOT/workflows/profile-epic.js"
+  grep -qF 'known_failures: KNOWN_FAILURES,' "$E" || { echo "profile-epic.js does not forward known_failures"; return 1; }
+}
+
+@test "known_failures is a path even when the file does not exist" {
+  [ ! -e "$PROJ/Tasks/KnownFailures.md" ]
+  run "$RESOLVE" json "$TASK"
+  [ "$(field known_failures <<<"$output")" = "$PROJ/Tasks/KnownFailures.md" ] || { echo "$output"; return 1; }
+  [ ! -e "$PROJ/Tasks/KnownFailures.md" ]
+}
+
 @test "fix_rounds resolves along the chain and defaults to 2" {
   out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
   [ "$(field fix_rounds <<<"$out")" = 2 ] || { echo "$out"; return 1; }
