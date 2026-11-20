@@ -22,7 +22,7 @@ Each rung includes the one above it.
 | `surface` | what dependents build against changes, but not what they observe: new API nobody calls yet, removal of something nobody calls any more, build configuration | + a build of every dependent — the narrowest build that covers them all |
 | `behaviour` | what dependents observe changes: the semantics of an existing call, a default value, a shared test fixture | + the tests of the dependents that observe it, by name — not all dependents |
 
-The tests of the perimeter are every test of the modules it edits: Validation counts that run. A dependent's tests are named by class, never run whole; a full test plan of the app, or all tests, in a phase's checkbox at `proportional` is finding 3 of `## Review`.
+The tests of the perimeter are every test of the modules it edits (with no modules, the whole suite is the perimeter's tests, not the defect below): Validation counts that run. A dependent's tests are named by class, never run whole; a full test plan of the app, or all tests, in a phase's checkbox at `proportional` is finding 3 of `## Review`.
 
 ## Choosing the rung
 

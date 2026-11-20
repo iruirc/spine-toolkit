@@ -75,7 +75,7 @@ Read the file as the reader above, and fix each of these before finishing:
   - `identifier subject`: an identifier or a label as the subject of a sentence, where the thing it names should be;
   - `no reason`: a decision, a phase or a change that does not say why, or a decision with no rejected alternative;
   - `no proof`: a claim that something works, with no run, no count and no observed result.
-  - `suite in a phase`: only in `Plan.md`; a phase checkbox at `proportional` that runs a full test plan of the app or all tests. `phase-verification` allows the perimeter's tests and the dependents' by class name.
+  - `suite in a phase`: only in `Plan.md`; a phase whose `**Verification:**` line is not `full` but whose checkboxes run the full test plan of the app or all tests. `phase-verification` allows the perimeter's tests and the dependents' by class name.
 
 The role is the writer's so that the reader knows the trade; the brief, not the role, is what keeps it outside the task. The reader returns what it understood, not what it would change: a retelling that misses the point is a finding about the file, not about the reader.
 

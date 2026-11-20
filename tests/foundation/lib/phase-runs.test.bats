@@ -22,7 +22,7 @@ plan_brief() {
   for f in "$ROOT"/workflows/profile-*.js; do
     n=$((n + 1))
     for s in 'add one line "ran: <repository> <module> HEAD <the phase commit'"'"'s short sha> Executed <N> log phase-evidence/phase-${ph.id}/<module>.log"' \
-             'a run of named test classes gets none' 'after the commit'; do
+             'a run of named test classes gets none' 'after the commit, take its short sha in the module'"'"'s repository'; do
       grep -qF -- "$s" "$f" || { echo "$(basename "$f"): the phase brief lacks: $s"; return 1; }
     done
   done
@@ -34,6 +34,8 @@ plan_brief() {
     || { echo "The line does not give the form of a ran: line"; return 1; }
   grep -qF 'every test of the modules it edits' <<<"$(section "$SKILL" 'The rungs')" \
     || { echo "The rungs never say what the tests of the perimeter are"; return 1; }
+  grep -qF 'with no modules, the whole suite is the perimeter' <<<"$(section "$SKILL" 'The rungs')" \
+    || { echo "The rungs leave a project without modules in the all-tests defect"; return 1; }
 }
 
 @test "the Plan brief of the four phased profiles says which tests a phase runs" {
