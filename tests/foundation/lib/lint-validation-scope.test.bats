@@ -104,6 +104,20 @@ finds() { # the lint's output has a finding of this class
   grep -q 'missing:.*Packages/Core' <<<"$output" || { echo "$output"; return 1; }
 }
 
+@test "uncommitted state recorded in the base is not a change of the task" {
+  rm "$TASK/Base.md"
+  echo local >>"$PROJ/Packages/Core/core.txt"
+  "$TR" record "$TASK"
+  commit "$PROJ" a.txt
+  vmd FAILED "$(app_row)"
+  run "$LINT" "$TASK"
+  ! grep -q 'missing:.*Packages/Core' <<<"$output" || { echo "$output"; return 1; }
+  echo again >>"$PROJ/Packages/Core/core.txt"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  grep -q 'missing:.*Packages/Core' <<<"$output" || { echo "$output"; return 1; }
+}
+
 @test "an unknown range still needs a row" {
   rm "$TASK/Base.md"
   git -C "$PROJ/Packages/Core" checkout -q --orphan fresh

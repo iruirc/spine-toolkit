@@ -4,7 +4,7 @@
 # Usage: scripts/task-ranges.sh record <task-dir>                                 # Base.md, once
 #        scripts/task-ranges.sh tips   <task-dir> --kind reviewed|done|validated  # record lines
 #        scripts/task-ranges.sh ranges <task-dir> --since base|reviewed|done|validated  # JSON
-#        scripts/task-ranges.sh dirty  <task-dir>                                 # repositories with uncommitted work
+#        scripts/task-ranges.sh dirty  <task-dir>                                 # uncommitted work the base did not hold
 #        scripts/task-ranges.sh count  <task-dir> <repo> <sha>                    # commits after sha, or rewritten
 #        scripts/task-ranges.sh unreachable <task-dir> <sha>...                   # shas not the task's
 #        scripts/task-ranges.sh commits <task-dir> <a>..<b>                       # a and what follows
@@ -24,7 +24,7 @@ paths="$("$resolver" raw "$2" Paths)" || exit 2
 home="$("$resolver" json "$2" | python3 -c 'import json,sys; r=json.load(sys.stdin)["roots"]; print(r[0] if r else "")')" || exit 2
 
 python3 - "$paths" "$home" "$@" <<'PY'
-import glob, json, os, re, subprocess, sys
+import glob, hashlib, json, os, re, subprocess, sys
 
 PATHS, HOME_ARG, CMD, TASK, OPTS = sys.argv[1], sys.argv[2], sys.argv[3], os.path.realpath(sys.argv[4]), sys.argv[5:]
 KINDS = {'base': ('BASE', 'Base.md'), 'reviewed': ('REVIEWED', 'Review.md'), 'done': ('DONE', 'Done.md'),
@@ -93,6 +93,45 @@ REPOS = repositories()
 def heads(kind):
     return ['[%s_COMMIT] = %s: %s' % (kind, rel, git(top, 'rev-parse', 'HEAD'))
             for rel, top in sorted(REPOS.items()) if git(top, 'rev-parse', '-q', '--verify', 'HEAD')]
+
+
+def fingerprint(top):
+    # One sha over the path and content of every uncommitted path outside the tasks folder: None when
+    # the checkout is clean, False when git cannot tell. What is staged and what is not reads the same.
+    tasks = os.path.relpath(TASKS, top)
+    spec = ['--', '.', ':(exclude)' + tasks] if not tasks.startswith('..') else []
+    r = subprocess.run(['git', '-C', top, 'status', '--porcelain', '-z', '--untracked-files=all', '--no-renames']
+                       + spec, capture_output=True)
+    if r.returncode != 0:
+        return False
+    paths = sorted({e[3:] for e in r.stdout.split(b'\0') if len(e) > 3})
+    if not paths:
+        return None
+    h = hashlib.sha1()
+    for p in paths:
+        full = os.path.join(top.encode(), p)
+        if os.path.islink(full):
+            digest = b'link:' + os.readlink(full)
+        elif os.path.isdir(full):
+            digest = b'dir'  # a nested checkout: its own state is its own repository's
+        elif os.path.isfile(full):
+            with open(full, 'rb') as fh:
+                digest = hashlib.sha1(fh.read()).hexdigest().encode()
+        else:
+            digest = b'-'
+        h.update(p + b'\0' + digest + b'\0')
+    return h.hexdigest()
+
+
+def base_dirty():
+    path, out = os.path.join(TASK, 'Base.md'), {}
+    if os.path.isfile(path):
+        with open(path, encoding='utf-8') as fh:
+            for line in fh:
+                m = re.fullmatch(r'\[BASE_DIRTY\]\s*=\s*(.+?):\s+([0-9a-f]{40})', line.strip())
+                if m:
+                    out.setdefault(m.group(1), m.group(2))
+    return out
 
 
 def recorded(kind, name):
@@ -178,8 +217,13 @@ if CMD == 'record':
         die('usage: task-ranges.sh record <task-dir>')
     base = os.path.join(TASK, 'Base.md')
     if not os.path.exists(base):
+        # What was uncommitted before the task, an environment switch the project never commits, is
+        # not the task's work: dirty leaves it out while it stays as it was. A status git cannot
+        # answer gets no line, so dirty counts that repository's every change, and stops on it.
+        dirty = ['[BASE_DIRTY] = %s: %s' % (rel, fp) for rel, fp in
+                 ((rel, fingerprint(top)) for rel, top in sorted(REPOS.items())) if fp]
         with open(base, 'w', encoding='utf-8') as fh:
-            fh.write('# Base\n\n' + '\n'.join(heads('BASE')) + '\n')
+            fh.write('# Base\n\n' + '\n'.join(heads('BASE') + dirty) + '\n')
 elif CMD == 'tips':
     kind = opt('--kind', ['reviewed', 'done', 'validated'])
     lines = heads(KINDS[kind][0])
@@ -211,14 +255,13 @@ elif CMD == 'ranges':
 elif CMD == 'dirty':
     if OPTS:
         die('usage: task-ranges.sh dirty <task-dir>')
+    recorded_dirty = base_dirty()
     for rel, top in sorted(REPOS.items()):
-        tasks = os.path.relpath(TASKS, top)
-        spec = ['--', '.', ':(exclude)' + tasks] if not tasks.startswith('..') else []
+        fp = fingerprint(top)
         # A status git cannot answer is not a clean one: the lint that reads this must not pass it.
-        status = git(top, 'status', '--porcelain', *spec)
-        if status is None:
+        if fp is False:
             die('git status failed in %s' % rel)
-        if status:
+        if fp and fp != recorded_dirty.get(rel):
             print(rel)
 elif CMD == 'count':
     if len(OPTS) != 2:

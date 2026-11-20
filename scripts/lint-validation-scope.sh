@@ -10,8 +10,10 @@ set -euo pipefail
 # It works on repositories, never on modules: which module of a repository should have run is the
 # module graph, and the reviewer checks that. A repository counts as changed when
 # task-ranges.sh ranges --since base holds a commit of it (or cannot tell, state not ok) or
-# task-ranges.sh dirty names it. Every question about git goes through task-ranges.sh; a commit that
-# touches only the tasks folder is not one (the Validation.md commit itself must not age its own row).
+# task-ranges.sh dirty names it — uncommitted state Base.md recorded and nothing changed since is not
+# the task's (conventions/task-ranges.md, Ranges). Every question about git goes through
+# task-ranges.sh; a commit that touches only the tasks folder is not one (the Validation.md commit
+# itself must not age its own row).
 #
 # A carried row is judged per repository, never per row: a repository whose modules were carried from
 # different Validations (one module re-run after a commit, the other carried from before it) is

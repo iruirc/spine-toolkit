@@ -410,6 +410,58 @@ track_tasks() { # the tasks folder tracked by the project repository instead of 
   [ "$output" = "." ] || { echo "$output"; return 1; }
 }
 
+@test "record keeps a fingerprint of each repository's uncommitted state, a clean one has none" {
+  echo "local" >>"$PROJ/Packages/Core/core.txt"
+  run "$TR" record "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  grep -qE '^\[BASE_DIRTY\] = Packages/Core: [0-9a-f]{40}$' "$TASK/Base.md" || { cat "$TASK/Base.md"; return 1; }
+  # the project root holds the untracked config; a clean repository gets no line
+  git -C "$PROJ/Packages/Core" stash -q
+  rm "$TASK/Base.md"
+  "$TR" record "$TASK"
+  ! grep -q '^\[BASE_DIRTY\] = Packages/Core' "$TASK/Base.md" || { cat "$TASK/Base.md"; return 1; }
+}
+
+@test "dirty leaves out the uncommitted state the base recorded, and names what changed after" {
+  # an environment switch made before the task: a tracked file edited, an untracked one added
+  echo "local" >>"$PROJ/Packages/Core/core.txt"
+  echo "env" >"$PROJ/Packages/Core/env.txt"
+  "$TR" record "$TASK"
+  run "$TR" dirty "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ] || { echo "$output"; return 1; }
+  # staging the same content is no new work
+  git -C "$PROJ/Packages/Core" add core.txt
+  run "$TR" dirty "$TASK"
+  [ -z "$output" ] || { echo "$output"; return 1; }
+  # the same file with other content is
+  echo "again" >>"$PROJ/Packages/Core/core.txt"
+  run "$TR" dirty "$TASK"
+  [ "$output" = "Packages/Core" ] || { echo "$output"; return 1; }
+  git -C "$PROJ/Packages/Core" checkout -q -- core.txt  # back to the staged, recorded content
+  # a new file is
+  echo "task" >"$PROJ/Packages/Core/task.txt"
+  run "$TR" dirty "$TASK"
+  [ "$output" = "Packages/Core" ] || { echo "$output"; return 1; }
+  # a clean checkout has nothing to validate, whatever the base recorded
+  git -C "$PROJ/Packages/Core" checkout -q HEAD -- core.txt
+  rm "$PROJ/Packages/Core/task.txt" "$PROJ/Packages/Core/env.txt"
+  run "$TR" dirty "$TASK"
+  [ -z "$output" ] || { echo "$output"; return 1; }
+}
+
+@test "dirty counts every uncommitted state when Base.md has no fingerprint for it" {
+  "$TR" record "$TASK"
+  echo "local" >>"$PROJ/Packages/Core/core.txt"
+  run "$TR" dirty "$TASK"
+  [ "$output" = "Packages/Core" ] || { echo "$output"; return 1; }
+  # a Base.md written before the fingerprint existed: the project's untracked config counts again
+  grep -v '^\[BASE_DIRTY\]' "$TASK/Base.md" >"$TASK/Base.old" && mv "$TASK/Base.old" "$TASK/Base.md"
+  run "$TR" dirty "$TASK"
+  grep -qx "Packages/Core" <<<"$output" || { echo "$output"; return 1; }
+  grep -qx "." <<<"$output" || { echo "$output"; return 1; }
+}
+
 @test "count measures commits after a sha, the tasks folder aside" {
   track_tasks
   sha="$(git -C "$PROJ/Packages/Core" rev-parse HEAD)"

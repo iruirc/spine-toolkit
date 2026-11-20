@@ -32,6 +32,13 @@ One line per repository, in this form:
 | `[DONE_COMMIT]` | `Done.md`, in its closing block | Done, from `tips --kind done` | every Done |
 | `[VALIDATED_COMMIT]` | `Validation.md`, in its closing block | the validator, from `tips --kind validated` | every Validation that ends PASSED |
 | `[REVIEW_FIXES]` | `Done.md`, in its closing block, after the `[DONE_COMMIT]` lines | Done, from `tips --kind done` | every Done |
+| `[BASE_DIRTY]` | `Base.md`, after the `[BASE_COMMIT]` lines | the orchestrator, `record` | with `[BASE_COMMIT]`, for each repository that had uncommitted changes then |
+
+`[BASE_DIRTY] = <repository>: <sha1>` is a fingerprint of what that repository held uncommitted
+when the base was recorded: one sha1 over the path and content of every uncommitted path outside
+the tasks folder, untracked files included, staged or not alike. It is how `dirty` tells an
+environment the project keeps uncommitted — dependencies switched to local checkouts, say — from
+work of the task.
 
 `[REVIEW_FIXES] = <n>` is one line for the task, not per repository: the highest `Review fixes <n>`
 phase in `Plan.md` when Done ran, `0` with none. The orchestrator counts a later loop's fix rounds
@@ -61,7 +68,11 @@ PASSED has validated nothing.
 
 `dirty` prints the name of each repository that has uncommitted changes, untracked files included,
 outside the tasks folder (a tasks folder inside the repository is left out of the check), one per
-line, and nothing when every repository is clean. `count <repo> <sha>` prints the number of commits
+line, and nothing when every repository is clean. A repository whose uncommitted state is still the
+one its `[BASE_DIRTY]` line recorded is left out: that state was there before the task. Any change to
+it after `record` — a new path, a path with other content, one gone — names the repository again; so
+does uncommitted state in a repository with no `[BASE_DIRTY]` line, a `Base.md` written before the
+line existed, or no `Base.md`. `count <repo> <sha>` prints the number of commits
 in `<sha>..HEAD` outside the tasks folder, counted the way `ranges` counts; `rewritten` when `<sha>`
 is not a commit of that repository or is not an ancestor of `HEAD`, and exit 2 when `<repo>` is not
 a repository of the task. They are what the validation-scope lint, `scripts/lint-validation-scope.sh`, measures with.
