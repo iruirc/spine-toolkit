@@ -43,7 +43,9 @@ import json, os, re, subprocess, sys
 from urllib.parse import unquote
 
 task, root, scripts = sys.argv[1], sys.argv[2], sys.argv[3]
-task = os.path.realpath(task)
+# The resolver gets the folder as given (GIVEN): it finds the project config along that path, and a task
+# behind a linked Tasks has none above its physical one.
+GIVEN, task = task, os.path.realpath(task)
 DECISIONS = ('needed', 'update', 'not-needed', 'unplaced')
 
 # The Russian heading is \u escapes: the toolkit keeps Cyrillic out of scripts (scripts/lint-i18n.sh);
@@ -100,7 +102,7 @@ if not path:
     fail('report: [REPORT_DECISION] = %s without [REPORT_PATH]' % decision)
 
 if not root:
-    run = subprocess.run([os.path.join(scripts, 'resolve-settings.sh'), 'json', task],
+    run = subprocess.run([os.path.join(scripts, 'resolve-settings.sh'), 'json', GIVEN],
                          capture_output=True, text=True)
     try:
         config = json.loads(run.stdout).get('project_config')

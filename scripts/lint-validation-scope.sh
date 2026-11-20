@@ -38,15 +38,18 @@ usage() {
 python3 - "$HERE/task-ranges.sh" "$1" <<'PY'
 import json, os, re, subprocess, sys
 
-RANGES, TASK = sys.argv[1], os.path.realpath(sys.argv[2])
+# task-ranges.sh gets the folder as given: it finds the project config along that path, and a task
+# behind a linked Tasks has none above its physical one. The physical path is for this script's own
+# comparisons only.
+RANGES, GIVEN, TASK = sys.argv[1], sys.argv[2], os.path.realpath(sys.argv[2])
 HEADER = ['Repository', 'Module', 'Why', 'Run', 'Tests', 'HEAD', 'Log']
 SHA = re.compile(r'[0-9a-f]{7,40}')
 CARRIED = re.compile(r'carried\s+`?([^\s`]+)`?')
 RECORD = re.compile(r'^\[VALIDATED_COMMIT\]\s*=\s*(.*)$')
 
 
-def ask(*args):
-    r = subprocess.run([RANGES] + list(args), capture_output=True, text=True)
+def ask(command, *args):
+    r = subprocess.run([RANGES, command, GIVEN] + list(args), capture_output=True, text=True)
     if r.returncode != 0:
         sys.stderr.write(r.stderr)
         sys.exit(2)
@@ -86,7 +89,7 @@ else:
         found.append('section: the header is not followed by a separator line (## Regression set)')
         table = []
 
-known = json.loads(ask('ranges', TASK, '--since', 'base'))['repos']
+known = json.loads(ask('ranges', '--since', 'base'))['repos']
 rows = []  # (repo, module, run, tests, head, log, where)
 for line in table[2:]:
     c = cells(line)
@@ -103,7 +106,7 @@ for line in table[2:]:
 
 listed = {r[0] for r in rows}
 changed = {rel for rel, v in known.items() if v['state'] != 'ok' or v['commits'] > 0}
-changed |= set(ask('dirty', TASK).split())
+changed |= set(ask('dirty').split())
 if table:
     found += ['missing: %s has changes and no row (## Regression set)' % rel for rel in sorted(changed - listed)]
 
@@ -119,7 +122,7 @@ for repo, module, why, run, tests, head, log, where in rows:
         if not SHA.fullmatch(head):
             found.append('stale: HEAD "%s" is not a sha (%s)' % (head, where))
         else:
-            n = ask('count', TASK, repo, head)
+            n = ask('count', repo, head)
             if n == 'rewritten':
                 found.append('stale: HEAD %s is not in the history of %s (%s)' % (head, repo, where))
             elif n != '0':
@@ -129,7 +132,7 @@ for repo, module, why, run, tests, head, log, where in rows:
     if not m or not SHA.fullmatch(m.group(1)):
         found.append('section: Run is "%s", not ran or carried <sha> (%s)' % (run, where))
         continue
-    n = ask('count', TASK, repo, m.group(1))
+    n = ask('count', repo, m.group(1))
     if n == 'rewritten':
         found.append('carried: %s is not in the history of %s (%s)' % (m.group(1), repo, where))
     else:
