@@ -84,6 +84,12 @@ Yes
 ## confirm_dispatch_cancel
 Cancel
 
+## scale_lite_suggest
+This looks like a small task: {reason}. It can run at `lite`, which writes shorter artifacts and keeps the same checks. The scale can still be raised to `full` later.
+
+## scale_lite_suggest_option
+Yes, run it at lite
+
 ## auq_axis_ui_question
 Which UI framework does this task use?
 

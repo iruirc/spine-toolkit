@@ -378,7 +378,15 @@ Algorithm:
 
 6. Confirmation in manual mode:
    if mode == manual:
-       AUQ using key `confirm_dispatch` with placeholders `{profile}`, `{mode}`, `{stack}`, `{start_stage}`
+       suggest_lite := all of:
+           • sources.scale of the step 3 call is `project` or `default` — not `task`, `epic`, `run` or `type`
+             (a scale Task.md, the epic's Task.md or this run named is somebody's word), and scale is `full`
+           • profile is FEATURE, BUG or REFACTOR
+           • Task.md reads as a small task by the signs of `conventions/task-scale.md` → Suggesting lite
+             (qualitative, no counts); a Task.md silent on a sign does not show it
+       AUQ using key `confirm_dispatch` with placeholders `{profile}`, `{mode}`, `{stack}`, `{start_stage}`;
+       when suggest_lite, the question is followed by key `scale_lite_suggest` (placeholder `{reason}`: the signs
+       that held, in a phrase)
        options (in this order):
            1. locale key `confirm_dispatch_yes`     → dispatch as resolved
            2. locale key `auq_confirm_dispatch_pick_stage` → open the picker:
@@ -387,11 +395,17 @@ Algorithm:
                   AUQ using key `auq_stage_override_question`  (placeholder: `{profile}`)
                   → user picks S → start_stage := S, then dispatch
                   → user picks Cancel → return {status: cancelled, reason: status_cancelled_user_no}
-           3. locale key `confirm_dispatch_cancel`  → return {status: cancelled, reason: status_cancelled_user_no}
+           3. only when suggest_lite: locale key `scale_lite_suggest_option` → dispatch as resolved, at lite:
+                  write `[SCALE] = [lite]` into Task.md immediately after the `[NEED_REVIEW]` line (where a
+                  raise writes `full`), repeat the step 3 call with `--set scale=lite` added, and take every
+                  field from it: scale-dependent fields move with the value
+           4. locale key `confirm_dispatch_cancel`  → return {status: cancelled, reason: status_cancelled_user_no}
+       # the lite option is the fourth only when it is offered: three options become four, and AUQ allows no more
+       # the offer is a suggestion, never a lowering: any other answer writes nothing
    else:
-       skip confirmation, go straight to Dispatch
+       skip confirmation, go straight to Dispatch   # no suggestion in `auto`
 
-   Confirmation is also skipped if both key parameters (profile AND mode) are explicitly stated in the user's original command.
+   Confirmation is also skipped if both key parameters (profile AND mode) are explicitly stated in the user's original command; the `scale_lite_suggest` offer is skipped with it, since it is asked only inside that confirmation.
    "Explicitly stated" = present as literal keywords in the request text.
    Example: `run 026 as BUG automatically` — confirmation skipped (both "BUG" and "automatically" are present).
    Example: `run 026` — confirmation required (neither profile nor mode is explicit).

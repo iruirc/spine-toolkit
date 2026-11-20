@@ -97,6 +97,32 @@ in `Task.md` is the author's own decision, which a stage does not get to re-make
 lives in the file, a later `redo` of any stage runs at `full` too — the size is a property of the
 task, not of one dispatch.
 
+## Suggesting lite
+
+A project whose config says nothing, or says `full`, runs every task at `full`, including one that
+did not need it. The orchestrator offers the cheaper value once, where a person is already looking:
+the confirmation of a manual run (`skills/orchestrator/SKILL.md`, Resolution Algorithm step 6). It
+is a question, never a lowering. Nothing lowers a scale unasked, and the ratchet raises the task
+back to `full` the moment a stage finds the perimeter larger than `Task.md` said.
+
+The offer is made only when all of these hold:
+
+- the scale resolved to `full`, and the resolver's `sources.scale` is `project` or `default`. A
+  scale from this run's `--set`, from the task's `Task.md` or from the epic's `Task.md` is somebody's
+  word, and a QUICK task is `lite` already;
+- the profile is FEATURE, BUG or REFACTOR, the three that have a `lite` run to offer;
+- `Task.md` reads as a small task. The signs are qualitative, and none is a count: the change has
+  one point, the expected behaviour fits a short list or a table, and it adds no module, no public
+  API and no migration. A `Task.md` that is silent on one of them does not show it, so the offer is
+  not made.
+
+An answer of yes writes `[SCALE] = [lite]` into `Task.md`, in the place a raise writes `full`, and
+the run goes at `lite`. Any other answer writes nothing, and the question is asked again at the next
+manual run: the project's value has not changed.
+
+The offer is made in `manual` mode and nowhere else. `auto` asks no one, and a command that already
+named its profile and its mode skips the confirmation, the offer with it.
+
 ## Explicit beats the axis
 
 `scale` sets the default for an artifact that has its own switch, and loses to that switch when it

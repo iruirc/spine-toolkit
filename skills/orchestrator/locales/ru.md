@@ -84,6 +84,12 @@
 ## confirm_dispatch_cancel
 Отмена
 
+## scale_lite_suggest
+Похоже на маленькую задачу: {reason}. Её можно вести на `lite` — артефакты короче, проверки те же. Размер всё равно можно позже поднять до `full`.
+
+## scale_lite_suggest_option
+Да, запустить на lite
+
 ## auq_axis_ui_question
 Какой UI-фреймворк использует эта задача?
 

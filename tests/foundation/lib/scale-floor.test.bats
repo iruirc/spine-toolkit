@@ -55,3 +55,41 @@ setup() {
   grep -qF 'A project without this field runs `full`' "$doc" \
     || { echo "the page does not document the absent-field default"; return 1; }
 }
+
+@test "the convention says when to suggest lite, without thresholds" {
+  c="$ROOT/conventions/task-scale.md"
+  grep -q '^## Suggesting lite$' "$c" || { echo "the convention has no 'Suggesting lite' section"; return 1; }
+  section="$(sed -n '/^## Suggesting lite$/,/^## Explicit beats the axis$/p' "$c")"
+  [ -n "$section" ]
+  ! printf '%s\n' "$section" | grep -E '[0-9]+ (lines|files)' \
+    || { echo "the section states a numeric threshold"; return 1; }
+  printf '%s\n' "$section" | grep -q 'sources.scale' || { echo "the section does not name sources.scale"; return 1; }
+  printf '%s\n' "$section" | grep -qi 'never a lowering' || { echo "the section does not say it is never a lowering"; return 1; }
+}
+
+@test "the orchestrator suggests lite only at manual confirmation and only when Task.md is silent" {
+  s="$ROOT/skills/orchestrator/SKILL.md"
+  step="$(sed -n '/^6\. Confirmation in manual mode:/,/^```$/p' "$s")"
+  [ -n "$step" ] || { echo "step 6 not found"; return 1; }
+  printf '%s\n' "$step" | grep -q 'scale_lite_suggest_option' || { echo "step 6 does not name the option key"; return 1; }
+  printf '%s\n' "$step" | grep -q 'scale_lite_suggest`' || { echo "step 6 does not name the text key"; return 1; }
+  printf '%s\n' "$step" | grep -q 'sources.scale' || { echo "step 6 does not read sources.scale"; return 1; }
+  printf '%s\n' "$step" | grep -q '`task`' || { echo "step 6 does not exclude a Task.md scale"; return 1; }
+  printf '%s\n' "$step" | grep -q '`epic`' || { echo "step 6 does not exclude the epic's scale"; return 1; }
+  printf '%s\n' "$step" | grep -q '\[NEED_REVIEW\]' || { echo "step 6 does not place the write after [NEED_REVIEW]"; return 1; }
+  printf '%s\n' "$step" | grep -qF 'no suggestion in `auto`' \
+    || { echo "step 6 does not exclude auto"; return 1; }
+  for k in scale_lite_suggest scale_lite_suggest_option; do
+    for l in en ru; do
+      grep -q "^## $k\$" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md lacks $k"; return 1; }
+    done
+  done
+}
+
+@test "no suggestion when the command already named profile and mode" {
+  s="$ROOT/skills/orchestrator/SKILL.md"
+  rule="$(grep -n 'Confirmation is also skipped if both key parameters' "$s" | cut -d: -f1)"
+  [ -n "$rule" ] || { echo "the skip rule is gone"; return 1; }
+  sed -n "${rule},$((rule + 6))p" "$s" | grep -q 'scale_lite_suggest' \
+    || { echo "the skip rule does not say the suggestion is skipped too"; return 1; }
+}
