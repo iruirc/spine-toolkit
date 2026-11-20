@@ -155,16 +155,24 @@ mapping_rows() {
   grep -qF 'never writes `off`' "$SKILL" || { echo "the skill does not pin that the migration never writes off"; return 1; }
 }
 
-@test "the migration writes the artifact check at its declared default auto, never the derived on or off" {
-  grep -qF '[ARTIFACT_CHECK] = [auto]' "$ROOT/templates/spine-md/en.md"
+@test "the migration writes the plan and done checks at their declared default auto, never the derived on or off" {
+  grep -qF '[PLAN_CHECK] = [auto]' "$ROOT/templates/spine-md/en.md"
+  grep -qF '[DONE_CHECK] = [auto]' "$ROOT/templates/spine-md/en.md"
   para="$(awk '/^A field no block answered is written at/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
-  grep -qF '`[ARTIFACT_CHECK]`' <<<"$para" || { echo "the absent-field paragraph does not exempt [ARTIFACT_CHECK]"; return 1; }
-  grep -qF 'Twenty-seven agree' <<<"$para" || { echo "the absent-field paragraph miscounts the fields that agree"; return 1; }
+  grep -qF '`[PLAN_CHECK]`' <<<"$para" && grep -qF '`[DONE_CHECK]`' <<<"$para" \
+    || { echo "the absent-field paragraph does not exempt [PLAN_CHECK] and [DONE_CHECK]"; return 1; }
+  grep -qF 'Twenty-eight agree' <<<"$para" || { echo "the absent-field paragraph miscounts the fields that agree"; return 1; }
 }
 
-@test "the migration's two counts of the fields at their default agree: twenty-seven, and [SCALE] apart" {
-  grep -qF 'Twenty-seven agree' "$SKILL" || { echo "the absent-field paragraph does not say twenty-seven agree"; return 1; }
-  tr '\n' ' ' <"$SKILL" | tr -s ' ' | grep -qF "the template's line for twenty-seven of them, \`full\` for \`[SCALE]\`" \
+@test "the migration writes a pre-split [ARTIFACT_CHECK] line as two lines with the same value" {
+  tr '\n' ' ' <"$SKILL" | tr -s ' ' \
+    | grep -qF 'A `[ARTIFACT_CHECK] = [X]` line is written as two lines, `[PLAN_CHECK] = [X]` and `[DONE_CHECK] = [X]`, with the same `X`' \
+    || { echo "setup has no rule for the pre-split line"; return 1; }
+}
+
+@test "the migration's two counts of the fields at their default agree: twenty-eight, and [SCALE] apart" {
+  grep -qF 'Twenty-eight agree' "$SKILL" || { echo "the absent-field paragraph does not say twenty-eight agree"; return 1; }
+  tr '\n' ' ' <"$SKILL" | tr -s ' ' | grep -qF "the template's line for twenty-eight of them, \`full\` for \`[SCALE]\`" \
     || { echo "the step that fills the absent fields counts them wrong"; return 1; }
-  ! grep -qiF 'twenty-six' "$SKILL" || { echo "a count of twenty-six is left"; return 1; }
+  ! grep -qiE 'twenty-(six|seven)' "$SKILL" || { echo "an older count is left"; return 1; }
 }

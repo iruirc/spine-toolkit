@@ -100,7 +100,8 @@ const WALKTHROUGH_CHECK = ['on', 'once'].includes(A.walkthrough_check) ? A.walkt
 // Which stage writes Walkthrough.md: `done`, the default, leaves it to Done alone; `stage` writes it at the
 // end of the implementing stage too.
 const WALKTHROUGH_WHEN = A.walkthrough_when === 'stage' ? 'stage' : 'done'
-const ARTIFACT_CHECK = A.artifact_check === 'on' ? 'on' : 'off'
+const PLAN_CHECK = A.plan_check === 'on' ? 'on' : 'off'
+const DONE_CHECK = A.done_check === 'on' ? 'on' : 'off'
 // Whether Walkthrough.md names the task's newest commit: the orchestrator's measure before the run,
 // then each writer's result. Done's own commits are the one thing left that can move past it.
 let walkthroughCurrent = A.walkthrough_current === true
@@ -1167,7 +1168,7 @@ if (runs('Done')) {
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
-  if (ARTIFACT_CHECK === 'on') await checkArtifact('Done', 'developer', A.agents.developer, `${DIR}/Done.md`)
+  if (DONE_CHECK === 'on') await checkArtifact('Done', 'developer', A.agents.developer, `${DIR}/Done.md`)
   // Done commits documentation and trackers of its own, so the walkthrough is refreshed after it.
   const handed = Array.isArray(done.walkthrough_findings) ? done.walkthrough_findings : []
   const idle = walkthroughWriter() && walkthroughCurrent && done.committed_outside_tasks === false && !handed.length

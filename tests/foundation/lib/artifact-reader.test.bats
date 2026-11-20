@@ -36,12 +36,12 @@ section() { # $1 = heading text
     || { echo "Scope never says the style wins over a brevity instruction"; return 1; }
 }
 
-# The fresh reader of Done.md and Plan.md (artifact_check). The five kinds are the enum the workflow
+# The fresh reader of Done.md (done_check) and Plan.md (plan_check). The five kinds are the enum the workflow
 # scripts' read schema carries, so a kind renamed here and not there splits the protocol in two.
 @test "Check is the fresh reader's protocol: one file, a retelling, five kinds, one revision" {
   check="$(section Check)"
   [ -n "$check" ] || { echo "no ## Check"; return 1; }
-  for s in '`artifact_check`' 'an owner who did not follow the task' 'nothing else' '`retelling`' '`unclear`' \
+  for s in '`plan_check`' '`done_check`' '`[PLAN_CHECK]`' '`[DONE_CHECK]`' 'an owner who did not follow the task' 'nothing else' '`retelling`' '`unclear`' \
     '`reread`' '`undefined term`' '`identifier subject`' '`no reason`' '`no proof`' \
     'one revision pass' 'never a second round' "does not change the file's language"; do
     grep -qF -- "$s" <<<"$check" || { echo "## Check lacks: $s"; return 1; }

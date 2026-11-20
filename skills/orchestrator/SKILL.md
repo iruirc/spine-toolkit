@@ -512,7 +512,8 @@ need_review=true|false
 walkthrough=brief|deep|off
 walkthrough_when=stage|done
 walkthrough_check=on|once|off
-artifact_check=on|off
+plan_check=on|off
+done_check=on|off
 walkthrough_current=true|false
 docs=on|off
 scale=lite|full
@@ -566,7 +567,9 @@ Semantics of `stage_scope`:
 
 `walkthrough_check` — whether a reader with none of the writer's context reads `Walkthrough.md` after each write that changed it, and the writer revises from what that reader could not follow — and, when `walkthrough_check` is `on` and that first read named more than three places, once more from a second fresh read, never a third; at `once` it is one read and one revision. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and how `auto` becomes a value. Always filled, for every profile, and only ever `on`, `once` or `off`: `auto` never reaches the contract, and wherever `walkthrough` is `off` this is `off` too. The protocol is `task-walkthrough` → `## Check`. It travels in the contract for the reason `walkthrough` does — a Method A script gates on it and has no filesystem to read it from.
 
-`artifact_check` — whether a reader who did not follow the task reads `Done.md` and `Plan.md` back, and the writer makes one revision from the places that reader names, never a second round. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and how `auto` becomes a value. Always filled, for every profile, and only ever `on` or `off`: `auto` never reaches the contract, and it is `on` at `scale = full` and `off` at `lite`. The protocol is `artifact-reader` → `## Check`. It travels in the contract for the reason `walkthrough` does — a Method A script gates on it and has no filesystem to read it from.
+`plan_check` — whether a reader who did not follow the task reads `Plan.md` back after Plan, and the writer makes one revision from the places that reader names, never a second round. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and how `auto` becomes a value. Always filled, for every profile, and only ever `on` or `off`: `auto` never reaches the contract, and it is `on` at `scale = full` and `off` at `lite`. The protocol is `artifact-reader` → `## Check`. It travels in the contract for the reason `walkthrough` does — a Method A script gates on it and has no filesystem to read it from.
+
+`done_check` — the same for `Done.md` after Done, resolved, filled and gated the same way: `resolve-settings.sh json`, Always filled, only `on` or `off`, `auto` never reaches the contract, the protocol `artifact-reader` → `## Check`. The two are chosen apart. `[ARTIFACT_CHECK]`, the pre-split spelling, sets both where it is the nearest line; the resolver reads it and says so once per source, and the run announces that with key `warn_artifact_check_pre_split`.
 
 `walkthrough_current` — whether `Walkthrough.md` already names the task's newest commit, so that a Done which commits nothing outside the tasks folder leaves its writer nothing to do. Measured right before the dispatch by `<core root>/scripts/lint-walkthrough.sh --current <task dir>`: exit 0 is `true`, any other exit `false`; a `style` finding does not count there. Always filled, for every profile; `false` without running the script wherever `walkthrough` is `off` or the stage range does not reach Done. Method A passes it as a JSON boolean. It travels in the contract for the reason `walkthrough` does — a Method A script gates on it and has no filesystem to read it from; a Method B run asks the same script after Done instead.
 
@@ -779,11 +782,13 @@ change code, not progress, and the opening block only comes out at the dispatch 
 
 **Announcing what the resolver could not use.** Every such line is shaped `<source>: '<value>'
 <what happened>`, `<source>` being `Task.md [FIELD]` or a config path and the same `[FIELD]`. The source
-says which field, the text after the quotes which key:
+says which field, the text after the quotes which key; the pre-split line quotes the field it read
+in place of a value:
 
 | text after the quotes | source names | key |
 |---|---|---|
 | `is the pre-depth spelling, read as '<depth>'` | `[WALKTHROUGH]` | `warn_walkthrough_pre_depth` |
+| `is the pre-split spelling, read as [PLAN_CHECK] and [DONE_CHECK]` | `[ARTIFACT_CHECK]` | `warn_artifact_check_pre_split` |
 | `not recognized, skipped` | `[WALKTHROUGH]` | `warn_walkthrough_unrecognised` (`{value}`) |
 | `not recognized, skipped` | `[BUDGETS]`, in a `Task.md` or the project config | `warn_budget_unrecognised` (`{line}`) |
 | `not recognized, skipped` | `[MODELS]` or `[EFFORT]` | `warn_tuning_unrecognised` (`{source}`, `{entry}`) |

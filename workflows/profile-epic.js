@@ -102,7 +102,8 @@ const WALKTHROUGH_CHECK = ['on', 'once'].includes(A.walkthrough_check) ? A.walkt
 // Which stage writes Walkthrough.md: `done`, the default, leaves it to Done alone; `stage` writes it at the
 // end of the implementing stage too.
 const WALKTHROUGH_WHEN = A.walkthrough_when === 'stage' ? 'stage' : 'done'
-const ARTIFACT_CHECK = A.artifact_check === 'on' ? 'on' : 'off'
+const PLAN_CHECK = A.plan_check === 'on' ? 'on' : 'off'
+const DONE_CHECK = A.done_check === 'on' ? 'on' : 'off'
 // Whether Walkthrough.md names the task's newest commit: the orchestrator's measure before the run,
 // then each writer's result. Done's own commits are the one thing left that can move past it.
 let walkthroughCurrent = A.walkthrough_current === true
@@ -1056,7 +1057,8 @@ const STEP = {
     manual_checks_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh manual_checks_check value" },
     manual_checks_style: { type: 'string', enum: ['brief', 'full'], description: "the step folder's own resolve-settings.sh manual_checks_style value" },
     manual_checks_pass: { type: 'string', enum: ['per-step', 'end'], description: "the step folder's own resolve-settings.sh manual_checks_pass value" },
-    artifact_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh artifact_check value" },
+    plan_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh plan_check value" },
+    done_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh done_check value" },
     report: { type: 'string', enum: ['auto', 'on', 'off'], description: "the step folder's own resolve-settings.sh report value" },
     phase_verification: { type: 'string', enum: ['proportional', 'full'], description: "the step folder's own resolve-settings.sh phase_verification value" },
     walkthrough: { type: 'string', enum: ['brief', 'deep', 'off'], description: "the step folder's own resolve-settings.sh walkthrough value" },
@@ -1180,7 +1182,7 @@ If you wrote Plan.md: Run "${core('scripts/lint-artifact-readability.sh')}" --wo
     if (still.length) return finish('stop', { status: 'error', reason: `step(s) ${still.join(', ')} are still typed QUICK on disk, which only the user chooses; a rerun would run them as QUICK — give them another [TASK_TYPE] in their Task.md first` })
     planned = retyped.steps
   }
-  if (ARTIFACT_CHECK === 'on' && branch === 'decomposition') await checkArtifact('Plan', 'architect', A.agents.architect, `${DIR}/Plan.md`)
+  if (PLAN_CHECK === 'on' && branch === 'decomposition') await checkArtifact('Plan', 'architect', A.agents.architect, `${DIR}/Plan.md`)
   log(`Plan chose ${branch}${branch === 'decomposition' ? ` with ${planned.length} step(s)` : ''}`)
 }
 
@@ -1282,7 +1284,7 @@ if (runs('Execute')) {
     const read = await agent(
       brief(
         'Execute',
-        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, device, manual_checks, manual_checks_check, manual_checks_style, manual_checks_pass, phase_verification, security, walkthrough, walkthrough_check, walkthrough_when, artifact_check, report and long_run values, its models value as resolved_models, and its sources.device as device_from. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
+        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, device, manual_checks, manual_checks_check, manual_checks_style, manual_checks_pass, phase_verification, security, walkthrough, walkthrough_check, walkthrough_when, plan_check, done_check, report and long_run values, its models value as resolved_models, and its sources.device as device_from. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
       { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'mechanical') },
     )
@@ -1337,7 +1339,8 @@ if (runs('Execute')) {
       manual_checks_check: st.manual_checks_check === undefined ? MANUAL_CHECKS_CHECK : st.manual_checks_check,
       manual_checks_style: st.manual_checks_style === undefined ? MANUAL_CHECKS_STYLE : st.manual_checks_style,
       manual_checks_pass: st.manual_checks_pass === undefined ? MANUAL_CHECKS_PASS : st.manual_checks_pass,
-      artifact_check: st.artifact_check === undefined ? ARTIFACT_CHECK : st.artifact_check,
+      plan_check: st.plan_check === undefined ? PLAN_CHECK : st.plan_check,
+      done_check: st.done_check === undefined ? DONE_CHECK : st.done_check,
       report: st.report === undefined ? REPORT : st.report,
       phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
       walkthrough: stepWalkthrough(st),
@@ -1694,7 +1697,7 @@ Never edit ${DIR}/Walkthrough.md: its writer runs after you, so a commit of your
   )
   if (!done) return finish('stop', { status: 'error', reason: 'the Done agent returned nothing' })
   record('Done', done)
-  if (ARTIFACT_CHECK === 'on') await checkArtifact('Done', 'architect', A.agents.architect, `${DIR}/Done.md`)
+  if (DONE_CHECK === 'on') await checkArtifact('Done', 'architect', A.agents.architect, `${DIR}/Done.md`)
 
   // Only a decomposition gets one: a pure-research epic ran no steps and has no diff to walk through.
   if (branch !== 'pure_research') {

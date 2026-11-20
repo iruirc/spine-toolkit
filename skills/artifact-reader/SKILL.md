@@ -62,9 +62,9 @@ Read the file as the reader above, and fix each of these before finishing:
 
 ## Check
 
-`[ARTIFACT_CHECK]` decides whether `Done.md` and `Plan.md` are read back by someone who did not follow the task before the run goes on. It reaches a run as the contract's `artifact_check`, `on` or `off`; `auto`, its default, is `on` at `scale = full` and `off` at `lite` (`conventions/task-settings.md`).
+`[PLAN_CHECK]` decides whether `Plan.md` is read back by someone who did not follow the task before the run goes on. `[DONE_CHECK]` decides the same for `Done.md`, chosen apart. Each reaches a run as the contract's `plan_check` or `done_check`, `on` or `off`; `auto`, the default of both, is `on` at `scale = full` and `off` at `lite` (`conventions/task-settings.md`).
 
-**When.** With `artifact_check` `on`, a file is read once after the stage that wrote it: `Plan.md` after Plan, `Done.md` after Done. The writer never checks its own file: the dispatcher does, the profile script under Method A and the workflow skill's main context under Method B.
+**When.** A file whose flag is `on` is read once after the stage that wrote it: `Plan.md` after Plan under `plan_check`, `Done.md` after Done under `done_check`. The writer never checks its own file: the dispatcher does, the profile script under Method A and the workflow skill's main context under Method B.
 
 **The reader** is a fresh dispatch of the writer's own role, tuned `light`; the fresh dispatch is where its lack of context comes from. Its brief tells it who it is: an owner who did not follow the task. Of the task and the repository it reads the one file and nothing else: no other file of the task, no source file, no git command and no other command. It returns two lists:
 

@@ -114,13 +114,16 @@ overrode a chosen `on`, or where the value came from `auto`, the source reads `w
 the implementing stage too, so it is readable before Validation and Review, and Done refreshes it. It
 has no effect where `walkthrough` is `off`, and none on an epic, whose file Done alone writes.
 
-`artifact_check` follows the scale. Its chain is the ordinary one and ends at `auto`, but only `on` or
-`off` leaves the resolver: `auto` becomes `on` where `scale` resolved to `full` and `off` where it
+`plan_check` and `done_check` follow the scale, each on its own. Each chain is the ordinary one and ends at
+`auto`, but only `on` or `off` leaves the resolver: `auto` becomes `on` where `scale` resolved to `full` and `off` where it
 resolved to `lite`. It reads the scale after the `QUICK` rule and the scale ratchet have been applied,
 so a `QUICK` task, always `lite`, checks nothing unless it says `on`. The value is fixed when a run is
 dispatched: a task raised to `full` mid-run is checked from the next run on, once `[SCALE] = [full]`
 stands in its `Task.md`. An explicit `on` or `off` stands at either scale. Where the value
 came from `auto`, the source reads `scale` and `show` names the scale it followed.
+`[ARTIFACT_CHECK]` is their pre-split spelling: at each link both chains read the field's own line first
+and `[ARTIFACT_CHECK]` after it, so a nearer pre-split line beats a farther split one. A hit on it is
+reported once per source, the source keeps its name, and `show` marks it `artifact_check`.
 
 `report` follows the profile. Its chain is the ordinary one and ends at `auto`. `auto` leaves the resolver
 as `auto` for `TEST`, `FEATURE`, `RESEARCH` and `EPIC`, and the Plan stage decides by `task-report` →
@@ -140,7 +143,8 @@ and it is the less surprising of the two outcomes: silently preferring the built
 value a project wrote down looks, from the project's side, like its config being ignored. The
 warning is printed either way. Two entries are not covered by it: `progress`, whose resolved value
 the opening block prints anyway, is skipped in silence; and `[WALKTHROUGH] = [on]`, the pre-depth
-spelling, is read as `deep` and reported in words of its own, because a migration is not a typo.
+spelling, is read as `deep` and reported in words of its own, because a migration is not a typo — as is
+`[ARTIFACT_CHECK]`, the pre-split spelling of `[PLAN_CHECK]` and `[DONE_CHECK]`.
 
 ## Fields
 
@@ -157,7 +161,8 @@ answers.
 | `walkthrough` | `[WALKTHROUGH]` | `[WALKTHROUGH]` | `brief` `deep` `off` | `off` when `scale` is `lite`, else `deep` |
 | `walkthrough_when` | `[WALKTHROUGH_WHEN]` | `[WALKTHROUGH_WHEN]` | `stage` `done` | `done` |
 | `walkthrough_check` | `[WALKTHROUGH_CHECK]` | `[WALKTHROUGH_CHECK]` | `auto` `on` `once` `off` | `auto`: `once` at `deep`, `off` at `brief`; `off` wherever `walkthrough` is `off` |
-| `artifact_check` | `[ARTIFACT_CHECK]` | `[ARTIFACT_CHECK]` | `auto` `on` `off` | `auto`: `on` at `full`, `off` at `lite` |
+| `plan_check` | `[PLAN_CHECK]` | `[PLAN_CHECK]` | `auto` `on` `off` | `auto`: `on` at `full`, `off` at `lite` |
+| `done_check` | `[DONE_CHECK]` | `[DONE_CHECK]` | `auto` `on` `off` | `auto`: `on` at `full`, `off` at `lite` |
 | `report` | `[REPORT]` | `[REPORT]` | `auto` `on` `off` | `auto`: stays `auto` for `TEST`, `FEATURE`, `RESEARCH`, `EPIC`; `off` for `QUICK`, `BUG`, `REFACTOR`; always `off` for `REVIEW` |
 | `drive_app` | `[DRIVE_APP]` | `[DRIVE_APP]` | `auto` `off` | `auto` |
 | `manual_checks` | `[MANUAL_CHECKS]` | `[MANUAL_CHECKS]` | `auto` `always` | `auto` |

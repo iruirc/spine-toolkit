@@ -33,7 +33,8 @@
 [WALKTHROUGH] = [deep]                 # brief | deep | off
 [WALKTHROUGH_WHEN] = [done]                # stage | done
 [WALKTHROUGH_CHECK] = [auto]           # auto | on | once | off
-[ARTIFACT_CHECK] = [auto]              # auto | on | off
+[PLAN_CHECK] = [auto]                  # auto | on | off
+[DONE_CHECK] = [auto]                  # auto | on | off
 [SECURITY] = [auto]                    # auto | on | off
 [DOCS] = [on]                          # on | off
 [MODEL_TIERS] = [fast@claude-code: sonnet]  # fast@<runtime>: <model>, project config only

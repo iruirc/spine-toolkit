@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # changed: sweep skills workflows
-# The fresh-reader check of Plan.md and Done.md (artifact_check): one read by a new agent of the
+# The fresh-reader check of Plan.md (plan_check) and Done.md (done_check): one read by a new agent of the
 # writer's role, then at most one revision, never a second read. Driven through the scripts with
 # stubbed agents, so a loop that drifts from artifact-reader's ## Check fails here. The shared block
 # is pinned byte-equal across the seven scripts that write either file, so a hand edit to one copy
@@ -35,15 +35,16 @@ block() {
   awk '/^\/\/ ── artifact check ─/ { f = 1 } f { print } /^\/\/ ── end artifact check ─/ { exit }' "$1"
 }
 
-# $1 profile, $2 start stage, $3 artifact_check ("" leaves the field out), $4 extra contract members.
+# $1 profile, $2 start stage, $3 plan_check and done_check alike ("" leaves both out), $4 extra
+# contract members.
 contract() {
   local check=''
-  [ -n "$3" ] && check=", \"artifact_check\": \"$3\""
+  [ -n "$3" ] && check=", \"plan_check\": \"$3\", \"done_check\": \"$3\""
   printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "%s", "end_stage": "%s", "stage_scope": "forward", "walkthrough": "off"%s%s}' \
     "$AGENTS" "$2" "$2" "$check" "${4:-}"
 }
 
-# $1 profile, $2 stage (Plan or Done), $3 artifact_check, $4 replies members, $5 extra contract members,
+# $1 profile, $2 stage (Plan or Done), $3 both checks, $4 replies members, $5 extra contract members,
 # then JS expressions over o, which land in V[4], V[5], ... What most tests read from a run is set in
 # F_ORDER (the stage's own dispatch and every artifact dispatch, each artifact one with its phase),
 # F_STAGE, F_STATUS and F_NOTES.
@@ -76,18 +77,22 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   ! grep -qF 'checkArtifact' "$ROOT/workflows/profile-review.js" || { echo "profile-review.js calls checkArtifact"; return 1; }
 }
 
-@test "every script still guards ARTIFACT_CHECK to on or off" {
+@test "every script guards PLAN_CHECK and DONE_CHECK to on or off, and no ARTIFACT_CHECK is left" {
   for p in $SEVEN review; do
-    grep -qxF "const ARTIFACT_CHECK = A.artifact_check === 'on' ? 'on' : 'off'" "$ROOT/workflows/profile-$p.js" \
-      || { echo "profile-$p.js: artifact_check is not guarded"; return 1; }
+    grep -qxF "const PLAN_CHECK = A.plan_check === 'on' ? 'on' : 'off'" "$ROOT/workflows/profile-$p.js" \
+      || { echo "profile-$p.js: plan_check is not guarded"; return 1; }
+    grep -qxF "const DONE_CHECK = A.done_check === 'on' ? 'on' : 'off'" "$ROOT/workflows/profile-$p.js" \
+      || { echo "profile-$p.js: done_check is not guarded"; return 1; }
+    ! grep -q 'ARTIFACT_CHECK\|artifact_check' "$ROOT/workflows/profile-$p.js" || { echo "profile-$p.js still names artifact_check"; return 1; }
   done
 }
 
-@test "every call is guarded by ARTIFACT_CHECK, Plan in the four planners, Done in all seven" {
+@test "every Plan call is guarded by PLAN_CHECK, every Done call by DONE_CHECK, Plan in the four planners, Done in all seven" {
   for p in $SEVEN; do
     f="$ROOT/workflows/profile-$p.js"
     calls="$(grep -F 'await checkArtifact(' "$f")"
-    ! grep -vF "ARTIFACT_CHECK === 'on'" <<<"$calls" | grep -q . || { echo "profile-$p.js: an unguarded call: $calls"; return 1; }
+    ! grep -F "checkArtifact('Plan'" <<<"$calls" | grep -vF "PLAN_CHECK === 'on'" | grep -q . || { echo "profile-$p.js: a Plan call not guarded by PLAN_CHECK: $calls"; return 1; }
+    ! grep -F "checkArtifact('Done'" <<<"$calls" | grep -vF "DONE_CHECK === 'on'" | grep -q . || { echo "profile-$p.js: a Done call not guarded by DONE_CHECK: $calls"; return 1; }
     [ "$(grep -cF "\`\${DIR}/Done.md\`)" <<<"$calls")" -eq 1 ] || { echo "profile-$p.js: Done.md is not checked exactly once"; return 1; }
     want=0
     [ "$(stages_of "$p")" = 'Plan Done' ] && want=1
@@ -100,7 +105,7 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
     for s in $(stages_of "$p"); do
       for c in off ''; do
         stage "$p" "$s" "$c" "\"artifact:check\": $(read_with 3)"
-        ! grep -qF 'artifact:' <<<"$F_ORDER" || { echo "profile-$p $s (artifact_check='$c'): $F_ORDER"; return 1; }
+        ! grep -qF 'artifact:' <<<"$F_ORDER" || { echo "profile-$p $s (checks='$c'): $F_ORDER"; return 1; }
       done
     done
   done
@@ -226,6 +231,41 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   done
 }
 
+@test "plan_check on and done_check off read Plan.md and leave Done.md, and the reverse reads only Done.md" {
+  for p in $PLANNERS epic; do
+    stage "$p" Plan '' "\"artifact:check\": $(read_with 0)" ', "plan_check": "on", "done_check": "off"'
+    [ "$F_ORDER" = 'plan artifact:check/Plan' ] || { echo "profile-$p Plan, plan on: dispatched $F_ORDER"; return 1; }
+    stage "$p" Done '' "\"artifact:check\": $(read_with 0)" ', "plan_check": "on", "done_check": "off"'
+    [ "$F_ORDER" = 'done' ] || { echo "profile-$p Done, done off: dispatched $F_ORDER"; return 1; }
+    stage "$p" Plan '' "\"artifact:check\": $(read_with 0)" ', "plan_check": "off", "done_check": "on"'
+    [ "$F_ORDER" = 'plan' ] || { echo "profile-$p Plan, plan off: dispatched $F_ORDER"; return 1; }
+    stage "$p" Done '' "\"artifact:check\": $(read_with 0)" ', "plan_check": "off", "done_check": "on"'
+    [ "$F_ORDER" = 'done artifact:check/Done' ] || { echo "profile-$p Done, done on: dispatched $F_ORDER"; return 1; }
+  done
+}
+
+@test "QUICK and RESEARCH read nothing under plan_check on and done_check off" {
+  for p in quick research; do
+    stage "$p" Done '' "\"artifact:check\": $(read_with 0)" ', "plan_check": "on", "done_check": "off"'
+    [ "$F_ORDER" = 'done' ] || { echo "profile-$p: dispatched $F_ORDER"; return 1; }
+  done
+}
+
+@test "EPIC asks each step for its plan_check and done_check and hands them on, the epic's own where the step has none" {
+  steps='"execute:read-steps": {"branch": "decomposition", "steps": [{"step_id": "1-a.step", "task_id": "001.1", "task_type": "FEATURE", "status": "PENDING", "plan_check": "on", "done_check": "off"}, {"step_id": "2-b.step", "task_id": "001.2", "task_type": "BUG", "status": "PENDING"}]}'
+  done_reply='{"status": "ok", "last_completed_stage": "Done", "stages": []}'
+  rp epic "$(contract epic Execute '' ', "mode": "auto", "plan_check": "off", "done_check": "on"')" \
+    "{$steps, \"workflow:spine-toolkit:profile-feature\": $done_reply, \"workflow:spine-toolkit:profile-bug\": $done_reply}" \
+    "const s = o.calls.find((c) => c.label === 'execute:read-steps').schema.properties.steps.items.properties; [s.plan_check.enum.join(), s.done_check.enum.join(), 'artifact_check' in s].join(' ')" \
+    "o.calls.find((c) => c.label === 'execute:read-steps').prompt" \
+    "const a = o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-feature').args; [a.plan_check, a.done_check, 'artifact_check' in a].join(' ')" \
+    "const a = o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-bug').args; [a.plan_check, a.done_check].join(' ')"
+  [ "${V[0]}" = 'on,off on,off false' ] || { echo "the step record: ${V[0]}"; return 1; }
+  grep -qF 'walkthrough_when, plan_check, done_check, report' <<<"${V[1]}" || { echo "read-steps does not ask for both checks"; return 1; }
+  [ "${V[2]}" = 'on off false' ] || { echo "the first step got: ${V[2]}"; return 1; }
+  [ "${V[3]}" = 'off on' ] || { echo "the second step got: ${V[3]}"; return 1; }
+}
+
 @test "EPIC checks Plan.md only on the decomposition branch, and Done.md on both" {
   E="$ROOT/workflows/profile-epic.js"
   rp epic "$(contract epic Plan on)" "{\"plan\": {\"ok\": true, \"artifact_path\": \"p\", \"summary\": \"s\", \"branch\": \"pure_research\", \"steps\": []}, \"artifact:check\": $(read_with 0)}" \
@@ -243,7 +283,7 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
 @test "the seven workflow skills carry the Method B check paragraph" {
   for s in bug feature refactor test quick epic research; do
     S="$ROOT/skills/workflow-$s/SKILL.md"
-    para="$(grep -F '`artifact_check`' "$S" | grep -F "$METHOD_B")"
+    para="$(grep -F '`done_check`' "$S" | grep -F "$METHOD_B")"
     [ -n "$para" ] || { echo "workflow-$s: no Method B paragraph"; return 1; }
     for token in 'is `on`' 'never a second round' '`light`'; do
       grep -qF "$token" <<<"$para" || { echo "workflow-$s: the paragraph does not say $token"; return 1; }
@@ -251,7 +291,8 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
     if [ "$s" = quick ] || [ "$s" = research ]; then
       grep -qF '`Done.md`' <<<"$para" || { echo "workflow-$s: the paragraph does not name Done.md"; return 1; }
     else
-      grep -qF '`Plan.md` after Plan' <<<"$para" && grep -qF '`Done.md` after Done' <<<"$para" \
+      grep -qF '`plan_check` is `on`, the main context checks `Plan.md` after Plan' <<<"$para" \
+        && grep -qF '`done_check` is `on`, `Done.md` after Done' <<<"$para" \
         || { echo "workflow-$s: the paragraph does not name both files"; return 1; }
     fi
   done
@@ -260,7 +301,7 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
 }
 
 @test "each Plan bullet of a skill with the check paragraph points at it" {
-  POINTER='When the contract'"'"'s `artifact_check` is `on`, a fresh reader checks `Plan.md` after this stage; the Done bullet says how.'
+  POINTER='When the contract'"'"'s `plan_check` is `on`, a fresh reader checks `Plan.md` after this stage; the Done bullet says how.'
   for s in bug feature refactor test epic; do
     body="$(awk '/^## 2\. Stages/{z=1;next} z&&/^## /{exit} z&&/^- \*\*/{f=index($0, "- **Plan**")==1} z&&f' "$ROOT/skills/workflow-$s/SKILL.md")"
     [ "$(grep -cF "$POINTER" <<<"$body")" -eq 1 ] || { echo "workflow-$s: the Plan bullet has no pointer at the check paragraph"; return 1; }
@@ -295,10 +336,13 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
   done
 }
 
-@test "the configuration reference says which files, one read and one revision, no second round" {
-  ck="$(awk '/^### \[ARTIFACT_CHECK\]$/{f=1;next} /^### /{f=0} f' "$ROOT/docs/configuration.md")"
-  for token in '`Plan.md` after Plan' '`Done.md` after Done' 'one read and at most one revision' 'no second round' 'decomposition'; do
-    grep -qF "$token" <<<"$ck" || { echo "configuration.md does not say: $token"; return 1; }
+@test "the configuration reference says which file, one read and one revision, no second round" {
+  for entry in 'PLAN_CHECK:`Plan.md` after Plan:decomposition' 'DONE_CHECK:`Done.md` after Done:either branch'; do
+    F="${entry%%:*}"; rest="${entry#*:}"
+    ck="$(awk -v h="### [$F]" '$0 == h {f=1;next} /^### /{f=0} f' "$ROOT/docs/configuration.md")"
+    for token in "${rest%%:*}" "${rest#*:}" 'one read and at most one revision' 'no second round'; do
+      grep -qF "$token" <<<"$ck" || { echo "configuration.md [$F] does not say: $token"; return 1; }
+    done
   done
 }
 

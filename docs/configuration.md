@@ -338,25 +338,37 @@ included — nothing is checked, whatever this field says. The check costs one `
 write that changed the file, and one more writer dispatch when it finds something; at `on`, a second
 round adds one of each.
 
-### [ARTIFACT_CHECK]
+### [PLAN_CHECK]
 
 **Values:** `auto` `on` `off` · **Default:** `auto` — `on` at `full`, `off` at `lite` ·
-**Task override:** `[ARTIFACT_CHECK] = [auto|on|off]` · **Defined by:** the `artifact-reader` skill,
+**Task override:** `[PLAN_CHECK] = [auto|on|off]` · **Defined by:** the `artifact-reader` skill,
 `## Check`
 
-Whether `Done.md` and `Plan.md` are read by a reader who did not follow the task, and revised from
-what that reader could not follow. The reader is a fresh agent of the writer's role that opens the
-artifact and nothing else, retells it and names each place it had to guess; the writer revises once,
-never a second round.
+Whether `Plan.md` is read by a reader who did not follow the task, and revised from what that reader
+could not follow. The reader is a fresh agent of the writer's role that opens the artifact and
+nothing else, retells it and names each place it had to guess; the writer revises once, never a
+second round.
 
-Two artifacts are read: `Plan.md` after Plan and `Done.md` after Done. `QUICK` and `RESEARCH` read
-only `Done.md`, and an `EPIC` reads its `Plan.md` only on the decomposition branch. Each file gets
-one read and at most one revision, no second round however many places the read named; a reader
-that returns nothing, and an entry it gives without a quote, are noted and stop nothing.
+One file is read: `Plan.md` after Plan. `QUICK` and `RESEARCH` read no `Plan.md`, and an `EPIC` reads its
+`Plan.md` only on the decomposition branch. The file gets one read and at most one revision,
+no second round however many places the read named; a reader that returns nothing, and an entry it
+gives without a quote, are noted and stop nothing.
 
 `auto` follows the scale: `on` at `full`, `off` at `lite`, a `QUICK` task being `lite`. An explicit
-`on` or `off` stands at either scale. The check costs one `light` dispatch per artifact read, and one
-more writer dispatch when it finds something.
+`on` or `off` stands at either scale. The check costs one `light` dispatch, and one more writer
+dispatch when it finds something.
+
+### [DONE_CHECK]
+
+**Values:** `auto` `on` `off` · **Default:** `auto` — `on` at `full`, `off` at `lite` ·
+**Task override:** `[DONE_CHECK] = [auto|on|off]` · **Defined by:** the `artifact-reader` skill,
+`## Check`
+
+The same check for `Done.md`, chosen apart from the plan's: it reads `Done.md` after Done, in every
+profile but `REVIEW`, and an `EPIC` reads it on either branch.
+The file gets one read and at most one revision, no second round; `auto` follows the scale as
+`[PLAN_CHECK]` does. A project that wants its plans read back but not its reports writes
+`[DONE_CHECK] = [off]` beside `[PLAN_CHECK] = [auto]`.
 
 ### [SECURITY]
 
@@ -520,3 +532,20 @@ number, never which scale an artifact is measured at. Change a ceiling when a me
 project's documents says the default does not fit, not when the lint turns red: a ceiling raised to
 silence the lint measures nothing. A key the lint does not know, or a value that is not a positive
 whole number, is reported, and the key falls to the next source down.
+
+## Older spellings
+
+A field name an earlier release wrote, still read so that a project does not change behavior on update.
+The template no longer writes it.
+
+### [ARTIFACT_CHECK]
+
+**Values:** `auto` `on` `off` · **Default:** none — it is not written by the template ·
+**Task override:** no field of its own; a `Task.md` line is read the way a config line is ·
+**Defined by:** `scripts/resolve-settings.sh`
+
+The pre-split spelling of `[PLAN_CHECK]` and `[DONE_CHECK]`, from when one field said both. It is
+still read: at each link of the chain, a `Task.md` or the project config, each of the two fields
+takes its own line first and `[ARTIFACT_CHECK]` after it, so `[ARTIFACT_CHECK] = [off]` in the
+project and `[PLAN_CHECK] = [on]` in a `Task.md` check the plan and not the report. The resolver
+says once per source that it read the pre-split spelling; `/setup` rewrites the line as the two.

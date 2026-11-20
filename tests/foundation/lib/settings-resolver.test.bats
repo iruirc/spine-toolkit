@@ -88,7 +88,8 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   [ "$(field walkthrough <<<"$output")" = deep ] || { echo "$output"; return 1; }
   [ "$(field walkthrough_check <<<"$output")" = once ] || { echo "$output"; return 1; }
   [ "$(field walkthrough_when <<<"$output")" = done ] || { echo "$output"; return 1; }
-  [ "$(field artifact_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(field plan_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(field done_check <<<"$output")" = on ] || { echo "$output"; return 1; }
   [ "$(field drive_app <<<"$output")" = auto ] || { echo "$output"; return 1; }
   [ "$(field manual_checks <<<"$output")" = auto ] || { echo "$output"; return 1; }
   [ "$(field driver <<<"$output")" = auto ] || { echo "$output"; return 1; }
@@ -213,7 +214,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
     ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
   done
   [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
-  grep -qxF '# 27 more at their default' <<<"$out" || { echo "$out"; return 1; }
+  grep -qxF '# 28 more at their default' <<<"$out" || { echo "$out"; return 1; }
 }
 
 @test "a project budget equal to the default is not a diff, and --all still names it" {
@@ -452,7 +453,8 @@ settings_report diff
 scale lite
 walkthrough off
 walkthrough_check off
-artifact_check off
+plan_check off
+done_check off
 drive_app auto
 manual_checks auto
 manual_checks_check on
@@ -523,7 +525,7 @@ FIELDS
   # The depth and its check fall back along the chain, not to the epic's: quick-surfaces.test.bats.
   grep -qF 'walkthrough: stepWalkthrough(st),' "$E" && grep -qF 'walkthrough_check: stepWalkthroughCheck(st),' "$E" \
     || { echo "profile-epic.js does not forward walkthrough to a step"; return 1; }
-  grep -qF 'return its drive_app, device, manual_checks, manual_checks_check, manual_checks_style, manual_checks_pass, phase_verification, security, walkthrough, walkthrough_check, walkthrough_when, artifact_check, report and long_run values' "$E" \
+  grep -qF 'return its drive_app, device, manual_checks, manual_checks_check, manual_checks_style, manual_checks_pass, phase_verification, security, walkthrough, walkthrough_check, walkthrough_when, plan_check, done_check, report and long_run values' "$E" \
     || { echo "read-steps never asks for the step's own depth and check"; return 1; }
   grep -qF "device: st.device === undefined ? DEVICE || 'auto' : st.device," "$E" && grep -qF "device_source: DEVICE_SOURCE || '—'," "$E" \
     || { echo "profile-epic.js does not forward the device to a step"; return 1; }
@@ -533,10 +535,14 @@ FIELDS
     || { echo "the step record has no walkthrough_when"; return 1; }
   grep -qF 'walkthrough_when: st.walkthrough_when === undefined ? WALKTHROUGH_WHEN : st.walkthrough_when,' "$E" \
     || { echo "profile-epic.js does not forward walkthrough_when to a step"; return 1; }
-  grep -qF "artifact_check: { type: 'string', enum: ['on', 'off']" "$E" \
-    || { echo "the step record has no artifact_check"; return 1; }
-  grep -qF "artifact_check: st.artifact_check === undefined ? ARTIFACT_CHECK : st.artifact_check" "$E" \
-    || { echo "profile-epic.js does not forward artifact_check to a step"; return 1; }
+  for f in plan_check done_check; do
+    F="$(tr '[:lower:]' '[:upper:]' <<<"$f")"
+    grep -qF "$f: { type: 'string', enum: ['on', 'off'], description: \"the step folder's own resolve-settings.sh $f value\" }" "$E" \
+      || { echo "the step record has no $f"; return 1; }
+    grep -qF "$f: st.$f === undefined ? $F : st.$f," "$E" \
+      || { echo "profile-epic.js does not forward $f to a step"; return 1; }
+  done
+  ! grep -q 'artifact_check\|ARTIFACT_CHECK' "$E" || { echo "profile-epic.js still names artifact_check"; return 1; }
   grep -qF "report: { type: 'string', enum: ['auto', 'on', 'off'], description: \"the step folder's own resolve-settings.sh report value\" }" "$E" \
     || { echo "the step record has no report"; return 1; }
   grep -qF "report: st.report === undefined ? REPORT : st.report," "$E" \
@@ -760,106 +766,178 @@ FIELDS
   [ "$(source_of walkthrough_check <<<"$out")" = project ] || { echo "$out"; return 1; }
 }
 
-@test "artifact_check is on at full and off at lite when nobody chose it" {
+@test "plan_check and done_check are on at full and off at lite when nobody chose them" {
   run "$RESOLVE" json "$TASK"
-  [ "$(field artifact_check <<<"$output")" = on ] || { echo "$output"; return 1; }
-  [ "$(source_of artifact_check <<<"$output")" = scale ] || { echo "$output"; return 1; }
+  for f in plan_check done_check; do
+    [ "$(field $f <<<"$output")" = on ] || { echo "$f: $output"; return 1; }
+    [ "$(source_of $f <<<"$output")" = scale ] || { echo "$f: $output"; return 1; }
+  done
   printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n' >"$TASK/Task.md"
   run "$RESOLVE" json "$TASK"
-  [ "$(field artifact_check <<<"$output")" = off ] || { echo "$output"; return 1; }
-  [ "$(source_of artifact_check <<<"$output")" = scale ] || { echo "$output"; return 1; }
+  for f in plan_check done_check; do
+    [ "$(field $f <<<"$output")" = off ] || { echo "$f: $output"; return 1; }
+    [ "$(source_of $f <<<"$output")" = scale ] || { echo "$f: $output"; return 1; }
+  done
 }
 
-@test "a QUICK task is lite, so its artifact_check is off" {
+@test "a QUICK task is lite, so its plan_check and done_check are off" {
   printf '[TASK_TYPE] = [QUICK]\n' >"$TASK/Task.md"
   run "$RESOLVE" json "$TASK"
   [ "$(field scale <<<"$output")" = lite ] || { echo "$output"; return 1; }
-  [ "$(field artifact_check <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(field plan_check <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(field done_check <<<"$output")" = off ] || { echo "$output"; return 1; }
 }
 
-@test "a raised scale turns the artifact_check on again" {
+@test "a raised scale turns plan_check and done_check on again" {
   printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n' >"$TASK/Task.md"
   run "$RESOLVE" json "$TASK" --set scale=full
-  [ "$(field artifact_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(field plan_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(field done_check <<<"$output")" = on ] || { echo "$output"; return 1; }
 }
 
-@test "a task artifact_check off stands at full, and an on stands at lite" {
-  printf '[TASK_TYPE] = [BUG]\n[ARTIFACT_CHECK] = [off]\n' >"$TASK/Task.md"
-  run "$RESOLVE" json "$TASK"
-  [ "$(field artifact_check <<<"$output")" = off ] || { echo "$output"; return 1; }
-  [ "$(source_of artifact_check <<<"$output")" = task ] || { echo "$output"; return 1; }
-  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n[ARTIFACT_CHECK] = [on]\n' >"$TASK/Task.md"
-  run "$RESOLVE" json "$TASK"
-  [ "$(field artifact_check <<<"$output")" = on ] || { echo "$output"; return 1; }
-  [ "$(source_of artifact_check <<<"$output")" = task ] || { echo "$output"; return 1; }
-}
-
-@test "a project artifact_check off stands at full" {
-  printf '## Task defaults\n\n[ARTIFACT_CHECK] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
-  run "$RESOLVE" json "$TASK"
-  [ "$(field artifact_check <<<"$output")" = off ] || { echo "$output"; return 1; }
-  [ "$(source_of artifact_check <<<"$output")" = project ] || { echo "$output"; return 1; }
-}
-
-@test "a run can set artifact_check" {
-  run "$RESOLVE" json "$TASK" --set artifact_check=off
-  [ "$(field artifact_check <<<"$output")" = off ] || { echo "$output"; return 1; }
-  [ "$(source_of artifact_check <<<"$output")" = run ] || { echo "$output"; return 1; }
-  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n' >"$TASK/Task.md"
-  run "$RESOLVE" json "$TASK" --set artifact_check=on
-  [ "$(field artifact_check <<<"$output")" = on ] || { echo "$output"; return 1; }
-  [ "$(source_of artifact_check <<<"$output")" = run ] || { echo "$output"; return 1; }
-}
-
-@test "an unusable artifact_check is reported, and the next source applies" {
-  printf '## Task defaults\n\n[ARTIFACT_CHECK] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
-  printf '[TASK_TYPE] = [BUG]\n[ARTIFACT_CHECK] = [maybe]\n' >"$TASK/Task.md"
+@test "plan_check and done_check are chosen apart" {
+  printf '## Task defaults\n\n[PLAN_CHECK] = [on]\n[DONE_CHECK] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
-  grep -qF "Task.md [ARTIFACT_CHECK]: 'maybe' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
-  [ "$(field artifact_check <<<"$out")" = off ] || { echo "$out"; return 1; }
-  [ "$(source_of artifact_check <<<"$out")" = project ] || { echo "$out"; return 1; }
+  [ "$(field plan_check <<<"$out")" = on ] || { echo "$out"; return 1; }
+  [ "$(field done_check <<<"$out")" = off ] || { echo "$out"; return 1; }
+  [ "$(source_of done_check <<<"$out")" = project ] || { echo "$out"; return 1; }
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
 }
 
-@test "show leaves a derived artifact_check out, and --all names the scale it follows" {
+@test "a task check off stands at full, and an on stands at lite" {
+  printf '[TASK_TYPE] = [BUG]\n[DONE_CHECK] = [off]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field done_check <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(source_of done_check <<<"$output")" = task ] || { echo "$output"; return 1; }
+  [ "$(field plan_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n[PLAN_CHECK] = [on]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field plan_check <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(source_of plan_check <<<"$output")" = task ] || { echo "$output"; return 1; }
+  [ "$(field done_check <<<"$output")" = off ] || { echo "$output"; return 1; }
+}
+
+@test "a project [ARTIFACT_CHECK] is read as both checks, and says so once" {
+  printf '## Task defaults\n\n[ARTIFACT_CHECK] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  for f in plan_check done_check; do
+    [ "$(field $f <<<"$out")" = off ] || { echo "$f: $out"; return 1; }
+    [ "$(source_of $f <<<"$out")" = project ] || { echo "$f: $out"; return 1; }
+  done
+  [ "$(grep -c 'pre-split spelling' "$ERR")" -eq 1 ] || { cat "$ERR"; return 1; }
+  grep -qxF "$PROJ/CLAUDE-spine-toolkit.md: '[ARTIFACT_CHECK]' is the pre-split spelling, read as [PLAN_CHECK] and [DONE_CHECK]" "$ERR" \
+    || { cat "$ERR"; return 1; }
+  ! grep -q '"artifact_check"' <<<"$out" || { echo "the json still has artifact_check: $out"; return 1; }
+}
+
+@test "[RF 3] a project [ARTIFACT_CHECK] off and a task [PLAN_CHECK] on check the plan, not the report, with one warning" {
+  printf '## Task defaults\n\n[ARTIFACT_CHECK] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [FEATURE]\n[PLAN_CHECK] = [on]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(field plan_check <<<"$out")" = on ] || { echo "$out"; return 1; }
+  [ "$(source_of plan_check <<<"$out")" = task ] || { echo "$out"; return 1; }
+  [ "$(field done_check <<<"$out")" = off ] || { echo "$out"; return 1; }
+  [ "$(source_of done_check <<<"$out")" = project ] || { echo "$out"; return 1; }
+  [ "$(grep -c 'pre-split spelling' "$ERR")" -eq 1 ] || { cat "$ERR"; return 1; }
+}
+
+@test "a task [ARTIFACT_CHECK] is nearer than a project [DONE_CHECK]" {
+  printf '## Task defaults\n\n[DONE_CHECK] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[ARTIFACT_CHECK] = [on]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  for f in plan_check done_check; do
+    [ "$(field $f <<<"$out")" = on ] || { echo "$f: $out"; return 1; }
+    [ "$(source_of $f <<<"$out")" = task ] || { echo "$f: $out"; return 1; }
+  done
+  grep -qxF "Task.md: '[ARTIFACT_CHECK]' is the pre-split spelling, read as [PLAN_CHECK] and [DONE_CHECK]" "$ERR" \
+    || { cat "$ERR"; return 1; }
+  [ "$(grep -c 'pre-split spelling' "$ERR")" -eq 1 ] || { cat "$ERR"; return 1; }
+}
+
+@test "a run can set plan_check and done_check, and artifact_check sets both" {
+  run "$RESOLVE" json "$TASK" --set done_check=off
+  [ "$(field done_check <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(source_of done_check <<<"$output")" = run ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" --set artifact_check=on 2>"$ERR")"
+  for f in plan_check done_check; do
+    [ "$(field $f <<<"$out")" = on ] || { echo "$f: $out"; return 1; }
+    [ "$(source_of $f <<<"$out")" = run ] || { echo "$f: $out"; return 1; }
+  done
+  ! grep -q 'not a field a run can set' "$ERR" || { cat "$ERR"; return 1; }
+  ! grep -q '"artifact_check"' <<<"$out" || { echo "$out"; return 1; }
+  # A field's own --set beats the pre-split one, whichever comes first.
+  out="$("$RESOLVE" json "$TASK" --set plan_check=off --set artifact_check=on 2>"$ERR")"
+  [ "$(field plan_check <<<"$out")" = off ] || { echo "$out"; return 1; }
+  [ "$(field done_check <<<"$out")" = on ] || { echo "$out"; return 1; }
+}
+
+@test "an unusable check is reported, and the next source applies" {
+  printf '## Task defaults\n\n[PLAN_CHECK] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[PLAN_CHECK] = [maybe]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  grep -qF "Task.md [PLAN_CHECK]: 'maybe' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+  [ "$(field plan_check <<<"$out")" = off ] || { echo "$out"; return 1; }
+  [ "$(source_of plan_check <<<"$out")" = project ] || { echo "$out"; return 1; }
+}
+
+@test "show leaves derived checks out, and --all names the scale they follow" {
   run "$RESOLVE" show "$TASK"
-  ! grep -q '^\[ARTIFACT_CHECK\]' <<<"$output" || { echo "$output"; return 1; }
+  ! grep -q '^\[\(PLAN\|DONE\|ARTIFACT\)_CHECK\]' <<<"$output" || { echo "$output"; return 1; }
   run "$RESOLVE" show "$TASK" --all
-  grep -qE '^\[ARTIFACT_CHECK\] += \[on\] +# scale: full$' <<<"$output" || { echo "$output"; return 1; }
+  grep -qE '^\[PLAN_CHECK\] += \[on\] +# scale: full$' <<<"$output" || { echo "$output"; return 1; }
+  grep -qE '^\[DONE_CHECK\] += \[on\] +# scale: full$' <<<"$output" || { echo "$output"; return 1; }
+  ! grep -q '^\[ARTIFACT_CHECK\]' <<<"$output" || { echo "$output"; return 1; }
   printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n' >"$TASK/Task.md"
   run "$RESOLVE" show "$TASK" --all
-  grep -qE '^\[ARTIFACT_CHECK\] += \[off\] +# scale: lite$' <<<"$output" || { echo "$output"; return 1; }
+  grep -qE '^\[DONE_CHECK\] += \[off\] +# scale: lite$' <<<"$output" || { echo "$output"; return 1; }
 }
 
-@test "show names an artifact_check the task turned off, and hides an auto one" {
+@test "show names a check the task turned off, marks one read from [ARTIFACT_CHECK], and hides an auto one" {
+  printf '[TASK_TYPE] = [BUG]\n[DONE_CHECK] = [off]\n' >"$TASK/Task.md"
+  run "$RESOLVE" show "$TASK"
+  grep -qE '^\[DONE_CHECK\] += \[off\] +# task$' <<<"$output" || { echo "$output"; return 1; }
   printf '[TASK_TYPE] = [BUG]\n[ARTIFACT_CHECK] = [off]\n' >"$TASK/Task.md"
   run "$RESOLVE" show "$TASK"
-  grep -qE '^\[ARTIFACT_CHECK\] += \[off\] +# task$' <<<"$output" || { echo "$output"; return 1; }
-  printf '## Task defaults\n\n[ARTIFACT_CHECK] = [auto]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  grep -qE '^\[PLAN_CHECK\] += \[off\] +# task: artifact_check$' <<<"$output" || { echo "$output"; return 1; }
+  grep -qE '^\[DONE_CHECK\] += \[off\] +# task: artifact_check$' <<<"$output" || { echo "$output"; return 1; }
+  printf '## Task defaults\n\n[PLAN_CHECK] = [auto]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
   printf '[TASK_TYPE] = [BUG]\n' >"$TASK/Task.md"
   run "$RESOLVE" show "$TASK"
-  ! grep -q '^\[ARTIFACT_CHECK\]' <<<"$output" || { echo "$output"; return 1; }
+  ! grep -q '^\[PLAN_CHECK\]' <<<"$output" || { echo "$output"; return 1; }
 }
 
-@test "a step inherits the epic's artifact_check" {
+@test "a step inherits the epic's checks, the pre-split spelling too" {
   EPIC="$PROJ/Tasks/ACTIVE/050-an-epic"
   STEP="$EPIC/01-first.step"
   mkdir -p "$STEP"
   printf '[TASK_TYPE] = [EPIC]\n[ARTIFACT_CHECK] = [off]\n' >"$EPIC/Task.md"
-  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
-  run "$RESOLVE" json "$STEP"
-  [ "$(field artifact_check <<<"$output")" = off ] || { echo "$output"; return 1; }
-  [ "$(source_of artifact_check <<<"$output")" = epic ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [FEATURE]\n[PLAN_CHECK] = [on]\n' >"$STEP/Task.md"
+  out="$("$RESOLVE" json "$STEP" 2>"$ERR")"
+  [ "$(field plan_check <<<"$out")" = on ] || { echo "$out"; return 1; }
+  [ "$(source_of plan_check <<<"$out")" = task ] || { echo "$out"; return 1; }
+  [ "$(field done_check <<<"$out")" = off ] || { echo "$out"; return 1; }
+  [ "$(source_of done_check <<<"$out")" = epic ] || { echo "$out"; return 1; }
+  [ "$(grep -c 'pre-split spelling' "$ERR")" -eq 1 ] || { cat "$ERR"; return 1; }
 }
 
-@test "artifact_check is documented wherever its neighbours are" {
-  grep -qF '| `artifact_check` | `[ARTIFACT_CHECK]` | `[ARTIFACT_CHECK]` | `auto` `on` `off` |' \
-    "$ROOT/conventions/task-settings.md" || { echo "task-settings.md has no row for the field"; return 1; }
+@test "plan_check and done_check are documented wherever their neighbours are, and [ARTIFACT_CHECK] as their synonym" {
   D="$ROOT/docs/configuration.md"
-  grep -qxF '### [ARTIFACT_CHECK]' "$D" || { echo "docs/configuration.md has no section for the field"; return 1; }
-  grep -qF '`[ARTIFACT_CHECK] = [auto|on|off]`' "$D" || { echo "the override spelling is missing"; return 1; }
-  grep -qF '`[ARTIFACT_CHECK] = [<auto|on|off>]`' "$ROOT/skills/task-new/SKILL.md" \
-    || { echo "task-new does not offer the field"; return 1; }
-  config_doc_offers ARTIFACT_CHECK || { echo "the doc does not let a task override the field"; return 1; }
+  for F in PLAN_CHECK DONE_CHECK; do
+    f="$(tr '[:upper:]' '[:lower:]' <<<"$F")"
+    grep -qF "| \`$f\` | \`[$F]\` | \`[$F]\` | \`auto\` \`on\` \`off\` |" \
+      "$ROOT/conventions/task-settings.md" || { echo "task-settings.md has no row for $F"; return 1; }
+    grep -qxF "### [$F]" "$D" || { echo "docs/configuration.md has no section for $F"; return 1; }
+    grep -qF "\`[$F] = [auto|on|off]\`" "$D" || { echo "the override spelling of $F is missing"; return 1; }
+    grep -qF "\`[$F] = [<auto|on|off>]\`" "$ROOT/skills/task-new/SKILL.md" \
+      || { echo "task-new does not offer $F"; return 1; }
+    config_doc_offers "$F" || { echo "the doc does not let a task override $F"; return 1; }
+  done
+  grep -qxF '### [ARTIFACT_CHECK]' "$D" || { echo "docs/configuration.md does not keep the synonym"; return 1; }
+  para="$(awk '/^### \[ARTIFACT_CHECK\]$/{f=1;next} f&&/^#/{exit} f{print}' "$D")"
+  grep -qF 'pre-split spelling' <<<"$para" || { echo "the [ARTIFACT_CHECK] section does not call it the pre-split spelling"; return 1; }
+  grep -qF '`[DONE_CHECK] = [off]`' "$D" || { echo "the doc has no [DONE_CHECK] = [off] example"; return 1; }
+  ! grep -qF '[ARTIFACT_CHECK] = [<' "$ROOT/skills/task-new/SKILL.md" || { echo "task-new still offers the synonym"; return 1; }
 }
 
 @test "report is auto for TEST, FEATURE, RESEARCH and EPIC when nobody chose it" {

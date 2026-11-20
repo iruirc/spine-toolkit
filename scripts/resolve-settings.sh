@@ -33,7 +33,8 @@ set -euo pipefail
 # resolved scale is lite, which beats the project and loses to the task's own [WALKTHROUGH].
 # walkthrough_check then follows it: auto is once at deep and off at brief, and off where no file is written.
 # walkthrough_when says which stage writes the file: done, the default, only Done; stage, the implementing stage too.
-# artifact_check follows the final scale: auto is on at full and off at lite.
+# plan_check and done_check follow the final scale: auto is on at full and off at lite. [ARTIFACT_CHECK], their
+# pre-split spelling, is read for both at each link after the field's own line, and said once per source.
 # report follows the profile: auto is off for QUICK, BUG and REFACTOR, off always for REVIEW, and stays auto for the rest.
 ROLES="architect developer tester reviewer refactorer validator security diagnostics"
 # A `platform` left by 1.11.0 reads as if its line were absent, not as `session`, so the key takes
@@ -242,7 +243,8 @@ SCALARS = (
     ('walkthrough', 'WALKTHROUGH', ['brief', 'deep', 'off'], 'deep'),
     ('walkthrough_when', 'WALKTHROUGH_WHEN', ['stage', 'done'], 'done'),
     ('walkthrough_check', 'WALKTHROUGH_CHECK', ['auto', 'on', 'once', 'off'], 'auto'),
-    ('artifact_check', 'ARTIFACT_CHECK', ['auto', 'on', 'off'], 'auto'),
+    ('plan_check', 'PLAN_CHECK', ['auto', 'on', 'off'], 'auto'),
+    ('done_check', 'DONE_CHECK', ['auto', 'on', 'off'], 'auto'),
     ('report', 'REPORT', ['auto', 'on', 'off'], 'auto'),
     ('drive_app', 'DRIVE_APP', ['auto', 'off'], 'auto'),
     ('manual_checks', 'MANUAL_CHECKS', ['auto', 'always'], 'auto'),
@@ -276,6 +278,18 @@ MAPS = (
 # A spelling an older release wrote, still applied. Reported in words a caller can tell apart from
 # a typo's, so the two get different announcements.
 ALIASES = {'walkthrough': {'on': 'deep'}}
+# A field name an older release wrote, read at each link after the field's own line: one line that
+# said both of what two fields now say apart.
+FIELD_SYNONYMS = {'plan_check': 'ARTIFACT_CHECK', 'done_check': 'ARTIFACT_CHECK'}
+SPLIT_WARNED = set()
+
+
+def warn_split(source):
+    """Say once per source that it still writes the pre-split field, however many fields read it."""
+    if source not in SPLIT_WARNED:
+        SPLIT_WARNED.add(source)
+        print("%s: '[ARTIFACT_CHECK]' is the pre-split spelling, read as [PLAN_CHECK] and [DONE_CHECK]" % source,
+              file=sys.stderr)
 
 
 def warn(label, entry):
@@ -462,9 +476,12 @@ resolved, sources, defaults = {}, {}, {}
 
 # What a run may set is what a task may say about itself: every field with a Task.md line.
 RUN_SCALARS, RUN_MAPS, RUN_BUDGETS = {}, {}, {}
+RUN_SYNONYMS = {}
 for target, raw in RUN_SET:
     name, _, key = target.partition('.')
-    if not key and name in [s[0] for s in SCALARS] and name not in PROJECT_ONLY:
+    if not key and name.upper() in FIELD_SYNONYMS.values():
+        RUN_SYNONYMS[name.upper()] = raw
+    elif not key and name in [s[0] for s in SCALARS] and name not in PROJECT_ONLY:
         RUN_SCALARS[name] = raw
     elif key and name in [m[0] for m in MAPS]:
         RUN_MAPS.setdefault(name, {})[key.lower()] = raw
@@ -473,6 +490,12 @@ for target, raw in RUN_SET:
         RUN_BUDGETS[key] = raw
     else:
         print('--set %s: not a field a run can set, skipped' % name, file=sys.stderr)
+# A pre-split --set fills each field it stands for that has no --set of its own, whichever came first.
+SYNONYM_RUN = set()
+for name, synonym in FIELD_SYNONYMS.items():
+    if synonym in RUN_SYNONYMS and name not in RUN_SCALARS:
+        RUN_SCALARS[name] = RUN_SYNONYMS[synonym]
+        SYNONYM_RUN.add(name)
 
 
 def task_scale():
@@ -484,10 +507,15 @@ def task_scale():
     return None, None
 
 
+show_source = {}
 for name, field, values, default in SCALARS:
-    value, source = None, 'default'
+    value, source, synonym = None, 'default', FIELD_SYNONYMS.get(name)
     if name in RUN_SCALARS:
-        value = accept(name, values, RUN_SCALARS[name], '--set %s' % name)
+        via = name in SYNONYM_RUN
+        value = accept(name, values, RUN_SCALARS[name], '--set %s' % (synonym.lower() if via else name))
+        if via and value is not None:
+            warn_split('--set')
+            show_source[name] = 'run: artifact_check'
         # A run may raise the size of a task, never lower one a task file already raised
         # (conventions/task-scale.md → The ratchet): the file cannot say whose word it was.
         if name == 'scale' and value == 'lite' and task_scale()[1] == 'full':
@@ -497,25 +525,36 @@ for name, field, values, default in SCALARS:
         if value is not None:
             source = 'run'
     for label, path in ([] if value is not None or name in PROJECT_ONLY else task_files()):
-        raw = task_value(path, field)
-        if not raw:
-            continue
-        value = accept(name, values, raw, 'Task.md [%s]' % field)
+        # The field's own line, then the pre-split one, before the next link down.
+        for spelling in (field, synonym) if synonym else (field,):
+            raw = task_value(path, spelling)
+            if not raw:
+                continue
+            value = accept(name, values, raw, 'Task.md [%s]' % spelling)
+            if value is not None:
+                break
         if value is None:
             continue
         source = label
+        if spelling != field:
+            warn_split("the epic's Task.md" if label == 'epic' else 'Task.md')
+            show_source[name] = '%s: artifact_check' % label
         break
     if value is None:
-        raw = config_value(field)
-        if raw:
-            value = accept(name, values, raw, '%s [%s]' % (CFG, field))
-            if value is not None:
-                source = 'project'
+        for spelling in (field, synonym) if synonym else (field,):
+            raw = config_value(spelling)
+            if raw:
+                value = accept(name, values, raw, '%s [%s]' % (CFG, spelling))
+                if value is not None:
+                    source = 'project'
+                    if spelling != field:
+                        warn_split(CFG)
+                        show_source[name] = 'project: artifact_check'
+                    break
     resolved[name], sources[name], defaults[name] = (default if value is None else value), source, default
 
 # walkthrough: off on a lite task, above the project and below the task's own field.
-# show_source holds what the column says where that is more than the source's bare name.
-show_source = {}
+# show_source, opened above the chain, holds what the column says where that is more than the source's bare name.
 
 # A QUICK task has one shape, and it is lite's (conventions/task-scale.md → QUICK).
 if (task_value(os.path.join(TARGET, 'Task.md'), 'TASK_TYPE') or '').upper() == 'QUICK':
@@ -533,8 +572,8 @@ if resolved['scale'] == 'lite' and sources['walkthrough'] in ('default', 'projec
 
 # walkthrough_check follows the depth it checks. CHOSEN keeps what the chain picked, so show can
 # tell a value derived from auto from one somebody wrote down.
-CHOSEN = {'walkthrough_check': resolved['walkthrough_check'], 'artifact_check': resolved['artifact_check'],
-          'report': resolved['report']}
+CHOSEN = {'walkthrough_check': resolved['walkthrough_check'], 'plan_check': resolved['plan_check'],
+          'done_check': resolved['done_check'], 'report': resolved['report']}
 chosen, depth = CHOSEN['walkthrough_check'], resolved['walkthrough']
 check = 'off' if depth == 'off' else ('once' if depth == 'deep' else 'off') if chosen == 'auto' else chosen
 if check != chosen:
@@ -542,11 +581,11 @@ if check != chosen:
                                         'walkthrough: off (%s: %s)' % (sources['walkthrough_check'], chosen))
     resolved['walkthrough_check'], sources['walkthrough_check'] = check, 'walkthrough'
 
-# artifact_check follows the scale, read after the QUICK rule above. An explicit on or off stands.
-if CHOSEN['artifact_check'] == 'auto':
-    resolved['artifact_check'] = 'on' if resolved['scale'] == 'full' else 'off'
-    sources['artifact_check'] = 'scale'
-    show_source['artifact_check'] = 'scale: %s' % resolved['scale']
+# plan_check and done_check follow the scale, read after the QUICK rule above. An explicit on or off stands.
+for name in ('plan_check', 'done_check'):
+    if CHOSEN[name] == 'auto':
+        resolved[name], sources[name] = ('on' if resolved['scale'] == 'full' else 'off'), 'scale'
+        show_source[name] = 'scale: %s' % resolved['scale']
 
 # report follows the profile. REVIEW has no Plan to decide a report, so it is off whatever was chosen;
 # QUICK, BUG and REFACTOR leave an auto at off; for the rest auto stays and the Plan stage decides
@@ -777,7 +816,7 @@ def show_rows(show_all):
                 continue
             text = ', '.join(spell(k) for k in keys)
         else:
-            # A value derived from the default (walkthrough_check's, artifact_check's or report's auto) is nobody's choice either.
+            # A value derived from the default (walkthrough_check's, plan_check's, done_check's or report's auto) is nobody's choice either.
             if not show_all and sources[name] != 'run' and (sources[name] == 'default' or value == defaults[name]
                                                             or CHOSEN.get(name) == defaults[name]):
                 rest += 1

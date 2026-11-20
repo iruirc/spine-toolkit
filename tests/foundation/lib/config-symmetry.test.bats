@@ -27,12 +27,17 @@ fields_of_block() {
     || { echo "the doc's ## Task defaults and its Task override entries disagree"; return 1; }
 }
 
-@test "the artifact check is a task default, with auto beside its three values, and the doc lets a task override it" {
-  grep -qE '^\[ARTIFACT_CHECK\] = \[auto\] +# auto \| on \| off$' "$TPL" \
-    || { echo "the template does not ship auto beside the three values"; return 1; }
-  fields_of_block | grep -qx ARTIFACT_CHECK || { echo "[ARTIFACT_CHECK] is not under ## Task defaults"; return 1; }
-  config_doc_offers ARTIFACT_CHECK || { echo "the doc does not let a task override the field"; return 1; }
-  ! grep -rE '^# *\[ARTIFACT_CHECK\]' "$ROOT/templates/task-md" || { echo "a task template lists the field"; return 1; }
+@test "the plan and done checks are task defaults, with auto beside their three values, and the doc lets a task override them" {
+  for F in PLAN_CHECK DONE_CHECK; do
+    grep -qE "^\[$F\] = \[auto\] +# auto \| on \| off$" "$TPL" \
+      || { echo "the template does not ship [$F] with auto beside the three values"; return 1; }
+    fields_of_block | grep -qx "$F" || { echo "[$F] is not under ## Task defaults"; return 1; }
+    config_doc_offers "$F" || { echo "the doc does not let a task override [$F]"; return 1; }
+    ! grep -rE "^# *\[$F\]" "$ROOT/templates/task-md" || { echo "a task template lists [$F]"; return 1; }
+  done
+  ! grep -qF '[ARTIFACT_CHECK]' "$TPL" || { echo "the template still writes the pre-split [ARTIFACT_CHECK]"; return 1; }
+  para="$(awk '/^### \[ARTIFACT_CHECK\]$/{f=1;next} f&&/^#/{exit} f' "$(config_doc)")"
+  grep -qF 'pre-split spelling' <<<"$para" || { echo "the doc does not mark [ARTIFACT_CHECK] as the pre-split spelling"; return 1; }
 }
 
 @test "walkthrough_when is a task default, done beside its two values, and the doc lets a task override it" {

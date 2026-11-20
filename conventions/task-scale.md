@@ -106,6 +106,8 @@ does not hold: `full` turns nothing back on that the user turned off. An axis th
 overrode an addressed decision would be the opacity this design exists to avoid. The same one-shot
 resolution means a mid-run raise to `full` does not turn `walkthrough` back on either: the
 orchestrator resolved it once before dispatch, and the script has no way to re-resolve it.
+`[PLAN_CHECK]` and `[DONE_CHECK]` are switches of the same kind: `auto` reads `Plan.md` and `Done.md`
+back at `full` only, and an explicit `on` or `off` stands at either scale.
 
 ## Budgets are measured
 

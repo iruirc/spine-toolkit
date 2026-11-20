@@ -480,16 +480,33 @@ section() {
   done
 }
 
-@test "the outbound contract carries artifact_check, on or off and never auto" {
-  grep -qxF 'artifact_check=on|off' "$SKILL" || { echo "no artifact_check= line in the contract block"; return 1; }
-  para="$(awk '/^`artifact_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
-  [ -n "$para" ] || { echo "no \`artifact_check\` paragraph in the Outbound Contract"; return 1; }
-  for token in 'resolve-settings.sh json' 'Always filled' '`auto` never reaches the contract' \
-               '`artifact-reader` → `## Check`'; do
-    grep -qF "$token" <<<"$para" || { echo "the artifact_check paragraph does not say $token"; return 1; }
-  done
+@test "the outbound contract carries plan_check and done_check, on or off and never auto, and no artifact_check" {
   own="$(awk '/^`walkthrough_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL" | wc -c)"
-  [ "$(printf '%s' "$para" | wc -c)" -le "$own" ] || { echo "the paragraph outgrew the walkthrough_check one"; return 1; }
+  for f in plan_check done_check; do
+    grep -qxF "$f=on|off" "$SKILL" || { echo "no $f= line in the contract block"; return 1; }
+    para="$(awk -v h="^\`$f\` —" '$0 ~ h {f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+    [ -n "$para" ] || { echo "no \`$f\` paragraph in the Outbound Contract"; return 1; }
+    for token in 'resolve-settings.sh json' 'Always filled' '`auto` never reaches the contract' \
+                 '`artifact-reader` → `## Check`'; do
+      grep -qF "$token" <<<"$para" || { echo "the $f paragraph does not say $token"; return 1; }
+    done
+    [ "$(printf '%s' "$para" | wc -c)" -le "$own" ] || { echo "the $f paragraph outgrew the walkthrough_check one"; return 1; }
+  done
+  ! grep -q '^artifact_check=' "$SKILL" || { echo "the contract block still carries artifact_check"; return 1; }
+  ! grep -q '^`artifact_check` —' "$SKILL" || { echo "the contract still describes artifact_check"; return 1; }
+}
+
+@test "the pre-split spelling of the checks is announced with its own key" {
+  grep -qF "| \`is the pre-split spelling, read as [PLAN_CHECK] and [DONE_CHECK]\` | \`[ARTIFACT_CHECK]\` | \`warn_artifact_check_pre_split\` |" "$SKILL" \
+    || { echo "the warnings table has no row for the pre-split spelling"; return 1; }
+  for lang in en ru; do
+    L="$ROOT/skills/orchestrator/locales/$lang.md"
+    body="$(awk '/^## warn_artifact_check_pre_split$/{p=1;next} /^## /{p=0} p' "$L")"
+    [ -n "${body//[[:space:]]/}" ] || { echo "$lang.md carries no warn_artifact_check_pre_split string"; return 1; }
+    for token in '[ARTIFACT_CHECK]' '[PLAN_CHECK]' '[DONE_CHECK]'; do
+      grep -qF "$token" <<<"$body" || { echo "$lang.md: the announcement does not name $token"; return 1; }
+    done
+  done
 }
 
 @test "the outbound contract carries manual_checks_check, on or off" {

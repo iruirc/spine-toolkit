@@ -264,6 +264,9 @@ The hung-call watch exited with code {code}, so this stage is no longer watched 
 ## warn_walkthrough_pre_depth
 `on` is the pre-depth value, so it is read as `deep`: a glossary, the commit order and a section per commit, where `on` produced a summary and a log of one bullet per commit. A project's `on` still ends at `off` when this task's `scale` is `lite`, the gate sitting below the task's own field and above the project's. To keep the older shape, write `brief` in `[WALKTHROUGH]`, in `Task.md` or in the project config.
 
+## warn_artifact_check_pre_split
+`[ARTIFACT_CHECK]` is the pre-split spelling of two fields, so it was read as both `[PLAN_CHECK]` and `[DONE_CHECK]`, each wherever no nearer line of its own decides. The run goes on as resolved. To say it in today's words, write the two lines with the same value in place of `[ARTIFACT_CHECK]`, in `Task.md` or in the project config; `/setup` does this for the config.
+
 ## warn_walkthrough_unrecognised
 `{value}` is not one of the three walkthrough depths, so it was skipped and the rest of the chain decides: `off` when this task's `scale` is `lite`, otherwise the project's `[WALKTHROUGH]` where it names one, and `deep` where nothing does. The depths are `brief`, `deep` and `off` — correct the value in `[WALKTHROUGH]`, in `Task.md` or in the project config. The settings above name the depth this run actually resolved to.
 
