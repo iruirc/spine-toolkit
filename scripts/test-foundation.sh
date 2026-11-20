@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run Foundation bats tests.
-# Usage: scripts/test-foundation.sh [unit|all|changed [--list]|touched [<file>...]]
+# Usage: scripts/test-foundation.sh [unit|all|changed [--list]|verified|touched [<file>...]]
 #   changed  runs the test files that name what the branch touched since its merge base with
 #            $TEST_BASE (default main), or on main what is not pushed; uncommitted and untracked
 #            files count. A change under a directory also runs the sweeps whose mark names it, the
@@ -17,6 +17,12 @@
 #            directory, and a helper runs the tests that load it, directly or through another
 #            helper; a helper no test loads is reported and runs nothing. It has no --list.
 #            Never records the tree.
+#   verified runs the changed selection for what differs from the verified tree: the newest tree
+#            in the history of HEAD that the stamp holds, from all or from verified, to the
+#            worktree, untracked files included. When green and the tree did not change during the
+#            run, records '<tree> via <verified tree>' in the stamp, so a tree checked after a full
+#            run counts as verified too. With no such tree in the history it says so, runs nothing
+#            and exits 2; with nothing differing it says so and runs nothing.
 #   all      when green and the tree did not change during the run, records the tree it verified
 #            in .git/spine-verified-trees (the git common dir), the last 20 trees, newest last.
 set -euo pipefail
@@ -63,14 +69,11 @@ skill_tests() {   # <file under skills/>
   grep -lE -- "skills/$name([^a-z0-9-]|\$)" "$lib"/*.bats 2>/dev/null || true
 }
 
-# Prints the bats arguments for the changed files, one per line, and why to stderr.
-changed_suites() {
-  local files f picked all=0 selected="" sweeps="" line top
-  files="$(diff_files "$root" "${TEST_BASE:-main}")" || exit 2
-  if [ -z "$files" ]; then
-    echo "changed: nothing differs from ${TEST_BASE:-main}" >&2
-    return 0
-  fi
+# Reads the changed files from stdin, one per line, and prints the bats arguments for them, one
+# per line, and why to stderr, each line starting with <label>.
+changed_suites() {   # <label>
+  local label="$1" files f picked all=0 selected="" sweeps="" line top
+  files="$(cat)"
   # Each mark is read once, into one "<file><TAB><dirs>" line per sweep.
   for f in "$lib"/*.bats; do
     line="$(head -10 "$f" | grep -E '^# changed: sweep([[:blank:]]|$)' | head -1 || true)"
@@ -83,13 +86,13 @@ changed_suites() {
     picked=""
     case "$f" in
       tests/foundation/helpers/*|tests/foundation/fixtures/*|tests/fixtures/*)
-        echo "changed: $f -> all of tests/foundation/lib" >&2; all=1; continue ;;
+        echo "$label: $f -> all of tests/foundation/lib" >&2; all=1; continue ;;
       tests/foundation/lib/*.bats)
         if [ -f "$root/$f" ]; then
-          echo "changed: $f -> itself" >&2
+          echo "$label: $f -> itself" >&2
           selected="$selected"$'\n'"$root/$f"
         else
-          echo "changed: $f -> removed, nothing to run" >&2
+          echo "$label: $f -> removed, nothing to run" >&2
         fi
         continue ;;
       skills/*) picked="$(skill_tests "$f")" ;;
@@ -103,9 +106,9 @@ changed_suites() {
     fi
     picked="$(printf '%s\n' "$picked" | sed '/^$/d' | sort -u)"
     if [ -z "$picked" ]; then
-      echo "changed: $f -> no test names it" >&2
+      echo "$label: $f -> no test names it" >&2
     else
-      echo "changed: $f -> $(printf '%s\n' "$picked" | sed 's|.*/||' | tr '\n' ' ' | sed 's/ $//')" >&2
+      echo "$label: $f -> $(printf '%s\n' "$picked" | sed 's|.*/||' | tr '\n' ' ' | sed 's/ $//')" >&2
       selected="$selected"$'\n'"$picked"
     fi
   done <<< "$files"
@@ -213,15 +216,42 @@ worktree_tree() {
   printf '%s\n' "$tree"
 }
 
-# Appends <tree> to the stamp in the git common dir and keeps the last 20 lines. The new content
-# is written beside the stamp and moved over it, so a reader never sees a half-written file.
-record_green_tree() {   # <tree>
-  local tree="$1" stamp tmp
-  stamp="$(git -C "$root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/spine-verified-trees" || return 1
+# Prints the path of the stamp in the git common dir.
+stamp_path() {
+  local common
+  common="$(git -C "$root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || return 1
+  printf '%s\n' "$common/spine-verified-trees"
+}
+
+# Appends <line> - a tree, or `<tree> via <base>` - to the stamp and keeps the last 20 lines. The
+# new content is written beside the stamp and moved over it, so a reader never sees a half-written
+# file.
+record_green_tree() {   # <line>
+  local entry="$1" stamp tmp
+  stamp="$(stamp_path)" || return 1
   [ ! -d "$stamp" ] || return 1   # mv would put the new file inside it
   tmp="$(mktemp "$stamp.XXXXXX" 2>/dev/null)" || return 1
-  { { [ ! -e "$stamp" ] || tail -n 19 "$stamp"; printf '%s\n' "$tree"; } >"$tmp" 2>/dev/null &&
+  { { [ ! -e "$stamp" ] || tail -n 19 "$stamp"; printf '%s\n' "$entry"; } >"$tmp" 2>/dev/null &&
       mv "$tmp" "$stamp" 2>/dev/null; } || { rm -f "$tmp"; return 1; }
+}
+
+# Prints the newest tree in the history of HEAD that is the first field of a stamp line: the tree
+# a verified run takes its difference from. Exits 1 when there is none.
+verified_base() {
+  local stamp t
+  stamp="$(stamp_path)" || return 1
+  [ -f "$stamp" ] || return 1
+  t="$(git -C "$root" log --format=%T HEAD 2>/dev/null |
+    awk 'NR == FNR { seen[$1] = 1; next } ($1 in seen) { print; exit }' "$stamp" -)" || return 1
+  [ -n "$t" ] || return 1
+  printf '%s\n' "$t"
+}
+
+# Prints the files of the worktree that differ from <tree>, untracked ones included, in the form of
+# diff_files.
+verified_files() {   # <tree>
+  { git -C "$root" -c core.quotePath=false diff --name-only --no-renames "$1"
+    git -C "$root" -c core.quotePath=false ls-files --others --exclude-standard; } | sort -u
 }
 
 case "$target" in
@@ -236,7 +266,13 @@ case "$target" in
     fi
     exit "$rc" ;;
   changed)
-    list="$(changed_suites)"
+    files="$(diff_files "$root" "${TEST_BASE:-main}")" || exit 2
+    if [ -z "$files" ]; then
+      echo "changed: nothing differs from ${TEST_BASE:-main}" >&2
+      list=""
+    else
+      list="$(printf '%s\n' "$files" | changed_suites changed)"
+    fi
     if [ "${2:-}" = "--list" ]; then
       [ -z "$list" ] || printf '%s\n' "$list"
       exit 0
@@ -264,5 +300,27 @@ case "$target" in
     chosen=()
     while IFS= read -r s; do chosen+=("$s"); done <<< "$list"
     bats "${chosen[@]}" ;;
-  *)    echo "usage: $0 [unit|all|changed [--list]|touched [<file>...]]" >&2; exit 2 ;;
+  verified)
+    before="$(worktree_tree)" || {
+      echo "verified: the script is not at the repository top level" >&2; exit 2; }
+    base="$(verified_base)" || {
+      echo "verified: no tree in the history of HEAD passed a full run; run all" >&2; exit 2; }
+    files="$(verified_files "$base")"
+    if [ -z "$files" ]; then
+      echo "verified: nothing differs from the verified tree $base" >&2
+      exit 0
+    fi
+    list="$(printf '%s\n' "$files" | changed_suites verified)"
+    rc=0
+    if [ -n "$list" ]; then
+      chosen=()
+      while IFS= read -r s; do chosen+=("$s"); done <<< "$list"
+      bats "${chosen[@]}" || rc=$?
+    fi
+    after="$(worktree_tree || true)"
+    if [ "$rc" -eq 0 ] && [ "$before" = "$after" ]; then
+      record_green_tree "$before via $base" || echo "test-foundation: could not record the verified tree" >&2
+    fi
+    exit "$rc" ;;
+  *)    echo "usage: $0 [unit|all|changed [--list]|verified|touched [<file>...]]" >&2; exit 2 ;;
 esac
