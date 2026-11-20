@@ -62,7 +62,8 @@ subsection() { # $1 file, $2 heading text: the body up to the next ## or ### hea
   sec="$(subsection "$SKILL" 'Failures outside the task')"
   for t in 'usage search' 'Doubt keeps it inside' 'even when the test is in the registry' 'a missing registry is an empty one' \
     '`PASSED_WITH_FLAKES`' '`FAILED` > `FLAKY` > `PASSED_WITH_FLAKES` > `PASSED`' 'up to 3' 'first green' 'no second full run' \
-    '`outside_failures`' '`known_failures_cleared`' '`known`' '`flaky`' '`red`' 'conventions/known-failures.md'; do
+    '`outside_failures`' '`known_failures_cleared`' '`known`' '`flaky`' '`red`' 'conventions/known-failures.md' \
+    "a TEST task's added tests aside" "the TEST profile's flake detection" 'an entry that lists a class covers its methods'; do
     grep -qF -- "$t" <<<"$sec" || { echo "the subsection lost: $t"; return 1; }
   done
   [ "$(grep -c '^|' <<<"$sec")" -eq 8 ] || { echo "the status table is not a header, a rule and six rows"; return 1; }
@@ -70,7 +71,8 @@ subsection() { # $1 file, $2 heading text: the body up to the next ## or ### hea
 
 @test "a re-run carries green whole-module runs of phases and of earlier Validations" {
   sec="$(section "$SKILL" "Validation's regression")"
-  for t in '`ran:`' 'carried <sha> (phase <N>)' 'carried <sha> (validation)' 'whatever its status' 'latest'; do
+  for t in '`ran:`' 'carried <sha> (phase <N>)' 'carried <sha> (validation)' 'whatever its status' 'latest' 'red in the latest Validation that ran it' \
+    "A \`ran\` row is green when its module's run had no failure other than those its \`## Outside the task\` records as \`known\` or \`flaky\`"; do
     grep -qF -- "$t" <<<"$sec" || { echo "the re-run paragraph lost: $t"; return 1; }
   done
 }
@@ -80,7 +82,8 @@ subsection() { # $1 file, $2 heading text: the body up to the next ## or ### hea
   sec="$(section "$doc" 'Validation.md')"
   grep -qF '`| Repository | Module | Test | Outcome | Entry | Why outside | Runs |`' <<<"$sec" \
     || { echo "no ## Outside the task header"; return 1; }
-  for t in '`## Outside the task`' '`carried <sha> (phase <N>)`' '`carried <sha> (validation)`' '`reach`' '`PASSED_WITH_FLAKES`'; do
+  for t in '`## Outside the task`' '`carried <sha> (phase <N>)`' '`carried <sha> (validation)`' '`reach`' '`PASSED_WITH_FLAKES`' \
+    "A \`ran\` row is green when its module's run had no failure other than those \`## Outside the task\` records as \`known\` or \`flaky\`"; do
     grep -qF -- "$t" <<<"$sec" || { echo "Validation.md section lost: $t"; return 1; }
   done
 }

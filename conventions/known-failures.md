@@ -26,12 +26,12 @@ One table, one entry per row:
 - `ID` — `KF-<N>`, never reused: `Validation.md` and `Questions.md` refer to it.
 - `Repository` — the name `scripts/task-ranges.sh` prints, `.` for the project. `Module` — as in
   `## Regression set`.
-- `Tests` — classes or `Class/method`, comma-separated. An entry covers only what it lists; a failure
-  matches it by repository, module and test.
+- `Tests` — classes or `Class/method`, comma-separated. An entry covers only what it lists, a listed class
+  all its methods; a failure matches it by repository, module and test.
 - `Kind` — `permanent`, a test that fails on every run where the task's regression runs it, or
   `flaky`, one that fails under some runs and passes on a retry.
-- `Cause` and `Passes where` — from the `Validation.md` that found it: why it fails, and the run in
-  which it passes.
+- `Cause` and `Passes where` — from the `Validation.md` that found it, its Summary and the failure's
+  prose: why it fails, and the run in which it passes.
 - `Accepted` — `owner, <date>, <task id>/Questions.md`, where the decision is logged.
 - `Remove when` — the change that would let the test pass where the regression runs it.
 
