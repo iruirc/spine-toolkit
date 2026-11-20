@@ -6,16 +6,19 @@
 #        scripts/stage-leftovers.sh diff [--out] <file>
 #        scripts/stage-leftovers.sh kill <pid>:<start>…
 #        scripts/stage-leftovers.sh watch --dir <transcript dir> --stall <s> --idle <s> [--since <epoch>]
+#        scripts/stage-leftovers.sh origin <pid>…
 # Exit: diff 0 nothing, 1 findings; kill 0; watch 4 stalled call, 5 idle, 6 session gone. 2: usage, any subcommand.
 set -uo pipefail
 
-[ $# -ge 1 ] || { sed -n '5,9p' "$0" >&2; exit 2; }
+[ $# -ge 1 ] || { sed -n '5,10p' "$0" >&2; exit 2; }
 exec python3 - "$@" <<'PY'
 import fnmatch, hashlib, json, os, re, signal, subprocess, sys, time
 from datetime import datetime
 
-# Test seams: a ps listing, the session's claude pid, this process's pid, the clock, the registry path.
+# Test seams: a ps listing, the session's claude pid, this process's pid, the clock, the registry path,
+# and "<pid> <origin>" lines read in place of the system's answer (a pid not listed has none).
 PS_FILE = os.environ.get("STAGE_LEFTOVERS_PS")
+ORIGIN_FILE = os.environ.get("STAGE_LEFTOVERS_ORIGIN")
 NOW = float(os.environ.get("STAGE_LEFTOVERS_NOW") or time.time())
 POLL = float(os.environ.get("STAGE_LEFTOVERS_POLL") or 15)
 SELF = int(os.environ.get("STAGE_LEFTOVERS_SELF") or os.getpid())
@@ -66,6 +69,49 @@ def session_pid(table):
             return pid
         pid = table[pid][0]
     usage("no claude or codex process above this one: run it from the session's shell tool")
+
+
+# The variables a session sets for the commands it runs; only those this script itself has are compared.
+MARKERS = re.compile(r"^(CLAUDE_PID|CLAUDE_CODE_SESSION_ID|CODEX_\w+)$")
+
+
+def origin(pid):
+    # Who a process came from, or None when that cannot be read. On macOS, its responsible process: the
+    # app that launched it, inherited across fork and reparenting — a terminal app for everything a
+    # session runs, the app itself for its own helpers. Elsewhere, the session markers in its environment.
+    if ORIGIN_FILE:
+        for line in open(ORIGIN_FILE, encoding="utf-8").read().splitlines():
+            f = line.split(None, 1)
+            if len(f) == 2 and f[0] == str(pid):
+                return f[1]
+        return None
+    if sys.platform == "darwin":
+        try:
+            import ctypes
+            fn = ctypes.CDLL(None).responsibility_get_pid_responsible_for_pid
+            fn.argtypes, fn.restype = [ctypes.c_int], ctypes.c_int
+            who = fn(pid)
+        except (AttributeError, OSError):
+            return None
+        return str(who) if who > 0 else None
+    names = sorted(n for n in os.environ if MARKERS.match(n))
+    if not names:
+        return None
+    try:
+        raw = open("/proc/%d/environ" % pid, "rb").read().split(b"\0")
+    except OSError:
+        return None
+    env = dict(e.decode(errors="replace").split("=", 1) for e in raw if b"=" in e)
+    return " ".join("%s=%s" % (n, env.get(n, "")) for n in names)
+
+
+def session_origin(sess):
+    # On macOS the session process answers for itself; elsewhere the markers sit in what it passes down,
+    # which this script was given too.
+    if ORIGIN_FILE or sys.platform == "darwin":
+        return origin(sess)
+    names = sorted(n for n in os.environ if MARKERS.match(n))
+    return " ".join("%s=%s" % (n, os.environ[n]) for n in names) or None
 
 
 def descendants(table, root):
@@ -177,8 +223,11 @@ def shell_orphans(doc, table):
     # A Bash-tool shell leads its own process group, and what it sent to the background keeps the
     # group when the shell exits and the process goes to PID 1. So the stage's orphan is a process
     # under PID 1 whose group's leader is gone, of this user, started after the snapshot. A launchd
-    # job or an app leads its own group. A group whose shell names another session's snapshot file
-    # is that session's; one with no name at all is shown, the user decides.
+    # job leads its own group. An app's helper that double-forks, a crashpad handler, has the same
+    # shape as the stage's orphan, so one whose origin differs from the session's is the app's; when
+    # either cannot be read, it is shown. The helpers of the app the session itself runs in share its
+    # origin and are still shown. A group whose shell names another session's snapshot file is that
+    # session's; one with no name at all is shown, the user decides.
     mine = {SNAPSHOT.search(table[p][3]).group(1) for p in own_chain(table, doc["session"])
             if SNAPSHOT.search(table[p][3])}
     groups = {}
@@ -194,11 +243,17 @@ def shell_orphans(doc, table):
     for pid in table:
         if WATCH.search(table[pid][3]):
             watches |= {pid} | descendants(table, pid)[0]
+    mark = session_origin(doc["session"])
+
+    def elsewhere(pid):
+        theirs = origin(pid) if mark else None
+        return theirs is not None and theirs != mark
+
     found = []
     for pid in sorted(set(table) - watches):
         ppid, start, _cpu, _cmd, pgid, uid = table[pid]
         if (ppid == 1 and pgid != pid and pgid not in table and uid == os.getuid()
-                and start >= doc["taken"] and not foreign(pgid)):
+                and start >= doc["taken"] and not foreign(pgid) and not elsewhere(pid)):
             found.append(pid)
     return found
 
@@ -360,7 +415,14 @@ def watch(args):
         time.sleep(POLL)
 
 
+def show_origin(args):
+    # One line per pid, empty when its origin cannot be read: what diff compares, to look at by hand.
+    if not args or not all(a.isdigit() for a in args):
+        usage("origin <pid>…")
+    print("\n".join(origin(int(a)) or "" for a in args))
+
+
 cmd, rest = sys.argv[1], sys.argv[2:]
-{"snap": snap, "diff": diff, "kill": kill, "watch": watch}.get(
+{"snap": snap, "diff": diff, "kill": kill, "watch": watch, "origin": show_origin}.get(
     cmd, lambda _a: usage("unknown subcommand %s" % cmd))(rest)
 PY

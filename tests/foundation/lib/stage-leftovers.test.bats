@@ -334,6 +334,40 @@ orphans() {
     || { echo "$output"; return 1; }
 }
 
+# An app on the same machine restarted during a stage: its crashpad handler, double-forked, sat
+# under PID 1 with its group's leader gone, and the orchestrator offered to kill it.
+@test "an orphan another app is responsible for is not shown; the stage's own beside it is" {
+  orphans
+  { orow 141 140 14:30:00 'sleep 301'
+    orow 145 144 14:30:00 '/Applications/Other.app/Contents/Frameworks/Helpers/chrome_crashpad_handler'; } >>"$T/ps"
+  printf '100 1603\n141 1603\n145 7831\n' >"$T/origin"
+  STAGE_LEFTOVERS_ORIGIN="$T/origin" STAGE_LEFTOVERS_SELF=171 run "$SL" diff "$T/snap"
+  [ "$status" -eq 1 ] && [ "${#lines[@]}" -eq 1 ] && [[ "${lines[0]}" == "process pid=141 "* ]] \
+    || { echo "$output"; return 1; }
+}
+
+@test "an orphan whose origin cannot be read is shown, and so is every orphan when the session's cannot" {
+  orphans
+  { orow 141 140 14:30:00 'sleep 301'
+    orow 145 144 14:30:00 'helper'; } >>"$T/ps"
+  printf '100 1603\n145 7831\n' >"$T/origin"
+  STAGE_LEFTOVERS_ORIGIN="$T/origin" STAGE_LEFTOVERS_SELF=171 run "$SL" diff "$T/snap"
+  [ "$status" -eq 1 ] && [ "${#lines[@]}" -eq 1 ] && [[ "${lines[0]}" == "process pid=141 "* ]] \
+    || { echo "$output"; return 1; }
+  printf '141 1603\n145 7831\n' >"$T/origin"
+  STAGE_LEFTOVERS_ORIGIN="$T/origin" STAGE_LEFTOVERS_SELF=171 run "$SL" diff "$T/snap"
+  [ "$status" -eq 1 ] && [ "${#lines[@]}" -eq 2 ] || { echo "$output"; return 1; }
+}
+
+@test "on macOS a process this shell sent to the background has the session's origin" {
+  [ "$(uname)" = Darwin ] || skip "the responsible process is a macOS notion"
+  ( exec sleep 30 & echo $! >"$T/pid" )
+  run "$SL" origin "$(cat "$T/pid")" "$$"
+  kill "$(cat "$T/pid")" 2>/dev/null
+  [ "$status" -eq 0 ] && [ "${lines[0]}" = "${lines[1]}" ] && [ -n "${lines[0]}" ] \
+    || { echo "$output"; return 1; }
+}
+
 # --- The session above the script: Claude Code or Codex CLI (runtimes/codex-cli.md → Scripts) ---
 
 @test "the session is found above the script under codex" {
