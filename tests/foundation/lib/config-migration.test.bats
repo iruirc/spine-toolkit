@@ -159,12 +159,12 @@ mapping_rows() {
   grep -qF '[ARTIFACT_CHECK] = [auto]' "$ROOT/templates/spine-md/en.md"
   para="$(awk '/^A field no block answered is written at/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   grep -qF '`[ARTIFACT_CHECK]`' <<<"$para" || { echo "the absent-field paragraph does not exempt [ARTIFACT_CHECK]"; return 1; }
-  grep -qF 'Twenty-six agree' <<<"$para" || { echo "the absent-field paragraph miscounts the fields that agree"; return 1; }
+  grep -qF 'Twenty-seven agree' <<<"$para" || { echo "the absent-field paragraph miscounts the fields that agree"; return 1; }
 }
 
-@test "the migration's two counts of the fields at their default agree: twenty-six, and [SCALE] apart" {
-  grep -qF 'Twenty-six agree' "$SKILL" || { echo "the absent-field paragraph does not say twenty-six agree"; return 1; }
-  tr '\n' ' ' <"$SKILL" | tr -s ' ' | grep -qF "the template's line for twenty-six of them, \`full\` for \`[SCALE]\`" \
+@test "the migration's two counts of the fields at their default agree: twenty-seven, and [SCALE] apart" {
+  grep -qF 'Twenty-seven agree' "$SKILL" || { echo "the absent-field paragraph does not say twenty-seven agree"; return 1; }
+  tr '\n' ' ' <"$SKILL" | tr -s ' ' | grep -qF "the template's line for twenty-seven of them, \`full\` for \`[SCALE]\`" \
     || { echo "the step that fills the absent fields counts them wrong"; return 1; }
-  ! grep -qF 'twenty-five' "$SKILL" || { echo "a count of twenty-five is left"; return 1; }
+  ! grep -qiF 'twenty-six' "$SKILL" || { echo "a count of twenty-six is left"; return 1; }
 }

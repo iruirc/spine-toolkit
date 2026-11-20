@@ -7,7 +7,7 @@ description: "Use at the end of an implementing stage (Execute / Fix / Refactor 
 
 `Walkthrough.md` is what a person reads to learn what a task did. It is not the closing report — that is `Done.md`, which exists for the toolkit's own bookkeeping: the estimate retrospective that feeds calibration, the objections, the review loop's `## Awaiting changes` anchor. This artifact has a different reader and a longer life; it is what becomes a PR description, a changelog entry, or a handover to someone who was not there.
 
-It is written at the **end of the implementing stage** — before anything has been validated or reviewed — because that is when "what did you build?" is actually asked. It also survives the bad path: a `FAILED` validation stops the run before `Done`, and then this file is the only account of the work that exists.
+By default it is written once, at **Done**, over the task's whole range. With `[WALKTHROUGH_WHEN] = [stage]` it is also written at the **end of the implementing stage** — before anything has been validated or reviewed — because that is when "what did you build?" is actually asked. That also survives the bad path: a `FAILED` validation stops the run before `Done`, and then this file is the only account of the work that exists.
 
 Commit messages do not make this artifact redundant. `conventions/commit-messages.md` deliberately strips them of exactly what a reader needs: the body carries WHY and not WHAT ("the diff shows WHAT"), and provenance — task, phase, ticket — is banned outright.
 
@@ -18,8 +18,8 @@ Commit messages do not make this artifact redundant. `conventions/commit-message
 
 ## When to use
 
-- End of the implementing stage: `Execute` (FEATURE), `Fix` (BUG), `Refactor` (REFACTOR), `Write` (TEST)
-- Again after `Done` has made its own commits — documentation and tracker commits land after the last write, so the refresh follows them; Done itself never edits this file
+- After `Done` has made its own commits — the one write at `[WALKTHROUGH_WHEN] = [done]`, the default, over the task's whole range; Done itself never edits this file
+- End of the implementing stage too, only at `[WALKTHROUGH_WHEN] = [stage]`: `Execute` (FEATURE), `Fix` (BUG), `Refactor` (REFACTOR), `Write` (TEST), `Edit` (QUICK); the write after `Done` then refreshes it, since documentation and tracker commits land after it
 - At `Done` only, for EPIC — see **EPIC**
 - Not for RESEARCH or REVIEW — see **Not applicable**
 
@@ -49,7 +49,9 @@ Before writing, read the example for the project's language: `examples/deep.en.m
 
 The value applies to the whole file. There is no per-section override: a document half-explained is worse than either consistent depth, because the reader cannot tell which half to trust.
 
-Whether a reader with none of the writer's context reads the file back is a second switch, `[WALKTHROUGH_CHECK]` — see `## Check`.
+When the file is written is a second switch, `[WALKTHROUGH_WHEN] = [stage|done]`, resolved along the ordinary chain of `conventions/task-settings.md`: `done`, the default, writes it once after `Done`; `stage` also writes it at the end of the implementing stage. Under `done` a stage boundary before `Done` reads the file with `scripts/lint-walkthrough.sh --history-only`, since no writer has run yet to bring it up to the newest commit.
+
+Whether a reader with none of the writer's context reads the file back is a third switch, `[WALKTHROUGH_CHECK]` — see `## Check`.
 
 ## Inputs
 
@@ -462,7 +464,7 @@ In these three, `[WALKTHROUGH]` set by hand is reported once and not executed, n
 
 ## EPIC
 
-An epic makes no commits of its own; its steps do, each writing its own `Walkthrough.md`. It is written after the `Done` agent rather than at the end of Execute: the epic has no Validation or Review to precede, a walk that stopped on a failed, cancelled or pending step has no delivery to describe yet, and whatever Done commits — a regenerated progress table — is in range by then. The epic-level file sits a layer above: how the steps compose into one delivery, in what order and why, what changed in the intent along the way — linking to the steps' walkthroughs rather than restating them.
+An epic makes no commits of its own; its steps do, each writing its own `Walkthrough.md` when its own `[WALKTHROUGH_WHEN]` says. `[WALKTHROUGH_WHEN]` has no effect on the epic's own file. It is written after the `Done` agent rather than at the end of Execute: the epic has no Validation or Review to precede, a walk that stopped on a failed, cancelled or pending step has no delivery to describe yet, and whatever Done commits — a regenerated progress table — is in range by then. The epic-level file sits a layer above: how the steps compose into one delivery, in what order and why, what changed in the intent along the way — linking to the steps' walkthroughs rather than restating them.
 
 The depth switch reads the same, with the step standing in for the commit: at `deep`, `## Commit order` becomes the order of the steps and their dependencies, and `## Commits` becomes a section per step — what that step made possible for the next one, and which of the epic's intentions moved while it ran. Both headings keep their names: what the section holds changes, not what it is called. The glossary belongs here more than anywhere: an epic is where a reader meets the domain vocabulary first. `## What changed` lists the changes of the delivery as a whole, each naming the steps that built it under `**Steps:**`.
 

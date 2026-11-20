@@ -184,9 +184,9 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
   rest="\"edit\": {\"ok\": true, \"artifact_path\": \"e\", \"summary\": \"s\", \"committed\": true}, \"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\"}, $PASSED, $idle"
   for p in $RANGED quick; do
     case "$p" in bug) code=Fix ;; feature) code=Execute ;; refactor) code=Refactor ;; test) code=Write ;; quick) code=Edit ;; esac
-    rp "$p" "$(contract "$code" ", \"review_ranges\": $TWO")" "{$rest}" "$(count_js walkthrough)" 'o.calls.map((c) => c.label)'
+    rp "$p" "$(contract "$code" ", \"walkthrough_when\": \"stage\", \"review_ranges\": $TWO")" "{$rest}" "$(count_js walkthrough)" 'o.calls.map((c) => c.label)'
     [ "${V[0]}" = 1 ] || { echo "profile-$p: ${V[1]}"; return 1; }
-    rp "$p" "$(contract "$code" ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"Walkthrough.md: count: x\"}}" "$(count_js walkthrough)"
+    rp "$p" "$(contract "$code" ", \"walkthrough_when\": \"stage\", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"Walkthrough.md: count: x\"}}" "$(count_js walkthrough)"
     [ "${V[0]}" = 2 ] || { echo "profile-$p: a writer that left lint lines stood for current"; return 1; }
   done
 }
@@ -198,7 +198,7 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
   style='Walkthrough.md: style: sentence of 31 words (## Summary)\nWalkthrough.md: style: missing **In short:** (### 1)'
   for p in $RANGED quick; do
     case "$p" in bug) code=Fix ;; feature) code=Execute ;; refactor) code=Refactor ;; test) code=Write ;; quick) code=Edit ;; esac
-    rp "$p" "$(contract "$code" ", \"review_ranges\": $TWO")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"$style\"}}" \
+    rp "$p" "$(contract "$code" ", \"walkthrough_when\": \"stage\", \"review_ranges\": $TWO")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"$style\"}}" \
       "$(count_js walkthrough)" 'o.result.notes'
     [ "${V[0]}" = 1 ] || { echo "profile-$p: a style line sent the writer back at Done"; return 1; }
     grep -qF 'Walkthrough.md lint: Walkthrough.md: style: sentence of 31 words' <<<"${V[1]}" \
@@ -213,7 +213,7 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
   mixed='Walkthrough.md: style: sentence of 31 words (## Summary)\nWalkthrough.md: unreachable: abc1234 (## Commits)'
   for p in $RANGED quick; do
     case "$p" in bug) code=Fix ;; feature) code=Execute ;; refactor) code=Refactor ;; test) code=Write ;; quick) code=Edit ;; esac
-    rp "$p" "$(contract "$code" ", \"review_ranges\": $TWO")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"$mixed\"}}" \
+    rp "$p" "$(contract "$code" ", \"walkthrough_when\": \"stage\", \"review_ranges\": $TWO")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"$mixed\"}}" \
       "$(count_js walkthrough)" 'o.result.notes'
     [ "${V[0]}" = 2 ] || { echo "profile-$p: a non-style line beside a style one did not send the writer back"; return 1; }
     grep -qF 'Walkthrough.md: unreachable: abc1234' <<<"${V[1]}" \

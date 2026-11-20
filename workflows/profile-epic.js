@@ -99,6 +99,9 @@ const MANUAL_CHECKS_STYLE = A.manual_checks_style === 'full' ? 'full' : 'brief'
 const MANUAL_CHECKS_PASS = A.manual_checks_pass === 'end' ? 'end' : 'per-step'
 const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'
 const WALKTHROUGH_CHECK = ['on', 'once'].includes(A.walkthrough_check) ? A.walkthrough_check : 'off'
+// Which stage writes Walkthrough.md: `done`, the default, leaves it to Done alone; `stage` writes it at the
+// end of the implementing stage too.
+const WALKTHROUGH_WHEN = A.walkthrough_when === 'stage' ? 'stage' : 'done'
 const ARTIFACT_CHECK = A.artifact_check === 'on' ? 'on' : 'off'
 // Whether Walkthrough.md names the task's newest commit: the orchestrator's measure before the run,
 // then each writer's result. Done's own commits are the one thing left that can move past it.
@@ -699,12 +702,18 @@ Return changed true once the file is revised, with lines_before and lines_after,
   )
 }
 
-// Walkthrough.md is the human-facing account of what landed. Written at the end of the implementing
-// stage so it is readable before anything is validated or reviewed; refreshed later only when new
-// commits moved past the range its [COVERS] line records. Documentation — a failure here is noted
-// and never stops the run.
+// Walkthrough.md is the human-facing account of what landed. Written once at Done by default; under
+// WALKTHROUGH_WHEN = stage also at the end of the implementing stage, so it is readable before anything
+// is validated or reviewed, and refreshed later only when new commits moved past the range its [COVERS]
+// line records. Documentation — a failure here is noted and never stops the run.
 const writeWalkthrough = async (stage, extra) => {
   if (!WALKTHROUGH_AGENT || A.walkthrough === 'off' || A.walkthrough === false) return
+  if (WALKTHROUGH_WHEN === 'done' && stage !== 'Done') {
+    // The stage commits after the orchestrator measured the file, so Done may not take it as current.
+    walkthroughCurrent = false
+    result.notes.push('Walkthrough.md is written at Done ([WALKTHROUGH_WHEN] = done).')
+    return
+  }
   const agentType = A.agents[WALKTHROUGH_AGENT]
   if (!agentType || agentType === '—') {
     result.notes.push(`No agent implements the "${WALKTHROUGH_AGENT}" role on this platform, so Walkthrough.md was not written.`)
@@ -1012,6 +1021,7 @@ const STEP = {
     phase_verification: { type: 'string', enum: ['proportional', 'full'], description: "the step folder's own resolve-settings.sh phase_verification value" },
     walkthrough: { type: 'string', enum: ['brief', 'deep', 'off'], description: "the step folder's own resolve-settings.sh walkthrough value" },
     walkthrough_check: { type: 'string', enum: ['on', 'once', 'off'], description: "the step folder's own resolve-settings.sh walkthrough_check value" },
+    walkthrough_when: { type: 'string', enum: ['stage', 'done'], description: "the step folder's own resolve-settings.sh walkthrough_when value" },
     security: { type: 'string', enum: ['auto', 'on', 'off'], description: "the step folder's own resolve-settings.sh security value" },
     long_run: { type: 'object', required: ['stall', 'max'], properties: { stall: { type: 'integer' }, max: { type: 'integer' } }, description: "the step folder's own resolve-settings.sh long_run value" },
     models: { type: 'string', description: 'only when the step declares its own [MODELS]: the text between its brackets' },
@@ -1232,7 +1242,7 @@ if (runs('Execute')) {
     const read = await agent(
       brief(
         'Execute',
-        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, device, manual_checks, manual_checks_check, manual_checks_style, manual_checks_pass, phase_verification, security, walkthrough, walkthrough_check, artifact_check, report and long_run values, its models value as resolved_models, and its sources.device as device_from. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
+        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, device, manual_checks, manual_checks_check, manual_checks_style, manual_checks_pass, phase_verification, security, walkthrough, walkthrough_check, walkthrough_when, artifact_check, report and long_run values, its models value as resolved_models, and its sources.device as device_from. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
       { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'mechanical') },
     )
@@ -1292,6 +1302,7 @@ if (runs('Execute')) {
       phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
       walkthrough: stepWalkthrough(st),
       walkthrough_check: stepWalkthroughCheck(st),
+      walkthrough_when: st.walkthrough_when === undefined ? WALKTHROUGH_WHEN : st.walkthrough_when,
       security: st.security === undefined ? SECURITY : st.security,
       long_run: st.long_run === undefined ? LONG_RUN : st.long_run,
       research_agent: st.research_agent,

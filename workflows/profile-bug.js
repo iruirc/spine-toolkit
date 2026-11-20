@@ -103,6 +103,9 @@ const MANUAL_CHECKS_STYLE = A.manual_checks_style === 'full' ? 'full' : 'brief'
 const MANUAL_CHECKS_PASS = A.manual_checks_pass === 'end' ? 'end' : 'per-step'
 const PHASE_VERIFICATION = A.phase_verification === 'full' ? 'full' : 'proportional'
 const WALKTHROUGH_CHECK = ['on', 'once'].includes(A.walkthrough_check) ? A.walkthrough_check : 'off'
+// Which stage writes Walkthrough.md: `done`, the default, leaves it to Done alone; `stage` writes it at the
+// end of the implementing stage too.
+const WALKTHROUGH_WHEN = A.walkthrough_when === 'stage' ? 'stage' : 'done'
 const ARTIFACT_CHECK = A.artifact_check === 'on' ? 'on' : 'off'
 // Whether Walkthrough.md names the task's newest commit: the orchestrator's measure before the run,
 // then each writer's result. Done's own commits are the one thing left that can move past it.
@@ -703,12 +706,18 @@ Return changed true once the file is revised, with lines_before and lines_after,
   )
 }
 
-// Walkthrough.md is the human-facing account of what landed. Written at the end of the implementing
-// stage so it is readable before anything is validated or reviewed; refreshed later only when new
-// commits moved past the range its [COVERS] line records. Documentation — a failure here is noted
-// and never stops the run.
+// Walkthrough.md is the human-facing account of what landed. Written once at Done by default; under
+// WALKTHROUGH_WHEN = stage also at the end of the implementing stage, so it is readable before anything
+// is validated or reviewed, and refreshed later only when new commits moved past the range its [COVERS]
+// line records. Documentation — a failure here is noted and never stops the run.
 const writeWalkthrough = async (stage, extra) => {
   if (!WALKTHROUGH_AGENT || A.walkthrough === 'off' || A.walkthrough === false) return
+  if (WALKTHROUGH_WHEN === 'done' && stage !== 'Done') {
+    // The stage commits after the orchestrator measured the file, so Done may not take it as current.
+    walkthroughCurrent = false
+    result.notes.push('Walkthrough.md is written at Done ([WALKTHROUGH_WHEN] = done).')
+    return
+  }
   const agentType = A.agents[WALKTHROUGH_AGENT]
   if (!agentType || agentType === '—') {
     result.notes.push(`No agent implements the "${WALKTHROUGH_AGENT}" role on this platform, so Walkthrough.md was not written.`)

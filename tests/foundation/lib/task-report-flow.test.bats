@@ -11,11 +11,12 @@ setup() {
   STAGES='"write:1": {"ok": true, "phase_id": "1", "committed": true, "summary": "s"}, "validation": {"validation_status": "PASSED", "artifact_path": "v", "summary": "s"}, "review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s"}, "done": {"ok": true, "artifact_path": "d", "summary": "s", "committed_outside_tasks": true}'
 }
 
-# $1 report ("" leaves the field out), $2 walkthrough.
+# $1 report ("" leaves the field out), $2 walkthrough. The implementing stage writes the walkthrough
+# only under walkthrough_when = stage, and the order of the two writes there is what these tests pin.
 contract() {
   local report=''
   [ -n "$1" ] && report=", \"report\": \"$1\""
-  printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "Plan", "end_stage": "Done", "stage_scope": "forward", "walkthrough": "%s"%s}' \
+  printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "Plan", "end_stage": "Done", "stage_scope": "forward", "walkthrough": "%s", "walkthrough_when": "stage"%s}' \
     "$AGENTS" "${2:-off}" "$report"
 }
 

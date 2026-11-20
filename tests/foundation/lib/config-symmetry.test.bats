@@ -35,6 +35,15 @@ fields_of_block() {
   ! grep -rE '^# *\[ARTIFACT_CHECK\]' "$ROOT/templates/task-md" || { echo "a task template lists the field"; return 1; }
 }
 
+@test "walkthrough_when is a task default, done beside its two values, and the doc lets a task override it" {
+  grep -qE '^\[WALKTHROUGH_WHEN\] = \[done\] +# stage \| done$' "$TPL" \
+    || { echo "the template does not ship done beside the two values"; return 1; }
+  [ "$(grep -n '^\[WALKTHROUGH_WHEN\]' "$TPL" | cut -d: -f1)" -eq $(($(grep -n '^\[WALKTHROUGH\] = ' "$TPL" | cut -d: -f1) + 1)) ] \
+    || { echo "the field does not sit under [WALKTHROUGH]"; return 1; }
+  fields_of_block | grep -qx WALKTHROUGH_WHEN || { echo "[WALKTHROUGH_WHEN] is not under ## Task defaults"; return 1; }
+  config_doc_offers WALKTHROUGH_WHEN || { echo "the doc does not let a task override the field"; return 1; }
+}
+
 @test "every section of the doc states its Task override" {
   ! config_doc_fields | awk -F'\t' '$3 == "missing"' | grep . \
     || { echo "a section above has no **Task override:** entry"; return 1; }

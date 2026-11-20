@@ -32,6 +32,7 @@ set -euo pipefail
 # config in the nearest directory holding SPINE.md or CLAUDE-spine-toolkit.md -> the defaults below. walkthrough has one more step: off when the
 # resolved scale is lite, which beats the project and loses to the task's own [WALKTHROUGH].
 # walkthrough_check then follows it: auto is once at deep and off at brief, and off where no file is written.
+# walkthrough_when says which stage writes the file: done, the default, only Done; stage, the implementing stage too.
 # artifact_check follows the final scale: auto is on at full and off at lite.
 # report follows the profile: auto is off for QUICK, BUG and REFACTOR, off always for REVIEW, and stays auto for the rest.
 ROLES="architect developer tester reviewer refactorer validator security diagnostics"
@@ -239,6 +240,7 @@ SCALARS = (
     ('settings_report', 'SETTINGS_REPORT', ['diff', 'full', 'off'], 'diff'),
     ('scale', 'SCALE', ['lite', 'full'], 'full'),
     ('walkthrough', 'WALKTHROUGH', ['brief', 'deep', 'off'], 'deep'),
+    ('walkthrough_when', 'WALKTHROUGH_WHEN', ['stage', 'done'], 'done'),
     ('walkthrough_check', 'WALKTHROUGH_CHECK', ['auto', 'on', 'once', 'off'], 'auto'),
     ('artifact_check', 'ARTIFACT_CHECK', ['auto', 'on', 'off'], 'auto'),
     ('report', 'REPORT', ['auto', 'on', 'off'], 'auto'),

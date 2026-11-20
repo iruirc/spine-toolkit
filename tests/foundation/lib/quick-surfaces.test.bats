@@ -64,6 +64,17 @@ setup() {
     if (!w || w.args.walkthrough !== "deep" || w.args.walkthrough_check !== "on") { console.log(JSON.stringify(w && w.args)); process.exit(1) }' "$out"
 }
 
+@test "the epic hands each step its own walkthrough_when, and its own where the step names none" {
+  contract='{"task_id": "050", "task_dir": "/p/Tasks/ACTIVE/050-e", "plugin_root": "/core", "lang": "en", "mode": "auto", "scale": "full", "walkthrough": "deep", "walkthrough_when": "stage", "agents": '"$AGENTS"', "start_stage": "Execute", "stage_scope": "single"}'
+  replies='{"execute:read-steps": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "BUG", "status": "PENDING", "walkthrough_when": "done"}, {"step_id": "2.step", "task_id": "050.2", "task_type": "BUG", "status": "PENDING"}]}, "workflow:spine-toolkit:profile-bug": {"status": "ok"}}'
+  out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-epic.js" "$contract" "$replies")"
+  node -e 'const o = JSON.parse(process.argv[1]); const got = o.calls.filter((c) => /^workflow:/.test(c.label)).map((c) => c.args.walkthrough_when).join()
+    if (got !== "done,stage") { console.log(got); process.exit(1) }' "$out"
+  out="$(node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-epic.js" "${contract/, \"walkthrough_when\": \"stage\"/}" "$replies")"
+  node -e 'const o = JSON.parse(process.argv[1]); const got = o.calls.filter((c) => /^workflow:/.test(c.label)).map((c) => c.args.walkthrough_when).join()
+    if (got !== "done,done") { console.log(got); process.exit(1) }' "$out"
+}
+
 @test "a QUICK step that escalates fails the walk and is not ticked" {
   contract='{"task_id": "050", "task_dir": "/p/Tasks/ACTIVE/050-e", "plugin_root": "/core", "lang": "en", "mode": "auto", "agents": '"$AGENTS"', "start_stage": "Execute", "stage_scope": "single"}'
   replies='{"execute:read-steps": {"ok": true, "branch": "decomposition", "steps": [{"step_id": "1.step", "task_id": "050.1", "task_type": "QUICK", "status": "PENDING"}, {"step_id": "2.step", "task_id": "050.2", "task_type": "BUG", "status": "PENDING"}]}, "workflow:spine-toolkit:profile-quick": {"status": "ok", "quick_escalation": {"reason": "three files"}}}'

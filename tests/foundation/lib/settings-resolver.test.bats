@@ -87,6 +87,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
   [ "$(field scale <<<"$output")" = full ] || { echo "$output"; return 1; }
   [ "$(field walkthrough <<<"$output")" = deep ] || { echo "$output"; return 1; }
   [ "$(field walkthrough_check <<<"$output")" = once ] || { echo "$output"; return 1; }
+  [ "$(field walkthrough_when <<<"$output")" = done ] || { echo "$output"; return 1; }
   [ "$(field artifact_check <<<"$output")" = on ] || { echo "$output"; return 1; }
   [ "$(field drive_app <<<"$output")" = auto ] || { echo "$output"; return 1; }
   [ "$(field manual_checks <<<"$output")" = auto ] || { echo "$output"; return 1; }
@@ -212,7 +213,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
     ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
   done
   [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
-  grep -qxF '# 26 more at their default' <<<"$out" || { echo "$out"; return 1; }
+  grep -qxF '# 27 more at their default' <<<"$out" || { echo "$out"; return 1; }
 }
 
 @test "a project budget equal to the default is not a diff, and --all still names it" {
@@ -522,12 +523,16 @@ FIELDS
   # The depth and its check fall back along the chain, not to the epic's: quick-surfaces.test.bats.
   grep -qF 'walkthrough: stepWalkthrough(st),' "$E" && grep -qF 'walkthrough_check: stepWalkthroughCheck(st),' "$E" \
     || { echo "profile-epic.js does not forward walkthrough to a step"; return 1; }
-  grep -qF 'return its drive_app, device, manual_checks, manual_checks_check, manual_checks_style, manual_checks_pass, phase_verification, security, walkthrough, walkthrough_check, artifact_check, report and long_run values' "$E" \
+  grep -qF 'return its drive_app, device, manual_checks, manual_checks_check, manual_checks_style, manual_checks_pass, phase_verification, security, walkthrough, walkthrough_check, walkthrough_when, artifact_check, report and long_run values' "$E" \
     || { echo "read-steps never asks for the step's own depth and check"; return 1; }
   grep -qF "device: st.device === undefined ? DEVICE || 'auto' : st.device," "$E" && grep -qF "device_source: DEVICE_SOURCE || '—'," "$E" \
     || { echo "profile-epic.js does not forward the device to a step"; return 1; }
   grep -qF "walkthrough_check: { type: 'string', enum: ['on', 'once', 'off']" "$E" \
     || { echo "the step record has no walkthrough_check"; return 1; }
+  grep -qF "walkthrough_when: { type: 'string', enum: ['stage', 'done'], description: \"the step folder's own resolve-settings.sh walkthrough_when value\" }" "$E" \
+    || { echo "the step record has no walkthrough_when"; return 1; }
+  grep -qF 'walkthrough_when: st.walkthrough_when === undefined ? WALKTHROUGH_WHEN : st.walkthrough_when,' "$E" \
+    || { echo "profile-epic.js does not forward walkthrough_when to a step"; return 1; }
   grep -qF "artifact_check: { type: 'string', enum: ['on', 'off']" "$E" \
     || { echo "the step record has no artifact_check"; return 1; }
   grep -qF "artifact_check: st.artifact_check === undefined ? ARTIFACT_CHECK : st.artifact_check" "$E" \
@@ -702,6 +707,48 @@ FIELDS
   run "$RESOLVE" json "$STEP"
   [ "$(field walkthrough_check <<<"$output")" = off ] || { echo "$output"; return 1; }
   [ "$(source_of walkthrough_check <<<"$output")" = epic ] || { echo "$output"; return 1; }
+}
+
+@test "walkthrough_when is done unless a task, an epic or the project says stage" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(field walkthrough_when <<<"$output")" = done ] || { echo "$output"; return 1; }
+  [ "$(source_of walkthrough_when <<<"$output")" = default ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[WALKTHROUGH_WHEN] = [stage]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field walkthrough_when <<<"$output")" = stage ] || { echo "$output"; return 1; }
+  [ "$(source_of walkthrough_when <<<"$output")" = task ] || { echo "$output"; return 1; }
+}
+
+@test "a step inherits the epic's walkthrough_when" {
+  EPIC="$PROJ/Tasks/ACTIVE/050-an-epic"
+  STEP="$EPIC/01-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[WALKTHROUGH_WHEN] = [stage]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  run "$RESOLVE" json "$STEP"
+  [ "$(field walkthrough_when <<<"$output")" = stage ] || { echo "$output"; return 1; }
+  [ "$(source_of walkthrough_when <<<"$output")" = epic ] || { echo "$output"; return 1; }
+}
+
+@test "an unusable walkthrough_when is reported and lands on done" {
+  printf '[TASK_TYPE] = [BUG]\n[WALKTHROUGH_WHEN] = [always]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  grep -qF "Task.md [WALKTHROUGH_WHEN]: 'always' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+  [ "$(field walkthrough_when <<<"$out")" = done ] || { echo "$out"; return 1; }
+  [ "$(source_of walkthrough_when <<<"$out")" = default ] || { echo "$out"; return 1; }
+}
+
+@test "walkthrough_when is documented wherever its neighbours are" {
+  grep -qF '| `walkthrough_when` | `[WALKTHROUGH_WHEN]` | `[WALKTHROUGH_WHEN]` | `stage` `done` | `done` |' \
+    "$ROOT/conventions/task-settings.md" || { echo "task-settings.md has no row for the field"; return 1; }
+  D="$ROOT/docs/configuration.md"
+  grep -qxF '### [WALKTHROUGH_WHEN]' "$D" || { echo "docs/configuration.md has no section for the field"; return 1; }
+  grep -qF '`[WALKTHROUGH_WHEN] = [stage|done]`' "$D" || { echo "the override spelling is missing"; return 1; }
+  grep -qF '`[WALKTHROUGH_WHEN] = [<stage|done>]`' "$ROOT/skills/task-new/SKILL.md" \
+    || { echo "task-new does not offer the field"; return 1; }
+  grep -qF '[WALKTHROUGH_WHEN] = [done]                # stage | done' "$ROOT/templates/spine-md/en.md" \
+    || { echo "the config template does not ship the field"; return 1; }
+  config_doc_offers WALKTHROUGH_WHEN || { echo "the doc does not let a task override the field"; return 1; }
 }
 
 @test "an unusable walkthrough_check is reported, and the next source applies" {

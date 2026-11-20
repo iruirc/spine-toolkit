@@ -109,6 +109,11 @@ gate included — `walkthrough_check` is `off` as well, there being no file to c
 overrode a chosen `on`, or where the value came from `auto`, the source reads `walkthrough`, and
 `show` names the value that was displaced.
 
+`walkthrough_when` says which stage writes `Walkthrough.md`. Its chain is the ordinary one and ends at
+`done`: the file is written once, at Done, over the task's whole range. `stage` writes it at the end of
+the implementing stage too, so it is readable before Validation and Review, and Done refreshes it. It
+has no effect where `walkthrough` is `off`, and none on an epic, whose file Done alone writes.
+
 `artifact_check` follows the scale. Its chain is the ordinary one and ends at `auto`, but only `on` or
 `off` leaves the resolver: `auto` becomes `on` where `scale` resolved to `full` and `off` where it
 resolved to `lite`. It reads the scale after the `QUICK` rule and the scale ratchet have been applied,
@@ -150,6 +155,7 @@ answers.
 | `settings_report` | — | `[SETTINGS_REPORT]` | `diff` `full` `off` | `diff` |
 | `scale` | `[SCALE]` | `[SCALE]` | `lite` `full` | `full`; always `lite` for a `QUICK` task |
 | `walkthrough` | `[WALKTHROUGH]` | `[WALKTHROUGH]` | `brief` `deep` `off` | `off` when `scale` is `lite`, else `deep` |
+| `walkthrough_when` | `[WALKTHROUGH_WHEN]` | `[WALKTHROUGH_WHEN]` | `stage` `done` | `done` |
 | `walkthrough_check` | `[WALKTHROUGH_CHECK]` | `[WALKTHROUGH_CHECK]` | `auto` `on` `once` `off` | `auto`: `once` at `deep`, `off` at `brief`; `off` wherever `walkthrough` is `off` |
 | `artifact_check` | `[ARTIFACT_CHECK]` | `[ARTIFACT_CHECK]` | `auto` `on` `off` | `auto`: `on` at `full`, `off` at `lite` |
 | `report` | `[REPORT]` | `[REPORT]` | `auto` `on` `off` | `auto`: stays `auto` for `TEST`, `FEATURE`, `RESEARCH`, `EPIC`; `off` for `QUICK`, `BUG`, `REFACTOR`; always `off` for `REVIEW` |

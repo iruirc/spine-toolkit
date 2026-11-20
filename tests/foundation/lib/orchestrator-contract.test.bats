@@ -461,6 +461,25 @@ section() {
   done
 }
 
+@test "the outbound contract carries walkthrough_when, stage or done, and done is the default" {
+  grep -qxF 'walkthrough_when=stage|done' "$SKILL" || { echo "no walkthrough_when= line in the contract block"; return 1; }
+  [ "$(grep -n '^walkthrough_when=' "$SKILL" | cut -d: -f1)" -eq $(($(grep -n '^walkthrough=' "$SKILL" | cut -d: -f1) + 1)) ] \
+    || { echo "the walkthrough_when line does not follow walkthrough="; return 1; }
+  para="$(awk '/^`walkthrough_when` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  [ -n "$para" ] || { echo "no \`walkthrough_when\` paragraph in the Outbound Contract"; return 1; }
+  for token in 'resolve-settings.sh json' 'Always filled' '`done`, the default' '`stage`'; do
+    grep -qF "$token" <<<"$para" || { echo "the walkthrough_when paragraph does not say $token"; return 1; }
+  done
+}
+
+@test "under walkthrough_when done a stage boundary before Done measures only the history" {
+  para="$(awk '/^\*\*Walkthrough integrity\.\*\*/{f=1;print;next} f&&/^\*\*/{exit} f' "$SKILL")"
+  [ -n "$para" ] || { echo "no Walkthrough integrity paragraph in the orchestrator"; return 1; }
+  for token in '`--history-only`' '`walkthrough_when` is `done`' 'before Done'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the Walkthrough integrity paragraph does not say $token"; return 1; }
+  done
+}
+
 @test "the outbound contract carries artifact_check, on or off and never auto" {
   grep -qxF 'artifact_check=on|off' "$SKILL" || { echo "no artifact_check= line in the contract block"; return 1; }
   para="$(awk '/^`artifact_check` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"

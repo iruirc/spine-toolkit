@@ -282,9 +282,8 @@ over after every Done, so a later `catch-up` gets rounds of its own. `0` turns t
 
 Whether a task writes `Walkthrough.md`, and at what depth. The artifact is the human-facing account
 of what actually landed, written for an engineer who did not write the code and was not on the task.
-Written at the end of the implementing stage, so it is readable before Validation and Review, and
-refreshed afterwards if later commits moved past it. `deep` and `brief` both carry diagrams where
-they help and follow-ups; the difference is below.
+Written once at Done by default; `[WALKTHROUGH_WHEN]` below says when else. `deep` and `brief` both
+carry diagrams where they help and follow-ups; the difference is below.
 
 `deep` — what changed, each change before and after on one concrete case; then a glossary of the
 terms it uses, the commit order and why, and a section per commit: what appeared, the failure it is
@@ -302,6 +301,21 @@ the old shape says `brief`.
 Not applicable to RESEARCH and REVIEW, whose deliverable is the artifact itself. A `lite` task writes
 nothing unless it says otherwise: the project's own line is read *after* the `lite` gate and cannot
 out-rank it, while the task's own `[WALKTHROUGH]` is read before it and wins outright.
+
+### [WALKTHROUGH_WHEN]
+
+**Values:** `stage` `done` · **Default:** `done` · **Task override:** `[WALKTHROUGH_WHEN] = [stage|done]` ·
+**Defined by:** the `task-walkthrough` skill, `## The switch`
+
+Which stage writes `Walkthrough.md`. `done` writes it once, after Done's own commits, over the task's
+whole range: one writer dispatch, and one check where `[WALKTHROUGH_CHECK]` asks for it. `stage`
+writes it at the end of the implementing stage too, so it is readable before Validation and Review,
+and Done refreshes it if later commits moved past it; a run that stops at a failed Validation then
+still leaves an account of the work. Under `done` a stage boundary before Done checks only that the
+commits the file names are still in the history, not that it reaches the newest one.
+
+No effect where `[WALKTHROUGH]` resolves to `off`, and none on an EPIC, whose file Done alone writes;
+each step of an epic reads its own. Not applicable to RESEARCH and REVIEW.
 
 ### [WALKTHROUGH_CHECK]
 

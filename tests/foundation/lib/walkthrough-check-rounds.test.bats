@@ -164,3 +164,63 @@ order() { pick "o.calls.map((c) => c.label).filter((l) => l.startsWith('walkthro
     grep -qF '`once`' "$ROOT/skills/$s/SKILL.md" || { echo "$s: once is not named"; return 1; }
   done
 }
+
+# A run from the implementing stage to Done; $2 is extra contract members, with a leading comma, and
+# $3 whether Done committed outside the Tasks folder, false unless a test says otherwise.
+from_stage() {
+  local code
+  case "$1" in bug) code=Fix ;; feature) code=Execute ;; refactor) code=Refactor ;; test) code=Write ;; quick) code=Edit ;; esac
+  local c rest
+  c="$(printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "%s", "stage_scope": "forward", "review_ranges": %s, "walkthrough": "deep"%s}' "$AGENTS" "$code" "$TWO" "$2")"
+  rest='"edit": {"ok": true, "artifact_path": "e", "summary": "s", "committed": true}, "review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s"}, "validation": {"validation_status": "PASSED", "reproduction_status": "fixed", "artifact_path": "v", "summary": "s", "driver_status": "ok"}, "done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": '"${3:-false}"'}'
+  node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" "$c" "{$rest}"
+}
+
+# The dispatches that write Walkthrough.md, with review and done around them.
+landmarks() { pick "o.calls.map((c) => c.label).filter((l) => ['walkthrough', 'review', 'done'].includes(l)).join(' ')"; }
+
+@test "by default the implementing stage leaves Walkthrough.md to Done, which writes it once" {
+  for p in $WRITERS; do
+    out="$(from_stage "$p" '')"
+    [ "$(landmarks <<<"$out")" = 'review done walkthrough' ] || { echo "profile-$p: dispatched $(landmarks <<<"$out")"; return 1; }
+    grep -qF 'Walkthrough.md is written at Done ([WALKTHROUGH_WHEN] = done).' <<<"$(pick 'o.result.notes' <<<"$out")" \
+      || { echo "profile-$p: the deferral is not noted"; return 1; }
+  done
+}
+
+@test "walkthrough_when stage writes the file at the implementing stage and again at Done" {
+  for p in $WRITERS; do
+    out="$(from_stage "$p" ', "walkthrough_when": "stage"' true)"
+    [ "$(landmarks <<<"$out")" = 'walkthrough review done walkthrough' ] || { echo "profile-$p: dispatched $(landmarks <<<"$out")"; return 1; }
+    ! grep -qF 'is written at Done' <<<"$(pick 'o.result.notes' <<<"$out")" || { echo "profile-$p: a deferral is noted"; return 1; }
+  done
+}
+
+@test "a file current before the run is still written at Done when the implementing stage was skipped" {
+  # The implementing stage commits after the orchestrator measured the file; Done must not trust that measure.
+  for p in $WRITERS; do
+    out="$(from_stage "$p" ', "walkthrough_current": true')"
+    [ "$(landmarks <<<"$out")" = 'review done walkthrough' ] || { echo "profile-$p: dispatched $(landmarks <<<"$out")"; return 1; }
+  done
+}
+
+@test "a run from Review over a stale file writes it once, at Done" {
+  for p in $WRITERS; do
+    out="$(run_profile "$p" '{"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s"}, "done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": false}}' off)"
+    [ "$(landmarks <<<"$out")" = 'review done walkthrough' ] || { echo "profile-$p: dispatched $(landmarks <<<"$out")"; return 1; }
+  done
+}
+
+@test "the skills say when the file is written: at Done by default, at the stage only under stage" {
+  S="$ROOT/skills/task-walkthrough/SKILL.md"
+  for sec in 'When to use' 'The switch' 'EPIC'; do
+    body="$(awk -v h="## $sec" '$0 == h {f=1;next} f&&/^## /{exit} f' "$S")"
+    grep -qF '[WALKTHROUGH_WHEN]' <<<"$body" || { echo "task-walkthrough ## $sec does not name [WALKTHROUGH_WHEN]"; return 1; }
+  done
+  for p in $WRITERS; do
+    S="$ROOT/skills/workflow-$p/SKILL.md"
+    grep -qF 'when the contract'"'"'s `walkthrough_when` is `stage`' "$S" || { echo "workflow-$p: the stage writes regardless of walkthrough_when"; return 1; }
+    grep -qF 'At `walkthrough_when` = `done`, the default, this is the first write, over the task'"'"'s whole range.' "$S" \
+      || { echo "workflow-$p: Done is not said to write the whole range"; return 1; }
+  done
+}
