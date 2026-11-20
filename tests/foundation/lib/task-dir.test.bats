@@ -139,3 +139,39 @@ layouts() { printf '%s\n' "$W/down/proj|$W/down/proj-tasks" "$W/up/a/b/proj|$W/u
   run --separate-stderr "$TD"
   [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
 }
+
+@test "a full folder name is an id: a root task, an epic's N.step, and an exact name beats a longer one" {
+  while IFS='|' read -r P R; do
+    mkdir -p "$R/ACTIVE/007-alpha/2.step" "$R/ACTIVE/007-alpha-two"
+    for pair in "007-alpha|$P/Tasks/ACTIVE/007-alpha" "02-core.step|$P/Tasks/ACTIVE/007-alpha/02-core.step" \
+                "2.step|$P/Tasks/ACTIVE/007-alpha/2.step"; do
+      run --separate-stderr "$TD" "${pair%%|*}" --from "$P"
+      [ "$status" -eq 0 ] && [ "$output" = "${pair#*|}" ] || { echo "${pair%%|*}: $status $output $stderr"; return 1; }
+    done
+  done < <(layouts)
+}
+
+@test "the same N.step in two epics: ambiguous by name, found by the path the epic hands over" {
+  while IFS='|' read -r P R; do
+    mkdir -p "$R/ACTIVE/007-alpha/2.step" "$R/ACTIVE/008-beta/2.step"
+    run --separate-stderr "$TD" 2.step --from "$P"
+    [ "$status" -eq 4 ] || { echo "$P: $status $output"; return 1; }
+    run --separate-stderr "$TD" "$P/Tasks/ACTIVE/008-beta/2.step" --from "$P"
+    [ "$status" -eq 0 ] && [ "$output" = "$P/Tasks/ACTIVE/008-beta/2.step" ] || { echo "$P: $status $output"; return 1; }
+  done < <(layouts)
+}
+
+@test "a dangling Tasks is a stop, not a reason to take a Tasks further up" {
+  mkdir -p "$W/outer/Tasks/ACTIVE/007-alpha" "$W/outer/inner"
+  ln -s missing "$W/outer/inner/Tasks"
+  run --separate-stderr "$TD" 007 --from "$W/outer/inner"
+  [ "$status" -eq 2 ] || { echo "$status $output $stderr"; return 1; }
+  grep -qF "$W/outer/inner/Tasks is not a folder" <<<"$stderr" || { echo "$stderr"; return 1; }
+}
+
+@test "a status folder that is a link is searched for steps too" {
+  mkdir -p "$W/ext/050-gamma/03-ui.step"
+  ln -s ../../ext "$W/down/proj-tasks/DONE"
+  run --separate-stderr "$TD" 03 --from "$W/down/proj"
+  [ "$status" -eq 0 ] && [ "$output" = "$W/down/proj/Tasks/DONE/050-gamma/03-ui.step" ] || { echo "$status $output $stderr"; return 1; }
+}

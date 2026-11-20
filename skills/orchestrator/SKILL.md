@@ -208,9 +208,11 @@ Algorithm:
    • If task_id is not provided → error using key `error_no_task_id` and stop.
    • Otherwise — one call, with the task_id or the path the request gave:
        bash "<core root>/scripts/task-dir.sh" <task_id or path> --from <the session's folder>
-     It looks in the nearest Tasks at or above the session's folder — Tasks/<task_id>-*/, Tasks/<STATUS>/<task_id>-*/,
-     and a step's <step_id>.step/ or <step_id>-*.step/ at any depth — and turns a path into its spelling through
-     Tasks, the physical path behind a linked Tasks included.
+     It looks in the nearest Tasks at or above the session's folder — a folder named <task_id> or <task_id>-* at
+     the top or in a status folder, and a step's <step_id>, <step_id>.step or <step_id>-*.step at any depth — and
+     turns a path into its spelling through Tasks, the physical path behind a linked Tasks included.
+   • An epic's step — an epic's push dispatch, or a `pending_steps` entry — comes with its task_dir: pass that
+     path, never the bare step_id. Every epic has a 2.step, and by name alone the second epic makes it ambiguous.
    • The path it prints is task_dir for every later step, the Outbound Contract and Run.json — never a path the
      request spelled another way: the config is found along task_dir, and a task repository behind a Tasks link
      has none above its physical path.

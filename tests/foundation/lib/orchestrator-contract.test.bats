@@ -625,6 +625,8 @@ PY
   [ -n "$step" ] || { echo "no step 1"; return 1; }
   grep -qF 'scripts/task-dir.sh' <<<"$step" || { echo "step 1 does not call task-dir.sh"; return 1; }
   grep -qF -- '--from' <<<"$step" || { echo "step 1 does not pass --from"; return 1; }
+  # An epic's step: step ids repeat across epics (every epic has a 2.step), so the folder the epic hands over decides.
+  grep -qF 'pending_steps' <<<"$step" || { echo "step 1 does not take the task_dir an epic hands over"; return 1; }
   for k in error_task_not_found error_task_ambiguous error_task_outside_tasks; do
     grep -qF "$k" <<<"$step" || { echo "step 1 lacks $k"; return 1; }
     for l in en ru; do
