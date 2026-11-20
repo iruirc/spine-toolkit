@@ -382,11 +382,15 @@ Algorithm:
            • sources.scale of the step 3 call is `project` or `default` — not `task`, `epic`, `run` or `type`
              (a scale Task.md, the epic's Task.md or this run named is somebody's word), and scale is `full`
            • profile is FEATURE, BUG or REFACTOR
+           • nothing of the task has run yet: action is `run` or `restart-full`, start_stage is
+             profile_stages[0], and the task folder holds no stage artifact (Research.md, Plan.md,
+             Validation.md, Review.md, Done.md, a reproduce or analysis file). Step 6 runs for every action;
+             a task past its first stage is under the ratchet, which only raises
            • Task.md reads as a small task by the signs of `conventions/task-scale.md` → Suggesting lite
              (qualitative, no counts); a Task.md silent on a sign does not show it
        AUQ using key `confirm_dispatch` with placeholders `{profile}`, `{mode}`, `{stack}`, `{start_stage}`;
-       when suggest_lite, the question is followed by key `scale_lite_suggest` (placeholder `{reason}`: the signs
-       that held, in a phrase)
+       when suggest_lite, the text of key `scale_lite_suggest` (placeholder `{reason}`: the signs that held, in
+       a phrase) is appended to the question text
        options (in this order):
            1. locale key `confirm_dispatch_yes`     → dispatch as resolved
            2. locale key `auq_confirm_dispatch_pick_stage` → open the picker:
@@ -398,7 +402,9 @@ Algorithm:
            3. only when suggest_lite: locale key `scale_lite_suggest_option` → dispatch as resolved, at lite:
                   write `[SCALE] = [lite]` into Task.md immediately after the `[NEED_REVIEW]` line (where a
                   raise writes `full`), repeat the step 3 call with `--set scale=lite` added, and take every
-                  field from it: scale-dependent fields move with the value
+                  field from it: scale-dependent fields move with the value. Nothing step 3 already announced
+                  is announced again. `scale=lite` does not go into `run_settings` or Run.json: the owner's
+                  word for this run is in Task.md now, and a rerun reads it from there
            4. locale key `confirm_dispatch_cancel`  → return {status: cancelled, reason: status_cancelled_user_no}
        # the lite option is the fourth only when it is offered: three options become four, and AUQ allows no more
        # the offer is a suggestion, never a lowering: any other answer writes nothing

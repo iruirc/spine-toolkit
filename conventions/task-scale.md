@@ -61,7 +61,8 @@ written, and still by the agent whose independence is the point.
 
 ## The ratchet
 
-A `lite` run can be raised to `full`. It is never lowered, at any point, by anyone.
+A `lite` run can be raised to `full`. Once a task is running it is never lowered, by anyone. The one
+lowering is the owner's yes to the suggestion below, and that is asked before anything has run.
 
 That includes the owner's word for one run: `--set scale=full` always applies, while
 `--set scale=lite` does not beat a `[SCALE] = [full]` in the task's or the epic's `Task.md`, which
@@ -111,6 +112,9 @@ The offer is made only when all of these hold:
   scale from this run's `--set`, from the task's `Task.md` or from the epic's `Task.md` is somebody's
   word, and a QUICK task is `lite` already;
 - the profile is FEATURE, BUG or REFACTOR, the three that have a `lite` run to offer;
+- nothing of the task has run: the action is `run` or `restart-full`, the start is the profile's first
+  stage, and the task folder holds no stage artifact. A task past its first stage is under the ratchet,
+  which only raises;
 - `Task.md` reads as a small task. The signs are qualitative, and none is a count: the change has
   one point, the expected behaviour fits a short list or a table, and it adds no module, no public
   API and no migration. A `Task.md` that is silent on one of them does not show it, so the offer is

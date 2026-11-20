@@ -79,6 +79,16 @@ setup() {
   printf '%s\n' "$step" | grep -q '\[NEED_REVIEW\]' || { echo "step 6 does not place the write after [NEED_REVIEW]"; return 1; }
   printf '%s\n' "$step" | grep -qF 'no suggestion in `auto`' \
     || { echo "step 6 does not exclude auto"; return 1; }
+  printf '%s\n' "$step" | grep -qF 'scale is `full`' || { echo "step 6 does not require a resolved full"; return 1; }
+  printf '%s\n' "$step" | grep -qF -- '--set scale=lite' || { echo "step 6 does not name the --set scale=lite re-run"; return 1; }
+  printf '%s\n' "$step" | grep -qF 'is appended to the question text' || { echo "step 6 does not append the suggestion to the question"; return 1; }
+  opt="$(printf '%s\n' "$step" | grep -n 'locale key `scale_lite_suggest_option`' | head -1 | cut -d: -f1)"
+  cancel="$(printf '%s\n' "$step" | grep -n 'locale key `confirm_dispatch_cancel`' | head -1 | cut -d: -f1)"
+  [ -n "$opt" ] && [ -n "$cancel" ] && [ "$opt" -lt "$cancel" ] || { echo "the lite option is not before Cancel"; return 1; }
+  printf '%s\n' "$step" | grep -qF 'nothing of the task has run yet' || { echo "step 6 offers lite to a task past its first stage"; return 1; }
+  printf '%s\n' "$step" | grep -qF 'restart-full' || { echo "step 6 does not name the actions that qualify"; return 1; }
+  printf '%s\n' "$step" | grep -qF 'does not go into `run_settings`' || { echo "step 6 does not keep scale=lite out of run_settings"; return 1; }
+  grep -q 'nothing of the task has run' "$ROOT/conventions/task-scale.md" || { echo "the convention does not limit the offer to a task not yet run"; return 1; }
   for k in scale_lite_suggest scale_lite_suggest_option; do
     for l in en ru; do
       grep -q "^## $k\$" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md lacks $k"; return 1; }
