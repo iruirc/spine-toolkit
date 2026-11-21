@@ -12,7 +12,8 @@ usage: run-calibration.sh <log>
   Prints one line per key that has data:
     | <key> | <q1>–<q3> | median <m>, <n> rows |
   Rows used: source = workflow, type other than EPIC. Fewer than three such rows
-  proposes nothing. A malformed row is skipped with a warning on stderr.
+  proposes nothing. A malformed row is skipped with a warning on stderr. A row
+  with 0 phases or 0 modules stays out only of the keys that divide by it.
 USAGE
 }
 
@@ -106,9 +107,8 @@ for n, line in enumerate(lines, 1):
         continue
     for k in MINUTES:
         r[k] = int(r[k])
-    if r["phases"] == 0 or r["modules"] == 0:
-        warn(n, "phases and modules must be positive")
-        continue
+    # A row with no phases or no modules is still usable: it only stays out of the
+    # keys that divide by the count it lacks.
     rows.append(r)
 
 if not found_header:
@@ -119,10 +119,10 @@ if len(rows) < NEED:
     sys.exit(0)
 
 series = {k: [] for k in KEYS}
-no_driver = [r for r in rows if r["driver"] == "no"]
+no_driver = [r for r in rows if r["driver"] == "no" and r["modules"] > 0]
 vpm = [r["validation"] / r["modules"] for r in no_driver]
 series["validation_per_module"] = vpm
-series["execute_per_phase"] = [r["execute"] / r["phases"] for r in rows]
+series["execute_per_phase"] = [r["execute"] / r["phases"] for r in rows if r["phases"] > 0]
 series["review"] = [r["review"] for r in rows]
 series["fix_round"] = [r["fix_time"] / r["fix_rounds"] for r in rows if r["fix_rounds"] > 0]
 driver_rows = [r for r in rows if r["driver"] == "yes"]

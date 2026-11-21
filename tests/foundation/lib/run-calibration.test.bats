@@ -164,3 +164,23 @@ write_log() {
   [[ "$stderr" == *'run-calibration: line 10: driver is '*', skipped'* ]] || { echo "$stderr"; false; }
   [[ "$output" == *'| review | 14–18 | median 16, 5 rows |'* ]] || { echo "$output"; false; }
 }
+
+@test "a row with no phases or no modules still feeds the keys that do not divide by them" {
+  log="$BATS_TEST_TMPDIR/log.md"
+  # phases 0: no execute_per_phase, validation 20/2 = 10, review 10
+  # modules 0: execute 20/2 = 10, no validation_per_module, review 12, fix 40/1
+  # both counts: execute 10, validation 10/1 = 10, review 14, fix 50/1
+  # modules 0 with a driver: execute 10, driver 30 - 0*10 = 30, review 16
+  write_log "$log" '0 2 no 0 20 10 0 0' '2 0 no 20 0 12 1 40' '2 1 no 20 10 14 1 50' '2 0 yes 20 30 16 0 0'
+  run --separate-stderr "$RC" "$log"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ] || { echo "$stderr"; false; }
+  # review 10,12,14,16 -> 11.5..14.5 rounds half up to 12..15, median 13; fix 40,50 -> 42.5..47.5, median 45
+  expected="$(printf '%s\n' \
+    '| execute_per_phase | 10–10 | median 10, 3 rows |' \
+    '| validation_per_module | 10–10 | median 10, 2 rows |' \
+    '| driver_scenario | 30–30 | median 30, 1 rows |' \
+    '| review | 12–15 | median 13, 4 rows |' \
+    '| fix_round | 43–48 | median 45, 2 rows |')"
+  [ "$output" = "$expected" ] || { echo "$output"; false; }
+}
