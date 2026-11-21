@@ -1122,9 +1122,19 @@ if (runs('Research') && lite()) result.notes.push('Research folded into the ## R
 // resolves at full; an explicit off stays off.
 const estimating = () => ESTIMATION === 'on' || (ESTIMATION_FOLLOWS_SCALE && scaleEscalation !== null)
 const unitSkills = () => (forecastsRun() && estimatesDays() ? 'run-forecast and feature-estimation skills' : `${forecastsRun() ? 'run-forecast' : 'feature-estimation'} skill`)
+// A step of an epic lives in a folder whose name ends in .step; the epic's folder is its parent.
+const epicDir = () => {
+  const parts = DIR.split('/')
+  const at = parts.map((seg) => seg.endsWith('.step')).lastIndexOf(true)
+  return at < 1 ? '' : parts.slice(0, at).join('/')
+}
+const epicRefresh = () =>
+  forecastsRun() && epicDir()
+    ? ` This task is a step of an epic, so after you write this step's ### Run forecast, update this step's row, and the totals, in the epic's Plan.md (${epicDir()}/Plan.md) under ## Estimation → ### Run forecast. The summed forecast stays informational; it is no gate.`
+    : ''
 const estimationBrief = () => {
   const run = forecastsRun()
-    ? `Then apply the run-forecast skill and add a ## Estimation section carrying its ### Run forecast: how long the agents' run from Execute to Review takes, as a best and a worst scenario, and how many gates it stops at. Return run_forecast {best, worst, gates, confidence} with that section's values, as strings.`
+    ? `Then apply the run-forecast skill and add a ## Estimation section carrying its ### Run forecast: how long the agents' run from Execute to Review takes, as a best and a worst scenario, and how many gates it stops at. Return run_forecast {best, worst, gates, confidence} with that section's values, as strings.${epicRefresh()}`
     : ''
   const days = estimatesDays()
     ? `${run ? 'Then apply the feature-estimation skill and add the estimate in days to the same ## Estimation section' : 'Then apply the feature-estimation skill and add a ## Estimation section'}, with depth scaled to the feature's risk per that skill's Estimation depth table. The minimum is feature type, baseline table, engineering range, and confidence; PERT, scope-aware risk deltas, estimate maturity, estimation conditions, delivery calendar, store buffer, known unknowns, and the self-check are added only when their triggers fire.`

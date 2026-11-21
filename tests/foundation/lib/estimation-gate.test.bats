@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep workflows
+# changed: sweep workflows conventions
 # How [ESTIMATION] and [ESTIMATION_UNIT] shape the FEATURE Plan and Done: which skill the briefs
 # name, which fields the Plan schema requires, the gate that stops before Execute, and the
 # run_forecast the orchestrator prints at the manual gate — driven through the script with stubbed
@@ -142,6 +142,36 @@ done_only() {
     "(o.calls.find((c) => c.label === 'done') || {prompt: 'no Done: ' + o.calls.map((c) => c.label).join(' ')}).prompt"
   grep -qF '## Estimate retrospective' <<<"${V[0]}" || { echo "no retrospective after the raise: ${V[0]:0:300}"; return 1; }
   grep -qF run-forecast <<<"${V[0]}" || { echo "the Done brief does not name run-forecast"; return 1; }
+}
+
+# step_plan <task dir> <estimation> <unit>: the Plan brief of a task in that folder.
+step_plan() {
+  rp feature "$(contract full "$2" "$3" project Plan ', "end_stage": "Plan"' | sed "s#/p/Tasks/ACTIVE/001-x#$1#")" \
+    "{\"plan\": {\"ok\": true, \"artifact_path\": \"p\", \"summary\": \"s\", $PHASES}}" \
+    "o.calls.find((c) => c.label === 'plan').prompt"
+}
+
+@test "an epic step's Plan refreshes the epic's row for the step and its totals" {
+  step_plan /p/Tasks/ACTIVE/042-cart/03-promo.step on agent-run
+  for w in "epic's Plan.md" '## Estimation' '### Run forecast' "this step's row" 'totals' '/p/Tasks/ACTIVE/042-cart/Plan.md'; do
+    grep -qF -- "$w" <<<"${V[0]}" || { echo "the step's Plan brief does not name $w"; return 1; }
+  done
+  step_plan /p/Tasks/ACTIVE/042-cart/03-promo.step on both
+  grep -qF "this step's row" <<<"${V[0]}" || { echo "both: no refresh instruction"; return 1; }
+}
+
+@test "a Plan outside an epic step has no epic refresh" {
+  step_plan /p/Tasks/ACTIVE/042-cart on agent-run
+  if grep -qF "this step's row" <<<"${V[0]}"; then echo "a non-step folder is told to refresh an epic"; return 1; fi
+  step_plan /p/Tasks/ACTIVE/042-cart/notes.stepper on agent-run
+  if grep -qF "this step's row" <<<"${V[0]}"; then echo "a folder that only starts with .step is told to refresh an epic"; return 1; fi
+}
+
+@test "an epic step with estimation off, or in days only, has no run-forecast refresh" {
+  step_plan /p/Tasks/ACTIVE/042-cart/03-promo.step off agent-run
+  if grep -qF "this step's row" <<<"${V[0]}"; then echo "off: the step is told to refresh the epic"; return 1; fi
+  step_plan /p/Tasks/ACTIVE/042-cart/03-promo.step on days
+  if grep -qF "this step's row" <<<"${V[0]}"; then echo "days: the step is told to refresh a run forecast"; return 1; fi
 }
 
 # The EPIC aggregate: informational, never a gate. An epic has no estimation_gate in its Plan schema.

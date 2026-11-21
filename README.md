@@ -157,7 +157,13 @@ the import line. The blocks and fields the toolkit reads:
 reference: one section per field, what it governs, its values, its default, and whether a task can
 override it. Then `## Platform`, `## Agents` (per-role overrides of the manifest), `## Stack`,
 `## Modules` (per-module stack overrides), `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`,
-`## Paths`.
+`## AgentRunCoefficients`, `## Paths`.
+
+Two task-default axes shape the estimate in `Plan.md`. `[ESTIMATION]` (`auto`, `on`, `off`; `auto` is `on` at
+`full` and `off` at `lite`) decides whether a task carries one. `[ESTIMATION_UNIT]` (`agent-run`, the default;
+`days`; `both`) decides what it is counted in: the agents' run from Execute to Review (`run-forecast`, the
+coefficients of `## AgentRunCoefficients`) or engineering days (`feature-estimation`). `## DeliveryMode`,
+`## AILeverage` and `## EstimationDeltas` refine only the days estimate and are read at `days` and `both`.
 
 The template writes three more — `## Persona`, `## Rules` and `## Orchestration`. Those are for the
 agents reading the file as context, not blocks the toolkit parses.

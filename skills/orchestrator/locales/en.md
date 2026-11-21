@@ -429,3 +429,6 @@ The task carries on. To write the settings, run `$spine-toolkit:setup`.
 
 ## codex_perm_root_stale
 - `{path}` is in Spine's `writable_roots` but no longer in the project config. Nothing stops.
+
+## estimation_run_forecast
+Run forecast: {best}–{worst}, gates {gates} ({confidence}).

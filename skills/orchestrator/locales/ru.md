@@ -429,3 +429,6 @@ Review требует изменений:
 
 ## codex_perm_root_stale
 - `{path}` есть в `writable_roots` от Spine, но в конфиге проекта его больше нет. Ничего не останавливается.
+
+## estimation_run_forecast
+Прогноз прогона: {best}–{worst}, ворот {gates} ({confidence}).

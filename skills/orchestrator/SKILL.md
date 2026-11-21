@@ -903,6 +903,11 @@ durations inside an `auto` run do not exist; do not invent them.
 
 **After Edit: `quick_escalation`.** QUICK only. A return carrying `quick_escalation` means Edit's entry check found the task is not a QUICK change and nothing was changed. In both modes, announce `quick_escalation_stop` (`{task_id}`, `{reason}`) and stop — no `stage_done_prompt`, and `[TASK_TYPE]` is not rewritten: the user chose QUICK and decides what the task becomes.
 
+**After Plan: the run forecast.** FEATURE only; an EPIC's Plan returns no `run_forecast`. The source is the `run_forecast` of the Plan stage's return (`best`, `worst`, `gates`, `confidence`, all strings), present when `estimation = on` and `estimation_unit` includes `agent-run`.
+
+- `manual`: before `stage_done_prompt`, print `estimation_run_forecast` with `{best}`, `{worst}`, `{gates}` and `{confidence}` from that field. Without the field — `estimation = off`, `estimation_unit = days`, or a return that carries none — print nothing, and never read the figures back out of `Plan.md`. A blocked estimation gate stops the run before Execute (`conventions/estimation-gate.md`); the forecast is printed then too, because the return carries it.
+- `auto`: nothing is printed; the forecast stays in `Plan.md`.
+
 **After Validation: failures outside the task.** FEATURE, BUG, REFACTOR, TEST and QUICK. The source is the stage's `validation_status`, `outside_failures` and `known_failures_cleared`: the return of Method A, or of Method B, which carries the same fields in `key=value` form. When this session holds no such return, read the rows of `## Outside the task` in `Validation.md` and its `KF-<N> no longer fails` lines instead. The registry is the file the contract names in `known_failures`; its form and its rules are `conventions/known-failures.md`.
 
 - `manual`: before `stage_done_prompt`, print `known_failures_outside` with `{list}`, one line per item of `outside_failures` whose outcome is `flaky` or `red` — repository, module, test, outcome and entry — then one line per ID of `known_failures_cleared`. Items whose outcome is `known` are not printed: the owner accepted them already, and `Validation.md` keeps them. With nothing to list, print nothing.

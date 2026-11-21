@@ -263,8 +263,9 @@ forecast depends on those numbers.
 - The epic's `### Run forecast` sums the forecasts of its steps, one row per step. A step not yet
   planned is forecast by the model above from the phases its card in the epic's `Plan.md` expects;
   a step that has written its own Plan contributes its own `### Run forecast`.
-- When a step writes its Plan, the epic's row for that step takes the step's figures and the totals
-  are summed again.
+- The step's own Plan does the refresh: after it writes its `### Run forecast`, the step's planner
+  updates the step's row, and the totals, in the epic's `Plan.md` under `## Estimation` →
+  `### Run forecast`. The epic folder is the parent of the step folder.
 - The summed forecast is informational. It is never a gate: each step meets
   `conventions/estimation-gate.md` at its own Plan.
 - At the epic's Done, the rolled-up row of `## Calibration log` sums the steps' rows.

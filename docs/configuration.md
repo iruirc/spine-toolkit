@@ -396,6 +396,13 @@ Whether the task carries an estimate. `auto` follows the scale as `[PLAN_CHECK]`
 `lite`. An explicit `on` stands at `lite`, so a light task can carry a forecast; an explicit `off` stands at
 `full`. What the estimate is counted in is `[ESTIMATION_UNIT]`.
 
+With `off` the plan carries no `## Estimation`, there is no readiness gate before Execute, and `Done.md` has no
+estimate retrospective. With `on`, the readiness gate of
+[`../conventions/estimation-gate.md`](../conventions/estimation-gate.md) stands at every unit. A `lite` task whose
+plan raises the scale estimates when the value followed the scale, and does not when it was written as `off`. A step
+keeps its own value over its epic's. At `manual`, a FEATURE's Plan prints the forecast (best, worst, gates, confidence)
+before the prompt for the next stage; an epic's roll-up is informational and is not printed.
+
 ### [ESTIMATION_UNIT]
 
 **Values:** `agent-run` `days` `both` · **Default:** `agent-run` ·
@@ -403,9 +410,18 @@ Whether the task carries an estimate. `auto` follows the scale as `[PLAN_CHECK]`
 [`../conventions/task-settings.md`](../conventions/task-settings.md), the `run-forecast` skill and
 [`../conventions/estimation-gate.md`](../conventions/estimation-gate.md)
 
-The unit of the estimate. A project without this line gets `agent-run`; nothing is migrated. The
-`## DeliveryMode` and `## AILeverage` sections of the config only refine the estimate in days and are read
-when the unit is `days` or `both`; at `agent-run` their values change nothing.
+The unit of the estimate. A project without this line gets `agent-run`; nothing is migrated.
+
+- `agent-run`: how long the agents' run from Execute to Review takes, as a best and a worst scenario, and how many
+  gates it stops at. The `run-forecast` skill writes it as `### Run forecast` under `## Estimation` in `Plan.md`, and
+  at Done the retrospective sets the measured run against it and logs a row in
+  `Tasks/_calibration/agent-run-log.md`.
+- `days`: the estimate in engineering days, by the `feature-estimation` skill, as before.
+- `both`: both, in the one `## Estimation` section and the one retrospective.
+
+The `## DeliveryMode` and `## AILeverage` sections of the config only refine the estimate in days: they are read
+when the unit is `days` or `both`, and at `agent-run` their values change nothing. `## EstimationDeltas` is the
+days estimate's too. The coefficients of the agents' run are `## AgentRunCoefficients`, below.
 
 ### [SECURITY]
 
@@ -569,6 +585,26 @@ number, never which scale an artifact is measured at. Change a ceiling when a me
 project's documents says the default does not fit, not when the lint turns red: a ceiling raised to
 silence the lint measures nothing. A key the lint does not know, or a value that is not a positive
 whole number, is reported, and the key falls to the next source down.
+
+## AgentRunCoefficients
+
+A block of the project config, not a field: a table that replaces the default coefficients of the
+`run-forecast` skill, in minutes. It is read only when the unit includes `agent-run`.
+
+```markdown
+## AgentRunCoefficients
+| Key | Value | Reason |
+|---|---|---|
+| execute_per_phase | 12–30 | median 18 over 6 finished tasks; phases touch two modules |
+```
+
+The keys are `execute_per_phase` (default 8–20), `validation_per_module` (5–15), `driver_scenario` (15–30),
+`review` (10–25) and `fix_round` (30–60). The value is a range of whole minutes, `N–M`. A row replaces that key's
+default and leaves the others alone; a malformed row, an unknown key or a placeholder is ignored, and the plan's
+`### Assumptions` says which default stood in. The forecast's confidence is `Low (uncalibrated)` while any
+coefficient it used is a default. `scripts/run-calibration.sh` proposes rows from
+`Tasks/_calibration/agent-run-log.md` once it holds three usable rows; the architect shows the proposal to the
+owner at Plan, and nothing is written to the config without the owner.
 
 ## Older spellings
 

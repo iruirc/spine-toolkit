@@ -90,7 +90,7 @@ Phases added later keep this shape: the progress table stays a top-level table i
 2. `## Why` — the problem the task solved, as a chain whose last step is what the user saw.
 3. `## What is left and risks` — what the task did not do and what could still go wrong, written as what a user would see; when nothing is left, one sentence says so.
 4. `## Objections` — a contested decision the owner insisted on, with the alternative the agents proposed; only when there is one.
-5. `## Estimate retrospective` — when `Plan.md` carries an estimation section, by the `feature-estimation` skill.
+5. `## Estimate retrospective` — when `Plan.md` carries `## Estimation`, in the unit of the axis: by the `run-forecast` skill at `agent-run`, by the `feature-estimation` skill at `days`, one section for both at `both`.
 6. The service sections. First the phase table, whose `What` column is words with the identifier in brackets. Then what the profile's Done stage adds, such as the regression test or the coverage reached. Last the artifacts the task produced, the validation status and `## Review findings closed`. When the task has a report (`task-report` skill), these sections link to it and repeat no number from it: the report holds the numbers, `Done.md` the link and the conclusion.
 7. The closing block: the `[DONE_COMMIT]` and `[REVIEW_FIXES]` lines, `**Run:**`, `**Device:**` (`conventions/stage-dispatch.md` → Closing block).
 
