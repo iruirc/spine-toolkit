@@ -598,12 +598,19 @@ def merge_by_task(runs):
 
 # The format is not a contract (P8): a shape neither this script nor its
 # fixtures anticipated must degrade to an empty result, not a traceback.
+GATE_STAGES = ("Execute", "Validation", "Review")
+
+
 def task_totals(runs):
     # What a Done stage turns into the actual figure of a run forecast. A fix-review
     # round is counted apart, so a stage re-run by it does not inflate the stage.
-    stage_spans, fix_rounds, fix_span = {}, 0, 0
+    stage_spans, fix_rounds, fix_span, gate_runs = {}, 0, 0, 0
     for run in runs:
         timed = [p for p in run["phases"] if p.get("spanMs") is not None]
+        # In manual each run that reaches Execute, Validation or Review stops at a gate;
+        # a Research or Plan run is not one of the forecast's gates.
+        if any(p.get("title") in GATE_STAGES and p.get("agents") for p in run["phases"]):
+            gate_runs += 1
         if run.get("action") == "fix-review":
             if any(p.get("title") == "Execute" and p.get("agents") for p in run["phases"]):
                 fix_rounds += 1
@@ -612,7 +619,7 @@ def task_totals(runs):
         for phase in timed:
             if phase.get("title") is not None:
                 stage_spans[phase["title"]] = stage_spans.get(phase["title"], 0) + phase["spanMs"]
-    return {"runs": len(runs), "stageSpans": stage_spans,
+    return {"runs": len(runs), "gateRuns": gate_runs, "stageSpans": stage_spans,
             "fixRounds": fix_rounds, "fixSpanMs": fix_span}
 
 

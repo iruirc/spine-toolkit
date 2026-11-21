@@ -135,10 +135,12 @@ When `estimation` is `on`, the unit is `agent-run` or `both`, and `Plan.md` carr
    | Validation | `stageSpans.Validation` |
    | Review | `stageSpans.Review` |
    | Fix rounds | `fixRounds`, and `fixSpanMs` for their time |
-   | Gates | `runs` in `manual`; 0 in `auto` |
+   | Gates | `gateRuns` in `manual`; 0 in `auto` |
 
    `stageSpans` has no key for a stage that had no timed agent: read a missing key as no time.
-   `fixSpanMs` is 0 when there were no fix-review runs. A fix round's stages are counted in
+   `fixSpanMs` is 0 when there were no fix-review runs. `gateRuns` counts the task's runs in which
+   an agent ran Execute, Validation or Review, fix-review runs included; a Research or Plan run is
+   not a gate of the forecast, and `runs`, which counts every run, is not the gate count. A fix round's stages are counted in
    `fixSpanMs`, never in `stageSpans`, so the Run's actual is the three stages plus `fixSpanMs`. A
    stage's span is summed run by run, so the owner's wait between two runs is never in it.
 3. Write `## Estimate retrospective` in `Done.md`, in the forecast's unit (below).
@@ -200,8 +202,8 @@ When it is absent, create it with exactly this header; never reorder or rename a
 | `task_id` | the task by its number, as below |
 | `type` | `FEATURE`, or `EPIC` for an epic's rolled-up row |
 | `mode` | `manual` or `auto` |
-| `phases` | the code phases the forecast counted |
-| `modules` | the modules of the regression set |
+| `phases` | the code phases the forecast counted, `0` when there were none |
+| `modules` | the modules of the regression set, `0` when there were none |
 | `driver` | `yes` when the forecast had a driver scenario, otherwise `no` |
 | `forecast` | the Run's range in whole minutes, `N–M` |
 | `actual` | the Run's actual in whole minutes: the commit span at `source = git` |
@@ -214,7 +216,8 @@ When it is absent, create it with exactly this header; never reorder or rename a
 | `in_range` | `in`, `under`, `over`, or `n/a (git span)` |
 | `variance_reason` | the cause of a miss, the skipped session ids, or `—` |
 
-The stage columns are filled in `auto` too: a stage's span exists in both modes.
+The stage columns are filled in `auto` too: a stage's span exists in both modes. A row with `0`
+phases or `0` modules still calibrates: it stays out only of the keys that divide by that count.
 
 `task_id` names the task by its number — `041` or `041-photo-feed` — and a step by its epic's number
 and its own — `042-03` or `042-cart/03-promo` — because step folders are numbered afresh in every

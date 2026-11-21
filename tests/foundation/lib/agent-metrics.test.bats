@@ -807,7 +807,39 @@ JSON
 
 @test "the task totals are only there with --task" {
   run tm_metrics home-a --session "$T700_B"
-  [ "$(python3 -c 'import json,sys; t=json.loads(sys.argv[1])["totals"]; print(sorted(set(t) & {"runs","stageSpans","fixRounds","fixSpanMs"}))' "$output")" = "[]" ]
+  [ "$(python3 -c 'import json,sys; t=json.loads(sys.argv[1])["totals"]; print(sorted(set(t) & {"runs","stageSpans","fixRounds","fixSpanMs","gateRuns"}))' "$output")" = "[]" ]
+}
+
+@test "gateRuns counts the runs with an agent in Execute, Validation or Review, fix rounds included, not a Plan-only run" {
+  local cfg; cfg="$(mktemp -d)"
+  cp -R "$(tm_home home-a)/." "$cfg/"
+  cat >"$cfg/projects/-tmp-proj/$T700_B/workflows/wf_t700pln-b03.json" <<'JSON'
+{
+  "runId": "wf_t700pln-b03", "workflowName": "profile-feature", "status": "completed",
+  "startTime": 1787380000000, "durationMs": 120000,
+  "args": {"task_id": "700", "profile": "feature", "action": "run"},
+  "phases": [{"title": "Plan"}],
+  "workflowProgress": [
+    {"type": "workflow_phase", "index": 1, "title": "Plan"},
+    {"type": "workflow_agent", "index": 1, "label": "plan", "phaseTitle": "Plan",
+     "agentId": "f0000000000000099", "agentType": "fixture-platform:fixture-architect", "model": "claude-opus-5",
+     "state": "done", "startedAt": 1787380000000, "tokens": 1000, "toolCalls": 2, "durationMs": 120000}
+  ]
+}
+JSON
+  run env CLAUDE_CONFIG_DIR="$cfg" CLAUDE_CODE_SESSION_ID="" \
+    "$(tm_repo_root)/scripts/agent-metrics.sh" --session "$T700_B" --task 700 --project-sessions
+  rm -rf "$cfg"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(tm_field "$output" totals.runs)" = "5" ]
+  [ "$(tm_field "$output" totals.gateRuns)" = "4" ]
+}
+
+@test "gateRuns of the task-700 fixture as it stands" {
+  run tm_metrics home-a --session "$T700_B" --task 700 --project-sessions
+  [ "$(tm_field "$output" totals.gateRuns)" = "4" ]
+  run tm_metrics home-a --session "$T700_B" --task 700
+  [ "$(tm_field "$output" totals.gateRuns)" = "2" ]
 }
 
 @test "the usage line names --project-sessions" {
