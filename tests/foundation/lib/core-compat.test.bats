@@ -154,3 +154,37 @@ core_v() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["vers
   run compat
   [ "${output%% *}" = ok ] || { echo "$output"; return 1; }
 }
+
+# ── the lag line of the opening block ────────────────────────────────────────────────────────
+
+body_of() { awk -v k="## $2" '$0==k{p=1;next} /^## /{p=0} p&&NF' "$ROOT/skills/orchestrator/locales/$1.md"; }
+
+opening() { SPINE_PLUGIN_REGISTRY="$REG" "$ROOT/scripts/resolve-settings.sh" open "$TASK" --method A --range Plan:Validation; }
+
+@test "open names a lagging core in one line" {
+  project fixture-platform
+  p="$(platform_dir fixture-platform '>=1.0.0 <100')"
+  registry "{\"fixture-platform@m\": $(user_entry "$p" 1.0.0), \"spine-toolkit@m\": $(user_entry /x 99.0.0)}"
+  run opening
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  line="$(body_of en open_core_lag | sed -e "s/{core}/$(core_v)/" -e 's/{installed}/99.0.0/' \
+    -e 's/{platform}/fixture-platform/' -e 's/{platform_version}/1.0.0/')"
+  [ -n "$line" ] && grep -qxF "$line" <<<"$output" || { echo "no lag line: $output"; return 1; }
+}
+
+@test "open says nothing about versions when the core is ok or unknown" {
+  project fixture-platform
+  p="$(platform_dir fixture-platform '>=1.0.0 <100')"
+  registry "{\"fixture-platform@m\": $(user_entry "$p" 1.0.0), \"spine-toolkit@m\": $(user_entry /x "$(core_v)")}"
+  run opening
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  ! grep -qF '(installed' <<<"$output" || { echo "ok printed a line: $output"; return 1; }
+  REG="$BATS_TEST_TMPDIR/none.json"
+  run opening
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  ! grep -qF '(installed' <<<"$output" || { echo "unknown printed a line: $output"; return 1; }
+}
+
+@test "the lag line is in both locales" {
+  [ -n "$(body_of en open_core_lag)" ] && [ -n "$(body_of ru open_core_lag)" ]
+}

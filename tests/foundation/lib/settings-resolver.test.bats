@@ -6,6 +6,7 @@
 load "$(dirname "$BATS_TEST_FILENAME")/../helpers/config-doc"
 
 setup() {
+  export SPINE_PLUGIN_REGISTRY="$BATS_TEST_TMPDIR/no-registry.json"  # what is installed here never shows
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   RESOLVE="$ROOT/scripts/resolve-settings.sh"
   PROJ="$BATS_TEST_TMPDIR/proj"

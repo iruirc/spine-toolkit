@@ -4,6 +4,7 @@
 # the orchestrator's dispatch, and whatever it cannot read, must pass in silence and never block.
 
 setup() {
+  export SPINE_PLUGIN_REGISTRY="$BATS_TEST_TMPDIR/no-registry.json"  # what is installed here never shows
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   HOOK="$ROOT/hooks/opening-block"
   PROJ="$BATS_TEST_TMPDIR/proj"

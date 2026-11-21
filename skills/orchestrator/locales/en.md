@@ -177,6 +177,9 @@ Settings:
 ## open_settings_rest
 {n} more at their default.
 
+## open_core_lag
+core {core} (installed {installed}) · {platform} {platform_version} — restart the session to pick up the update
+
 ## progress_stage_metrics
 {tuning} · {out} out · {ctx} ctx · {cacheWrite} cache-w · {cacheRead} cache-r · {tools} tools · {elapsed}
 

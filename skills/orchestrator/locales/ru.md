@@ -177,6 +177,9 @@ Method B ({skill}): {why}
 ## open_settings_rest
 ещё {n} по умолчанию.
 
+## open_core_lag
+ядро {core} (установлено {installed}) · {platform} {platform_version} — перезапустите сессию, чтобы подхватить обновление
+
 ## progress_stage_metrics
 {tuning} · {out} out · {ctx} ctx · {cacheWrite} cache-w · {cacheRead} cache-r · {tools} tools · {elapsed}
 

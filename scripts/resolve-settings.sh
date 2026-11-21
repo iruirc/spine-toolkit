@@ -883,7 +883,8 @@ if CMD == 'show':
 # json without --set to what it resolved to; the owner's directive, verbatim, from Run.json (the
 # epic's, through --run-file, for a step it handed back; the contract's own, under --contract); under
 # B, the roles whose effort does not travel; at live, the token panel; the settings column, sized
-# by settings_report. Nothing at quiet.
+# by settings_report. Nothing at quiet. After the stages, a session core older than the installed one
+# (core_compat lag, or incompatible should the run get this far) is one line of its own.
 CORE = os.environ['SPINE_CORE_ROOT']
 
 
@@ -982,6 +983,10 @@ out = [say('open_header', profile=profile.upper(), task=task_label(TARGET), star
            say('open_method_b', skill='spine-toolkit:workflow-%s' % profile, why=why)),
        say('open_stages')]
 out += ['  %s — %s' % p for p in phases[titles.index(start):titles.index(end) + 1]]
+compat = session_core_compat()
+if compat['status'] in ('lag', 'incompatible'):
+    out.append(say('open_core_lag', core=compat['core'], installed=compat['installed_core'] or '?',
+                   platform=compat['platform'], platform_version=compat['platform_version']))
 if method == 'A':
     out.append(say('open_workflows', workflow='profile-%s' % profile))
 out += [say('open_run_setting', field=f, **{'from': a, 'to': b}) if a != b else
