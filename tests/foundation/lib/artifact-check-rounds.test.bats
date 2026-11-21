@@ -279,7 +279,7 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
     "const a = o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-feature').args; [a.plan_check, a.done_check, 'artifact_check' in a].join(' ')" \
     "const a = o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-bug').args; [a.plan_check, a.done_check].join(' ')"
   [ "${V[0]}" = 'on,off on,off false' ] || { echo "the step record: ${V[0]}"; return 1; }
-  grep -qF 'walkthrough_when, plan_check, done_check, report' <<<"${V[1]}" || { echo "read-steps does not ask for both checks"; return 1; }
+  grep -qF 'walkthrough_when, plan_check, done_check, estimation, estimation_unit, report' <<<"${V[1]}" || { echo "read-steps does not ask for both checks"; return 1; }
   [ "${V[2]}" = 'on off false' ] || { echo "the first step got: ${V[2]}"; return 1; }
   [ "${V[3]}" = 'off on' ] || { echo "the second step got: ${V[3]}"; return 1; }
 }

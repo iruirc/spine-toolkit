@@ -509,6 +509,27 @@ section() {
   ! grep -q '^`artifact_check` —' "$SKILL" || { echo "the contract still describes artifact_check"; return 1; }
 }
 
+@test "the outbound contract carries estimation, estimation_unit and estimation_from, and never auto" {
+  grep -qxF 'estimation=on|off' "$SKILL" || { echo "no estimation= line in the contract block"; return 1; }
+  grep -qxF 'estimation_unit=agent-run|days|both' "$SKILL" || { echo "no estimation_unit= line in the contract block"; return 1; }
+  grep -qxF 'estimation_from=run|task|epic|project|default|scale' "$SKILL" || { echo "no estimation_from= line in the contract block"; return 1; }
+  for f in estimation estimation_unit estimation_from; do
+    para="$(awk -v h="^\`$f\` —" '$0 ~ h {f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+    [ -n "$para" ] || { echo "no \`$f\` paragraph in the Outbound Contract"; return 1; }
+    for token in 'resolve-settings.sh json' 'Always filled'; do
+      grep -qF "$token" <<<"$para" || { echo "the $f paragraph does not say $token"; return 1; }
+    done
+  done
+  para="$(awk '/^`estimation` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  for token in '`auto` never reaches the contract' '`on` at `scale = full`' '`off` at `lite`'; do
+    grep -qF "$token" <<<"$para" || { echo "the estimation paragraph does not say $token"; return 1; }
+  done
+  para="$(awk '/^`estimation_from` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
+  for token in 'sources.estimation' '`scale`' '`run`, `task`, `epic`, `project`, `default`'; do
+    grep -qF "$token" <<<"$para" || { echo "the estimation_from paragraph does not say $token"; return 1; }
+  done
+}
+
 @test "the pre-split spelling of the checks is announced with its own key" {
   grep -qF "| \`is the pre-split spelling, read as [PLAN_CHECK] and [DONE_CHECK]\` | \`[ARTIFACT_CHECK]\` | \`warn_artifact_check_pre_split\` |" "$SKILL" \
     || { echo "the warnings table has no row for the pre-split spelling"; return 1; }

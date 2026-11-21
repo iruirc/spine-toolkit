@@ -104,6 +104,15 @@ const WALKTHROUGH_CHECK = ['on', 'once'].includes(A.walkthrough_check) ? A.walkt
 const WALKTHROUGH_WHEN = A.walkthrough_when === 'stage' ? 'stage' : 'done'
 const PLAN_CHECK = A.plan_check === 'on' ? 'on' : 'off'
 const DONE_CHECK = A.done_check === 'on' ? 'on' : 'off'
+// The run's estimate (spine-toolkit:feature-estimation and the run forecast): `auto` never reaches the
+// contract, so an older orchestrator that sends nothing reads as the scale does, on at full and off at lite.
+const ESTIMATION = A.estimation === 'on' || A.estimation === 'off' ? A.estimation : A.scale === 'lite' ? 'off' : 'on'
+const ESTIMATION_UNIT = ['agent-run', 'days', 'both'].includes(A.estimation_unit) ? A.estimation_unit : 'agent-run'
+// Where the value was set. `scale` means nobody chose it, so a plan that raises the scale turns it on too.
+const ESTIMATION_FROM = ['run', 'task', 'epic', 'project', 'default', 'scale'].includes(A.estimation_from) ? A.estimation_from : 'scale'
+const ESTIMATION_FOLLOWS_SCALE = ESTIMATION_FROM === 'scale'
+const forecastsRun = () => ESTIMATION_UNIT !== 'days'
+const estimatesDays = () => ESTIMATION_UNIT !== 'agent-run'
 // Whether Walkthrough.md names the task's newest commit: the orchestrator's measure before the run,
 // then each writer's result. Done's own commits are the one thing left that can move past it.
 let walkthroughCurrent = A.walkthrough_current === true
@@ -1099,6 +1108,9 @@ const STEP = {
     manual_checks_pass: { type: 'string', enum: ['per-step', 'end'], description: "the step folder's own resolve-settings.sh manual_checks_pass value" },
     plan_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh plan_check value" },
     done_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh done_check value" },
+    estimation: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh estimation value" },
+    estimation_unit: { type: 'string', enum: ['agent-run', 'days', 'both'], description: "the step folder's own resolve-settings.sh estimation_unit value" },
+    estimation_from: { type: 'string', enum: ['run', 'task', 'epic', 'project', 'default', 'scale'], description: "the step folder's own resolve-settings.sh estimation_from value, its sources.estimation" },
     report: { type: 'string', enum: ['auto', 'on', 'off'], description: "the step folder's own resolve-settings.sh report value" },
     phase_verification: { type: 'string', enum: ['proportional', 'full'], description: "the step folder's own resolve-settings.sh phase_verification value" },
     walkthrough: { type: 'string', enum: ['brief', 'deep', 'off'], description: "the step folder's own resolve-settings.sh walkthrough value" },
@@ -1324,7 +1336,7 @@ if (runs('Execute')) {
     const read = await agent(
       brief(
         'Execute',
-        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, device, manual_checks, manual_checks_check, manual_checks_style, manual_checks_pass, phase_verification, security, walkthrough, walkthrough_check, walkthrough_when, plan_check, done_check, report and long_run values, its models value as resolved_models, and its sources.device as device_from. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
+        `Read ${DIR}/Plan.md and every <name>.step/ subfolder of ${DIR}. Return the steps in execution order — numeric prefixes ascending, named ones in the order Plan.md locks — each with the [TASK_TYPE], [STATUS], [NEED_TEST] and [NEED_REVIEW] from its own Task.md (a [STATUS] of TODO or ACTIVE is the pre-vocabulary spelling of PENDING or IN_PROGRESS; report it as that; report [NEED_TEST] and [NEED_REVIEW] as booleans), plus its [WORKFLOW_MODE] and ## 4. [Stack] where the step declares its own, its [SCALE] where it declares one, and the text between the brackets of its [MODELS] and [EFFORT] where it declares them. For a RESEARCH step, also its [RESEARCH_AGENT] and [RESEARCH_EXPERIMENT] where its Task.md carries them. For each step folder also run "${CORE}/scripts/resolve-settings.sh json <step folder>${RUN_ARGS}" and return its drive_app, device, manual_checks, manual_checks_check, manual_checks_style, manual_checks_pass, phase_verification, security, walkthrough, walkthrough_check, walkthrough_when, plan_check, done_check, estimation, estimation_unit, report and long_run values, its models value as resolved_models, its sources.device as device_from, and its sources.estimation as estimation_from. Also return the branch recorded in Research.md under "## Decomposition decision". Change nothing on disk.`,
       ),
       { label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'mechanical') },
     )
@@ -1381,6 +1393,9 @@ if (runs('Execute')) {
       manual_checks_pass: st.manual_checks_pass === undefined ? MANUAL_CHECKS_PASS : st.manual_checks_pass,
       plan_check: st.plan_check === undefined ? PLAN_CHECK : st.plan_check,
       done_check: st.done_check === undefined ? DONE_CHECK : st.done_check,
+      estimation: st.estimation === undefined ? ESTIMATION : st.estimation,
+      estimation_unit: st.estimation_unit === undefined ? ESTIMATION_UNIT : st.estimation_unit,
+      estimation_from: st.estimation_from === undefined ? ESTIMATION_FROM : st.estimation_from,
       report: st.report === undefined ? REPORT : st.report,
       phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
       walkthrough: stepWalkthrough(st),

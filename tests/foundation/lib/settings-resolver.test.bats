@@ -525,7 +525,7 @@ FIELDS
   # The depth and its check fall back along the chain, not to the epic's: quick-surfaces.test.bats.
   grep -qF 'walkthrough: stepWalkthrough(st),' "$E" && grep -qF 'walkthrough_check: stepWalkthroughCheck(st),' "$E" \
     || { echo "profile-epic.js does not forward walkthrough to a step"; return 1; }
-  grep -qF 'return its drive_app, device, manual_checks, manual_checks_check, manual_checks_style, manual_checks_pass, phase_verification, security, walkthrough, walkthrough_check, walkthrough_when, plan_check, done_check, report and long_run values' "$E" \
+  grep -qF 'return its drive_app, device, manual_checks, manual_checks_check, manual_checks_style, manual_checks_pass, phase_verification, security, walkthrough, walkthrough_check, walkthrough_when, plan_check, done_check, estimation, estimation_unit, report and long_run values' "$E" \
     || { echo "read-steps never asks for the step's own depth and check"; return 1; }
   grep -qF "device: st.device === undefined ? DEVICE || 'auto' : st.device," "$E" && grep -qF "device_source: DEVICE_SOURCE || '—'," "$E" \
     || { echo "profile-epic.js does not forward the device to a step"; return 1; }
@@ -542,6 +542,21 @@ FIELDS
     grep -qF "$f: st.$f === undefined ? $F : st.$f," "$E" \
       || { echo "profile-epic.js does not forward $f to a step"; return 1; }
   done
+  # [RF 5] a step's own [ESTIMATION] wins over the epic's: the step folder's resolver run is asked, and its answer
+  # (value, unit and where it was set) is forwarded before the epic's own.
+  for f in estimation estimation_unit estimation_from; do
+    F="$(tr '[:lower:]' '[:upper:]' <<<"$f")"
+    grep -qF "$f: st.$f === undefined ? $F : st.$f," "$E" \
+      || { echo "profile-epic.js does not forward $f to a step"; return 1; }
+    grep -qF "$f: { type: 'string'," "$E" && grep -qF "the step folder's own resolve-settings.sh $f value" "$E" \
+      || { echo "the step record has no $f"; return 1; }
+  done
+  grep -qF "estimation: { type: 'string', enum: ['on', 'off'], description: \"the step folder's own resolve-settings.sh estimation value\" }" "$E" \
+    || { echo "the step record's estimation is not on or off"; return 1; }
+  grep -qF "estimation_unit: { type: 'string', enum: ['agent-run', 'days', 'both'], description: \"the step folder's own resolve-settings.sh estimation_unit value\" }" "$E" \
+    || { echo "the step record's estimation_unit is not agent-run, days or both"; return 1; }
+  grep -qF "its sources.estimation as estimation_from" "$E" \
+    || { echo "read-steps never asks for sources.estimation"; return 1; }
   ! grep -q 'artifact_check\|ARTIFACT_CHECK' "$E" || { echo "profile-epic.js still names artifact_check"; return 1; }
   grep -qF "report: { type: 'string', enum: ['auto', 'on', 'off'], description: \"the step folder's own resolve-settings.sh report value\" }" "$E" \
     || { echo "the step record has no report"; return 1; }

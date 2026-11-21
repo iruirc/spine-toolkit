@@ -534,6 +534,9 @@ walkthrough_when=stage|done
 walkthrough_check=on|once|off
 plan_check=on|off
 done_check=on|off
+estimation=on|off
+estimation_unit=agent-run|days|both
+estimation_from=run|task|epic|project|default|scale
 walkthrough_current=true|false
 docs=on|off
 scale=lite|full
@@ -591,6 +594,12 @@ Semantics of `stage_scope`:
 `plan_check` — whether a reader who did not follow the task reads `Plan.md` back after Plan, and the writer makes one revision from the places that reader names, never a second round. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and how `auto` becomes a value. Always filled, for every profile, and only ever `on` or `off`: `auto` never reaches the contract, and it is `on` at `scale = full` and `off` at `lite`. The protocol is `artifact-reader` → `## Check`. It travels in the contract for the reason `walkthrough` does — a Method A script gates on it and has no filesystem to read it from.
 
 `done_check` — the same for `Done.md` after Done, resolved, filled and gated the same way: `resolve-settings.sh json`, Always filled, only `on` or `off`, `auto` never reaches the contract, the protocol `artifact-reader` → `## Check`. The two are chosen apart. `[ARTIFACT_CHECK]`, the pre-split spelling, sets both where it is the nearest line; the resolver reads it and says so once per source where it says `on` or `off` (an `auto` there is read without a word), and the run announces that with key `warn_artifact_check_pre_split`.
+
+`estimation` — whether the plan carries an estimate and, at `full`, the run forecast. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and how `auto` becomes a value. Always filled, for every profile, and only ever `on` or `off`: `auto` never reaches the contract, and it is `on` at `scale = full` and `off` at `lite`. It travels in the contract for the reason `walkthrough` does — a Method A script gates on it and has no filesystem to read it from.
+
+`estimation_unit` — in what the estimate is stated: `agent-run`, the default, the run forecast alone; `days`, the delivery estimate in days alone; `both`, the two side by side. Resolved by the same run of `resolve-settings.sh json`; `conventions/task-settings.md` holds the chain and field table. Always filled, for every profile, and only ever `agent-run`, `days` or `both`. It travels in the contract for the reason `walkthrough` does.
+
+`estimation_from` — where `estimation` was set: the `sources.estimation` of the same run of `resolve-settings.sh json`, one of `run`, `task`, `epic`, `project`, `default`, `scale`. `scale` is what `auto` was derived from, so it says nobody chose the value and a plan that raises the scale turns the estimate on with it; any other value is somebody's choice, which the scale never overrides. Always filled, for every profile. `auto` never reaches the contract here either: the orchestrator passes the resolved `estimation` and this field, never the raw setting.
 
 `walkthrough_current` — whether `Walkthrough.md` already names the task's newest commit, so that a Done which commits nothing outside the tasks folder leaves its writer nothing to do. Measured right before the dispatch by `<core root>/scripts/lint-walkthrough.sh --current <task dir>`: exit 0 is `true`, any other exit `false`; a `style` finding does not count there. Always filled, for every profile; `false` without running the script wherever `walkthrough` is `off` or the stage range does not reach Done. Method A passes it as a JSON boolean. It travels in the contract for the reason `walkthrough` does — a Method A script gates on it and has no filesystem to read it from; a Method B run asks the same script after Done instead.
 

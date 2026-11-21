@@ -99,6 +99,15 @@ const WALKTHROUGH_CHECK = ['on', 'once'].includes(A.walkthrough_check) ? A.walkt
 const WALKTHROUGH_WHEN = A.walkthrough_when === 'stage' ? 'stage' : 'done'
 const PLAN_CHECK = A.plan_check === 'on' ? 'on' : 'off'
 const DONE_CHECK = A.done_check === 'on' ? 'on' : 'off'
+// The run's estimate (spine-toolkit:feature-estimation and the run forecast): `auto` never reaches the
+// contract, so an older orchestrator that sends nothing reads as the scale does, on at full and off at lite.
+const ESTIMATION = A.estimation === 'on' || A.estimation === 'off' ? A.estimation : A.scale === 'lite' ? 'off' : 'on'
+const ESTIMATION_UNIT = ['agent-run', 'days', 'both'].includes(A.estimation_unit) ? A.estimation_unit : 'agent-run'
+// Where the value was set. `scale` means nobody chose it, so a plan that raises the scale turns it on too.
+const ESTIMATION_FROM = ['run', 'task', 'epic', 'project', 'default', 'scale'].includes(A.estimation_from) ? A.estimation_from : 'scale'
+const ESTIMATION_FOLLOWS_SCALE = ESTIMATION_FROM === 'scale'
+const forecastsRun = () => ESTIMATION_UNIT !== 'days'
+const estimatesDays = () => ESTIMATION_UNIT !== 'agent-run'
 // Whether Walkthrough.md names the task's newest commit: the orchestrator's measure before the run,
 // then each writer's result. Done's own commits are the one thing left that can move past it.
 let walkthroughCurrent = A.walkthrough_current === true

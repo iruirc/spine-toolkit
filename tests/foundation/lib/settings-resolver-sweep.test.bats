@@ -54,6 +54,18 @@ field() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1]])'
       || { echo "$(basename "$p"): plan_check is not guarded"; return 1; }
     grep -qxF "const DONE_CHECK = A.done_check === 'on' ? 'on' : 'off'" "$p" \
       || { echo "$(basename "$p"): done_check is not guarded"; return 1; }
+    grep -qxF "const ESTIMATION = A.estimation === 'on' || A.estimation === 'off' ? A.estimation : A.scale === 'lite' ? 'off' : 'on'" "$p" \
+      || { echo "$(basename "$p"): estimation is not guarded"; return 1; }
+    grep -qxF "const ESTIMATION_UNIT = ['agent-run', 'days', 'both'].includes(A.estimation_unit) ? A.estimation_unit : 'agent-run'" "$p" \
+      || { echo "$(basename "$p"): estimation_unit is not guarded"; return 1; }
+    grep -qxF "const ESTIMATION_FROM = ['run', 'task', 'epic', 'project', 'default', 'scale'].includes(A.estimation_from) ? A.estimation_from : 'scale'" "$p" \
+      || { echo "$(basename "$p"): estimation_from is not guarded"; return 1; }
+    grep -qxF "const ESTIMATION_FOLLOWS_SCALE = ESTIMATION_FROM === 'scale'" "$p" \
+      || { echo "$(basename "$p"): ESTIMATION_FOLLOWS_SCALE is missing"; return 1; }
+    grep -qxF "const forecastsRun = () => ESTIMATION_UNIT !== 'days'" "$p" \
+      || { echo "$(basename "$p"): forecastsRun is missing"; return 1; }
+    grep -qxF "const estimatesDays = () => ESTIMATION_UNIT !== 'agent-run'" "$p" \
+      || { echo "$(basename "$p"): estimatesDays is missing"; return 1; }
     grep -qxF "const SECURITY = A.security === 'on' || A.security === 'off' ? A.security : 'auto'" "$p" \
       || { echo "$(basename "$p"): security is not guarded"; return 1; }
   done
