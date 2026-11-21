@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # changed: sweep skills
-# Core's five methodology skills are the process layer: they say which topic a
+# Core's six methodology skills are the process layer: they say which topic a
 # decision belongs to and never which skill answers it. The skills that answer
 # are the platform's, listed in its manifest `## Topics`, and a name written back
 # into core re-binds core to one ecosystem — silently, because it still reads
@@ -14,7 +14,7 @@ setup() {
   # BATS_TEST_FILENAME, not BASH_SOURCE[0]: bats sources a preprocessed copy of
   # the test file from a tmp dir, so BASH_SOURCE[0] there resolves to the copy.
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  METHOD_SKILLS="feature-landscape feature-requirements feature-estimation ops-checklist test-authoring"
+  METHOD_SKILLS="feature-landscape feature-requirements feature-estimation run-forecast ops-checklist test-authoring"
   CONTRACT="$ROOT/conventions/platform-contract.md"
   # The topic names core asks a platform for, read from the one file that publishes
   # them. Not derived from the method skills themselves: `**bold**` is overloaded

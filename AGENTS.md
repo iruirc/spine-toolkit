@@ -23,7 +23,7 @@ en
 ## Repository layout
 
 - `skills/` — `orchestrator`, `stack-detect`, `setup`, `workflow-*`, `task-*`, `feature-*`,
-  `ops-checklist`, `manual-checks`, `phase-verification`, `task-documents`, `artifact-reader`, `agent-status`, `lang`,
+  `run-forecast`, `ops-checklist`, `manual-checks`, `phase-verification`, `task-documents`, `artifact-reader`, `agent-status`, `lang`,
   `docs-route`, `task-report`
 - `workflows/` — one `profile-*.js` orchestration script per profile
 - `workflow-src/` — `prelude.js`, the prelude every `profile-*.js` shares; edit it here, then

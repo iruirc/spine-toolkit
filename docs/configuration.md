@@ -388,8 +388,8 @@ The file gets one read and at most one revision, no second round; `auto` follows
 ### [ESTIMATION]
 
 **Values:** `auto` `on` `off` · **Default:** `auto` — `on` at `full`, `off` at `lite` ·
-**Task override:** `[ESTIMATION] = [auto|on|off]` · **Defined by:**
-[`../conventions/task-settings.md`](../conventions/task-settings.md)
+**Task override:** `[ESTIMATION] = [auto|on|off]` · **Defined by:** the `run-forecast` skill and
+[`../conventions/estimation-gate.md`](../conventions/estimation-gate.md)
 
 Whether the task carries an estimate. `auto` follows the scale as `[PLAN_CHECK]` does: `on` at `full`, `off` at
 `lite`. An explicit `on` stands at `lite`, so a light task can carry a forecast; an explicit `off` stands at
@@ -398,8 +398,8 @@ Whether the task carries an estimate. `auto` follows the scale as `[PLAN_CHECK]`
 ### [ESTIMATION_UNIT]
 
 **Values:** `agent-run` `days` `both` · **Default:** `agent-run` ·
-**Task override:** `[ESTIMATION_UNIT] = [agent-run|days|both]` · **Defined by:**
-[`../conventions/task-settings.md`](../conventions/task-settings.md)
+**Task override:** `[ESTIMATION_UNIT] = [agent-run|days|both]` · **Defined by:** the `run-forecast`
+skill
 
 The unit of the estimate. A project without this line gets `agent-run`; nothing is migrated. The
 `## DeliveryMode` and `## AILeverage` sections of the config only refine the estimate in days and are read

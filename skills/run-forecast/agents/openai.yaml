@@ -1,0 +1,5 @@
+interface:
+  display_name: "Run Forecast"
+  short_description: "Agent-run forecast, retrospective and calibration log"
+policy:
+  allow_implicit_invocation: false

@@ -18,6 +18,7 @@ Estimates fail because they ignore the cost of what nobody wrote down: error sta
 
 ## When to use
 
+- Only when `[ESTIMATION_UNIT]` is `days` or `both`. At `agent-run`, the default, the estimate is a forecast of the agents' run and `run-forecast` writes it instead; at `both` this skill's subsections follow `### Run forecast` under the same `## Estimation`.
 - FEATURE Plan stage after the landscape is drawn; mandatory before Execute
 - BUG / REFACTOR Plan stage when the fix/refactor needs a schedule commitment, spans multiple phases, or has a hard release date
 - Sprint planning — single-feature commitment to a sprint
@@ -34,7 +35,7 @@ Estimates fail because they ignore the cost of what nobody wrote down: error sta
 - Engineer familiarity with the module — first time / occasional / fluent
 - Release and rollback path — feature flag / kill switch / remote config / hotfix path / binary-only
 - Feature type — UI-only / API-driven / SDK integration / persistence or migration / refactor / cross-platform / release / ops-heavy
-- Delivery mode — `manual` (default) or `ai-assisted`; from the first non-empty line under the project config's `## DeliveryMode` or a per-estimate opt-in. Drives the optional AI-assisted range.
+- Delivery mode — `manual` (default) or `ai-assisted`; from the first non-empty line under the project config's `## DeliveryMode` or a per-estimate opt-in. Drives the optional AI-assisted range. `## DeliveryMode` and `## AILeverage` are read only when `[ESTIMATION_UNIT]` is `days` or `both`; at `agent-run` their values change nothing.
 - Team calendar assumptions — focus factor or effective capacity, planned external waits, release windows
 - Hard deadline presence (yes / no)
 
@@ -227,7 +228,7 @@ Under AI-assisted mode, the Unknown-unknowns delta may sit *higher* on a novel d
 List every Known Unknown from `feature-requirements ### Known unknowns`. For each:
 
 - If unresolved at estimation time → the estimate is **conditional** ("9–12 days *assuming* the API contract is finalized this week")
-- **Load-bearing-unknown rule** (the canonical 30% threshold — defined here, referenced everywhere else): if a Known Unknown could swing the estimate by **more than 30%**, add a required spike (usually 0.5–1.0d, or locally calibrated), return to `feature-requirements`, and do not finalize the estimate until the spike resolves or narrows the unknown. Maturity and the Plan-stage gate cite this rule by name; change the threshold here only.
+- **Load-bearing-unknown rule** — defined for both units in `conventions/estimation-gate.md` → `## Load-bearing unknown`: an unknown that could change the phase table (add or remove a phase, raise a `phase-verification` rung) needs a spike or an answer before Execute. The days keep a variant of it, and this step owns its threshold: if a Known Unknown could swing the estimate by **more than 30%**, add a required spike (usually 0.5–1.0d, or locally calibrated), return to `feature-requirements`, and do not finalize the estimate until the spike resolves or narrows the unknown. Maturity and the Plan-stage gate cite this rule by name; change the 30% threshold here only.
 
 ### Step 5 — Communicate as a scenario-anchored range
 
@@ -428,6 +429,8 @@ Conditional — see `### Estimation conditions` for the blocking conditions; no 
 ```
 
 ### Plan-stage gate
+
+The gate's rules — maturity, `### Estimation conditions` and `pending_user`, the load-bearing unknown, and what never blocks — are `conventions/estimation-gate.md`, shared with `run-forecast`; under `both` the two units share one `### Estimate maturity` and one `### Estimation conditions`. What follows is that gate as the estimate in days meets it, with the 30% variant of the load-bearing-unknown rule (Step 4).
 
 Before entering Execute, `Plan.md` MUST contain the **minimum viable estimate** plus every section whose trigger fired (see *Estimation depth* above):
 
