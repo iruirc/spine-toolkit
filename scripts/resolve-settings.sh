@@ -16,6 +16,10 @@ set -euo pipefail
 #                                                  # effort vocabulary (default claude-code), and
 #                                                  # model_tiers, the keys that resolved through a
 #                                                  # tier (fast) and what [MODEL_TIERS] made of it
+#                                                  # core_compat, this session's core against the
+#                                                  # spine-toolkit range of the installed platform:
+#                                                  # status ok|lag|incompatible|unknown, read from
+#                                                  # $SPINE_PLUGIN_REGISTRY or Claude Code's registry
 #        scripts/resolve-settings.sh show <task-dir> [--all] [--set ...]
 #                                                  # Task.md lines, with sources
 #                                                  # --all: every field, defaults included
@@ -353,8 +357,8 @@ def config_path(start):
 
 def block(cfg, name):
     """The value lines under ## <name>: non-empty, outside the parenthetical guidance a
-    template block carries, which may run over several lines. `raw` is the only caller —
-    a setting is a [FIELD] line now, and what is left is the blocks a skill reads itself."""
+    template block carries, which may run over several lines. `raw` and core_compat's ## Platform
+    are the callers — a setting is a [FIELD] line now, and what is left is the blocks a skill reads itself."""
     if not cfg:
         return []
     out, inside, paren = [], False, False
@@ -795,8 +799,20 @@ def known_failures():
     return os.path.join(home, 'Tasks', 'KnownFailures.md')
 
 
+def session_core_compat():
+    """Not a setting: the session's core against the range of the installed platform
+    (scripts/lib/core_compat.py). The registry is Claude Code's, or SPINE_PLUGIN_REGISTRY."""
+    sys.dont_write_bytecode = True
+    sys.path.insert(0, os.path.join(os.environ['SPINE_CORE_ROOT'], 'scripts', 'lib'))
+    from core_compat import core_compat
+    platform = next(iter(block(CFG, 'Platform')), '')
+    registry = os.environ.get('SPINE_PLUGIN_REGISTRY') or os.path.expanduser('~/.claude/plugins/installed_plugins.json')
+    return core_compat(os.environ['SPINE_CORE_ROOT'], platform, os.path.dirname(CFG) if CFG else '', RUNTIME, registry)
+
+
 if CMD == 'json':
     print(json.dumps(dict(resolved, sources=sources, plugin_root=os.environ['SPINE_CORE_ROOT'],
+                          core_compat=session_core_compat(),
                           roots=search_roots(), known_failures=known_failures(), project_config=CFG, runtime=RUNTIME,
                           model_tiers=MODEL_TIER_OF),
                      ensure_ascii=False, sort_keys=True))
