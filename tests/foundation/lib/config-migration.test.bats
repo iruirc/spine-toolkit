@@ -161,7 +161,8 @@ mapping_rows() {
   para="$(awk '/^A field no block answered is written at/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   grep -qF '`[PLAN_CHECK]`' <<<"$para" && grep -qF '`[DONE_CHECK]`' <<<"$para" \
     || { echo "the absent-field paragraph does not exempt [PLAN_CHECK] and [DONE_CHECK]"; return 1; }
-  grep -qF 'Twenty-eight agree' <<<"$para" || { echo "the absent-field paragraph miscounts the fields that agree"; return 1; }
+  grep -qF '`[ESTIMATION]`' <<<"$para" || { echo "the absent-field paragraph does not exempt [ESTIMATION]"; return 1; }
+  grep -qF 'Thirty agree' <<<"$para" || { echo "the absent-field paragraph miscounts the fields that agree"; return 1; }
 }
 
 @test "the migration writes a pre-split [ARTIFACT_CHECK] line as two lines with the same value" {
@@ -180,9 +181,9 @@ mapping_rows() {
     || { echo "State C(c) does not replace the template's lines"; return 1; }
 }
 
-@test "the migration's two counts of the fields at their default agree: twenty-eight, and [SCALE] apart" {
-  grep -qF 'Twenty-eight agree' "$SKILL" || { echo "the absent-field paragraph does not say twenty-eight agree"; return 1; }
-  tr '\n' ' ' <"$SKILL" | tr -s ' ' | grep -qF "the template's line for twenty-eight of them, \`full\` for \`[SCALE]\`" \
+@test "the migration's two counts of the fields at their default agree: thirty, and [SCALE] apart" {
+  grep -qF 'Thirty agree' "$SKILL" || { echo "the absent-field paragraph does not say thirty agree"; return 1; }
+  tr '\n' ' ' <"$SKILL" | tr -s ' ' | grep -qF "the template's line for thirty of them, \`full\` for \`[SCALE]\`" \
     || { echo "the step that fills the absent fields counts them wrong"; return 1; }
-  ! grep -qiE 'twenty-(six|seven)' "$SKILL" || { echo "an older count is left"; return 1; }
+  ! grep -qiE 'twenty-(six|seven|eight)' "$SKILL" || { echo "an older count is left"; return 1; }
 }
