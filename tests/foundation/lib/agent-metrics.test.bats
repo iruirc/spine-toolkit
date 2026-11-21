@@ -805,6 +805,61 @@ JSON
   [ "$(tm_field "$output" totals.fixRounds)" = "1" ]
 }
 
+# live_fix_round <config dir>: task 700's sessions plus, in session 71717171, a fix-review round
+# still in flight — Execute 3m, Validation 2m, Review 1m — with no workflows/wf_*.json, only its
+# subagents/workflows/<rid> dir, the shape a Done stage of an auto fix-review run measures.
+live_fix_round() {
+  cp -R "$(tm_home home-a)/." "$1/"
+  local run="$1/projects/-tmp-proj/$T700_B/subagents/workflows/wf_t700liv-b04" n=0 stage start end
+  mkdir -p "$run"
+  : >"$run/journal.jsonl"
+  for stage in Execute:10:13 Validation:13:15 Review:15:16; do
+    n=$((n + 1))
+    IFS=: read -r stage start end <<<"$stage"
+    local id="f00000000000001$n"
+    printf '{"agentType":"fixture-platform:fixture-architect","spawnDepth":1}\n' >"$run/agent-$id.meta.json"
+    {
+      printf '{"type":"user","agentId":"%s","timestamp":"2026-08-25T10:%02d:00.000Z","message":{"role":"user","content":"Task folder: Tasks/ACTIVE/700-x\\nTask id: 700 — profile FEATURE, stage %s.\\n[rest omitted]"}}\n' "$id" "$start" "$stage"
+      printf '{"type":"assistant","agentId":"%s","timestamp":"2026-08-25T10:%02d:00.000Z","message":{"model":"claude-opus-5","usage":{"input_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":1},"content":[{"type":"text","text":"done"}]}}\n' "$id" "$end"
+    } >"$run/agent-$id.jsonl"
+    printf '{"type":"started","agentId":"%s"}\n{"type":"result","agentId":"%s","result":{"summary":"s"}}\n' "$id" "$id" >>"$run/journal.jsonl"
+  done
+  touch -t 202601040030 "$run"
+}
+
+@test "--live-action fix-review counts a fix round still in flight as a fix round" {
+  local cfg; cfg="$(mktemp -d)"; live_fix_round "$cfg"
+  run env CLAUDE_CONFIG_DIR="$cfg" CLAUDE_CODE_SESSION_ID="" \
+    "$(tm_repo_root)/scripts/agent-metrics.sh" --session "$T700_B" --task 700 --project-sessions --live-action fix-review
+  local with="$output" with_status="$status"
+  run env CLAUDE_CONFIG_DIR="$cfg" CLAUDE_CODE_SESSION_ID="" \
+    "$(tm_repo_root)/scripts/agent-metrics.sh" --session "$T700_B" --task 700 --project-sessions
+  rm -rf "$cfg"
+  [ "$with_status" -eq 0 ] || { echo "$with"; return 1; }
+  [ "$(tm_field "$with" totals.runs)" = "5" ]
+  [ "$(tm_field "$with" totals.fixRounds)" = "2" ]
+  [ "$(tm_field "$with" totals.fixSpanMs)" = "660000" ]
+  [ "$(tm_field "$with" totals.stageSpans.Execute)" = "600000" ]
+  [ "$(tm_field "$with" totals.stageSpans.Validation)" = "420000" ]
+  [ "$(tm_field "$with" totals.stageSpans.Review)" = "240000" ]
+  # Without the flag the live run has no action, and its stages count as the stages' own time.
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(tm_field "$output" totals.runs)" = "5" ]
+  [ "$(tm_field "$output" totals.fixRounds)" = "1" ]
+  [ "$(tm_field "$output" totals.fixSpanMs)" = "300000" ]
+  [ "$(tm_field "$output" totals.stageSpans.Execute)" = "780000" ]
+  [ "$(tm_field "$output" totals.stageSpans.Validation)" = "540000" ]
+  [ "$(tm_field "$output" totals.stageSpans.Review)" = "300000" ]
+}
+
+@test "--live-action leaves a run with a state file as its state file says" {
+  run tm_metrics home-a --session "$T700_B" --task 700 --project-sessions --live-action fix-review
+  [ "$status" -eq 0 ]
+  [ "$(tm_field "$output" totals.fixRounds)" = "1" ]
+  [ "$(tm_field "$output" totals.stageSpans.Review)" = "240000" ]
+  [ "$(tm_field "$output" totals.fixSpanMs)" = "300000" ]
+}
+
 @test "the task totals are only there with --task" {
   run tm_metrics home-a --session "$T700_B"
   [ "$(python3 -c 'import json,sys; t=json.loads(sys.argv[1])["totals"]; print(sorted(set(t) & {"runs","stageSpans","fixRounds","fixSpanMs","gateRuns"}))' "$output")" = "[]" ]
@@ -842,9 +897,10 @@ JSON
   [ "$(tm_field "$output" totals.gateRuns)" = "2" ]
 }
 
-@test "the usage line names --project-sessions" {
+@test "the usage line names --project-sessions and --live-action" {
   run tm_metrics home-empty --help
   tm_contains "$output" "--project-sessions"
+  tm_contains "$output" "--live-action"
 }
 
 @test "--project-sessions names a sibling session it could not read, and still counts the others" {

@@ -18,7 +18,7 @@ Estimates fail because they ignore the cost of what nobody wrote down: error sta
 
 ## When to use
 
-- Only when `[ESTIMATION_UNIT]` is `days` or `both`. At `agent-run`, the default, the estimate is a forecast of the agents' run and `run-forecast` writes it instead; at `both` this skill's subsections follow `### Run forecast` under the same `## Estimation`.
+- At a FEATURE or EPIC Plan stage, only when `[ESTIMATION_UNIT]` is `days` or `both`. At `agent-run`, the default, the estimate is a forecast of the agents' run and `run-forecast` writes it instead; at `both` this skill's subsections follow `### Run forecast` under the same `## Estimation`.
 - FEATURE Plan stage after the landscape is drawn; mandatory before Execute
 - BUG / REFACTOR Plan stage when the fix/refactor needs a schedule commitment, spans multiple phases, or has a hard release date
 - Sprint planning — single-feature commitment to a sprint
@@ -35,7 +35,7 @@ Estimates fail because they ignore the cost of what nobody wrote down: error sta
 - Engineer familiarity with the module — first time / occasional / fluent
 - Release and rollback path — feature flag / kill switch / remote config / hotfix path / binary-only
 - Feature type — UI-only / API-driven / SDK integration / persistence or migration / refactor / cross-platform / release / ops-heavy
-- Delivery mode — `manual` (default) or `ai-assisted`; from the first non-empty line under the project config's `## DeliveryMode` or a per-estimate opt-in. Drives the optional AI-assisted range. `## DeliveryMode` and `## AILeverage` are read only when `[ESTIMATION_UNIT]` is `days` or `both`; at `agent-run` their values change nothing.
+- Delivery mode — `manual` (default) or `ai-assisted`; from the first non-empty line under the project config's `## DeliveryMode` or a per-estimate opt-in. Drives the optional AI-assisted range. For a FEATURE or EPIC, `## DeliveryMode` and `## AILeverage` are read only when `[ESTIMATION_UNIT]` is `days` or `both`; at `agent-run` their values change nothing there.
 - Team calendar assumptions — focus factor or effective capacity, planned external waits, release windows
 - Hard deadline presence (yes / no)
 

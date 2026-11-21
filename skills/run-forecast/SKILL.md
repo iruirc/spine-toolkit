@@ -51,8 +51,12 @@ The defaults are an order of magnitude from agent-run logs, not a measurement of
 - **Two scenarios.** The best case takes the low end of every coefficient and 0 fix rounds; the
   worst case takes the high end and 1 round. They are two coherent worlds, not the minimum and the
   maximum of every knob at once.
-- **Fix rounds.** `fix_rounds` is the task's resolved `[FIX_ROUNDS]`. At 0 the worst case has no
-  round either.
+- **Fix rounds.** `fix_rounds` is the task's resolved `[FIX_ROUNDS]`: read the `fix_rounds` field
+  of `<core root>/scripts/resolve-settings.sh json <task dir>`, run from the project root. At 0 the
+  worst case has no round either. In `manual` the owner confirms each round, so the worst case
+  stays `min(1, fix_rounds)` there too.
+- **Mode.** The brief says which mode the run is in: `This run's mode is manual.` or
+  `This run's mode is auto.` The gate count and the log's `mode` column follow it.
 - **Gates.** In `manual`: 3 for Execute, Validation and Review, and 3 more for each fix round, its
   Fix, Validation and Review. In `auto`: 0. Only runs from Execute to Review count, the unit of
   `gateRuns` at Done. A `pending_user` row of `### Estimation conditions` is asked at Plan, before
@@ -129,6 +133,12 @@ When `estimation` is `on`, the unit is `agent-run` or `both`, and `Plan.md` carr
    It gathers the task's runs from every session of the project, so a task interrupted and
    continued in a new session is measured whole. Without `--session` it finds the project by the
    folder it runs in, so run anywhere else it finds no runs.
+
+   When this Done ends a fix-review run, add `--live-action fix-review`; the brief then passes it.
+   In `auto` a fix-review round runs Fix, Validation, Review and Done in one run, which has no
+   state file yet while Done measures it, so without the flag the round's stages would count as
+   the stages' own time instead of a fix round. The flag touches only the runs of this session
+   that have no state file.
 2. Read `totals`. Every duration there is in milliseconds:
 
    | Part | Field |

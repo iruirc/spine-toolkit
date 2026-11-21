@@ -1132,9 +1132,12 @@ const epicRefresh = () =>
   forecastsRun() && epicDir()
     ? ` This task is a step of an epic, so after you write this step's ### Run forecast, update this step's row, and the totals, in the epic's Plan.md (${epicDir()}/Plan.md) under ## Estimation → ### Run forecast. The summed forecast stays informational; it is no gate.`
     : ''
+// The forecast's gate count and the log's mode column follow the delivery mode, which only the
+// contract knows.
+const runMode = () => ` This run's mode is ${A.mode || 'manual'}.`
 const estimationBrief = () => {
   const run = forecastsRun()
-    ? `Then apply the run-forecast skill and add a ## Estimation section carrying its ### Run forecast: how long the agents' run from Execute to Review takes, as a best and a worst scenario, and how many gates it stops at. Return run_forecast {best, worst, gates, confidence} with that section's values, as strings.${epicRefresh()}`
+    ? `Then apply the run-forecast skill and add a ## Estimation section carrying its ### Run forecast: how long the agents' run from Execute to Review takes, as a best and a worst scenario, and how many gates it stops at.${runMode()} Return run_forecast {best, worst, gates, confidence} with that section's values, as strings.${epicRefresh()}`
     : ''
   const days = estimatesDays()
     ? `${run ? 'Then apply the feature-estimation skill and add the estimate in days to the same ## Estimation section' : 'Then apply the feature-estimation skill and add a ## Estimation section'}, with depth scaled to the feature's risk per that skill's Estimation depth table. The minimum is feature type, baseline table, engineering range, and confidence; PERT, scope-aware risk deltas, estimate maturity, estimation conditions, delivery calendar, store buffer, known unknowns, and the self-check are added only when their triggers fire.`
@@ -1146,7 +1149,7 @@ Report estimation_gate as blocked, with the reason, when the plan is not ready t
 // At lite with estimation following the scale, the plan is told what a raise turns on.
 const raisedEstimation = () =>
   lite() && ESTIMATION !== 'on' && ESTIMATION_FOLLOWS_SCALE
-    ? `\n\nIf you raise the scale, estimation follows it: the plan you write is a full-depth one, so apply the ${unitSkills()}, add the ## Estimation section, and report estimation_gate${forecastsRun() ? ' and run_forecast' : ''}, exactly as a full run would. ${forecastsRun() && estimatesDays() ? 'Those skills hold' : 'That skill holds'} what the section carries, and "${core('conventions/estimation-gate.md')}" when the gate blocks.`
+    ? `\n\nIf you raise the scale, estimation follows it: the plan you write is a full-depth one, so apply the ${unitSkills()}, add the ## Estimation section, and report estimation_gate${forecastsRun() ? ' and run_forecast' : ''}, exactly as a full run would.${forecastsRun() ? runMode() : ''} ${forecastsRun() && estimatesDays() ? 'Those skills hold' : 'That skill holds'} what the section carries, and "${core('conventions/estimation-gate.md')}" when the gate blocks.${epicRefresh()}`
     : ''
 // The forecast's answer, which the orchestrator prints at the manual gate after Plan.
 const RUN_FORECAST = {
@@ -1312,7 +1315,7 @@ Write it by applying the spine-toolkit:task-documents skill, its Review.md secti
 const retrospective = () => {
   if (!estimating()) return ''
   const run = forecastsRun()
-    ? `When ${DIR}/Plan.md has a ### Run forecast section, a ## Estimate retrospective section is mandatory, following the run-forecast skill: from the project root run "${core('scripts/agent-metrics.sh')}" --format json --task ${A.task_id} --project-sessions, set the measured run against the forecast, and record this task's row in Tasks/_calibration/agent-run-log.md: correct the row whose task_id names this task if the log already has one, otherwise append it.`
+    ? `When ${DIR}/Plan.md has a ### Run forecast section, a ## Estimate retrospective section is mandatory, following the run-forecast skill: from the project root run "${core('scripts/agent-metrics.sh')}" --format json --task ${A.task_id} --project-sessions${FIX_REVIEW ? ' --live-action fix-review' : ''}, set the measured run against the forecast, and record this task's row in Tasks/_calibration/agent-run-log.md: correct the row whose task_id names this task if the log already has one, otherwise append it.${runMode()}`
     : ''
   const days = estimatesDays()
     ? `When ${DIR}/Plan.md has a ## Estimation section${run ? ' with an estimate in days' : ''}, a ## Estimate retrospective section is mandatory, following the hybrid model in the feature-estimation skill. Always record the automatic git proxy — the commit span of this task's phase commits plus the phase and rework counts, labelled proxy and never presented as human-days — and add the user-provided human effort when it was offered. The in-range verdict uses human effort when it exists and the proxy otherwise; only when neither exists write unknown and name the missing signal. In AI-assisted mode break the actual down per leverage class. Record this feature's data point in the calibration log: correct this task's row — the one whose task_id names this task, as feature-estimation's Column semantics defines it — if the log already has one, otherwise append it.`

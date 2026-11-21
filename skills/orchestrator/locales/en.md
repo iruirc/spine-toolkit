@@ -431,4 +431,4 @@ The task carries on. To write the settings, run `$spine-toolkit:setup`.
 - `{path}` is in Spine's `writable_roots` but no longer in the project config. Nothing stops.
 
 ## estimation_run_forecast
-Run forecast: {best}–{worst}, gates {gates} ({confidence}).
+Run forecast: {best}–{worst}, gates {gates}, confidence {confidence}.

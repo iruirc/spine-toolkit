@@ -144,6 +144,32 @@ done_only() {
   grep -qF run-forecast <<<"${V[0]}" || { echo "the Done brief does not name run-forecast"; return 1; }
 }
 
+@test "the Plan and Done briefs carry the run's mode" {
+  for m in manual auto; do
+    rp feature "$(contract full on agent-run project Plan ", \"end_stage\": \"Plan\", \"mode\": \"$m\"")" \
+      "{\"plan\": {\"ok\": true, \"artifact_path\": \"p\", \"summary\": \"s\", $PHASES}}" \
+      "o.calls.find((c) => c.label === 'plan').prompt"
+    grep -qF "This run's mode is $m." <<<"${V[0]}" || { echo "$m: the Plan brief does not carry the mode"; return 1; }
+    rp feature "$(contract lite off agent-run scale Plan ", \"end_stage\": \"Plan\", \"mode\": \"$m\"")" \
+      "{\"plan\": {\"ok\": true, \"artifact_path\": \"p\", \"summary\": \"s\", $PHASES}}" \
+      "o.calls.find((c) => c.label === 'plan').prompt"
+    grep -qF "This run's mode is $m." <<<"${V[0]}" || { echo "$m: the raised-plan instruction does not carry the mode"; return 1; }
+    rp feature "$(contract full on agent-run project Done ", \"stage_scope\": \"single\", \"mode\": \"$m\"")" '{}' \
+      "o.calls.find((c) => c.label === 'done').prompt"
+    grep -qF "This run's mode is $m." <<<"${V[0]}" || { echo "$m: the Done brief does not carry the mode"; return 1; }
+  done
+  done_only full on agent-run project
+  grep -qF "This run's mode is manual." <<<"${V[0]}" || { echo "no mode in the contract: the Done brief does not say manual"; return 1; }
+}
+
+@test "the Done brief of a fix-review run measures its live run as a fix round, a plain run's does not" {
+  rp feature "$(contract full on agent-run project Done ', "stage_scope": "single", "mode": "auto", "action": "fix-review", "fix_findings": ["a finding"]')" '{}' \
+    "o.calls.find((c) => c.label === 'done').prompt"
+  grep -qF -- '--project-sessions --live-action fix-review' <<<"${V[0]}" || { echo "the fix-review Done brief has no --live-action fix-review"; return 1; }
+  done_only full on agent-run project
+  if grep -qF -- '--live-action' <<<"${V[0]}"; then echo "a plain Done brief passes --live-action"; return 1; fi
+}
+
 # step_plan <task dir> <estimation> <unit>: the Plan brief of a task in that folder.
 step_plan() {
   rp feature "$(contract full "$2" "$3" project Plan ', "end_stage": "Plan"' | sed "s#/p/Tasks/ACTIVE/001-x#$1#")" \
@@ -158,6 +184,20 @@ step_plan() {
   done
   step_plan /p/Tasks/ACTIVE/042-cart/03-promo.step on both
   grep -qF "this step's row" <<<"${V[0]}" || { echo "both: no refresh instruction"; return 1; }
+}
+
+@test "an epic step at lite whose plan may raise the scale is told to refresh the epic's row too" {
+  rp feature "$(contract lite off agent-run scale Plan ', "end_stage": "Plan"' | sed 's#/p/Tasks/ACTIVE/001-x#/p/Tasks/ACTIVE/042-cart/03-promo.step#')" \
+    "{\"plan\": {\"ok\": true, \"artifact_path\": \"p\", \"summary\": \"s\", $PHASES}}" \
+    "o.calls.find((c) => c.label === 'plan').prompt"
+  grep -qF 'If you raise the scale' <<<"${V[0]}" || { echo "no instruction for a raised plan"; return 1; }
+  for w in "this step's row" '/p/Tasks/ACTIVE/042-cart/Plan.md'; do
+    grep -qF -- "$w" <<<"${V[0]}" || { echo "the raised step's brief does not name $w"; return 1; }
+  done
+  rp feature "$(contract lite off agent-run task Plan ', "end_stage": "Plan"' | sed 's#/p/Tasks/ACTIVE/001-x#/p/Tasks/ACTIVE/042-cart/03-promo.step#')" \
+    "{\"plan\": {\"ok\": true, \"artifact_path\": \"p\", \"summary\": \"s\", $PHASES}}" \
+    "o.calls.find((c) => c.label === 'plan').prompt"
+  if grep -qF "this step's row" <<<"${V[0]}"; then echo "an explicit off is told to refresh the epic"; return 1; fi
 }
 
 @test "a Plan outside an epic step has no epic refresh" {

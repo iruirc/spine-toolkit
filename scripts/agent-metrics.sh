@@ -8,10 +8,14 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 usage: agent-metrics.sh [--session <id>] [--run <wf_id>] [--task <id>] [--all]
-                        [--project-sessions] [--format json|md|panel]
+                        [--project-sessions] [--live-action <action>]
+                        [--format json|md|panel]
 
   --project-sessions  with --task, gather the task's runs from every session
                       of the project, not only the latest one
+  --live-action       the action of a run of this session still in flight: it
+                      has no state file to carry args.action yet, so a Done
+                      stage measuring its own fix-review run names it here
 USAGE
 }
 
@@ -21,6 +25,7 @@ task=""
 all=0
 project_sessions=0
 format="json"
+live_action=""
 
 # Without this guard `shift 2` on a valueless flag trips set -e and exits 1 in
 # silence, which is the one failure mode the argument contract forbids.
@@ -34,6 +39,7 @@ while [ $# -gt 0 ]; do
     --run)     need_value "$@"; run="$2"; shift 2 ;;
     --task)    need_value "$@"; task="$2"; shift 2 ;;
     --format)  need_value "$@"; format="$2"; shift 2 ;;
+    --live-action) need_value "$@"; live_action="$2"; shift 2 ;;
     --all)     all=1; shift ;;
     --project-sessions) project_sessions=1; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -54,10 +60,10 @@ fi
 session="${session:-${CLAUDE_CODE_SESSION_ID:-}}"
 config_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 
-python3 - "$config_dir" "$session" "$run" "$task" "$format" "$all" "$project_sessions" <<'PY'
+python3 - "$config_dir" "$session" "$run" "$task" "$format" "$all" "$project_sessions" "$live_action" <<'PY'
 import glob, json, os, re, sys
 
-CONFIG_DIR, SESSION, RUN_FILTER, TASK_FILTER, FORMAT, WANT_ALL, PROJECT_SESSIONS = sys.argv[1:8]
+CONFIG_DIR, SESSION, RUN_FILTER, TASK_FILTER, FORMAT, WANT_ALL, PROJECT_SESSIONS, LIVE_ACTION = sys.argv[1:9]
 WANT_ALL = WANT_ALL == "1"
 # Without --task there is no one task to follow across sessions, so the flag changes nothing.
 PROJECT_SESSIONS = PROJECT_SESSIONS == "1" and bool(TASK_FILTER)
@@ -624,8 +630,12 @@ def task_totals(runs):
             "fixRounds": fix_rounds, "fixSpanMs": fix_span}
 
 
-def session_runs(sess):
-    """Every run of one session as (state-file mtime, run), oldest first."""
+def session_runs(sess, live_action=None):
+    """Every run of one session as (state-file mtime, run), oldest first.
+
+    live_action is the action of a run with no state file yet: in auto a fix-review
+    round runs through Done in one run, and Done measures it while it is still live.
+    """
     finished = {}
     for path in sorted(glob.glob(os.path.join(sess, "workflows", "wf_*.json"))):
         wf = load_json(path)
@@ -644,7 +654,10 @@ def session_runs(sess):
         return os.path.getmtime(os.path.join(live_root, rid))
 
     run_ids = sorted(set(finished) | set(live_ids), key=run_mtime)
-    runs = [build_run(sess, finished[rid][0] if rid in finished else {"runId": rid})
+    def live_state(rid):
+        return {"runId": rid, "args": {"action": live_action}} if live_action else {"runId": rid}
+
+    runs = [build_run(sess, finished[rid][0] if rid in finished else live_state(rid))
             for rid in run_ids]
     for rid, run in zip(run_ids, runs):
         recover_from_prompt(os.path.join(sess, "subagents", "workflows", rid), run)
@@ -664,7 +677,7 @@ def all_session_runs(sess):
     timed, skipped = [], []
     for other in project_sessions(os.path.dirname(sess)):
         try:
-            timed += session_runs(other)
+            timed += session_runs(other, LIVE_ACTION if other == sess else None)
         except Exception:
             if other == sess:
                 raise
@@ -677,7 +690,7 @@ try:
     if PROJECT_SESSIONS:
         runs, skipped_sessions = all_session_runs(sess)
     else:
-        runs = [run for _, run in session_runs(sess)]
+        runs = [run for _, run in session_runs(sess, LIVE_ACTION)]
 
     if RUN_FILTER:
         runs = [r for r in runs if r["runId"] == RUN_FILTER]

@@ -431,4 +431,4 @@ Review требует изменений:
 - `{path}` есть в `writable_roots` от Spine, но в конфиге проекта его больше нет. Ничего не останавливается.
 
 ## estimation_run_forecast
-Прогноз прогона: {best}–{worst}, ворот {gates} ({confidence}).
+Прогноз прогона: {best}–{worst}, ворот {gates}, уверенность {confidence}.
