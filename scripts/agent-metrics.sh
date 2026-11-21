@@ -402,12 +402,16 @@ def span_fields(span):
     return {"spanMs": span, "spanText": human_time(span) if span is not None else None}
 
 
+def on_clock(agent):
+    return (isinstance(agent.get("startedMs"), (int, float))
+            and isinstance(agent.get("elapsedMs"), (int, float)))
+
+
 def wall_span(mine):
     # Wall-clock time of one run's stage: parallel agents overlap, so their summed
-    # elapsedMs overstates it. An agent with no start or no elapsed has no place on the clock.
-    timed = [(a["startedMs"], a["startedMs"] + a["elapsedMs"]) for a in mine
-             if isinstance(a.get("startedMs"), (int, float))
-             and isinstance(a.get("elapsedMs"), (int, float))]
+    # elapsedMs overstates it. An agent with no start or no elapsed has no place on the clock;
+    # phase_states counts it in untimed, since the span then leaves its time out.
+    timed = [(a["startedMs"], a["startedMs"] + a["elapsedMs"]) for a in mine if on_clock(a)]
     if not timed:
         return None
     return int(max(end for _, end in timed) - min(start for start, _ in timed))
@@ -425,6 +429,7 @@ def phase_states(phases, agents):
             state = "todo"
         row = dict(phase, state=state, **phase_totals(mine))
         row.update(span_fields(wall_span(mine)))
+        row["untimed"] = sum(1 for a in mine if not on_clock(a))
         out.append(row)
     return out
 
@@ -612,7 +617,12 @@ def task_totals(runs):
     # What a Done stage turns into the actual figure of a run forecast. A fix-review
     # round is counted apart, so a stage re-run by it does not inflate the stage.
     stage_spans, fix_rounds, fix_span, gate_runs = {}, 0, 0, 0
+    # A stage with an agent off the clock has a span short of its time, in a fix round too.
+    untimed = {}
     for run in runs:
+        for phase in run["phases"]:
+            if phase.get("untimed") and phase.get("title") is not None:
+                untimed[phase["title"]] = untimed.get(phase["title"], 0) + phase["untimed"]
         timed = [p for p in run["phases"] if p.get("spanMs") is not None]
         # In manual each run that reaches Execute, Validation or Review stops at a gate;
         # a Research or Plan run is not one of the forecast's gates.
@@ -627,7 +637,7 @@ def task_totals(runs):
             if phase.get("title") is not None:
                 stage_spans[phase["title"]] = stage_spans.get(phase["title"], 0) + phase["spanMs"]
     return {"runs": len(runs), "gateRuns": gate_runs, "stageSpans": stage_spans,
-            "fixRounds": fix_rounds, "fixSpanMs": fix_span}
+            "fixRounds": fix_rounds, "fixSpanMs": fix_span, "untimedStages": untimed}
 
 
 def session_runs(sess, live_action=None):

@@ -800,6 +800,42 @@ JSON
   [ "$(tm_field "$output" totals.fixSpanMs)" = "300000" ]
 }
 
+# untimed_agent <config dir>: task 700's sessions with a third Validation agent in wf_t700val-a02
+# that has no startedAt, no durationMs and no transcript, so it has no place on the clock.
+untimed_agent() {
+  cp -R "$(tm_home home-a)/." "$1/"
+  python3 - "$1/projects/-tmp-proj/$T700_A/workflows/wf_t700val-a02.json" <<'PY'
+import json, sys
+path = sys.argv[1]
+run = json.load(open(path))
+run["workflowProgress"].append({"type": "workflow_agent", "index": 1, "label": "validate-ui",
+    "phaseTitle": "Validation", "agentId": "f0000000000000098",
+    "agentType": "fixture-platform:fixture-validator", "model": "claude-opus-5", "state": "done"})
+json.dump(run, open(path, "w"))
+PY
+}
+
+@test "a phase with an untimed agent says how many, and the task totals name its stage" {
+  local cfg; cfg="$(mktemp -d)"; untimed_agent "$cfg"
+  run env CLAUDE_CONFIG_DIR="$cfg" CLAUDE_CODE_SESSION_ID="" \
+    "$(tm_repo_root)/scripts/agent-metrics.sh" --session "$T700_A" --run wf_t700val-a02
+  local one="$output"
+  run env CLAUDE_CONFIG_DIR="$cfg" CLAUDE_CODE_SESSION_ID="" \
+    "$(tm_repo_root)/scripts/agent-metrics.sh" --session "$T700_B" --task 700 --project-sessions
+  rm -rf "$cfg"
+  [ "$(tm_field "$one" runs.0.phases.1.title)" = "Validation" ]
+  [ "$(tm_field "$one" runs.0.phases.1.untimed)" = "1" ]
+  [ "$(tm_field "$one" runs.0.phases.0.untimed)" = "0" ]
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(tm_field "$output" totals.untimedStages.Validation)" = "1" ]
+  [ "$(python3 -c 'import json,sys; print(sorted(json.loads(sys.argv[1])["totals"]["untimedStages"]))' "$output")" = "['Validation']" ]
+}
+
+@test "with every agent timed the task totals carry an empty untimedStages" {
+  run tm_metrics home-a --session "$T700_B" --task 700 --project-sessions
+  [ "$(field_json "$output" totals.untimedStages)" = "{}" ]
+}
+
 @test "fixRounds counts fix-review runs with an Execute" {
   run tm_metrics home-a --session "$T700_B" --task 700 --project-sessions
   [ "$(tm_field "$output" totals.fixRounds)" = "1" ]

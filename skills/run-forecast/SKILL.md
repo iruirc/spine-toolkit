@@ -150,6 +150,8 @@ When `estimation` is `on`, the unit is `agent-run` or `both`, and `Plan.md` carr
    | Gates | `gateRuns` in `manual`; 0 in `auto` |
 
    `stageSpans` has no key for a stage that had no timed agent: read a missing key as no time.
+   `untimedStages` counts, per stage, the agents with no place on the clock; a stage in it has a
+   span short of its time, and the fact falls back to git (below).
    `fixSpanMs` is 0 when there were no fix-review runs. `gateRuns` counts the task's runs in which
    an agent ran Execute, Validation or Review, fix-review runs included; a Research or Plan run is
    not a gate of the forecast, and `runs`, which counts every run, is not the gate count. A fix
@@ -183,7 +185,10 @@ says `none`.
 - the script finds no runs for the task: a host whose transcripts it cannot read, another working
   copy, transcripts already cleaned away; or
 - `totals.skippedSessions` is not empty. The fact is then incomplete, and `variance_reason` names
-  the skipped session ids.
+  the skipped session ids; or
+- `totals.untimedStages` is not empty: an agent of that stage has no start or no duration, so its
+  span leaves that agent's time out. `variance_reason` names the stages and their untimed agents,
+  `untimed Validation 1`.
 
 The commit span runs from the task's first phase commit to its last. Its stage cells are `—`, its
 verdict is `n/a (git span)`, and the retrospective's last column reads the same. A `git` row never
@@ -227,7 +232,7 @@ When it is absent, create it with exactly this header; never reorder or rename a
 | `gates` | the actual gates: `0` in `auto`, `—` at `source = git` in `manual` |
 | `source` | `workflow` or `git` |
 | `in_range` | `in`, `under`, `over`, or `n/a (git span)` |
-| `variance_reason` | the cause of a miss, the skipped session ids, or `—` |
+| `variance_reason` | the cause of a miss, the skipped session ids, the untimed stages, or `—` |
 
 The stage columns are filled in `auto` too: a stage's span exists in both modes. A row with `0`
 phases or `0` modules still calibrates: it stays out only of the keys that divide by that count.
