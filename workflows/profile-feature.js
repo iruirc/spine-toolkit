@@ -1114,8 +1114,38 @@ if (runs('Research') && lite()) result.notes.push('Research folded into the ## R
 
 // ── Plan ────────────────────────────────────────────────────────────────────
 // The estimation gate is the reason this stage returns a verdict rather than just an artifact:
-// entering Execute without a usable range is what the gate exists to prevent. At lite there is
-// neither — a range nobody consumes is the paperwork the scale axis exists to stop.
+// entering Execute on a plan that is not ready to act on is what the gate exists to prevent.
+// [ESTIMATION] decides whether there is an estimate and a gate at all, [ESTIMATION_UNIT] which
+// skill writes it: run-forecast for the agents' run, feature-estimation for engineering days, both
+// at both. The gate's rules have no unit (conventions/estimation-gate.md).
+// When the value only followed the scale, a plan that raises lite to full turns it on, as auto
+// resolves at full; an explicit off stays off.
+const estimating = () => ESTIMATION === 'on' || (ESTIMATION_FOLLOWS_SCALE && scaleEscalation !== null)
+const unitSkills = () => (forecastsRun() && estimatesDays() ? 'run-forecast and feature-estimation skills' : `${forecastsRun() ? 'run-forecast' : 'feature-estimation'} skill`)
+const estimationBrief = () => {
+  const run = forecastsRun()
+    ? `Then apply the run-forecast skill and add a ## Estimation section carrying its ### Run forecast: how long the agents' run from Execute to Review takes, as a best and a worst scenario, and how many gates it stops at. Return run_forecast {best, worst, gates, confidence} with that section's values, as strings.`
+    : ''
+  const days = estimatesDays()
+    ? `${run ? 'Then apply the feature-estimation skill and add the estimate in days to the same ## Estimation section' : 'Then apply the feature-estimation skill and add a ## Estimation section'}, with depth scaled to the feature's risk per that skill's Estimation depth table. The minimum is feature type, baseline table, engineering range, and confidence; PERT, scope-aware risk deltas, estimate maturity, estimation conditions, delivery calendar, store buffer, known unknowns, and the self-check are added only when their triggers fire.`
+    : ''
+  return `\n\n${[run, days].filter(Boolean).join('\n\n')}
+
+Report estimation_gate as blocked, with the reason, when the plan is not ready to act on: ## Estimation is missing or malformed${estimatesDays() ? '; a triggered section is absent' : ''}; ### Estimate maturity is Draft; the maturity is Conditional and ### Estimation conditions is missing or has any pending_user row; or a load-bearing unknown has no spike or answer. "${core('conventions/estimation-gate.md')}" holds these rules; the size of the forecast never blocks.${estimatesDays() ? ' If the project is AI-assisted, the AI-assisted range is informational — the gate evaluates the human estimate.' : ''}`
+}
+// At lite with estimation following the scale, the plan is told what a raise turns on.
+const raisedEstimation = () =>
+  lite() && ESTIMATION !== 'on' && ESTIMATION_FOLLOWS_SCALE
+    ? `\n\nIf you raise the scale, estimation follows it: the plan you write is a full-depth one, so apply the ${unitSkills()}, add the ## Estimation section, and report estimation_gate${forecastsRun() ? ' and run_forecast' : ''}, exactly as a full run would. ${forecastsRun() && estimatesDays() ? 'Those skills hold' : 'That skill holds'} what the section carries, and "${core('conventions/estimation-gate.md')}" when the gate blocks.`
+    : ''
+// The forecast's answer, which the orchestrator prints at the manual gate after Plan.
+const RUN_FORECAST = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['best', 'worst', 'gates', 'confidence'],
+  properties: { best: { type: 'string' }, worst: { type: 'string' }, gates: { type: 'string' }, confidence: { type: 'string' } },
+}
+const forecastOut = () => (plan && plan.run_forecast ? { run_forecast: plan.run_forecast } : {})
 let plan = null
 if (runs('Plan')) {
   if (!need('Plan', 'architect')) return finish('ask_user')
@@ -1129,17 +1159,13 @@ if (runs('Plan')) {
 1. A top-level phase table, one row per phase, using the status glyphs ⬜ 🔄 ✅ ⏸ 🚫 ⊘.
 2. A per-phase detail section whose action items are markdown checkboxes "- [ ]" — one per file to edit, per acceptance criterion, per test to add, per verification step. Static prose (rationale, decisions, design notes) stays plain bullets; only action items become checkboxes.
 
-Seed the per-phase action items from ${lite() ? 'the ## Research section above' : 'Research.md ## Landscape ### Work items'}. Every phase has to end independently buildable, green, and committable on its own.${lite() ? '' : `
-
-Then apply the feature-estimation skill and add a ## Estimation section, with depth scaled to the feature's risk per that skill's Estimation depth table. The minimum is feature type, baseline table, engineering range, and confidence; PERT, scope-aware risk deltas, estimate maturity, estimation conditions, delivery calendar, store buffer, known unknowns, and the self-check are added only when their triggers fire.
-
-Report estimation_gate as blocked, with the reason, when any of these hold: ## Estimation is missing or malformed; a triggered section is absent; ### Estimate maturity is Draft; the maturity is Conditional and ### Estimation conditions is missing or has any pending_user row; or a Known Unknown trips the load-bearing-unknown rule without a required spike or resolution. If the project is AI-assisted, the AI-assisted range is informational — the gate evaluates the human estimate.`}
+Seed the per-phase action items from ${lite() ? 'the ## Research section above' : 'Research.md ## Landscape ### Work items'}. Every phase has to end independently buildable, green, and committable on its own.${estimating() ? estimationBrief() : ''}
 
 Write it by applying the spine-toolkit:task-documents skill, its Plan.md section, which puts the progress table under ## For the owner and the details behind it under ## For the implementer; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body.
 
 Open every phase's detail section with a **Verification:** line and one checkbox per check it names, choosing the rung by applying the phase-verification skill — it holds the rungs, the questions that pick one, and when the line says full. The regression set belongs to Validation, and at proportional a phase checks only what it can break: every test of the modules it edits, the dependents' tests by class name — a full test plan of the app, or all tests, in a phase's checkbox is a defect of this plan; at full every phase repeats the whole suite too. This run's phase_verification is ${PHASE_VERIFICATION}.
 
-Then add a ## Manual acceptance section: one line per check that needs a person — a device action, a visual judgment or an external service — each stated as what must be true and what changed to make it so, rather than as what to press, and ending with needs: and which of the three, so Validation can turn it into a case a person walks. A check a machine could make is not listed: it is work for a phase — a script or a test that phase writes, named in its Verification line — or, when it is not worth that, a line with its reason in ## Not automated. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}${reportPlan()}${lite() ? '\n\nIf you raise the scale, the plan you write is a full-depth one: apply the feature-estimation skill, add the ## Estimation section, and report estimation_gate, exactly as a full run would. That skill holds what the section carries and when the gate blocks.' : ''}
+Then add a ## Manual acceptance section: one line per check that needs a person — a device action, a visual judgment or an external service — each stated as what must be true and what changed to make it so, rather than as what to press, and ending with needs: and which of the three, so Validation can turn it into a case a person walks. A check a machine could make is not listed: it is work for a phase — a script or a test that phase writes, named in its Verification line — or, when it is not worth that, a line with its reason in ## Not automated. Nothing qualifies — write the single line "Fully automatable." Apply the manual-checks skill: it holds what that section feeds and what a case made from it must carry.${cap('Plan.md')}${ratchet()}${reportPlan()}${raisedEstimation()}
 
 Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Plan.md once. Fix each finding once; do not run it again; name what is left in your summary.`,
     ),
@@ -1149,9 +1175,10 @@ Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUD
       agentType: A.agents.architect, ...tuning('architect', 'stage'),
       schema: withEscalation({
         ...PLAN,
-        required: lite() ? [...PLAN.required] : [...PLAN.required, 'estimation_gate'],
+        required: [...PLAN.required, ...(estimating() ? ['estimation_gate'] : []), ...(estimating() && forecastsRun() ? ['run_forecast'] : [])],
         properties: {
           ...PLAN.properties,
+          ...(forecastsRun() ? { run_forecast: RUN_FORECAST } : {}),
           estimation_gate: {
             type: 'object',
             additionalProperties: false,
@@ -1172,7 +1199,7 @@ Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUD
 
   if (plan.estimation_gate && plan.estimation_gate.status === 'blocked') {
     result.notes.push(`Plan stays open: the estimation gate is blocked — ${plan.estimation_gate.reason || 'no reason given'}. Execute was not started.`)
-    return finish('ask_user', { estimation_gate: 'blocked' })
+    return finish('ask_user', { estimation_gate: 'blocked', ...forecastOut() })
   }
 }
 
@@ -1270,14 +1297,24 @@ Write it by applying the spine-toolkit:task-documents skill, its Review.md secti
 }
 
 // ── Done ────────────────────────────────────────────────────────────────────
+// The retrospective comes from the skill of each unit the plan estimated in, and only when this
+// run estimates at all.
+const retrospective = () => {
+  if (!estimating()) return ''
+  const run = forecastsRun()
+    ? `When ${DIR}/Plan.md has a ### Run forecast section, a ## Estimate retrospective section is mandatory, following the run-forecast skill: from the project root run "${core('scripts/agent-metrics.sh')}" --format json --task ${A.task_id} --project-sessions, set the measured run against the forecast, and record this task's row in Tasks/_calibration/agent-run-log.md: correct the row whose task_id names this task if the log already has one, otherwise append it.`
+    : ''
+  const days = estimatesDays()
+    ? `When ${DIR}/Plan.md has a ## Estimation section${run ? ' with an estimate in days' : ''}, a ## Estimate retrospective section is mandatory, following the hybrid model in the feature-estimation skill. Always record the automatic git proxy — the commit span of this task's phase commits plus the phase and rework counts, labelled proxy and never presented as human-days — and add the user-provided human effort when it was offered. The in-range verdict uses human effort when it exists and the proxy otherwise; only when neither exists write unknown and name the missing signal. In AI-assisted mode break the actual down per leverage class. Record this feature's data point in the calibration log: correct this task's row — the one whose task_id names this task, as feature-estimation's Column semantics defines it — if the log already has one, otherwise append it.`
+    : ''
+  return `\n\n${[run, days].filter(Boolean).join('\n\n')}${run && days ? '\n\nBoth retrospectives go in the one ## Estimate retrospective section.' : ''}`
+}
 if (runs('Done')) {
   if (!need('Done', 'architect')) return finish('ask_user')
   await writeReport('Done')
   const done = await agent(
     doneBrief(
-      `Write the final report ${DIR}/Done.md: what was built, which artifacts it produced, the validation status, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries.
-
-When ${DIR}/Plan.md has a ## Estimation section, a ## Estimate retrospective section is mandatory, following the hybrid model in the feature-estimation skill. Always record the automatic git proxy — the commit span of this task's phase commits plus the phase and rework counts, labelled proxy and never presented as human-days — and add the user-provided human effort when it was offered. The in-range verdict uses human effort when it exists and the proxy otherwise; only when neither exists write unknown and name the missing signal. In AI-assisted mode break the actual down per leverage class. Record this feature's data point in the calibration log: correct this task's row — the one whose task_id names this task, as feature-estimation's Column semantics defines it — if the log already has one, otherwise append it.${cap('Done.md')}`,
+      `Write the final report ${DIR}/Done.md: what was built, which artifacts it produced, the validation status, and — under a heading "Objections" — any contested decision the user insisted on, with the risk it carries.${retrospective()}${cap('Done.md')}`,
       review && review.done_findings,
     ),
     { label: 'done', phase: 'Done', agentType: A.agents.architect, schema: DONE_ARTIFACT, ...tuning('architect', 'done') },
@@ -1299,6 +1336,7 @@ When ${DIR}/Plan.md has a ## Estimation section, a ## Estimate retrospective sec
 }
 
 return finish(result.last_completed_stage === 'Done' ? 'stop' : 'continue', {
+  ...forecastOut(),
   ...validationOut(validation),
   review_status: review ? review.review_status : null,
 })
