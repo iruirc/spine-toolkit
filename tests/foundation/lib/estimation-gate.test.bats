@@ -144,6 +144,23 @@ done_only() {
   grep -qF run-forecast <<<"${V[0]}" || { echo "the Done brief does not name run-forecast"; return 1; }
 }
 
+@test "a plan raised from lite that reports no estimation gate stops before Execute" {
+  rp feature "$(contract lite off agent-run scale Plan '')" \
+    "{\"plan\": {\"ok\": true, \"artifact_path\": \"p\", \"summary\": \"s\", $PHASES, \"scale_escalation\": {\"to\": \"full\", \"reason\": \"two packages\"}}, \"execute:1\": {\"ok\": true, \"phase_id\": \"1\", \"committed\": true, \"summary\": \"s\"}}" \
+    'o.result.next_recommended_action' 'o.calls.map((c) => c.label).join(" ")' 'o.result.estimation_gate' 'o.result.notes'
+  [ "${V[0]}" = ask_user ] || { echo "next is ${V[0]}"; return 1; }
+  if grep -qE '(^| )(execute|develop|phase)' <<<"${V[1]}"; then echo "Execute ran: ${V[1]}"; return 1; fi
+  [ "${V[2]}" = blocked ] || { echo "estimation_gate is ${V[2]}"; return 1; }
+  grep -qF 'no estimation gate' <<<"${V[3]}" || { echo "no note names the missing gate: ${V[3]}"; return 1; }
+}
+
+@test "a plan raised from lite under an explicit off needs no estimation gate" {
+  rp feature "$(contract lite off agent-run task Plan ', "end_stage": "Plan"')" \
+    "{\"plan\": {\"ok\": true, \"artifact_path\": \"p\", \"summary\": \"s\", $PHASES, \"scale_escalation\": {\"to\": \"full\", \"reason\": \"two packages\"}}}" \
+    'JSON.stringify(o.result.estimation_gate || null)'
+  [ "${V[0]}" = null ] || { echo "estimation_gate is ${V[0]}"; return 1; }
+}
+
 @test "the Plan and Done briefs carry the run's mode" {
   for m in manual auto; do
     rp feature "$(contract full on agent-run project Plan ", \"end_stage\": \"Plan\", \"mode\": \"$m\"")" \

@@ -1210,6 +1210,13 @@ Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUD
   escalate('Plan', plan)
   if (PLAN_CHECK === 'on') await checkArtifact('Plan', 'architect', A.agents.architect, `${DIR}/Plan.md`)
 
+  // The schema could not require the gate of a plan that raises the scale itself: estimating() turns
+  // true only after escalate(). A raised plan with no gate has no ## Estimation to act on, which
+  // the gate's rules count as blocked.
+  if (estimating() && !plan.estimation_gate) {
+    result.notes.push('Plan stays open: the plan raised the scale to full but reported no estimation gate, so ## Estimation is unchecked. Redo Plan so it writes the section. Execute was not started.')
+    return finish('ask_user', { estimation_gate: 'blocked', ...forecastOut() })
+  }
   if (plan.estimation_gate && plan.estimation_gate.status === 'blocked') {
     result.notes.push(`Plan stays open: the estimation gate is blocked — ${plan.estimation_gate.reason || 'no reason given'}. Execute was not started.`)
     return finish('ask_user', { estimation_gate: 'blocked', ...forecastOut() })

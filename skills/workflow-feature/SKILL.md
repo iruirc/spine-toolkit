@@ -4,7 +4,8 @@ description: |
   FEATURE profile workflow: Research → Plan → Execute → Validation → Review → Done. Activated by spine-toolkit:orchestrator; not invoked by the user directly.
   Use when (en): orchestrator dispatches a task with [TASK_TYPE]=FEATURE
   Use when (ru): оркестратор диспетчеризует задачу с [TASK_TYPE]=FEATURE
-stack_axes_envelope: { may: all, never: [] }
+metadata:
+  stack_axes_envelope: { may: all, never: [] }
 ---
 
 # Workflow Feature
@@ -157,6 +158,8 @@ folded Research into Plan and nothing before Plan has measured the perimeter. Th
 raises the scale by returning `scale_escalation` and then writing `Plan.md` at full depth — with
 `## Estimation` and its gate — in the same pass. That holds while `estimation` follows the scale
 (`estimation_from = scale`); an explicit `[ESTIMATION] = [off]` stays `off`, and the raised plan writes neither.
+A raised plan that reports no `estimation_gate` has no `## Estimation` to act on: the gate counts
+that as blocked, Plan stays open and the workflow returns `ask_user`.
 
 ## 2b. Documentation
 
