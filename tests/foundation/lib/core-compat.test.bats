@@ -207,3 +207,30 @@ opening() { SPINE_PLUGIN_REGISTRY="$REG" "$ROOT/scripts/resolve-settings.sh" ope
     done
   done
 }
+
+# ── what a malformed registry or config folder must not do ───────────────────────────────────
+
+@test "a registry entry whose projectPath is not a string is unknown, not a traceback" {
+  project fixture-platform
+  p="$(platform_dir fixture-platform '>=1.0.0 <100')"
+  registry "{\"fixture-platform@m\": [{\"scope\": \"local\", \"projectPath\": 5, \"installPath\": \"$p\", \"version\": \"1.0.0\"}]}"
+  run --separate-stderr compat
+  [ "$status" -eq 0 ] || { echo "$stderr"; return 1; }
+  [ "${output%% *}" = unknown ] || { echo "$output"; return 1; }
+}
+
+@test "a core plugin.json that is not an object is unknown, not a traceback" {
+  core="$BATS_TEST_TMPDIR/core"; mkdir -p "$core/.claude-plugin"; echo '[1]' >"$core/.claude-plugin/plugin.json"
+  run py "from core_compat import core_compat; print(core_compat('$core', 'fixture-platform', '', 'claude-code', '/nowhere')['status'])"
+  [ "$output" = unknown ] || { echo "$output"; return 1; }
+}
+
+@test "the registry is read from CLAUDE_CONFIG_DIR when it is set" {
+  project fixture-platform
+  p="$(platform_dir fixture-platform '>=99.0.0 <100')"
+  mkdir -p "$BATS_TEST_TMPDIR/cfg/plugins"
+  printf '{"version": 2, "plugins": {"fixture-platform@m": %s}}\n' "$(user_entry "$p" 1.0.0)" >"$BATS_TEST_TMPDIR/cfg/plugins/installed_plugins.json"
+  run env -u SPINE_PLUGIN_REGISTRY CLAUDE_CONFIG_DIR="$BATS_TEST_TMPDIR/cfg" "$ROOT/scripts/resolve-settings.sh" json "$TASK"
+  [ "$(python3 -c 'import json,sys; print(json.load(sys.stdin)["core_compat"]["status"])' <<<"$output")" = incompatible ] \
+    || { echo "$output"; return 1; }
+}

@@ -19,7 +19,8 @@ set -euo pipefail
 #                                                  # core_compat, this session's core against the
 #                                                  # spine-toolkit range of the installed platform:
 #                                                  # status ok|lag|incompatible|unknown, read from
-#                                                  # $SPINE_PLUGIN_REGISTRY or Claude Code's registry
+#                                                  # $SPINE_PLUGIN_REGISTRY or the registry under
+#                                                  # $CLAUDE_CONFIG_DIR (~/.claude)
 #        scripts/resolve-settings.sh show <task-dir> [--all] [--set ...]
 #                                                  # Task.md lines, with sources
 #                                                  # --all: every field, defaults included
@@ -801,13 +802,19 @@ def known_failures():
 
 def session_core_compat():
     """Not a setting: the session's core against the range of the installed platform
-    (scripts/lib/core_compat.py). The registry is Claude Code's, or SPINE_PLUGIN_REGISTRY."""
-    sys.dont_write_bytecode = True
-    sys.path.insert(0, os.path.join(os.environ['SPINE_CORE_ROOT'], 'scripts', 'lib'))
-    from core_compat import core_compat
+    (scripts/lib/core_compat.py). The registry is SPINE_PLUGIN_REGISTRY, else the one of the Claude
+    Code profile this runs under ($CLAUDE_CONFIG_DIR, ~/.claude by default). Whatever goes wrong on the
+    way is unknown: a version check must never be what stops a run it cannot read."""
     platform = next(iter(block(CFG, 'Platform')), '')
-    registry = os.environ.get('SPINE_PLUGIN_REGISTRY') or os.path.expanduser('~/.claude/plugins/installed_plugins.json')
-    return core_compat(os.environ['SPINE_CORE_ROOT'], platform, os.path.dirname(CFG) if CFG else '', RUNTIME, registry)
+    config_dir = os.environ.get('CLAUDE_CONFIG_DIR') or os.path.expanduser('~/.claude')
+    registry = os.environ.get('SPINE_PLUGIN_REGISTRY') or os.path.join(config_dir, 'plugins', 'installed_plugins.json')
+    try:
+        sys.dont_write_bytecode = True
+        sys.path.insert(0, os.path.join(os.environ['SPINE_CORE_ROOT'], 'scripts', 'lib'))
+        from core_compat import core_compat
+        return core_compat(os.environ['SPINE_CORE_ROOT'], platform, os.path.dirname(CFG) if CFG else '', RUNTIME, registry)
+    except Exception:
+        return dict(core='', installed_core='', platform=platform, platform_version='', requires='', status='unknown')
 
 
 if CMD == 'json':

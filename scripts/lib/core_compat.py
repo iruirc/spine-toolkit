@@ -57,7 +57,7 @@ def _installed(plugins, name, project_root):
     entries = [e for e in plugins[keys[0]] if isinstance(e, dict)]
     here = os.path.realpath(project_root) if project_root else None
     for e in entries:
-        if here and e.get('projectPath') and os.path.realpath(e['projectPath']) == here:
+        if here and isinstance(e.get('projectPath'), str) and os.path.realpath(e['projectPath']) == here:
             return e
     for e in entries:
         if e.get('scope') == 'user' and not e.get('projectPath'):
@@ -73,7 +73,8 @@ def core_compat(core_root, platform, project_root, runtime, registry):
     older than the installed core; ok — the rest. Codex is always unknown: its platform root is
     the folder of the skill it loaded, which this script, run before the manifest loads, cannot see.
     """
-    core = str((_read_json(os.path.join(core_root, '.claude-plugin', 'plugin.json')) or {}).get('version') or '')
+    own = _read_json(os.path.join(core_root, '.claude-plugin', 'plugin.json'))
+    core = str(own.get('version') or '') if isinstance(own, dict) else ''
     out = dict(core=core, installed_core='', platform=platform or '', platform_version='', requires='',
                status='unknown')
     if runtime != 'claude-code' or not platform:
