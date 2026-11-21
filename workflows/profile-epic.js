@@ -1194,6 +1194,22 @@ You write no code. Research.md is the only file you create.`,
 }
 
 // ── Plan ────────────────────────────────────────────────────────────────────
+// The epic's estimate is an aggregate and never a gate: each step meets the estimation gate at its own
+// Plan, so the epic's Plan schema carries no estimation_gate. [ESTIMATION] decides whether there is an
+// aggregate at all and [ESTIMATION_UNIT] which skill writes it. An epic has no scale ratchet.
+const estimating = () => ESTIMATION === 'on'
+// Each line ends with its own newline, so an off estimation leaves no gap in the brief.
+const epicEstimationBrief = () => {
+  if (!estimating()) return ''
+  const run = forecastsRun()
+    ? `Apply the run-forecast skill at epic level, its EPIC section, and write ## Estimation into Plan.md carrying its ### Run forecast: the aggregate is the SUM of the step forecasts, one row per step, each taken from that step's card as the skill describes, reported as a best and a worst scenario for the agents' run and the gates it stops at. Each step's own Plan stage refreshes its row later; this roll-up is informational, it does NOT gate Execute, but it has to be present before the first step runs.\n`
+    : ''
+  const days = estimatesDays()
+    ? `Apply feature-estimation at epic level and write ## Estimation into Plan.md: the aggregate is the SUM of the per-step ranges, reported as a named best/worst epic range, and it carries both the human and the AI-assisted range when the project is AI-assisted. Per-step ranges are written later by each step's own Plan stage; this roll-up is informational, it does NOT gate Execute, but it has to be present before the first step runs.\n`
+    : ''
+  return run + days
+}
+
 let steps = null
 
 if (runs('Plan')) {
@@ -1209,8 +1225,7 @@ Seed the steps from Research.md ### Work items, grouped along layer or feature b
 Write it by applying the spine-toolkit:task-documents skill, its Plan.md section, which puts the progress table under ## For the owner and the details behind it under ## For the implementer; its Style and spine-toolkit:artifact-reader's override any brevity instruction in your agent body.
 Then create the step folders physically by invoking spine-toolkit:task-new for each one: ${DIR}/1.step/, 2.step/, … or a named <slug>.step/. Each gets its own Task.md with its own [TASK_TYPE] — never QUICK, which only the user chooses — [STATUS] = PENDING, an optional [WORKFLOW_MODE], and its own ## 4. [Stack] where it differs from the epic's. Do not hand-create the folders — task-new owns that layout.
 Write each step's Task.md by applying the task-documents skill, its section on a step's Task.md — it holds what goes above the three anchors and under each. After this stage each one is measured: at most ${BUDGETS['Task.md']} lines, and ### Expected behaviour, ### Questions for Research and ### Acceptance each carrying text or "— <reason>". A [BUDGETS] entry is the owner's word: never write one to raise a ceiling.
-Apply feature-estimation at epic level and write ## Estimation into Plan.md: the aggregate is the SUM of the per-step ranges, reported as a named best/worst epic range, and it carries both the human and the AI-assisted range when the project is AI-assisted. Per-step ranges are written later by each step's own Plan stage; this roll-up is informational, it does NOT gate Execute, but it has to be present before the first step runs.
-Return every step you created in the steps array, in execution order, each with its own [NEED_TEST] and [NEED_REVIEW] from its Task.md as booleans.
+${epicEstimationBrief()}Return every step you created in the steps array, in execution order, each with its own [NEED_TEST] and [NEED_REVIEW] from its Task.md as booleans.
 Run "${core('scripts/lint-artifact-readability.sh')}" --words-per-sentence ${BUDGETS['words-per-sentence']} ${DIR}/Plan.md once. Fix each finding once; do not run it again; name what is left in your summary.
 
 If the verdict is PURE_RESEARCH:
@@ -1738,6 +1753,19 @@ const acceptanceSection = () => {
 - A ## Manual acceptance section on ${accepted.pass_file ? `the collective pass ${PASS_FILE}: the devices it ran on and their OS versions, from its sessions and the **Device:** lines of ${DIR}/Validation.md` : `the agent's walk of every case, with no pass file: the devices it ran on and their OS versions, from the **Device:** lines of ${DIR}/Validation.md`}; the marks, PASS ${c.PASS || 0} / FAIL ${c.FAIL || 0} / BLOCKED ${c.BLOCKED || 0} / DROPPED ${c.DROPPED || 0}; and ${steps.length ? `a link to each bug step, ${steps.join(', ')}, with the case it fixes` : 'a line saying that no case failed'}.`
 }
 
+// The retrospective of a decomposed epic, from the skill of each unit its estimate was in, and only
+// when this run estimates at all. The days text is the one this brief always carried.
+const epicRetrospective = () => {
+  if (!estimating()) return ''
+  const run = forecastsRun()
+    ? `- A ## Estimate retrospective section that rolls up every completed step's measured run, following the run-forecast skill, its EPIC section: the summed forecast of the steps against the summed measured run of the steps, an in-range verdict, and the reason for any variance. Record the rolled-up row, type = EPIC, in Tasks/_calibration/agent-run-log.md as that skill describes: correct the row whose task_id names this epic if the log already has one, otherwise append it. Calibration does not read that row.\n`
+    : ''
+  const days = estimatesDays()
+    ? `- A ## Estimate retrospective section that rolls up every completed step's own retrospective: the aggregate estimated epic range against the summed actual effort, an in-range verdict, and the reason for any variance. Take actual effort per feature-estimation ## Estimate retrospective — the user's own figure when there is one, otherwise the git proxy, labelled as a proxy, otherwise unknown. Sum step rows only in matching units; never add human-days to proxy values in one total. Record this epic's data point in the calibration log: correct its row — the one whose task_id names this epic, as feature-estimation's Column semantics defines it — if the log already has one, otherwise append it.\n`
+    : ''
+  return `${run}${days}${run && days ? '- Both retrospectives go in the one ## Estimate retrospective section.\n' : ''}`
+}
+
 // Done reports a finished epic. A walk that stopped early has not finished one, so the report
 // waits until the orchestrator has taken the pending steps somewhere.
 if (runs('Done') && !failed_steps.length && !cancelled && !pending_steps.length) {
@@ -1751,8 +1779,7 @@ if (runs('Done') && !failed_steps.length && !cancelled && !pending_steps.length)
 - Which were skipped and why (DEFERRED / BLOCKED / SKIPPED / already DONE).
 - Which BLOCKED steps need the user to act, listed explicitly with the blocker.
 - Overall progress: X of Y steps complete.
-- A ## Estimate retrospective section that rolls up every completed step's own retrospective: the aggregate estimated epic range against the summed actual effort, an in-range verdict, and the reason for any variance. Take actual effort per feature-estimation ## Estimate retrospective — the user's own figure when there is one, otherwise the git proxy, labelled as a proxy, otherwise unknown. Sum step rows only in matching units; never add human-days to proxy values in one total. Record this epic's data point in the calibration log: correct its row — the one whose task_id names this epic, as feature-estimation's Column semantics defines it — if the log already has one, otherwise append it.
-- Objections, aggregated from the steps' Done.md files where the user insisted on a contested decision.${acceptanceSection()}${walkthroughWriter() ? `
+${epicRetrospective()}- Objections, aggregated from the steps' Done.md files where the user insisted on a contested decision.${acceptanceSection()}${walkthroughWriter() ? `
 
 Never edit ${DIR}/Walkthrough.md: its writer runs after you, so a commit of yours outside the Tasks folder is still in range when it does.` : ''}`,
     ),

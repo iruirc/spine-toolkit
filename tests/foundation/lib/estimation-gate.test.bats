@@ -143,3 +143,84 @@ done_only() {
   grep -qF '## Estimate retrospective' <<<"${V[0]}" || { echo "no retrospective after the raise: ${V[0]:0:300}"; return 1; }
   grep -qF run-forecast <<<"${V[0]}" || { echo "the Done brief does not name run-forecast"; return 1; }
 }
+
+# The EPIC aggregate: informational, never a gate. An epic has no estimation_gate in its Plan schema.
+
+# epic_plan <estimation> <unit>: the epic Plan brief and the Plan schema's property names.
+epic_plan() {
+  rp epic "$(contract full "$1" "$2" project Plan ', "end_stage": "Plan"')" \
+    '{"plan": {"ok": true, "artifact_path": "p", "summary": "s", "branch": "decomposition", "steps": []}}' \
+    "o.calls.find((c) => c.label === 'plan').prompt" \
+    "Object.keys(o.calls.find((c) => c.label === 'plan').schema.properties).join(' ')"
+}
+
+# epic_done <estimation> <unit> [branch]: the epic Done brief.
+epic_done() {
+  rp epic "$(contract full "$1" "$2" project Done ', "stage_scope": "single"')" "{\"done:read-branch\": {\"branch\": \"${3:-decomposition}\"}}" \
+    "o.calls.find((c) => c.label === 'done').prompt"
+}
+
+@test "epic agent-run: the Plan brief sums step forecasts and does not gate" {
+  epic_plan on agent-run
+  for w in run-forecast 'SUM of the step forecasts' informational '### Run forecast'; do
+    grep -qF -- "$w" <<<"${V[0]}" || { echo "the epic Plan brief does not name $w"; return 1; }
+  done
+  if grep -qF feature-estimation <<<"${V[0]}"; then echo "the epic Plan brief names feature-estimation"; return 1; fi
+  if grep -qw estimation_gate <<<"${V[1]}"; then echo "the epic Plan schema carries estimation_gate: ${V[1]}"; return 1; fi
+  grep -qF 'does NOT gate Execute' <<<"${V[0]}" || { echo "the epic Plan brief does not say it is no gate"; return 1; }
+}
+
+@test "epic Done writes the rolled-up agent-run row" {
+  epic_done on agent-run
+  for w in '## Estimate retrospective' run-forecast Tasks/_calibration/agent-run-log.md 'type = EPIC'; do
+    grep -qF -- "$w" <<<"${V[0]}" || { echo "the epic Done brief does not name $w"; return 1; }
+  done
+  if grep -qF feature-estimation <<<"${V[0]}"; then echo "the epic Done brief names feature-estimation"; return 1; fi
+}
+
+@test "epic estimation off: no aggregate, no retrospective" {
+  epic_plan off agent-run
+  for w in '## Estimation' feature-estimation run-forecast informational; do
+    if grep -qF -- "$w" <<<"${V[0]}"; then echo "the epic Plan brief names $w"; return 1; fi
+  done
+  epic_done off agent-run
+  for w in '## Estimate retrospective' feature-estimation run-forecast agent-run-log.md; do
+    if grep -qF -- "$w" <<<"${V[0]}"; then echo "the epic Done brief names $w"; return 1; fi
+  done
+}
+
+@test "epic days: the brief is today's" {
+  epic_plan on days
+  grep -qF "Apply feature-estimation at epic level and write ## Estimation into Plan.md: the aggregate is the SUM of the per-step ranges, reported as a named best/worst epic range, and it carries both the human and the AI-assisted range when the project is AI-assisted. Per-step ranges are written later by each step's own Plan stage; this roll-up is informational, it does NOT gate Execute, but it has to be present before the first step runs." <<<"${V[0]}" \
+    || { echo "the epic Plan brief is not today's"; return 1; }
+  if grep -qF run-forecast <<<"${V[0]}"; then echo "the epic Plan brief names run-forecast"; return 1; fi
+  epic_done on days
+  grep -qF "A ## Estimate retrospective section that rolls up every completed step's own retrospective: the aggregate estimated epic range against the summed actual effort" <<<"${V[0]}" \
+    || { echo "the epic Done brief is not today's"; return 1; }
+  grep -qF "as feature-estimation's Column semantics defines it" <<<"${V[0]}" || { echo "the epic Done brief lost the row rule"; return 1; }
+  for w in run-forecast agent-run-log.md 'type = EPIC'; do
+    if grep -qF -- "$w" <<<"${V[0]}"; then echo "the epic Done brief names $w"; return 1; fi
+  done
+}
+
+@test "epic both: both skills in the Plan and one retrospective in Done" {
+  epic_plan on both
+  for w in run-forecast feature-estimation; do
+    grep -qF -- "$w" <<<"${V[0]}" || { echo "the epic Plan brief does not name $w"; return 1; }
+  done
+  if grep -qw estimation_gate <<<"${V[1]}"; then echo "the epic Plan schema carries estimation_gate"; return 1; fi
+  epic_done on both
+  for w in run-forecast feature-estimation 'type = EPIC' 'Both retrospectives go in the one ## Estimate retrospective section'; do
+    grep -qF -- "$w" <<<"${V[0]}" || { echo "the epic Done brief does not name $w"; return 1; }
+  done
+}
+
+@test "a pure-research epic needs no retrospective whatever the unit says" {
+  for u in agent-run days both; do
+    epic_done on "$u" pure_research
+    grep -qF 'no estimate retrospective is required' <<<"${V[0]}" || { echo "$u: the pure-research Done does not say so"; return 1; }
+    for w in run-forecast feature-estimation agent-run-log.md; do
+      if grep -qF -- "$w" <<<"${V[0]}"; then echo "$u: the pure-research Done names $w"; return 1; fi
+    done
+  done
+}
