@@ -183,6 +183,9 @@ Method B ({skill}): {why}
 ## open_core_lag
 ядро {core} (установлено {installed}) · {platform} {platform_version} — перезапустите сессию, чтобы подхватить обновление
 
+## open_core_incompatible
+ядро {core} · {platform} {platform_version} требует spine-toolkit {requires} — перезапустите сессию
+
 ## progress_stage_metrics
 {tuning} · {out} out · {ctx} ctx · {cacheWrite} cache-w · {cacheRead} cache-r · {tools} tools · {elapsed}
 

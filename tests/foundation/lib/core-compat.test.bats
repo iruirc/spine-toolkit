@@ -234,3 +234,50 @@ opening() { SPINE_PLUGIN_REGISTRY="$REG" "$ROOT/scripts/resolve-settings.sh" ope
   [ "$(python3 -c 'import json,sys; print(json.load(sys.stdin)["core_compat"]["status"])' <<<"$output")" = incompatible ] \
     || { echo "$output"; return 1; }
 }
+
+# ── the deferred minors of the review ────────────────────────────────────────────────────────
+
+# contract <plugin_root>: an Outbound Contract for the task, as hooks/opening-block hands it over.
+contract() {
+  python3 -c 'import json,sys; print(json.dumps({"task_id":"042","task_dir":sys.argv[1],"profile":"bug","start_stage":"Reproduce","end_stage":None,"stage_scope":"forward","lang":"en","progress":"normal","method_reason":"","user_directive":"","run_settings":{},"plugin_root":sys.argv[2]}))' "$TASK" "$1" >"$BATS_TEST_TMPDIR/c.json"
+}
+
+@test "open --contract measures the core the contract's plugin_root names, not its own" {
+  project fixture-platform
+  old="$BATS_TEST_TMPDIR/oldcore"; mkdir -p "$old/.claude-plugin"; echo '{"name": "spine-toolkit", "version": "0.0.1"}' >"$old/.claude-plugin/plugin.json"
+  p="$(platform_dir fixture-platform '>=0.0.1 <100')"
+  registry "{\"fixture-platform@m\": $(user_entry "$p" 1.0.0), \"spine-toolkit@m\": $(user_entry /x "$(core_v)")}"
+  contract "$old"
+  run env SPINE_PLUGIN_REGISTRY="$REG" "$ROOT/scripts/resolve-settings.sh" open --contract "$BATS_TEST_TMPDIR/c.json" --method A
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  grep -qF "core 0.0.1 (installed $(core_v))" <<<"$output" || { echo "no lag line for the contract's core: $output"; return 1; }
+  contract relative/core
+  run env SPINE_PLUGIN_REGISTRY="$REG" "$ROOT/scripts/resolve-settings.sh" open --contract "$BATS_TEST_TMPDIR/c.json" --method A
+  ! grep -qF '(installed' <<<"$output" || { echo "a relative plugin_root was taken: $output"; return 1; }
+}
+
+@test "the nearest projectPath at or above the config folder wins, and a sibling one is ignored" {
+  project fixture-platform
+  far="$(platform_dir fixture-platform '>=99.0.0')"
+  near="$(platform_dir fixture-platform '>=1.0.0 <100')"
+  mkdir -p "$BATS_TEST_TMPDIR/sibling"
+  registry "{\"fixture-platform@m\": [{\"scope\": \"user\", \"installPath\": \"$far\", \"version\": \"1.0.0\"}, {\"scope\": \"local\", \"projectPath\": \"$BATS_TEST_TMPDIR\", \"installPath\": \"$near\", \"version\": \"1.0.0\"}, {\"scope\": \"local\", \"projectPath\": \"/\", \"installPath\": \"$far\", \"version\": \"1.0.0\"}]}"
+  run compat
+  [ "${output%% *}" = ok ] || { echo "the nearest ancestor did not win: $output"; return 1; }
+  registry "{\"fixture-platform@m\": [{\"scope\": \"user\", \"installPath\": \"$far\", \"version\": \"1.0.0\"}, {\"scope\": \"local\", \"projectPath\": \"$BATS_TEST_TMPDIR/sibling\", \"installPath\": \"$near\", \"version\": \"1.0.0\"}]}"
+  run compat
+  [ "${output%% *}" = incompatible ] || { echo "a sibling projectPath was taken: $output"; return 1; }
+}
+
+@test "an incompatible core with no installed core names the range, not a question mark" {
+  project fixture-platform
+  p="$(platform_dir fixture-platform '>=99.0.0 <100')"
+  registry "{\"fixture-platform@m\": $(user_entry "$p" 1.0.0)}"
+  run opening
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  line="$(body_of en open_core_incompatible | sed -e "s/{core}/$(core_v)/" -e 's/{platform}/fixture-platform/' \
+    -e 's/{platform_version}/1.0.0/' -e 's/{requires}/>=99.0.0 <100/')"
+  [ -n "$line" ] && grep -qxF "$line" <<<"$output" || { echo "no incompatible line: $output"; return 1; }
+  ! grep -qF '?' <<<"$output" || { echo "$output"; return 1; }
+  [ -n "$(body_of ru open_core_incompatible)" ]
+}

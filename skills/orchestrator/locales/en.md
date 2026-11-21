@@ -183,6 +183,9 @@ Settings:
 ## open_core_lag
 core {core} (installed {installed}) · {platform} {platform_version} — restart the session to pick up the update
 
+## open_core_incompatible
+core {core} · {platform} {platform_version} needs spine-toolkit {requires} — restart the session
+
 ## progress_stage_metrics
 {tuning} · {out} out · {ctx} ctx · {cacheWrite} cache-w · {cacheRead} cache-r · {tools} tools · {elapsed}
 

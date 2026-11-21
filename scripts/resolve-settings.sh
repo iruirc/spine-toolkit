@@ -800,7 +800,7 @@ def known_failures():
     return os.path.join(home, 'Tasks', 'KnownFailures.md')
 
 
-def session_core_compat():
+def session_core_compat(core_root=None):
     """Not a setting: the session's core against the range of the installed platform
     (scripts/lib/core_compat.py). The registry is SPINE_PLUGIN_REGISTRY, else the one of the Claude
     Code profile this runs under ($CLAUDE_CONFIG_DIR, ~/.claude by default). Whatever goes wrong on the
@@ -812,7 +812,7 @@ def session_core_compat():
         sys.dont_write_bytecode = True
         sys.path.insert(0, os.path.join(os.environ['SPINE_CORE_ROOT'], 'scripts', 'lib'))
         from core_compat import core_compat
-        return core_compat(os.environ['SPINE_CORE_ROOT'], platform, os.path.dirname(CFG) if CFG else '', RUNTIME, registry)
+        return core_compat(core_root or os.environ['SPINE_CORE_ROOT'], platform, os.path.dirname(CFG) if CFG else '', RUNTIME, registry)
     except Exception:
         return dict(core='', installed_core='', platform=platform, platform_version='', requires='', status='unknown')
 
@@ -891,7 +891,8 @@ if CMD == 'show':
 # epic's, through --run-file, for a step it handed back; the contract's own, under --contract); under
 # B, the roles whose effort does not travel; at live, the token panel; the settings column, sized
 # by settings_report. Nothing at quiet. After the stages, a session core older than the installed one
-# (core_compat lag, or incompatible should the run get this far) is one line of its own.
+# (core_compat lag) is one line of its own, and so is one the platform does not take (incompatible,
+# should the run get this far).
 CORE = os.environ['SPINE_CORE_ROOT']
 
 
@@ -990,9 +991,15 @@ out = [say('open_header', profile=profile.upper(), task=task_label(TARGET), star
            say('open_method_b', skill='spine-toolkit:workflow-%s' % profile, why=why)),
        say('open_stages')]
 out += ['  %s — %s' % p for p in phases[titles.index(start):titles.index(end) + 1]]
-compat = session_core_compat()
-if compat['status'] in ('lag', 'incompatible'):
-    out.append(say('open_core_lag', core=compat['core'], installed=compat['installed_core'] or '?',
+# Under --contract this runs from the hook's own core, which may not be the session's: the contract's
+# plugin_root is, when it is there and absolute.
+session_root = str((CONTRACT or {}).get('plugin_root') or '')
+compat = session_core_compat(session_root if os.path.isabs(session_root) and os.path.isdir(session_root) else None)
+if compat['status'] == 'lag':
+    out.append(say('open_core_lag', core=compat['core'], installed=compat['installed_core'],
+                   platform=compat['platform'], platform_version=compat['platform_version']))
+elif compat['status'] == 'incompatible':
+    out.append(say('open_core_incompatible', core=compat['core'], requires=compat['requires'],
                    platform=compat['platform'], platform_version=compat['platform_version']))
 if method == 'A':
     out.append(say('open_workflows', workflow='profile-%s' % profile))

@@ -48,17 +48,23 @@ def _read_json(path):
 
 
 def _installed(plugins, name, project_root):
-    """The registry entry Claude Code loads `name` from: the one whose projectPath is this
-    project, else the user-scoped one. None when the plugin is absent, recorded under more than
-    one marketplace, or has neither entry."""
+    """The registry entry Claude Code loads `name` from: the one whose projectPath is nearest at or
+    above this project's config folder, else the user-scoped one. None when the plugin is absent,
+    recorded under more than one marketplace, or has neither entry."""
     keys = [k for k in plugins if k.split('@', 1)[0] == name]
     if len(keys) != 1 or not isinstance(plugins[keys[0]], list):
         return None
     entries = [e for e in plugins[keys[0]] if isinstance(e, dict)]
     here = os.path.realpath(project_root) if project_root else None
+    best, depth = None, -1
     for e in entries:
-        if here and isinstance(e.get('projectPath'), str) and os.path.realpath(e['projectPath']) == here:
-            return e
+        if not here or not isinstance(e.get('projectPath'), str) or not e['projectPath']:
+            continue
+        there = os.path.realpath(e['projectPath'])
+        if (here == there or here.startswith(there.rstrip(os.sep) + os.sep)) and len(there) > depth:
+            best, depth = e, len(there)
+    if best:
+        return best
     for e in entries:
         if e.get('scope') == 'user' and not e.get('projectPath'):
             return e
