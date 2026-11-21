@@ -544,13 +544,16 @@ FIELDS
   done
   # [RF 5] a step's own [ESTIMATION] wins over the epic's: the step folder's resolver run is asked, and its answer
   # (value, unit and where it was set) is forwarded before the epic's own.
-  for f in estimation estimation_unit estimation_from; do
+  for f in estimation estimation_unit; do
     F="$(tr '[:lower:]' '[:upper:]' <<<"$f")"
     grep -qF "$f: st.$f === undefined ? $F : st.$f," "$E" \
       || { echo "profile-epic.js does not forward $f to a step"; return 1; }
-    grep -qF "$f: { type: 'string'," "$E" && grep -qF "the step folder's own resolve-settings.sh $f value" "$E" \
-      || { echo "the step record has no $f"; return 1; }
   done
+  # The origin rides with the value: a step that names its own estimation and no origin reads as explicit.
+  grep -qF "estimation_from: st.estimation === undefined ? ESTIMATION_FROM : (st.estimation_from || 'task')," "$E" \
+    || { echo "profile-epic.js does not key estimation_from on the step's own estimation"; return 1; }
+  grep -qF "estimation_from: { type: 'string', enum: ['run', 'task', 'epic', 'project', 'default', 'scale'], description: \"the step folder's own resolve-settings.sh estimation_from value" "$E" \
+    || { echo "the step record's estimation_from is not run, task, epic, project, default or scale"; return 1; }
   grep -qF "estimation: { type: 'string', enum: ['on', 'off'], description: \"the step folder's own resolve-settings.sh estimation value\" }" "$E" \
     || { echo "the step record's estimation is not on or off"; return 1; }
   grep -qF "estimation_unit: { type: 'string', enum: ['agent-run', 'days', 'both'], description: \"the step folder's own resolve-settings.sh estimation_unit value\" }" "$E" \

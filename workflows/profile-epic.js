@@ -1395,7 +1395,7 @@ if (runs('Execute')) {
       done_check: st.done_check === undefined ? DONE_CHECK : st.done_check,
       estimation: st.estimation === undefined ? ESTIMATION : st.estimation,
       estimation_unit: st.estimation_unit === undefined ? ESTIMATION_UNIT : st.estimation_unit,
-      estimation_from: st.estimation_from === undefined ? ESTIMATION_FROM : st.estimation_from,
+      estimation_from: st.estimation === undefined ? ESTIMATION_FROM : (st.estimation_from || 'task'),
       report: st.report === undefined ? REPORT : st.report,
       phase_verification: st.phase_verification === undefined ? PHASE_VERIFICATION : st.phase_verification,
       walkthrough: stepWalkthrough(st),

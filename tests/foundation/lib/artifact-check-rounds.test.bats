@@ -279,9 +279,20 @@ stages_of() { case " $PLANNERS epic " in *" $1 "*) echo 'Plan Done' ;; *) echo D
     "const a = o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-feature').args; [a.plan_check, a.done_check, 'artifact_check' in a].join(' ')" \
     "const a = o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-bug').args; [a.plan_check, a.done_check].join(' ')"
   [ "${V[0]}" = 'on,off on,off false' ] || { echo "the step record: ${V[0]}"; return 1; }
-  grep -qF 'walkthrough_when, plan_check, done_check, estimation, estimation_unit, report' <<<"${V[1]}" || { echo "read-steps does not ask for both checks"; return 1; }
+  grep -qF 'walkthrough_when, plan_check, done_check, estimation, estimation_unit, report' <<<"${V[1]}" || { echo "read-steps does not ask for both checks and the estimation fields"; return 1; }
   [ "${V[2]}" = 'on off false' ] || { echo "the first step got: ${V[2]}"; return 1; }
   [ "${V[3]}" = 'off on' ] || { echo "the second step got: ${V[3]}"; return 1; }
+}
+
+@test "[RF 5] EPIC hands a step its own estimation with an explicit origin, and the epic's own pair where the step has none" {
+  steps='"execute:read-steps": {"branch": "decomposition", "steps": [{"step_id": "1-a.step", "task_id": "001.1", "task_type": "FEATURE", "status": "PENDING", "estimation": "off"}, {"step_id": "2-b.step", "task_id": "001.2", "task_type": "BUG", "status": "PENDING"}]}'
+  done_reply='{"status": "ok", "last_completed_stage": "Done", "stages": []}'
+  rp epic "$(contract epic Execute '' ', "mode": "auto", "estimation": "on", "estimation_unit": "both", "estimation_from": "scale"')" \
+    "{$steps, \"workflow:spine-toolkit:profile-feature\": $done_reply, \"workflow:spine-toolkit:profile-bug\": $done_reply}" \
+    "const a = o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-feature').args; [a.estimation, a.estimation_from, a.estimation_unit].join(' ')" \
+    "const a = o.calls.find((c) => c.label === 'workflow:spine-toolkit:profile-bug').args; [a.estimation, a.estimation_from, a.estimation_unit].join(' ')"
+  [ "${V[0]}" = 'off task both' ] || { echo "the step with its own estimation got: ${V[0]}"; return 1; }
+  [ "${V[1]}" = 'on scale both' ] || { echo "the step without one got: ${V[1]}"; return 1; }
 }
 
 @test "EPIC checks Plan.md only on the decomposition branch, and Done.md on both" {
