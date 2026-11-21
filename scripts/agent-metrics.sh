@@ -651,20 +651,23 @@ def session_runs(sess):
 
 def all_session_runs(sess):
     # A task interrupted and continued in a new session leaves its runs in both.
-    # One session whose state this script cannot read costs only its own runs.
-    timed = []
+    # One session whose state this script cannot read costs only its own runs, and is
+    # named, so a figure built from the rest is never taken for the whole task.
+    timed, skipped = [], []
     for other in project_sessions(os.path.dirname(sess)):
         try:
             timed += session_runs(other)
         except Exception:
             if other == sess:
                 raise
-    return [run for _, run in sorted(timed, key=lambda pair: pair[0])]
+            skipped.append(os.path.basename(other))
+    return [run for _, run in sorted(timed, key=lambda pair: pair[0])], sorted(skipped)
 
 
 try:
+    skipped_sessions = []
     if PROJECT_SESSIONS:
-        runs = all_session_runs(sess)
+        runs, skipped_sessions = all_session_runs(sess)
     else:
         runs = [run for _, run in session_runs(sess)]
 
@@ -677,7 +680,7 @@ try:
         if extra:
             runs.append(extra)
 
-    by_task = task_totals(runs) if TASK_FILTER else None
+    by_task = dict(task_totals(runs), skippedSessions=skipped_sessions) if TASK_FILTER else None
     runs = merge_by_task(runs)
 
     totals = {

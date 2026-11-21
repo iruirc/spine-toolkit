@@ -814,3 +814,17 @@ JSON
   run tm_metrics home-empty --help
   tm_contains "$output" "--project-sessions"
 }
+
+@test "--project-sessions names a sibling session it could not read, and still counts the others" {
+  # Session 33333333 sits beside task 700's sessions with a state file of the wrong shape.
+  run tm_metrics home-a --session "$T700_B" --task 700 --project-sessions
+  [ "$status" -eq 0 ]
+  [ "$(field_json "$output" totals.skippedSessions)" = '["33333333-3333-3333-3333-333333333333"]' ]
+  [ "$(tm_field "$output" totals.runs)" = "4" ]
+  [ "$(tm_field "$output" totals.fixRounds)" = "1" ]
+}
+
+@test "skippedSessions is an empty list when every session was read" {
+  run tm_metrics home-a --session "$T700_B" --task 700
+  [ "$(field_json "$output" totals.skippedSessions)" = "[]" ]
+}
