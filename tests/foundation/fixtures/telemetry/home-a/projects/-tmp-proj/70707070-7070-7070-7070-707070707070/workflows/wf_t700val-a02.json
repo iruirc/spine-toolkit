@@ -1,0 +1,22 @@
+{
+  "runId": "wf_t700val-a02",
+  "workflowName": "profile-feature",
+  "status": "completed",
+  "startTime": 1787301000000,
+  "durationMs": 420000,
+  "args": {"task_id": "700", "profile": "feature", "action": "run"},
+  "phases": [{"title": "Execute"}, {"title": "Validation"}, {"title": "Review"}],
+  "workflowProgress": [
+    {"type": "workflow_phase", "index": 1, "title": "Execute"},
+    {"type": "workflow_phase", "index": 2, "title": "Validation"},
+    {"type": "workflow_phase", "index": 3, "title": "Review"},
+    {"type": "workflow_agent", "index": 1, "label": "validate-unit", "phaseTitle": "Validation",
+     "agentId": "f0000000000000002", "agentType": "fixture-platform:fixture-validator", "model": "claude-opus-5",
+     "state": "done", "startedAt": 1787301000000, "lastToolName": "Write", "tokens": 50000,
+     "toolCalls": 6, "durationMs": 300000},
+    {"type": "workflow_agent", "index": 1, "label": "validate-app", "phaseTitle": "Validation",
+     "agentId": "f0000000000000003", "agentType": "fixture-platform:fixture-validator", "model": "claude-opus-5",
+     "state": "done", "startedAt": 1787301060000, "lastToolName": "Write", "tokens": 50000,
+     "toolCalls": 6, "durationMs": 360000}
+  ]
+}

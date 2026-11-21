@@ -8,7 +8,10 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 usage: agent-metrics.sh [--session <id>] [--run <wf_id>] [--task <id>] [--all]
-                        [--format json|md|panel]
+                        [--project-sessions] [--format json|md|panel]
+
+  --project-sessions  with --task, gather the task's runs from every session
+                      of the project, not only the latest one
 USAGE
 }
 
@@ -16,6 +19,7 @@ session=""
 run=""
 task=""
 all=0
+project_sessions=0
 format="json"
 
 # Without this guard `shift 2` on a valueless flag trips set -e and exits 1 in
@@ -31,6 +35,7 @@ while [ $# -gt 0 ]; do
     --task)    need_value "$@"; task="$2"; shift 2 ;;
     --format)  need_value "$@"; format="$2"; shift 2 ;;
     --all)     all=1; shift ;;
+    --project-sessions) project_sessions=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "agent-metrics: unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -49,11 +54,13 @@ fi
 session="${session:-${CLAUDE_CODE_SESSION_ID:-}}"
 config_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 
-python3 - "$config_dir" "$session" "$run" "$task" "$format" "$all" <<'PY'
+python3 - "$config_dir" "$session" "$run" "$task" "$format" "$all" "$project_sessions" <<'PY'
 import glob, json, os, re, sys
 
-CONFIG_DIR, SESSION, RUN_FILTER, TASK_FILTER, FORMAT, WANT_ALL = sys.argv[1:7]
+CONFIG_DIR, SESSION, RUN_FILTER, TASK_FILTER, FORMAT, WANT_ALL, PROJECT_SESSIONS = sys.argv[1:8]
 WANT_ALL = WANT_ALL == "1"
+# Without --task there is no one task to follow across sessions, so the flag changes nothing.
+PROJECT_SESSIONS = PROJECT_SESSIONS == "1" and bool(TASK_FILTER)
 
 GLYPH = {"done": "✅", "running": "🔄", "error": "❌",
          "queued": "⬜", "todo": "⬜", "unknown": "⬜"}
@@ -225,15 +232,18 @@ def looks_like_session(path):
             or os.path.isdir(os.path.join(path, "subagents")))
 
 
+def project_sessions(here):
+    return [p for p in glob.glob(os.path.join(here, "*"))
+            if os.path.isdir(p) and looks_like_session(p)]
+
+
 def session_dir():
     projects = os.path.join(CONFIG_DIR, "projects")
     if SESSION:
         hits = [p for p in glob.glob(os.path.join(projects, "*", SESSION))
                 if os.path.isdir(p)]
         return hits[0] if hits else None
-    here = os.path.join(projects, slug(os.getcwd()))
-    dirs = [p for p in glob.glob(os.path.join(here, "*"))
-            if os.path.isdir(p) and looks_like_session(p)]
+    dirs = project_sessions(os.path.join(projects, slug(os.getcwd())))
     return max(dirs, key=os.path.getmtime) if dirs else None
 
 
@@ -342,6 +352,7 @@ def now_ms():
 def agent_record(run_dir, agent_id, rec, state):
     rec = rec or {}
     seen = transcript(os.path.join(run_dir, "agent-%s.jsonl" % agent_id))
+    started_ms = epoch(rec.get("startedAt")) or seen["first"]
     elapsed = rec.get("durationMs")
     if elapsed is None:
         started = epoch(rec.get("startedAt"))
@@ -371,6 +382,7 @@ def agent_record(run_dir, agent_id, rec, state):
         "cacheRead": seen["cacheRead"],
         "tools": rec.get("toolCalls") or seen["tools"],
         "elapsedMs": elapsed,
+        "startedMs": started_ms,
         "lastTool": rec.get("lastToolName"),
         "artifact": None,
         "summary": None,
@@ -378,6 +390,21 @@ def agent_record(run_dir, agent_id, rec, state):
     record.update(text_fields(record))
     record["tuningText"] = tuning_label(record["model"], record["effort"])
     return record
+
+
+def span_fields(span):
+    return {"spanMs": span, "spanText": human_time(span) if span is not None else None}
+
+
+def wall_span(mine):
+    # Wall-clock time of one run's stage: parallel agents overlap, so their summed
+    # elapsedMs overstates it. An agent with no start or no elapsed has no place on the clock.
+    timed = [(a["startedMs"], a["startedMs"] + a["elapsedMs"]) for a in mine
+             if isinstance(a.get("startedMs"), (int, float))
+             and isinstance(a.get("elapsedMs"), (int, float))]
+    if not timed:
+        return None
+    return int(max(end for _, end in timed) - min(start for start, _ in timed))
 
 
 def phase_states(phases, agents):
@@ -390,7 +417,9 @@ def phase_states(phases, agents):
             state = "done"
         else:
             state = "todo"
-        out.append(dict(phase, state=state, **phase_totals(mine)))
+        row = dict(phase, state=state, **phase_totals(mine))
+        row.update(span_fields(wall_span(mine)))
+        out.append(row)
     return out
 
 
@@ -398,6 +427,12 @@ def normalize_state(raw):
     # The runtime's own state vocabulary is not ours and is not a contract.
     return {"progress": "running", "in_progress": "running",
             "queued": "queued"}.get(raw, raw)
+
+
+def run_action(wf):
+    args = wf.get("args")
+    action = args.get("action") if isinstance(args, dict) else None
+    return action if isinstance(action, str) else None
 
 
 def build_run(sess, wf):
@@ -441,6 +476,7 @@ def build_run(sess, wf):
         "runId": run_id,
         "workflow": wf.get("workflowName"),
         "task_id": (wf.get("args") or {}).get("task_id"),
+        "action": run_action(wf),
         "status": status,
         "elapsedMs": elapsed,
         "phases": phase_states(phases, agents),
@@ -515,7 +551,7 @@ def method_b_run(sess):
     status = "running" if any(a["state"] == "running" for a in agents) else "done"
     elapsed = max((a["elapsedMs"] for a in agents if a["elapsedMs"] is not None),
                   default=None)
-    return {"runId": None, "workflow": None, "task_id": None, "status": status,
+    return {"runId": None, "workflow": None, "task_id": None, "action": None, "status": status,
             "elapsedMs": elapsed, "phases": [], "agents": agents}
 
 
@@ -528,13 +564,22 @@ def fold_group(group):
     base = next((run["phases"] for run in group if run["phases"]), [])
     raw_phases = [{"index": p.get("index"), "title": p.get("title")} for p in base]
     running = any(a["state"] == "running" for a in agents)
+    phases = phase_states(raw_phases, agents)
+    # A stage's span is summed run by run: from the first start to the last finish
+    # across runs would count the owner's wait between them as the stage's time.
+    for phase in phases:
+        spans = [p["spanMs"] for run in group for p in run["phases"]
+                 if p.get("title") == phase["title"] and p.get("spanMs") is not None]
+        phase.update(span_fields(sum(spans) if spans else None))
+    actions = set(run.get("action") for run in group)
     return {
         "runId": None,
         "workflow": next((run["workflow"] for run in group if run["workflow"]), None),
         "task_id": group[0]["task_id"],
+        "action": actions.pop() if len(actions) == 1 else None,
         "status": "running" if running else group[-1]["status"],
         "elapsedMs": sum(run["elapsedMs"] or 0 for run in group) or None,
-        "phases": phase_states(raw_phases, agents),
+        "phases": phases,
         "agents": agents,
     }
 
@@ -553,7 +598,26 @@ def merge_by_task(runs):
 
 # The format is not a contract (P8): a shape neither this script nor its
 # fixtures anticipated must degrade to an empty result, not a traceback.
-try:
+def task_totals(runs):
+    # What a Done stage turns into the actual figure of a run forecast. A fix-review
+    # round is counted apart, so a stage re-run by it does not inflate the stage.
+    stage_spans, fix_rounds, fix_span = {}, 0, 0
+    for run in runs:
+        timed = [p for p in run["phases"] if p.get("spanMs") is not None]
+        if run.get("action") == "fix-review":
+            if any(p.get("title") == "Execute" and p.get("agents") for p in run["phases"]):
+                fix_rounds += 1
+            fix_span += sum(p["spanMs"] for p in timed)
+            continue
+        for phase in timed:
+            if phase.get("title") is not None:
+                stage_spans[phase["title"]] = stage_spans.get(phase["title"], 0) + phase["spanMs"]
+    return {"runs": len(runs), "stageSpans": stage_spans,
+            "fixRounds": fix_rounds, "fixSpanMs": fix_span}
+
+
+def session_runs(sess):
+    """Every run of one session as (state-file mtime, run), oldest first."""
     finished = {}
     for path in sorted(glob.glob(os.path.join(sess, "workflows", "wf_*.json"))):
         wf = load_json(path)
@@ -582,6 +646,27 @@ try:
             titles = list(dict.fromkeys(a["phase"] for a in run["agents"] if a["phase"]))
             run["phases"] = phase_states(
                 [{"index": i + 1, "title": t} for i, t in enumerate(titles)], run["agents"])
+    return [(run_mtime(rid), run) for rid, run in zip(run_ids, runs)]
+
+
+def all_session_runs(sess):
+    # A task interrupted and continued in a new session leaves its runs in both.
+    # One session whose state this script cannot read costs only its own runs.
+    timed = []
+    for other in project_sessions(os.path.dirname(sess)):
+        try:
+            timed += session_runs(other)
+        except Exception:
+            if other == sess:
+                raise
+    return [run for _, run in sorted(timed, key=lambda pair: pair[0])]
+
+
+try:
+    if PROJECT_SESSIONS:
+        runs = all_session_runs(sess)
+    else:
+        runs = [run for _, run in session_runs(sess)]
 
     if RUN_FILTER:
         runs = [r for r in runs if r["runId"] == RUN_FILTER]
@@ -592,6 +677,7 @@ try:
         if extra:
             runs.append(extra)
 
+    by_task = task_totals(runs) if TASK_FILTER else None
     runs = merge_by_task(runs)
 
     totals = {
@@ -609,6 +695,8 @@ try:
     totals["cacheReadText"] = human_tokens(totals["cacheRead"])
     totals["totalText"] = human_tokens(totals["total"])
     totals["elapsedText"] = human_time(totals["elapsedMs"])
+    if by_task is not None:
+        totals.update(by_task)
     emit({"session": os.path.basename(sess), "runs": runs, "totals": totals, "reason": None})
 except Exception:
     empty("could not parse run state")

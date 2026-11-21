@@ -12,6 +12,29 @@ setup_file() {
   local task395="$(tm_home home-a)/projects/-tmp-proj/55555555-5555-5555-5555-555555555555/workflows"
   touch -t 202601020000 "$task395/wf_9664a933-1b1.json"
   touch -t 202601020010 "$task395/wf_8ea8c484-343.json"
+
+  # Task 700 was interrupted and continued: two sessions, the second one newer.
+  local proj="$(tm_home home-a)/projects/-tmp-proj"
+  touch -t 202601030000 "$proj/$T700_A/workflows/wf_t700exe-a01.json"
+  touch -t 202601030010 "$proj/$T700_A/workflows/wf_t700val-a02.json"
+  touch -t 202601040000 "$proj/$T700_B/workflows/wf_t700rev-b01.json"
+  touch -t 202601040010 "$proj/$T700_B/workflows/wf_t700fix-b02.json"
+  touch -t 202601030020 "$proj/$T700_A"
+  touch -t 202601040020 "$proj/$T700_B"
+}
+
+T700_A=70707070-7070-7070-7070-707070707070
+T700_B=71717171-7171-7171-7171-717171717171
+
+# The JSON of one field, so a null is told apart from a missing key or an empty string.
+field_json() {
+  python3 -c '
+import json, sys
+node = json.loads(sys.argv[1])
+for key in sys.argv[2].split("."):
+    node = node[int(key)] if key.isdigit() else node[key]
+print(json.dumps(node))
+' "$1" "$2"
 }
 
 @test "unknown session yields an empty document, not an error" {
@@ -682,4 +705,112 @@ JSON
   [ "$status" -eq 0 ]
   tm_contains "$output" "haiku-4-5 high"
   tm_lacks "$output" "2025100"
+}
+
+# ── task 700: wall-clock span per stage, a task's runs across sessions ─────
+# Session 70707070 holds the Execute run and the Validation run (two agents in
+# parallel); session 71717171, a day later, holds Review and a fix-review run
+# with Execute and Validation.
+
+@test "an agent record carries startedMs from its run state" {
+  run tm_metrics home-a --session "$T700_A" --run wf_t700exe-a01
+  [ "$(tm_field "$output" runs.0.agents.0.startedMs)" = "1787300000000" ]
+}
+
+@test "startedMs falls back to the transcript's first timestamp" {
+  run tm_metrics home-a --session 44444444-4444-4444-4444-444444444444
+  [ "$(tm_field "$output" runs.0.agents.0.startedMs)" = "1787585133000" ]
+}
+
+@test "a run carries its action from args.action, and null without one" {
+  run tm_metrics home-a --session "$T700_B" --run wf_t700fix-b02
+  [ "$(tm_field "$output" runs.0.action)" = "fix-review" ]
+  run tm_metrics home-a --session 55555555-5555-5555-5555-555555555555 --run wf_9664a933-1b1
+  [ "$(field_json "$output" runs.0.action)" = "null" ]
+}
+
+@test "--project-sessions gathers a task's runs from every session of the project" {
+  run tm_metrics home-a --session "$T700_B" --task 700 --project-sessions
+  [ "$status" -eq 0 ]
+  [ "$(tm_field "$output" totals.runs)" = "4" ]
+  [ "$(tm_field "$output" totals.agents)" = "6" ]
+  [ "$(tm_field "$output" runs.0.agents.0.agentId)" = "f0000000000000001" ]
+  [ "$(tm_field "$output" runs.0.agents.5.agentId)" = "f0000000000000006" ]
+  run tm_metrics home-a --session "$T700_B" --task 700
+  [ "$(tm_field "$output" totals.runs)" = "2" ]
+  [ "$(tm_field "$output" totals.agents)" = "3" ]
+}
+
+@test "--project-sessions with no --session walks the sessions under the current folder's slug" {
+  local cfg proj slug
+  cfg="$(mktemp -d)"
+  proj="$(cd -- "$(mktemp -d)" && pwd -P)"
+  slug="$(printf '%s' "$proj" | tr -c 'A-Za-z0-9' '-')"
+  mkdir -p "$cfg/projects/$slug"
+  cp -R "$(tm_home home-a)/projects/-tmp-proj/$T700_A" "$(tm_home home-a)/projects/-tmp-proj/$T700_B" \
+        "$cfg/projects/$slug/"
+  touch -t 202601030000 "$cfg/projects/$slug/$T700_A/workflows/wf_t700exe-a01.json"
+  touch -t 202601030010 "$cfg/projects/$slug/$T700_A/workflows/wf_t700val-a02.json"
+  touch -t 202601040000 "$cfg/projects/$slug/$T700_B/workflows/wf_t700rev-b01.json"
+  touch -t 202601040010 "$cfg/projects/$slug/$T700_B/workflows/wf_t700fix-b02.json"
+  touch -t 202601030020 "$cfg/projects/$slug/$T700_A"
+  touch -t 202601040020 "$cfg/projects/$slug/$T700_B"
+  run env CLAUDE_CONFIG_DIR="$cfg" CLAUDE_CODE_SESSION_ID="" \
+      bash -c "cd '$proj' && '$(tm_repo_root)/scripts/agent-metrics.sh' --task 700 --project-sessions"
+  local all="$output"
+  run env CLAUDE_CONFIG_DIR="$cfg" CLAUDE_CODE_SESSION_ID="" \
+      bash -c "cd '$proj' && '$(tm_repo_root)/scripts/agent-metrics.sh' --task 700"
+  rm -rf "$cfg" "$proj"
+  [ "$(tm_field "$all" totals.runs)" = "4" ]
+  [ "$(tm_field "$all" session)" = "$T700_B" ]
+  [ "$(tm_field "$output" totals.runs)" = "2" ]
+}
+
+@test "--project-sessions without --task changes nothing" {
+  run tm_metrics home-a --session "$T700_B" --project-sessions
+  [ "$status" -eq 0 ]
+  local with="$output"
+  run tm_metrics home-a --session "$T700_B"
+  [ "$with" = "$output" ]
+}
+
+@test "a parallel stage's span is shorter than its summed elapsed" {
+  run tm_metrics home-a --session "$T700_A" --run wf_t700val-a02
+  [ "$(tm_field "$output" runs.0.phases.1.title)" = "Validation" ]
+  [ "$(tm_field "$output" runs.0.phases.1.elapsedMs)" = "660000" ]
+  [ "$(tm_field "$output" runs.0.phases.1.spanMs)" = "420000" ]
+  [ "$(tm_field "$output" runs.0.phases.1.spanText)" = "7m 00s" ]
+}
+
+@test "a phase with no agent has a null span" {
+  run tm_metrics home-a --session "$T700_A" --run wf_t700exe-a01
+  [ "$(tm_field "$output" runs.0.phases.2.title)" = "Review" ]
+  [ "$(field_json "$output" runs.0.phases.2.spanMs)" = "null" ]
+  [ "$(field_json "$output" runs.0.phases.2.spanText)" = "null" ]
+}
+
+@test "a stage that ran in two runs sums its spans, not the gap between them" {
+  run tm_metrics home-a --session "$T700_B" --task 700 --project-sessions
+  # The folded record: Validation's 7m in the first session plus 2m in the fix round.
+  [ "$(tm_field "$output" runs.0.phases.1.title)" = "Validation" ]
+  [ "$(tm_field "$output" runs.0.phases.1.spanMs)" = "540000" ]
+  [ "$(tm_field "$output" totals.stageSpans.Execute)" = "600000" ]
+  [ "$(tm_field "$output" totals.stageSpans.Validation)" = "420000" ]
+  [ "$(tm_field "$output" totals.stageSpans.Review)" = "240000" ]
+  [ "$(tm_field "$output" totals.fixSpanMs)" = "300000" ]
+}
+
+@test "fixRounds counts fix-review runs with an Execute" {
+  run tm_metrics home-a --session "$T700_B" --task 700 --project-sessions
+  [ "$(tm_field "$output" totals.fixRounds)" = "1" ]
+}
+
+@test "the task totals are only there with --task" {
+  run tm_metrics home-a --session "$T700_B"
+  [ "$(python3 -c 'import json,sys; t=json.loads(sys.argv[1])["totals"]; print(sorted(set(t) & {"runs","stageSpans","fixRounds","fixSpanMs"}))' "$output")" = "[]" ]
+}
+
+@test "the usage line names --project-sessions" {
+  run tm_metrics home-empty --help
+  tm_contains "$output" "--project-sessions"
 }
