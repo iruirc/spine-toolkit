@@ -53,9 +53,10 @@ The defaults are an order of magnitude from agent-run logs, not a measurement of
   maximum of every knob at once.
 - **Fix rounds.** `fix_rounds` is the task's resolved `[FIX_ROUNDS]`. At 0 the worst case has no
   round either.
-- **Gates.** In `manual`: 3 for Execute, Validation and Review; 3 more for each fix round, its Fix,
-  Validation and Review; and 1 more for each `pending_user` row in `### Estimation conditions`. In
-  `auto`: 0.
+- **Gates.** In `manual`: 3 for Execute, Validation and Review, and 3 more for each fix round, its
+  Fix, Validation and Review. In `auto`: 0. Only runs from Execute to Review count, the unit of
+  `gateRuns` at Done. A `pending_user` row of `### Estimation conditions` is asked at Plan, before
+  the forecast applies, so it is not counted.
 - **Confidence.** `Low (uncalibrated)` while any coefficient the forecast used is this skill's
   default rather than a row of `## AgentRunCoefficients`. Once every one comes from the project, the
   usual scale applies: `High` for a narrow spread backed by finished tasks like this one, `Medium`
@@ -119,14 +120,15 @@ with the reason; the forecast's size is never a reason.
 When `estimation` is `on`, the unit is `agent-run` or `both`, and `Plan.md` carries
 `### Run forecast`:
 
-1. Run, from the core root:
+1. Run, from the project root:
 
    ```
-   scripts/agent-metrics.sh --format json --task <id> --project-sessions
+   <core root>/scripts/agent-metrics.sh --format json --task <id> --project-sessions
    ```
 
    It gathers the task's runs from every session of the project, so a task interrupted and
-   continued in a new session is measured whole.
+   continued in a new session is measured whole. Without `--session` it finds the project by the
+   folder it runs in, so run anywhere else it finds no runs.
 2. Read `totals`. Every duration there is in milliseconds:
 
    | Part | Field |
@@ -140,9 +142,10 @@ When `estimation` is `on`, the unit is `agent-run` or `both`, and `Plan.md` carr
    `stageSpans` has no key for a stage that had no timed agent: read a missing key as no time.
    `fixSpanMs` is 0 when there were no fix-review runs. `gateRuns` counts the task's runs in which
    an agent ran Execute, Validation or Review, fix-review runs included; a Research or Plan run is
-   not a gate of the forecast, and `runs`, which counts every run, is not the gate count. A fix round's stages are counted in
-   `fixSpanMs`, never in `stageSpans`, so the Run's actual is the three stages plus `fixSpanMs`. A
-   stage's span is summed run by run, so the owner's wait between two runs is never in it.
+   not a gate of the forecast, and `runs`, which counts every run, is not the gate count. A fix
+   round's stages are counted in `fixSpanMs`, never in `stageSpans`, so the Run's actual is the
+   three stages plus `fixSpanMs`. A stage's span is summed run by run, so the owner's wait between
+   two runs is never in it.
 3. Write `## Estimate retrospective` in `Done.md`, in the forecast's unit (below).
 4. Correct this task's row in the calibration log, or append it (`## Calibration log`).
 
@@ -232,10 +235,10 @@ duration and gate column the sum of the steps' rows, `driver = yes` when any ste
 
 ## Calibration
 
-At Plan, before the forecast, run from the core root:
+At Plan, before the forecast, run from the project root, where the log path resolves:
 
 ```
-scripts/run-calibration.sh Tasks/_calibration/agent-run-log.md
+<core root>/scripts/run-calibration.sh Tasks/_calibration/agent-run-log.md
 ```
 
 It reads the rows with `source = workflow` and a `type` other than `EPIC`, and prints one line per

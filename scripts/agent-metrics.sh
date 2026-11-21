@@ -596,11 +596,12 @@ def merge_by_task(runs):
     return [fold_group(buckets[key]) for key in order]
 
 
-# The format is not a contract (P8): a shape neither this script nor its
-# fixtures anticipated must degrade to an empty result, not a traceback.
+# The stages whose runs stop at a gate of the run forecast in manual mode.
 GATE_STAGES = ("Execute", "Validation", "Review")
 
 
+# The format is not a contract (P8): a shape neither this script nor its
+# fixtures anticipated must degrade to an empty result, not a traceback.
 def task_totals(runs):
     # What a Done stage turns into the actual figure of a run forecast. A fix-review
     # round is counted apart, so a stage re-run by it does not inflate the stage.
