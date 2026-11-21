@@ -88,3 +88,79 @@ setup() {
   [ "$status" -eq 2 ]
   [[ "$stderr" == *usage* ]] || { echo "$stderr"; false; }
 }
+
+# A log written on the spot: one row per argument, `phases modules driver execute validation review fix_rounds fix_time`.
+write_log() {
+  local log="$1" n=0 line
+  shift
+  {
+    echo '# Agent run log'
+    echo
+    echo '| date | task_id | type | mode | phases | modules | driver | forecast | actual | execute | validation | review | fix_rounds | fix_time | gates_forecast | gates | source | in_range | variance_reason |'
+    echo '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|'
+    for line in "$@"; do
+      n=$((n + 1))
+      read -r ph mo dr ex va re fr ft <<<"$line"
+      echo "| 2026-02-0$n | 00$n-x | FEATURE | manual | $ph | $mo | $dr | 1h00m–2h00m | 1h30m | $ex | $va | $re | $fr | $ft | 1–2 | 1 | workflow | in | |"
+    done
+  } >"$log"
+}
+
+@test "a negative driver_scenario is dropped and named on stderr" {
+  log="$BATS_TEST_TMPDIR/log.md"
+  # driver = no: 30/1 twice, so a driver run is expected to cost 30 per module; the driver rows cost 10 and 20: 10-30, 20-30
+  write_log "$log" '2 1 no 20 30 10 0 0' '2 1 no 20 30 10 0 0' '2 1 yes 20 10 10 0 0' '2 1 yes 20 20 10 0 0'
+  run --separate-stderr "$RC" "$log"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *driver_scenario* ]] || { echo "$output"; false; }
+  [[ "$output" == *'| execute_per_phase | 10–10 | median 10, 4 rows |'* ]] || { echo "$output"; false; }
+  [ "$stderr" = 'run-calibration: driver_scenario: 2 non-positive samples dropped' ] || { echo "$stderr"; false; }
+}
+
+@test "a zero fix_time is dropped and named on stderr" {
+  log="$BATS_TEST_TMPDIR/log.md"
+  write_log "$log" '2 1 no 20 10 10 1 0' '2 1 no 20 10 10 0 0' '2 1 no 20 10 10 0 0'
+  run --separate-stderr "$RC" "$log"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *fix_round* ]] || { echo "$output"; false; }
+  [ "$stderr" = 'run-calibration: fix_round: 1 non-positive samples dropped' ] || { echo "$stderr"; false; }
+}
+
+@test "driver rows only: driver_scenario has nothing to subtract" {
+  log="$BATS_TEST_TMPDIR/log.md"
+  write_log "$log" '2 1 yes 20 40 10 0 0' '2 1 yes 20 40 10 0 0' '2 1 yes 20 40 10 0 0'
+  run --separate-stderr "$RC" "$log"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *driver_scenario* ]] || { echo "$output"; false; }
+  [[ "$output" != *validation_per_module* ]] || { echo "$output"; false; }
+  [ "$stderr" = 'run-calibration: driver_scenario: no driver = no rows to subtract' ] || { echo "$stderr"; false; }
+}
+
+@test "a log with the wrong header names it on stderr and counts no rows" {
+  log="$BATS_TEST_TMPDIR/log.md"
+  printf '%s\n' '| date | task_id | actual |' '|---|---|---|' '| 2026-02-01 | 001-x | 1h |' >"$log"
+  run --separate-stderr "$RC" "$log"
+  [ "$status" -eq 0 ]
+  [ "$output" = 'run-calibration: 0 usable rows, need 3; nothing proposed' ] || { echo "$output"; false; }
+  [ "$stderr" = "run-calibration: no table with the agent-run-log header in $log" ] || { echo "$stderr"; false; }
+}
+
+@test "an unknown source value is a malformed row" {
+  log="$BATS_TEST_TMPDIR/log.md"
+  cp "$FX/five-rows.md" "$log"
+  printf '%s\n' '| 2026-01-06 | 006-x | FEATURE | manual | 2 | 1 | no | 1h00m–2h00m | 1h30m | 20 | 10 | 12 | 0 | 0 | 1–2 | 1 | svn | in | |' >>"$log"
+  run --separate-stderr "$RC" "$log"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *'run-calibration: line 10: source is '*', skipped'* ]] || { echo "$stderr"; false; }
+  [[ "$output" == *'| review | 14–18 | median 16, 5 rows |'* ]] || { echo "$output"; false; }
+}
+
+@test "a bad driver value is a malformed row" {
+  log="$BATS_TEST_TMPDIR/log.md"
+  cp "$FX/five-rows.md" "$log"
+  printf '%s\n' '| 2026-01-06 | 006-x | FEATURE | manual | 2 | 1 | maybe | 1h00m–2h00m | 1h30m | 20 | 10 | 12 | 0 | 0 | 1–2 | 1 | workflow | in | |' >>"$log"
+  run --separate-stderr "$RC" "$log"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *'run-calibration: line 10: driver is '*', skipped'* ]] || { echo "$stderr"; false; }
+  [[ "$output" == *'| review | 14–18 | median 16, 5 rows |'* ]] || { echo "$output"; false; }
+}

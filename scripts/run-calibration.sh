@@ -31,6 +31,7 @@ if [ ! -f "$log" ]; then
 fi
 
 python3 -I - "$log" <<'PY'
+import math
 import re
 import statistics
 import sys
@@ -57,7 +58,7 @@ def warn(n, reason):
 
 
 def half_up(x):
-    return int(x + 0.5)
+    return math.floor(x + 0.5)
 
 
 def spread(values):
@@ -74,6 +75,7 @@ with open(sys.argv[1], encoding="utf-8") as fh:
 
 rows = []
 in_table = False
+found_header = False
 for n, line in enumerate(lines, 1):
     if not line.lstrip().startswith("|"):
         in_table = False
@@ -82,6 +84,7 @@ for n, line in enumerate(lines, 1):
     if not in_table:
         if c == COLUMNS:
             in_table = True
+            found_header = True
         continue
     if all(re.fullmatch(r":?-{3,}:?", x) for x in c):
         continue
@@ -108,6 +111,9 @@ for n, line in enumerate(lines, 1):
         continue
     rows.append(r)
 
+if not found_header:
+    print(f"run-calibration: no table with the agent-run-log header in {sys.argv[1]}", file=sys.stderr)
+
 if len(rows) < NEED:
     print(f"run-calibration: {len(rows)} usable rows, need {NEED}; nothing proposed")
     sys.exit(0)
@@ -119,14 +125,22 @@ series["validation_per_module"] = vpm
 series["execute_per_phase"] = [r["execute"] / r["phases"] for r in rows]
 series["review"] = [r["review"] for r in rows]
 series["fix_round"] = [r["fix_time"] / r["fix_rounds"] for r in rows if r["fix_rounds"] > 0]
+driver_rows = [r for r in rows if r["driver"] == "yes"]
 if vpm:
     base = statistics.median(vpm)
-    series["driver_scenario"] = [r["validation"] - r["modules"] * base
-                                 for r in rows if r["driver"] == "yes"]
+    series["driver_scenario"] = [r["validation"] - r["modules"] * base for r in driver_rows]
+elif driver_rows:
+    print("run-calibration: driver_scenario: no driver = no rows to subtract", file=sys.stderr)
 
 for key in KEYS:
-    values = series[key]
+    # A coefficient is a duration: a sample that is zero or negative says the row
+    # is off, not that the step costs nothing, so it never enters a range.
+    kept = [v for v in series[key] if v > 0]
+    dropped = len(series[key]) - len(kept)
+    values = kept
     if not values:
+        if dropped:
+            print(f"run-calibration: {key}: {dropped} non-positive samples dropped", file=sys.stderr)
         continue
     q1, q3, m = spread(values)
     print(f"| {key} | {q1}–{q3} | median {m}, {len(values)} rows |")
