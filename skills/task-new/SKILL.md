@@ -1,9 +1,9 @@
 ---
 name: task-new
 description: |
-  Creates and fills a Task.md scaffold in Tasks/<STATUS>/NNN-slug/ (or nested as .step inside an epic). Formalizes the user's description and fills sections; does not implement anything or research the codebase.
+  Creates and fills a Task.md scaffold in Tasks/STATUS/NNN-slug/ (or nested as .step inside an epic). Formalizes the user's description and fills sections; does not implement anything or research the codebase.
   Use when (en): "create task", "new task", "ft", "create sub-task for N", "step for N", "named step for N"
-  Use when (ru): "создай задачу", "новая задача", "ft", "создай под-задачу для N", "step для N", "шаг для N", "создай шаг <name> для N"
+  Use when (ru): "создай задачу", "новая задача", "ft", "создай под-задачу для N", "step для N", "шаг для N", "создай шаг NAME для N"
 ---
 
 # Task New
@@ -74,7 +74,7 @@ For reference, the templates contain these placeholders:
    - List each status directory explicitly (`ls Tasks/<STATUS>/` for every status folder that exists). Do NOT rely on a recursive glob or `find` without `-L`: in some projects `Tasks/` is a symlink, and non-following traversal silently returns nothing — a partial scan is exactly what produces duplicate numbers.
    - Collect all entries starting with a number (`^\d{3}`, with or without a `-slug` suffix — a malformed bare-number folder still occupies its number), take the max, add 1.
    - **Collision check**: verify no `Tasks/*/<NNN>-*` (or bare `Tasks/*/<NNN>`) exists for the chosen NNN; if it does — increment and re-check. Re-run this check right before creating the folder: a parallel session may have taken the number in the meantime.
-3. **Make the folder**: `Tasks/<STATUS>/NNN-slug/`.
+3. **Make the folder**: `Tasks/STATUS/NNN-slug/`.
 4. **Decide `{{TASK_TYPE}}`** by intent (matched across languages):
    - The user named the type QUICK — the words in locale key `task_type_quick_keywords` → `QUICK`. Checked first, and only ever on the user's own word: QUICK removes Reproduce, the investigation and Plan, so no description of the work selects it (`conventions/task-scale.md` → QUICK).
    - "bug" / "crash" / "doesn't work" / "regression" → `BUG`

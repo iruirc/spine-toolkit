@@ -60,11 +60,11 @@ setup() {
 }
 
 @test "no workflow envelope enumerates axes core does not own" {
-  envelopes="$(grep -h '^stack_axes_envelope:' "$ROOT/skills"/*/SKILL.md || true)"
+  envelopes="$(grep -h '^  stack_axes_envelope:' "$ROOT/skills"/*/SKILL.md || true)"
   # One per profile skill: with none found there is nothing to be wrong about,
   # which is how a renamed key would read as a pass.
   n="$(printf '%s\n' "$envelopes" | grep -c . || true)"
   [ "$n" -ge 7 ] || { echo "found $n envelope(s), expected at least 7"; return 1; }
-  offenders="$(grep -vE '^stack_axes_envelope: \{ may: (all|\[\]), never: (all|\[\]) \}$' <<<"$envelopes" || true)"
+  offenders="$(grep -vE '^  stack_axes_envelope: \{ may: (all|\[\]), never: (all|\[\]) \}$' <<<"$envelopes" || true)"
   [ -z "$offenders" ] || { echo "envelope names an axis: $offenders"; return 1; }
 }

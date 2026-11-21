@@ -2,8 +2,8 @@
 name: orchestrator
 description: |
   Routes a user request to the appropriate profile workflow (FEATURE/BUG/REFACTOR/TEST/QUICK/REVIEW/EPIC/RESEARCH), resolves missing parameters (profile, mode, stack, start point), and manages stages and artifact archival.
-  Use when (en): "run N", "do N", "execute N", "continue N", "only <stage> for N", "up to <stage> for N", "start from <stage> for N", "redo <stage> for N", "start from phase N.N for X", "redo phase N.N for X", "start over for N", "rerun validation for N", "catch up N", "fix review N"
-  Use when (ru): "запусти N", "сделай N", "выполни N", "продолжи N", "только <stage> для N", "до <stage> для N", "начни с <stage> для N", "переделай <stage> для N", "начни с фазы N.N для X", "переделай фазу N.N для X", "начни заново для N", "перезапусти валидацию для N", "догони N", "исправь находки N"
+  Use when (en): "run N", "do N", "execute N", "continue N", "only STAGE for N", "up to STAGE for N", "start from STAGE for N", "redo STAGE for N", "start from phase N.N for X", "redo phase N.N for X", "start over for N", "rerun validation for N", "catch up N", "fix review N"
+  Use when (ru): "запусти N", "сделай N", "выполни N", "продолжи N", "только STAGE для N", "до STAGE для N", "начни с STAGE для N", "переделай STAGE для N", "начни с фазы N.N для X", "переделай фазу N.N для X", "начни заново для N", "перезапусти валидацию для N", "догони N", "исправь находки N"
 ---
 
 # Orchestrator
@@ -250,7 +250,7 @@ Algorithm:
    4.0 if stack_override is set (stack explicitly named in the request):
           stack := stack_override
           skip to step 5            # explicit override wins, like mode_override
-   4.1 envelope := workflow-<profile> frontmatter `stack_axes_envelope`
+   4.1 envelope := workflow-<profile> frontmatter `metadata.stack_axes_envelope`
                    (absent → {may: all, never: []})
    4.2 if envelope.never == all:                       # review, epic
           stack := raw read of the project config's ## Stack  # ambient info-only

@@ -4,7 +4,8 @@ description: |
   EPIC profile workflow: Research → Plan → Execute (decomposition or pure-research) → Acceptance (under manual_checks_pass=end) → Done. Activated by spine-toolkit:orchestrator; not invoked by the user directly.
   Use when (en): orchestrator dispatches a task with [TASK_TYPE]=EPIC
   Use when (ru): оркестратор диспетчеризует задачу с [TASK_TYPE]=EPIC
-stack_axes_envelope: { may: [], never: all }
+metadata:
+  stack_axes_envelope: { may: [], never: all }
 ---
 
 # Workflow Epic

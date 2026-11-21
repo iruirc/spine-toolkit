@@ -4,7 +4,8 @@ description: |
   REVIEW profile workflow: a single pass by the reviewer role's agent plus auto-move into DONE/ on APPROVED. Activated by spine-toolkit:orchestrator; not invoked by the user directly.
   Use when (en): orchestrator dispatches a task with [TASK_TYPE]=REVIEW
   Use when (ru): оркестратор диспетчеризует задачу с [TASK_TYPE]=REVIEW
-stack_axes_envelope: { may: [], never: all }
+metadata:
+  stack_axes_envelope: { may: [], never: all }
 ---
 
 # Workflow Review

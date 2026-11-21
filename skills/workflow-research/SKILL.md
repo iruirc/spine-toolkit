@@ -4,7 +4,8 @@ description: |
   RESEARCH profile workflow: Research → [Review] → Done. Pure-investigation profile for audits, feasibility studies, comparative analyses, and domain investigations. No code from the task lands in the project; with research_experiment=on the Research stage may run an experiment on a branch that is never merged. Activated by spine-toolkit:orchestrator; not invoked by the user directly.
   Use when (en): orchestrator dispatches a task with [TASK_TYPE]=RESEARCH
   Use when (ru): оркестратор диспетчеризует задачу с [TASK_TYPE]=RESEARCH
-stack_axes_envelope: { may: [], never: all }
+metadata:
+  stack_axes_envelope: { may: [], never: all }
 ---
 
 # Workflow Research
@@ -53,7 +54,7 @@ RESEARCH-profile specifics:
 - `research_agent` — **RESEARCH-specific optional field** (added in the orchestrator's Outbound Contract for this profile only). Values are BARE role names: `architect` (default) | `diagnostics` | `security`. Workflow-research resolves the role through the contract's `agents` map at dispatch time, mirroring how `[TASK_TYPE]` carries `FEATURE` rather than `spine-toolkit:workflow-feature`. If unset or empty → fall back to `architect`. If set to any other value → return `{status: error, reason: invalid_research_agent}` before dispatching a subagent.
 - `research_experiment` — **RESEARCH-specific field**, `on` or `off`, always filled for this profile. `on` is the task owner's permission for the Research stage to answer by an experiment (§2c); `off` is the profile exactly as it was. Absent reads as `off` — an orchestrator from before the field. Any other value → return `{status: error, reason: invalid_research_experiment}` before dispatching a subagent.
 
-**Stack envelope.** `stack_axes_envelope: { may: [], never: all }` — same as REVIEW and EPIC. The project `## Stack` from the project config is read raw as ambient context; no per-axis chain, no AUQ.
+**Stack envelope.** `metadata.stack_axes_envelope: { may: [], never: all }` — same as REVIEW and EPIC. The project `## Stack` from the project config is read raw as ambient context; no per-axis chain, no AUQ.
 
 **Execution range.** Stages run in the order Research → Review → Done, starting at `start_stage` and continuing through `end_stage` inclusive. If `end_stage=null` — through the end of the profile. If `end_stage` precedes `start_stage` in order, that is a contract error: return `{status: error, reason: "end_stage before start_stage"}`. If `need_review=false` and the natural flow reaches Review — skip it and go straight to Done.
 
