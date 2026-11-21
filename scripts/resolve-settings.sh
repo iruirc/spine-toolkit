@@ -38,6 +38,7 @@ set -euo pipefail
 # plan_check and done_check follow the final scale: auto is on at full and off at lite. [ARTIFACT_CHECK], their
 # pre-split spelling, is read for both at each link after the field's own line, and said once per source
 # where it says on or off: an auto there is what the split fields say by default.
+# estimation follows the final scale the same way: auto is on at full and off at lite.
 # report follows the profile: auto is off for QUICK, BUG and REFACTOR, off always for REVIEW, and stays auto for the rest.
 ROLES="architect developer tester reviewer refactorer validator security diagnostics"
 # A `platform` left by 1.11.0 reads as if its line were absent, not as `session`, so the key takes
@@ -248,6 +249,8 @@ SCALARS = (
     ('walkthrough_check', 'WALKTHROUGH_CHECK', ['auto', 'on', 'once', 'off'], 'auto'),
     ('plan_check', 'PLAN_CHECK', ['auto', 'on', 'off'], 'auto'),
     ('done_check', 'DONE_CHECK', ['auto', 'on', 'off'], 'auto'),
+    ('estimation', 'ESTIMATION', ['auto', 'on', 'off'], 'auto'),
+    ('estimation_unit', 'ESTIMATION_UNIT', ['agent-run', 'days', 'both'], 'agent-run'),
     ('report', 'REPORT', ['auto', 'on', 'off'], 'auto'),
     ('drive_app', 'DRIVE_APP', ['auto', 'off'], 'auto'),
     ('manual_checks', 'MANUAL_CHECKS', ['auto', 'always'], 'auto'),
@@ -577,7 +580,8 @@ if resolved['scale'] == 'lite' and sources['walkthrough'] in ('default', 'projec
 # walkthrough_check follows the depth it checks. CHOSEN keeps what the chain picked, so show can
 # tell a value derived from auto from one somebody wrote down.
 CHOSEN = {'walkthrough_check': resolved['walkthrough_check'], 'plan_check': resolved['plan_check'],
-          'done_check': resolved['done_check'], 'report': resolved['report']}
+          'done_check': resolved['done_check'], 'estimation': resolved['estimation'],
+          'report': resolved['report']}
 chosen, depth = CHOSEN['walkthrough_check'], resolved['walkthrough']
 check = 'off' if depth == 'off' else ('once' if depth == 'deep' else 'off') if chosen == 'auto' else chosen
 if check != chosen:
@@ -585,8 +589,8 @@ if check != chosen:
                                         'walkthrough: off (%s: %s)' % (sources['walkthrough_check'], chosen))
     resolved['walkthrough_check'], sources['walkthrough_check'] = check, 'walkthrough'
 
-# plan_check and done_check follow the scale, read after the QUICK rule above. An explicit on or off stands.
-for name in ('plan_check', 'done_check'):
+# plan_check, done_check and estimation follow the scale, read after the QUICK rule above. An explicit on or off stands.
+for name in ('plan_check', 'done_check', 'estimation'):
     if CHOSEN[name] == 'auto':
         resolved[name], sources[name] = ('on' if resolved['scale'] == 'full' else 'off'), 'scale'
         show_source[name] = 'scale: %s' % resolved['scale']
@@ -837,7 +841,7 @@ def show_rows(show_all):
                 continue
             text = ', '.join(spell(k) for k in keys)
         else:
-            # A value derived from the default (walkthrough_check's, plan_check's, done_check's or report's auto) is nobody's choice either.
+            # A value derived from the default (walkthrough_check's, plan_check's, done_check's, estimation's or report's auto) is nobody's choice either.
             if not show_all and sources[name] != 'run' and (sources[name] == 'default' or value == defaults[name]
                                                             or CHOSEN.get(name) == defaults[name]):
                 rest += 1

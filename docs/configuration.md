@@ -385,6 +385,26 @@ The file gets one read and at most one revision, no second round; `auto` follows
 `[PLAN_CHECK]` does. A project that wants its plans read back but not its reports writes
 `[DONE_CHECK] = [off]` beside `[PLAN_CHECK] = [auto]`.
 
+### [ESTIMATION]
+
+**Values:** `auto` `on` `off` · **Default:** `auto` — `on` at `full`, `off` at `lite` ·
+**Task override:** `[ESTIMATION] = [auto|on|off]` · **Defined by:**
+[`../conventions/task-settings.md`](../conventions/task-settings.md)
+
+Whether the task carries an estimate. `auto` follows the scale as `[PLAN_CHECK]` does: `on` at `full`, `off` at
+`lite`. An explicit `on` stands at `lite`, so a light task can carry a forecast; an explicit `off` stands at
+`full`. What the estimate is counted in is `[ESTIMATION_UNIT]`.
+
+### [ESTIMATION_UNIT]
+
+**Values:** `agent-run` `days` `both` · **Default:** `agent-run` ·
+**Task override:** `[ESTIMATION_UNIT] = [agent-run|days|both]` · **Defined by:**
+[`../conventions/task-settings.md`](../conventions/task-settings.md)
+
+The unit of the estimate. A project without this line gets `agent-run`; nothing is migrated. The
+`## DeliveryMode` and `## AILeverage` sections of the config only refine the estimate in days and are read
+when the unit is `days` or `both`; at `agent-run` their values change nothing.
+
 ### [SECURITY]
 
 **Values:** `auto` `on` `off` · **Default:** `auto` · **Task override:** `[SECURITY] = [auto|on|off]` ·

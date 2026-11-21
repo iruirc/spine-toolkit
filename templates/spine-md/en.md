@@ -35,6 +35,8 @@
 [WALKTHROUGH_CHECK] = [auto]           # auto | on | once | off
 [PLAN_CHECK] = [auto]                  # auto | on | off
 [DONE_CHECK] = [auto]                  # auto | on | off
+[ESTIMATION] = [auto]                  # auto | on | off; auto follows the scale (on at full, off at lite)
+[ESTIMATION_UNIT] = [agent-run]        # agent-run | days | both; days and both read DeliveryMode and AILeverage
 [SECURITY] = [auto]                    # auto | on | off
 [DOCS] = [on]                          # on | off
 [MODEL_TIERS] = [fast@claude-code: sonnet]  # fast@<runtime>: <model>, project config only
@@ -103,7 +105,7 @@ back against it.)
 
 manual
 
-(optional: keep `manual` by default; change this value only when the project should produce the additional estimation range documented by `feature-estimation`)
+(optional: keep `manual` by default; this section refines only the estimate in days, and is read only when `[ESTIMATION_UNIT]` is `days` or `both`; change this value only when the project should produce the additional estimation range documented by `feature-estimation`)
 
 ## AILeverage
 

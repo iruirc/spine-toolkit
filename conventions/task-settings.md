@@ -126,6 +126,13 @@ and `[ARTIFACT_CHECK]` after it, so a nearer pre-split line beats a farther spli
 says `on` or `off` is reported once per source (an `auto` is what the two say by default, so it is
 read without a word), the source keeps its name, and `show` marks it `artifact_check`.
 
+`estimation` follows the scale the same way: its chain is the ordinary one and ends at `auto`, and only `on` or
+`off` leaves the resolver, `on` where `scale` resolved to `full` and `off` where it resolved to `lite`. An explicit
+`on` stands at `lite`, so a light task can carry a forecast, and an explicit `off` stands at `full`. Where the value
+came from `auto`, the source reads `scale`. `estimation_unit` has no derivation: it is `agent-run` unless a link
+says `days` or `both`, and the `## DeliveryMode` section of the config never changes it; that section only refines
+the days, and is read when the unit is `days` or `both`.
+
 `report` follows the profile. Its chain is the ordinary one and ends at `auto`. `auto` leaves the resolver
 as `auto` for `TEST`, `FEATURE`, `RESEARCH` and `EPIC`, and the Plan stage decides by `task-report` →
 `## When`. For `QUICK`, `BUG` and `REFACTOR` an `auto` becomes `off`; an explicit `on` or `off` stands.
@@ -164,6 +171,8 @@ answers.
 | `walkthrough_check` | `[WALKTHROUGH_CHECK]` | `[WALKTHROUGH_CHECK]` | `auto` `on` `once` `off` | `auto`: `once` at `deep`, `off` at `brief`; `off` wherever `walkthrough` is `off` |
 | `plan_check` | `[PLAN_CHECK]` | `[PLAN_CHECK]` | `auto` `on` `off` | `auto`: `on` at `full`, `off` at `lite` |
 | `done_check` | `[DONE_CHECK]` | `[DONE_CHECK]` | `auto` `on` `off` | `auto`: `on` at `full`, `off` at `lite` |
+| `estimation` | `[ESTIMATION]` | `[ESTIMATION]` | `auto` `on` `off` | `auto`: `on` at `full`, `off` at `lite` |
+| `estimation_unit` | `[ESTIMATION_UNIT]` | `[ESTIMATION_UNIT]` | `agent-run` `days` `both` | `agent-run` |
 | `report` | `[REPORT]` | `[REPORT]` | `auto` `on` `off` | `auto`: stays `auto` for `TEST`, `FEATURE`, `RESEARCH`, `EPIC`; `off` for `QUICK`, `BUG`, `REFACTOR`; always `off` for `REVIEW` |
 | `drive_app` | `[DRIVE_APP]` | `[DRIVE_APP]` | `auto` `off` | `auto` |
 | `manual_checks` | `[MANUAL_CHECKS]` | `[MANUAL_CHECKS]` | `auto` `always` | `auto` |

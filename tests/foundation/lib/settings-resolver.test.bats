@@ -214,7 +214,7 @@ map_value() { python3 -c 'import json,sys; print(json.load(sys.stdin)[sys.argv[1
     ! grep -q "^\[$f\]" <<<"$out" || { echo "$f is the default written down, and printed: $out"; return 1; }
   done
   [ "$(grep -c '^\[' <<<"$out")" -eq 2 ] || { echo "$out"; return 1; }
-  grep -qxF '# 28 more at their default' <<<"$out" || { echo "$out"; return 1; }
+  grep -qxF '# 30 more at their default' <<<"$out" || { echo "$out"; return 1; }
 }
 
 @test "a project budget equal to the default is not a diff, and --all still names it" {
@@ -938,6 +938,105 @@ FIELDS
   [ "$(field done_check <<<"$out")" = off ] || { echo "$out"; return 1; }
   [ "$(source_of done_check <<<"$out")" = epic ] || { echo "$out"; return 1; }
   [ "$(grep -c 'pre-split spelling' "$ERR")" -eq 1 ] || { cat "$ERR"; return 1; }
+}
+
+@test "estimation is on at full and off at lite when nobody chose it" {
+  run "$RESOLVE" json "$TASK"
+  [ "$(field estimation <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(source_of estimation <<<"$output")" = scale ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field estimation <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(source_of estimation <<<"$output")" = scale ] || { echo "$output"; return 1; }
+}
+
+@test "an explicit estimation on stands at lite" {
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n[ESTIMATION] = [on]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field estimation <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(source_of estimation <<<"$output")" = task ] || { echo "$output"; return 1; }
+}
+
+@test "a raised scale turns estimation on again" {
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK" --set scale=full
+  [ "$(field estimation <<<"$output")" = on ] || { echo "$output"; return 1; }
+  [ "$(source_of estimation <<<"$output")" = scale ] || { echo "$output"; return 1; }
+}
+
+@test "a task estimation off stands at full, and a project one is read from the config" {
+  printf '[TASK_TYPE] = [BUG]\n[ESTIMATION] = [off]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field estimation <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(source_of estimation <<<"$output")" = task ] || { echo "$output"; return 1; }
+  printf '## Task defaults\n\n[ESTIMATION] = [off]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field estimation <<<"$output")" = off ] || { echo "$output"; return 1; }
+  [ "$(source_of estimation <<<"$output")" = project ] || { echo "$output"; return 1; }
+}
+
+@test "a step reads estimation and estimation_unit from its epic" {
+  EPIC="$PROJ/Tasks/ACTIVE/050-an-epic"
+  STEP="$EPIC/01-first.step"
+  mkdir -p "$STEP"
+  printf '[TASK_TYPE] = [EPIC]\n[ESTIMATION] = [off]\n[ESTIMATION_UNIT] = [both]\n' >"$EPIC/Task.md"
+  printf '[TASK_TYPE] = [FEATURE]\n' >"$STEP/Task.md"
+  out="$("$RESOLVE" json "$STEP" 2>"$ERR")"
+  [ "$(field estimation <<<"$out")" = off ] || { echo "$out"; return 1; }
+  [ "$(source_of estimation <<<"$out")" = epic ] || { echo "$out"; return 1; }
+  [ "$(field estimation_unit <<<"$out")" = both ] || { echo "$out"; return 1; }
+  [ "$(source_of estimation_unit <<<"$out")" = epic ] || { echo "$out"; return 1; }
+  # The step's own word beats the epic's.
+  printf '[TASK_TYPE] = [FEATURE]\n[ESTIMATION] = [on]\n' >"$STEP/Task.md"
+  out="$("$RESOLVE" json "$STEP" 2>"$ERR")"
+  [ "$(field estimation <<<"$out")" = on ] || { echo "$out"; return 1; }
+  [ "$(source_of estimation <<<"$out")" = task ] || { echo "$out"; return 1; }
+}
+
+@test "[RF 3] estimation_unit defaults to agent-run whatever DeliveryMode says" {
+  printf '## Task defaults\n\n[WORKFLOW_MODE] = [manual]\n\n## DeliveryMode\n\nmanual\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  [ "$(field estimation_unit <<<"$out")" = agent-run ] || { echo "$out"; return 1; }
+  [ "$(source_of estimation_unit <<<"$out")" = default ] || { echo "$out"; return 1; }
+  [ ! -s "$ERR" ] || { cat "$ERR"; return 1; }
+}
+
+@test "estimation_unit is chosen by a task, the project or a run" {
+  printf '## Task defaults\n\n[ESTIMATION_UNIT] = [days]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field estimation_unit <<<"$output")" = days ] || { echo "$output"; return 1; }
+  [ "$(source_of estimation_unit <<<"$output")" = project ] || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[ESTIMATION_UNIT] = [both]\n' >"$TASK/Task.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field estimation_unit <<<"$output")" = both ] || { echo "$output"; return 1; }
+  [ "$(source_of estimation_unit <<<"$output")" = task ] || { echo "$output"; return 1; }
+  run "$RESOLVE" json "$TASK" --set estimation_unit=agent-run
+  [ "$(field estimation_unit <<<"$output")" = agent-run ] || { echo "$output"; return 1; }
+  [ "$(source_of estimation_unit <<<"$output")" = run ] || { echo "$output"; return 1; }
+}
+
+@test "a bad estimation_unit is refused the way a neighbour's bad value is, and the next source applies" {
+  printf '## Task defaults\n\n[ESTIMATION_UNIT] = [days]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  printf '[TASK_TYPE] = [BUG]\n[ESTIMATION_UNIT] = [hours]\n' >"$TASK/Task.md"
+  out="$("$RESOLVE" json "$TASK" 2>"$ERR")"
+  grep -qF "Task.md [ESTIMATION_UNIT]: 'hours' not recognized, skipped" "$ERR" || { cat "$ERR"; return 1; }
+  [ "$(field estimation_unit <<<"$out")" = days ] || { echo "$out"; return 1; }
+  [ "$(source_of estimation_unit <<<"$out")" = project ] || { echo "$out"; return 1; }
+}
+
+@test "show names an estimation the task turned off, and --all names the scale an auto one follows" {
+  printf '[TASK_TYPE] = [BUG]\n[ESTIMATION] = [off]\n' >"$TASK/Task.md"
+  run "$RESOLVE" show "$TASK"
+  grep -qE '^\[ESTIMATION\] += \[off\] +# task$' <<<"$output" || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n' >"$TASK/Task.md"
+  run "$RESOLVE" show "$TASK"
+  ! grep -q '^\[ESTIMATION' <<<"$output" || { echo "$output"; return 1; }
+  run "$RESOLVE" show "$TASK" --all
+  grep -qE '^\[ESTIMATION\] += \[on\] +# scale: full$' <<<"$output" || { echo "$output"; return 1; }
+  printf '[TASK_TYPE] = [BUG]\n[SCALE] = [lite]\n' >"$TASK/Task.md"
+  run "$RESOLVE" show "$TASK" --all
+  grep -qE '^\[ESTIMATION\] += \[off\] +# scale: lite$' <<<"$output" || { echo "$output"; return 1; }
 }
 
 @test "plan_check and done_check are documented wherever their neighbours are, and [ARTIFACT_CHECK] as their synonym" {
