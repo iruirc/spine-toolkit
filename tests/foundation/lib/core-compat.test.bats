@@ -188,3 +188,22 @@ opening() { SPINE_PLUGIN_REGISTRY="$REG" "$ROOT/scripts/resolve-settings.sh" ope
 @test "the lag line is in both locales" {
   [ -n "$(body_of en open_core_lag)" ] && [ -n "$(body_of ru open_core_lag)" ]
 }
+
+# ── the stop at step 5.7 ─────────────────────────────────────────────────────────────────────
+
+@test "step 5.7 stops on an incompatible core with its own key" {
+  step="$(awk '/^5\.7\. /{p=1} /^6\. /{p=0} p' "$ROOT/skills/orchestrator/SKILL.md")"
+  [ -n "$step" ] || { echo "no step 5.7"; return 1; }
+  for s in core_compat.status incompatible error_core_older_than_platform; do
+    grep -qF "$s" <<<"$step" || { echo "step 5.7 does not name $s"; return 1; }
+  done
+}
+
+@test "the stop is in both locales with every placeholder" {
+  for lang in en ru; do
+    body="$(body_of "$lang" error_core_older_than_platform)"
+    for ph in '{platform}' '{platform_version}' '{requires}' '{core}'; do
+      grep -qF "$ph" <<<"$body" || { echo "$lang lacks $ph: $body"; return 1; }
+    done
+  done
+}

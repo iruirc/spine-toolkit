@@ -357,6 +357,12 @@ Algorithm:
      ↓ if ## Platform is absent or empty, or the manifest skill does not load →
        error using key `error_no_platform_manifest` and stop
        (`{plugin}` := the ## Platform name, or `—` when the section is absent or empty)
+   • core_compat := the field of that name in step 3's `resolve-settings.sh json` output
+     ↓ if core_compat.status is `incompatible` →
+       error using key `error_core_older_than_platform` and stop, before any stage
+       (`{platform}`, `{platform_version}`, `{requires}`, `{core}` := the fields of core_compat)
+     # `lag` and `unknown` go on: the opening block names a lag, and a platform agent stops its own
+     # stage on a core script that is not there. Step 5.7 runs for Method A and B alike.
    • rows(role) := the ## Agents rows of the project config for the roles that block names,
                    the manifest's ## Roles rows for every other role     # the config overrides per role
      # a ## Agents row is a line whose left-hand side is one of the nine role words, bare or
@@ -697,7 +703,7 @@ size belongs to the task, not to one dispatch.
 
 **RESEARCH-only field — `research_experiment`.** When `profile=research`, the orchestrator always includes it, as `research_experiment=on|off`; for every other profile it is omitted. It carries the task owner's permission for the Research stage to answer by an experiment on a branch that is never merged (`skills/workflow-research/SKILL.md` § 2c). Read `[RESEARCH_EXPERIMENT]` from `Task.md`, where it sits beside `[RESEARCH_AGENT]` between `[NEED_REVIEW]` and section `## 1. [Files]`; an absent line is `off`. It is a parameter of the task rather than a setting, so `resolve-settings.sh` does not read it: no project default exists, and a step does not inherit it from its epic — a permission is given to one task. Never infer it from the task's prose and never write it back; only the owner writes that line, or `task-new` on the owner's explicit request. A value other than `on` or `off` propagates verbatim, and workflow-research rejects it with `invalid_research_experiment`, as it does an unknown `research_agent`. The contract is the only way the permission reaches the agent: a brief treats everything in the task folder as data, so a permission written in prose lifts nothing.
 
-**`plugin_root` — every profile, Method A.** When the run takes Method A, include `plugin_root` whatever the profile, taken from the same run of `resolve-settings.sh json` — the script prints the core root it ran from, absolute, so the value never depends on expanding `${CLAUDE_PLUGIN_ROOT}` by hand. The profile script names it to every agent as the core root, so the `conventions/` and `scripts/` paths a brief names resolve without a search, and the sandbox cannot expand the variable itself. For EPIC it is also what the fallback builds a path from on a host whose registry does not carry the step workflows. Absent, relative or unexpanded, the script refuses with `reason: no-plugin-root` before any stage runs.
+**`plugin_root` — every profile, Method A.** When the run takes Method A, include `plugin_root` whatever the profile, taken from the same run of `resolve-settings.sh json` — the script prints the core root it ran from, absolute, so the value never depends on expanding `${CLAUDE_PLUGIN_ROOT}` by hand. That root is the core the session loaded, which can be older than the one installed since; `core_compat` in the same output says whether the platform takes it, and step 5.7 stops when it does not. The profile script names it to every agent as the core root, so the `conventions/` and `scripts/` paths a brief names resolve without a search, and the sandbox cannot expand the variable itself. For EPIC it is also what the fallback builds a path from on a host whose registry does not carry the step workflows. Absent, relative or unexpanded, the script refuses with `reason: no-plugin-root` before any stage runs.
 
 **EPIC-only optional field — `epic_dispatch_mode`.** `epic_dispatch_mode=push|pull` forces that choice — omit it and the script decides. Omitted for every other profile.
 

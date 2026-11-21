@@ -99,8 +99,10 @@ driver plugin that exists only inside core's test suite; Step 9 says what to do 
 ```
 
 `name` and `dependencies` are the two that matter — the range floors on the oldest core your
-skills need and ceilings at the next major. Without the dependency a user can install your plugin
-alone, and every task then dies at the orchestrator's first step with no core to run it.
+skills need and ceilings at the next major. The orchestrator also holds the range against the core
+a session runs: a session started before core was updated, and older than your floor, stops before
+its first stage with `error_core_older_than_platform`. Without the dependency a user can install
+your plugin alone, and every task then dies at the orchestrator's first step with no core to run it.
 
 The name is also load-bearing inside the manifest: `lint-manifest.sh` rejects a `## Roles` row that
 names an agent outside `<this plugin's name>:`, because that string travels into subagent dispatch
@@ -561,7 +563,8 @@ These are the ones that fail *silently* — the lint cannot catch them, and noth
 | Dispatch resolves to nothing after a plugin rename | `## Roles` right-hand sides still carry the old namespace. `lint-manifest.sh` catches this one — run it. |
 
 And two that fail loudly, so you will find them anyway: an unreadable or missing manifest is the
-orchestrator's `error_no_platform_manifest`, and a `## Entrypoints` typo surfaces at install time,
+orchestrator's `error_no_platform_manifest` (a session core below your range is its
+`error_core_older_than_platform`), and a `## Entrypoints` typo surfaces at install time,
 after the config is already on disk, where it is indistinguishable from the legitimate `—`.
 
 ## 7. What a project can override

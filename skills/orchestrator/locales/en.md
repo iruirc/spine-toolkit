@@ -20,6 +20,9 @@ This project has no `SPINE.md`, so nothing says which platform serves it — and
 ## error_no_platform_manifest
 No platform manifest found. The project config names platform "{plugin}", but its manifest skill did not load. Install the platform plugin or fix ## Platform in the config.
 
+## error_core_older_than_platform
+`{platform}` {platform_version} needs spine-toolkit `{requires}`; this session runs {core}. Restart the session.
+
 ## fallback_profile_question
 Which profile? (1) FEATURE (2) BUG (3) REFACTOR (4) TEST (5) REVIEW (6) EPIC (7) RESEARCH
 
