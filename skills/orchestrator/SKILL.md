@@ -1041,7 +1041,7 @@ call writes it — for a file in a step folder, the column its own `Task.md` `[T
 | `Research.md` | architect | architect | architect | tester | — | architect | `research_agent` | — |
 | `Reproduce.md` | — | diagnostics | — | — | — | — | — | — |
 | `Plan.md` | architect | architect | architect | tester | developer | architect | — | — |
-| `Validation.md`, `OpsChecklist.md`, `ManualChecks.md` | validator | validator | validator | validator | validator | — | — | — |
+| `Validation.md`, `ManualChecks.md` | validator | validator | validator | validator | validator | — | — | — |
 | `Review.md`, `ChangesRequested.md` | reviewer | reviewer | reviewer | reviewer | reviewer | — | reviewer | reviewer |
 | `Walkthrough.md` | architect | developer | refactorer | tester | developer | architect | — | — |
 | `Done.md` | architect | developer | refactorer | tester | developer | architect | architect | reviewer |

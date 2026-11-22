@@ -11,7 +11,7 @@ The file comes in two styles, and the contract's `manual_checks_style` decides w
 
 > **Related skills:**
 > - `artifact-reader` — the style rules every task artifact follows; this skill sets this file's reader and its format
-> - `ops-checklist` — the same late stage, the opposite direction: evidence for what WAS verified. A case deferred here is a Pending item there
+> - `ops-checklist` — the same late stage, the opposite direction: evidence for what WAS verified
 > - `task-walkthrough` — narrative for a reader; this is a procedure a tester runs
 > - `feature-requirements` — the Secondary list is where checks nothing can automate first become visible
 
@@ -38,11 +38,11 @@ For BUG the reproduction replay is not listed: its steps are already in `Reprodu
 
 **Validation → `ManualChecks.md`.** That list is the input, and each line goes through `## Does this check need a person?` again: the plan may predate this rule, or may have missed it. A line that needs a person becomes a case. One this run checked itself, with evidence, is `covered`: a line in `## Scope` naming the evidence. Any other is an automatable gap: a `## Not covered` line, "automatable, not automated by this task", or a part of the `manual checks: none —` line when there is no file — the validator writes no code. To it Validation adds what the plan could not know — what the automated pass actually covered, and what it could not reach at all; a check deferred because driving the app was suppressed goes through the same criterion. When the plan carries no such section, because the task entered mid-pipeline or predates this rule, say so in `## Scope` and derive the cases from the task file and the diff.
 
-**No case, no file.** Under `auto`, when no case is left, there is no `ManualChecks.md`. `Validation.md` carries the line `manual checks: none — <why>`, naming what was covered and each automatable gap, and the Manual test pass item of `OpsChecklist.md` is N/A with that reason. `always` writes the file anyway; with no case left, its `## Cases` reads `none — <why>`.
+**No case, no file.** Under `auto`, when no case is left, there is no `ManualChecks.md`. `Validation.md` carries the line `manual checks: none — <why>`, naming what was covered and each automatable gap. `always` writes the file anyway; with no case left, its `## Cases` reads `none — <why>`.
 
 ## Does this check need a person?
 
-Does the diff change this behaviour? Ask that first, before the three below, and take "change" as the `ops-checklist` skill defines touches: directly or through code on its path. When the diff does not change it, the check is neither a case nor a Pending: it is a line in `## Not covered` with its reason, or N/A in `OpsChecklist.md`. A constraint of the implementation ("no network is used") is not a behaviour the diff changes, so it gets no case. The same holds for a check the diff does not change that was deferred because a driver could not reach it: that alone is a reason the run could not do it, never a reason a person must. On a task whose diff changes no product behaviour, the question reads: does automation leave the behaviour the task targets unchecked? The one nothing-broke case is the exception: it guards a regression on a path the diff touches, so it is not behaviour the diff does not change.
+Does the diff change this behaviour? Ask that first, before the three below, and take "change" as the `ops-checklist` skill defines touches: directly or through code on its path. When the diff does not change it, the check is not a case: it is a line in `## Not covered` with its reason. A constraint of the implementation ("no network is used") is not a behaviour the diff changes, so it gets no case. The same holds for a check the diff does not change that was deferred because a driver could not reach it: that alone is a reason the run could not do it, never a reason a person must. On a task whose diff changes no product behaviour, the question reads: does automation leave the behaviour the task targets unchecked? The one nothing-broke case is the exception: it guards a regression on a path the diff touches, so it is not behaviour the diff does not change.
 
 A `## Manual acceptance` of `Fully automatable.` does not forbid a case. When Validation still writes one, its `**What it checks:**` names the change of the diff it checks.
 
@@ -179,7 +179,7 @@ A case earns a tester's time only when its verdict says something about this cha
 
 **It tells the build before the change from the build after.** On the build before the change the case fails; on the build after it passes. Checks that pass the same on both fold into one case, "nothing broke", whose `**What it checks:**` says it is not a check of the fix. When automated tests or the driver already cover that regression, there is no such case, and `## Scope` names the evidence.
 
-**It checks what the diff touches.** An item of `OpsChecklist.md` becomes a case only when the diff touches that behaviour, as the `ops-checklist` skill defines touches. Otherwise the item is N/A, with its reason, by that skill. The one nothing-broke case is the only case not built on changed code. Its row in `## Code references` names the code of the behaviour it guards.
+**It checks what the diff touches.** A check becomes a case only when the diff touches that behaviour, as the `ops-checklist` skill defines touches. Otherwise it is a line in `## Not covered`, with its reason. The one nothing-broke case is the only case not built on changed code. Its row in `## Code references` names the code of the behaviour it guards.
 
 **It is settled by eye when the difference shows at normal speed.** That is so when the defect was found by eye, or when the check is tagged `visual judgment`. When the eye is unsure, the case says what to look for, and the eye decides. The person never reads frames, traces or logs. When no eye can see the difference at all, the check is no case of this file: `## No instrument in the file` says where it goes.
 

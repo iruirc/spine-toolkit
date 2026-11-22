@@ -102,11 +102,12 @@ When `Done.md` already exists, every claim in it is checked against the current 
 
 ## Review.md
 
-The status line `[REVIEW_STATUS] = …` stays line 1, and the verdict is unchanged. The sections are the reviewer's own; three rules hold in them:
+The status line `[REVIEW_STATUS] = …` stays line 1, and the verdict is unchanged. The sections are the reviewer's own; four rules hold in them:
 
 - Every finding carries `**Impact:**`: one sentence, what breaks and for whom, with no code. "**Impact:** a shopper who removes the last item still pays for it at checkout."
 - The Summary and Previous findings name a finding in words, its ID in brackets: "the total no longer goes below zero (`M1`)", never "`M1` fixed".
 - The `[REVIEWED_COMMIT]` lines go in the closing block.
+- Where the profile applies `ops-risks`, `## Ops risks` holds one line per triggered risk, `- <label> — <the proof in words> (<ref>)`, or the single line `- none triggered — the diff touches <X>`, by that skill's `## Review`.
 
 ## Questions.md
 

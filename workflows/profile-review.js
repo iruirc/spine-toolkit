@@ -359,7 +359,6 @@ const VALIDATION = {
     known_failures_cleared: { type: 'array', items: { type: 'string' }, description: 'KF-<N> of each permanent entry whose test passed' },
     reproduction_status: { type: 'string', enum: ['fixed', 'still-reproduces', 'not-replayed', 'deferred-manual'] },
     artifact_path: { type: 'string' },
-    ops_checklist_path: { type: 'string' },
     manual_checks_path: { type: 'string' },
     manual_checks: { type: 'array', items: { type: 'string' }, description: 'case titles from ManualChecks.md' },
     manual_checks_changed: { type: 'boolean', description: 'false when no case was added, removed or rewritten; moving [COVERS] alone is no change' },
@@ -985,7 +984,7 @@ if (runs('Review')) {
 
 [REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION
 
-The body: what was done well, what needs changing grouped by severity, and the open questions.
+The body: what was done well, what needs changing grouped by severity, and the open questions. Apply the ops-risks skill's ## Review: each risk the diff triggers needs its proof, a missing proof is a finding of the severity that section gives — a Major one goes into blocking_findings — and Review.md carries ## Ops risks.
 
 The first line is machine-parsed and the next stage acts on it — a task folder moves or does not move because of it. Modify nothing else. Return the same status you wrote on that line.
 

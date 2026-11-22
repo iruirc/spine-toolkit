@@ -372,7 +372,7 @@ PY
 @test "a case proves the change: before and after, the diff, the eye, no developer lines" {
   s="$(skill_section '## What a case must prove')"
   [ -n "$s" ] || { echo "no ## What a case must prove"; return 1; }
-  for token in 'before the change' 'nothing broke' 'not a check of the fix' 'the diff' '`OpsChecklist.md`' \
+  for token in 'before the change' 'nothing broke' 'not a check of the fix' 'the diff' \
                'at normal speed' 'never reads frames, traces or logs' '`Validation.md`' '`Walkthrough.md`' \
                'Outside `**dev-only:**` steps and `## Code references`, no line is for a developer'; do
     grep -qF -- "$token" <<<"$s" || { echo "## What a case must prove does not name $token"; return 1; }
@@ -705,7 +705,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
 
 @test "no case left means no file under auto, and always still writes it" {
   s="$(skill_section '## Two stages, two halves')"
-  for t in 'manual checks: none —' 'N/A' '`always`'; do
+  for t in 'manual checks: none —' '`always`'; do
     grep -qF -- "$t" <<<"$s" || { echo "## Two stages does not say $t"; return 1; }
   done
 }
@@ -725,11 +725,6 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
   p="$(awk '/^## Plan\.md$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/task-documents/SKILL.md")"
   grep -qF '## Not automated' <<<"$p" || { echo "task-documents: ## Plan.md lacks ## Not automated"; return 1; }
   grep -qF 'needs:' <<<"$p" || { echo "task-documents: ## Plan.md has no needs: tag"; return 1; }
-}
-
-@test "the manual test pass is N/A when no case needs a person" {
-  grep -qiF 'no case that needs a person' "$ROOT/skills/ops-checklist/SKILL.md" \
-    || { echo "ops-checklist: no N/A rule for the manual test pass"; return 1; }
 }
 
 @test "auto writes the file only when a case needs a person" {
@@ -806,18 +801,14 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
   done
 }
 
-@test "Review judges each case by what it must prove, and each N/A reason against the diff" {
+@test "Review judges each case by what it must prove" {
   for p in $PROFILES; do
     b="$(review_brief "$ROOT/workflows/profile-$p.js")"
     grep -qF "the manual-checks skill's ## What a case must prove" <<<"$b" \
       || { echo "profile-$p.js: Review does not judge a case by ## What a case must prove"; return 1; }
-    grep -qF 'each N/A reason of OpsChecklist.md that cites the diff' <<<"$b" \
-      || { echo "profile-$p.js: Review does not check N/A reasons against the diff"; return 1; }
     m="$(bullet "$ROOT/skills/workflow-$p/SKILL.md" Review)"
     grep -qF '`## What a case must prove`' <<<"$m" \
       || { echo "workflow-$p/SKILL.md: Review does not judge a case by ## What a case must prove"; return 1; }
-    grep -qF 'each N/A reason of `OpsChecklist.md` that cites the diff' <<<"$m" \
-      || { echo "workflow-$p/SKILL.md: Review does not check N/A reasons against the diff"; return 1; }
   done
   grep -qF 'cross-checks Applicable items and N/A reasons against the actual diff' "$ROOT/skills/ops-checklist/SKILL.md" \
     || { echo "ops-checklist: the reviewer does not check N/A reasons"; return 1; }
@@ -860,13 +851,13 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
   return 0
 }
 
-@test "the first question is whether the diff changes the behaviour, and an unchanged one gets neither a case nor a Pending" {
+@test "the first question is whether the diff changes the behaviour, and an unchanged one is not a case" {
   s="$(skill_section '## Does this check need a person?')"
   [ -n "$s" ] || { echo "no ## Does this check need a person?"; return 1; }
   first="$(grep -m1 . <<<"$s")"
   grep -qF 'Does the diff change this behaviour?' <<<"$first" \
     || { echo "the section does not open with the question about the diff"; return 1; }
-  for token in 'Does the diff change this behaviour?' 'neither a case nor a Pending' 'Fully automatable' \
+  for token in 'Does the diff change this behaviour?' 'the check is not a case' 'Fully automatable' \
                '`## Not covered`' 'as the `ops-checklist` skill defines touches' 'because a driver could not reach it' 'that alone is a reason the run could not do it, never a reason a person must'; do
     grep -qF -- "$token" <<<"$s" || { echo "## Does this check need a person? does not say: $token"; return 1; }
   done

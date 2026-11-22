@@ -364,7 +364,6 @@ const VALIDATION = {
     known_failures_cleared: { type: 'array', items: { type: 'string' }, description: 'KF-<N> of each permanent entry whose test passed' },
     reproduction_status: { type: 'string', enum: ['fixed', 'still-reproduces', 'not-replayed', 'deferred-manual'] },
     artifact_path: { type: 'string' },
-    ops_checklist_path: { type: 'string' },
     manual_checks_path: { type: 'string' },
     manual_checks: { type: 'array', items: { type: 'string' }, description: 'case titles from ManualChecks.md' },
     manual_checks_changed: { type: 'boolean', description: 'false when no case was added, removed or rewritten; moving [COVERS] alone is no change' },

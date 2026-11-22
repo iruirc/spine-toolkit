@@ -52,7 +52,7 @@ REVIEW-profile specifics (differences from other workflows):
 
 A stage names its owner as a role in brackets — `[architect]`, `[developer]`. Which agent a role means arrives in the contract's `agents` map; dispatch that agent per `conventions/stage-dispatch.md` — stage work does not run in the main context, and a stage whose role resolved to `—` says so before it starts. Dispatch it on the model `conventions/stage-dispatch.md` → Model and effort derives from the contract's `models` map — a walkthrough takes its own `walkthrough` key, then its role, and its check takes `light` — and name no model where the rule yields `session`; this method cannot pass an effort.
 
-- **Review** — `[reviewer]`. Artifact: `Review.md` in the task folder. **Mandatory first line** of the artifact: `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` — this is the contract shared with every workflow and the orchestrator. Body of `Review.md`: what was done well, what needs changes (by severity), open questions. It is written by applying the `task-documents` skill, its `Review.md` section, in the style of the `artifact-reader` skill: every finding carries an `**Impact:**` line. The detailed output format is described by the `reviewer` agent. Last, run scripts/lint-artifact-readability.sh on the file once, with `--words-per-sentence` taken from the contract's `budgets`; fix each finding once and name what is left in the stage summary.
+- **Review** — `[reviewer]`. Artifact: `Review.md` in the task folder. **Mandatory first line** of the artifact: `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` — this is the contract shared with every workflow and the orchestrator. Body of `Review.md`: what was done well, what needs changes (by severity), open questions. It is written by applying the `task-documents` skill, its `Review.md` section, in the style of the `artifact-reader` skill: every finding carries an `**Impact:**` line. The detailed output format is described by the `reviewer` agent. Apply the `ops-risks` skill's `## Review`: each risk the diff triggers is checked for its proof, a missing proof is a finding of the severity that section gives, and `Review.md` carries `## Ops risks`. Last, run scripts/lint-artifact-readability.sh on the file once, with `--words-per-sentence` taken from the contract's `budgets`; fix each finding once and name what is left in the stage summary.
 
 - **Auto-move** — a deterministic post-stage. The workflow reads the first line of `Review.md` strictly as the field `[REVIEW_STATUS] = <value>` (regex: starts with `[REVIEW_STATUS] =`, value parsed by `=`). Substring search inside the body of `Review.md` is forbidden. Possible values and actions:
   - `APPROVED` → call `spine-toolkit:task-move` to relocate the task folder into `Tasks/DONE/`. If the task is already in `Tasks/DONE/` — leave it (idempotent).
@@ -75,7 +75,7 @@ because the two methods run the same profile.
 A change set is matched against the components the project declares in its registry —
 `conventions/docs-components.md` for the format, `scripts/docs-route.sh` for the matching.
 Whether a rule actually moved is not computed: it is answered per component in the task's
-`Docs.md`, in the vocabulary `ops-checklist` already uses, by applying `spine-toolkit:docs-route`.
+`Docs.md`, in three states, Applicable, N/A with a reason, and Pending, by applying `spine-toolkit:docs-route`.
 
 Every path is relative to the project root, which in a multi-repository project is the container
 the checkouts sit in. A diff is not: pipe each checkout's through `reorigin <checkout>` and feed
@@ -101,8 +101,7 @@ All of it is skipped by a stage that changes no files, by a task whose `Task.md`
 [off]`, by a project whose config carries the same, and by a project that declares
 no components at all — neither in the map named by `[DOCS_MAP]`, `DocsMap.md` by default —
 nor in any package it holds, so a project that declares nothing is served by silence.
-Review reads `Docs.md` the way it reads
-`OpsChecklist.md`: a row left `Pending` is surfaced for an explicit accept or defer.
+Review surfaces a row of `Docs.md` left `Pending` for an explicit accept or defer.
 
 ## 3. Manual mode
 

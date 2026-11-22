@@ -121,10 +121,10 @@ sentence_2() { printf '%s%s%s' "$LINT_CMD" "$1.md" "$LINT_TAIL"; }
 }
 
 @test "no script runs the lint more often than it has writers" {
-  # feature, bug, refactor: Research, Plan, Validation (OpsChecklist.md), Review, Done. test:
-  # Research, Plan, Review, Done. epic: Research, Plan on each branch, Done. quick: Review, Done.
-  # research: Research, Review, Done. review: Review, the DISCUSSION log, Done.
-  for t in feature:5 bug:5 refactor:5 test:4 epic:4 quick:2 research:3 review:3; do
+  # feature, bug, refactor, test: Research, Plan, Review, Done. epic: Research, Plan on each
+  # branch, Done. quick: Review, Done. research: Research, Review, Done. review: Review, the
+  # DISCUSSION log, Done.
+  for t in feature:4 bug:4 refactor:4 test:4 epic:4 quick:2 research:3 review:3; do
     n="$(grep -c 'lint-artifact-readability.sh' "$ROOT/workflows/profile-${t%%:*}.js")"
     [ "$n" -eq "${t##*:}" ] || { echo "profile-${t%%:*}.js names the lint on $n line(s), expected ${t##*:}"; return 1; }
   done
@@ -181,17 +181,6 @@ run_one() { # $1 = profile, $2 = stage, $3 = extra contract members
 }
 prompt_of() { node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8")); const c = o.calls.find((c) => c.label === process.argv[1]); console.log(c ? c.prompt : "")' "$1"; }
 
-@test "the Validation briefs that write OpsChecklist.md lint it once, at full only" {
-  for p in feature bug refactor; do
-    v="$(run_one "$p" Validation ', "scale": "full"' | prompt_of validation)"
-    [ -n "$v" ] || { echo "profile-$p.js: no validation dispatch"; return 1; }
-    grep -qF 'Run "/core/scripts/lint-artifact-readability.sh" --words-per-sentence 30 /p/t/OpsChecklist.md once. Fix each finding once; do not run it again; name what is left in your summary.' <<<"$v" \
-      || { echo "profile-$p.js: the full Validation brief does not lint OpsChecklist.md"; return 1; }
-    v="$(run_one "$p" Validation ', "scale": "lite"' | prompt_of validation)"
-    ! grep -qF 'OpsChecklist.md once' <<<"$v" || { echo "profile-$p.js: the lite Validation brief lints a file it does not write"; return 1; }
-  done
-}
-
 @test "the lint sentences carry the run's words-per-sentence, 30 without one" {
   d="$(run_one feature Done ', "budgets": {"words-per-sentence": 22}' | prompt_of done)"
   grep -qF 'lint-artifact-readability.sh" --words-per-sentence 22 /p/t/Done.md once.' <<<"$d" || { echo "$d" | tail -n 3; return 1; }
@@ -211,14 +200,6 @@ prompt_of() { node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8"
   grep -F -- '- `DISCUSSION` →' "$ROOT/skills/workflow-review/SKILL.md" | grep -qF "$ML" || { echo "workflow-review: DISCUSSION does not lint Questions.md"; return 1; }
   grep -F 'an `## Open Questions Log` section is appended to `Questions.md`' "$ROOT/skills/orchestrator/SKILL.md" | grep -qF "${ML/run scripts/run <core root>/scripts}" \
     || { echo "orchestrator: the open-questions log is not linted"; return 1; }
-}
-
-@test "the Method B Validation bullets that write OpsChecklist.md lint it once" {
-  ML='Last, run scripts/lint-artifact-readability.sh on `OpsChecklist.md` once, with `--words-per-sentence` taken from the contract'"'"'s `budgets`; fix each finding once and name what is left in the stage summary.'
-  for s in feature bug refactor; do
-    body="$(awk '/^## 2\. Stages/{z=1;next} z&&/^## /{exit} z&&/^- \*\*/{f=index($0, "- **Validation**")==1} z&&f' "$ROOT/skills/workflow-$s/SKILL.md")"
-    [ "$(grep -cF "$ML" <<<"$body")" -eq 1 ] || { echo "workflow-$s: the Validation bullet does not lint OpsChecklist.md once"; return 1; }
-  done
 }
 
 @test "the walkthrough writer's skill runs its lint with the contract's words-per-sentence" {

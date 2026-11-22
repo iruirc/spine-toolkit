@@ -107,7 +107,7 @@ because the two methods run the same profile.
 A change set is matched against the components the project declares in its registry —
 `conventions/docs-components.md` for the format, `scripts/docs-route.sh` for the matching.
 Whether a rule actually moved is not computed: it is answered per component in the task's
-`Docs.md`, in the vocabulary `ops-checklist` already uses, by applying `spine-toolkit:docs-route`.
+`Docs.md`, in three states, Applicable, N/A with a reason, and Pending, by applying `spine-toolkit:docs-route`.
 
 Every path is relative to the project root, which in a multi-repository project is the container
 the checkouts sit in. A diff is not: pipe each checkout's through `reorigin <checkout>` and feed
@@ -133,8 +133,7 @@ All of it is skipped by a stage that changes no files, by a task whose `Task.md`
 [off]`, by a project whose config carries the same, and by a project that declares
 no components at all — neither in the map named by `[DOCS_MAP]`, `DocsMap.md` by default —
 nor in any package it holds, so a project that declares nothing is served by silence.
-Review reads `Docs.md` the way it reads
-`OpsChecklist.md`: a row left `Pending` is surfaced for an explicit accept or defer.
+Review surfaces a row of `Docs.md` left `Pending` for an explicit accept or defer.
 
 ## 2c. Experiment
 
@@ -237,7 +236,6 @@ Field semantics:
 - Does NOT modify source code — pure-investigation invariant — except, with `research_experiment=on`, on the experiment branch (§2c).
 - Does NOT run tests and does NOT build the project — except, with `research_experiment=on`, for the experiment (§2c). Either way, no executable artifact is delivered.
 - Does NOT trigger `task-new` for the follow-up items — that is the user's choice (the `## Follow-up` list provides paste-ready descriptions).
-- Does NOT call `ops-checklist` — there is nothing implemented to validate.
 - Does NOT decide between Research / Review / Done order — the orchestrator passes `start_stage`, `end_stage`, `stage_scope`.
 - Does NOT create backups in `_archive/` — the orchestrator did so before handing off control; the paths arrive in `archive_paths`.
 - Does NOT ask the user — the orchestrator does that between stages in `manual` mode.

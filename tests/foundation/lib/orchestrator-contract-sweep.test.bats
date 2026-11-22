@@ -33,7 +33,7 @@ section() {
                'Exit 0 reports only what the script printed on'; do
     grep -qF -- "$token" <<<"$para" || { echo "the Artifact language paragraph does not name $token"; return 1; }
   done
-  for artifact in Research Reproduce Plan Validation OpsChecklist ManualChecks Review ChangesRequested Walkthrough Done Docs; do
+  for artifact in Research Reproduce Plan Validation ManualChecks Review ChangesRequested Walkthrough Done Docs; do
     grep -qF "\`$artifact.md\`" <<<"$para" || { echo "no owner for $artifact.md"; return 1; }
   done
 }

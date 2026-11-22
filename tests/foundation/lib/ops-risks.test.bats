@@ -71,3 +71,53 @@ section() { # $1 = file, $2 = heading text without "## "
     grep -qF -- "$row" "$f" || { echo "feature-requirements has no row $row"; return 1; }
   done
 }
+
+# A profile run with stubbed agents, one stage at one scale; the prompt of the dispatch labelled $3.
+stage_prompt() { # $1 = profile, $2 = stage, $3 = label, $4 = scale
+  local agents='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"-","diagnostics":"g","init":"-"}'
+  node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" \
+    "{\"task_id\": \"001\", \"task_dir\": \"/p/t\", \"plugin_root\": \"/core\", \"lang\": \"en\", \"agents\": $agents, \"start_stage\": \"$2\", \"end_stage\": \"$2\", \"stage_scope\": \"forward\", \"walkthrough\": \"off\", \"scale\": \"$4\"}" '{}' \
+    | node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8")); const c = o.calls.find((c) => c.label === process.argv[1]); console.log(c ? c.prompt : "")' "$3"
+}
+
+@test "no stage writes or reads OpsChecklist.md" {
+  cd "$ROOT"
+  hits="$(grep -l -E 'OpsChecklist|Outstanding ops items|ops_checklist_path' skills/workflow-*/SKILL.md workflows/*.js workflow-src/prelude.js skills/orchestrator/SKILL.md skills/task-documents/SKILL.md || true)"
+  [ -z "$hits" ] || { echo "still named in: $hits"; return 1; }
+}
+
+@test "Plan applies ops-risks in FEATURE, BUG and REFACTOR" {
+  for p in feature bug refactor; do
+    grep -qF 'Apply the `ops-risks` skill'"'"'s `## Plan`' "$ROOT/skills/workflow-$p/SKILL.md" \
+      || { echo "workflow-$p: Plan does not apply ops-risks"; return 1; }
+    for scale in full lite; do
+      grep -qF "Apply the ops-risks skill's ## Plan" <<<"$(stage_prompt "$p" Plan plan "$scale")" \
+        || { echo "profile-$p.js: the $scale Plan brief does not apply ops-risks"; return 1; }
+    done
+  done
+}
+
+@test "Review applies ops-risks in every profile that reviews code, at both scales" {
+  for p in feature bug refactor quick review; do
+    grep -qF 'Apply the `ops-risks` skill'"'"'s `## Review`' "$ROOT/skills/workflow-$p/SKILL.md" \
+      || { echo "workflow-$p: Review does not apply ops-risks"; return 1; }
+    for scale in full lite; do
+      grep -qF "Apply the ops-risks skill's ## Review" <<<"$(stage_prompt "$p" Review review "$scale")" \
+        || { echo "profile-$p.js: the $scale Review brief does not apply ops-risks"; return 1; }
+    done
+    ! grep -F 'ops-risks' "$ROOT/workflows/profile-$p.js" | grep -qF "lite() ? ''" \
+      || { echo "profile-$p.js: ops-risks sits on a line with a lite() branch"; return 1; }
+  done
+}
+
+@test "TEST, RESEARCH and EPIC do not apply it" {
+  for p in test research epic; do
+    ! grep -qF 'ops-risks' "$ROOT/skills/workflow-$p/SKILL.md" || { echo "workflow-$p names ops-risks"; return 1; }
+    ! grep -qF 'ops-risks' "$ROOT/workflows/profile-$p.js" || { echo "profile-$p.js names ops-risks"; return 1; }
+  done
+}
+
+@test "Review.md carries the ops risks section" {
+  s="$(section "$ROOT/skills/task-documents/SKILL.md" 'Review.md')"
+  grep -qF '## Ops risks' <<<"$s" || { echo "task-documents ## Review.md does not name ## Ops risks"; return 1; }
+}
