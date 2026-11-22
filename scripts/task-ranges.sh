@@ -3,7 +3,8 @@
 #
 # Usage: scripts/task-ranges.sh record <task-dir>                                 # Base.md, once
 #        scripts/task-ranges.sh tips   <task-dir> --kind reviewed|done|validated  # record lines
-#        scripts/task-ranges.sh ranges <task-dir> --since base|reviewed|done|validated  # JSON
+#        scripts/task-ranges.sh ranges <task-dir> --since base|reviewed|done|validated [--fallback base]  # JSON
+#        scripts/task-ranges.sh since  <task-dir> --action run|continue|redo|restart|restart-full|catch-up|fix-review  # base Review reads from
 #        scripts/task-ranges.sh dirty  <task-dir>                                 # uncommitted work the base did not hold
 #        scripts/task-ranges.sh count  <task-dir> <repo> <sha>                    # commits after sha, or rewritten
 #        scripts/task-ranges.sh unreachable <task-dir> <sha>...                   # shas not the task's
@@ -14,7 +15,7 @@
 # Exit:  0, or 2 on a usage error, a record it cannot read, or a recorded repository gone.
 set -euo pipefail
 
-[ "$#" -ge 2 ] || { echo "usage: $0 record|tips|ranges|dirty|count|unreachable|commits|last|names|owners <task-dir> [--kind k | --since s | <repo> <sha> | <sha>... | <a>..<b>]" >&2; exit 2; }
+[ "$#" -ge 2 ] || { echo "usage: $0 record|tips|ranges|since|dirty|count|unreachable|commits|last|names|owners <task-dir> [--kind k | --since s [--fallback base] | --action a | <repo> <sha> | <sha>... | <a>..<b>]" >&2; exit 2; }
 [ -d "$2" ] || { echo "not a directory: $2" >&2; exit 2; }
 resolver="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/resolve-settings.sh"
 paths="$("$resolver" raw "$2" Paths)" || exit 2
@@ -234,24 +235,53 @@ elif CMD == 'tips':
         lines.append('[REVIEW_FIXES] = %d' % max([int(n) for n in re.findall(r'Review fixes (\d+)', text)] or [0]))
     print('\n'.join(lines))
 elif CMD == 'ranges':
-    since = opt('--since', ['base', 'reviewed', 'done', 'validated'])
-    kind, name = KINDS[since]
-    rec = recorded(kind, name)
-    gone = sorted(set(rec) - set(REPOS))
-    if gone:
-        die('%s names %s, which is not a repository of this task on disk' % (name, ', '.join(gone)))
-    repos = {}
-    for rel, top in sorted(REPOS.items()):
-        sha = rec.get(rel)
-        if not sha and since == 'base':
-            sha = fallback_base(top)
-        if not sha:
-            repos[rel] = {'range': None, 'commits': None, 'state': 'unknown'}
-        elif git(top, 'merge-base', '--is-ancestor', sha, 'HEAD') is None:
-            repos[rel] = {'range': None, 'commits': None, 'state': 'rewritten'}
-        else:
-            repos[rel] = {'range': sha + '..HEAD', 'commits': count(top, sha), 'state': 'ok'}
+    SINCES = ['base', 'reviewed', 'done', 'validated']
+    fallback = OPTS[2:] == ['--fallback', 'base']
+    if not (len(OPTS) in (2, 4) and OPTS[0] == '--since' and OPTS[1] in SINCES and (len(OPTS) == 2 or fallback)) \
+            or (fallback and OPTS[1] not in ('reviewed', 'done')):
+        die('usage: task-ranges.sh ranges <task-dir> --since %s [--fallback base, with reviewed|done]' % '|'.join(SINCES))
+    since = OPTS[1]
+
+    def measure(since):
+        kind, name = KINDS[since]
+        rec = recorded(kind, name)
+        gone = sorted(set(rec) - set(REPOS))
+        if gone:
+            die('%s names %s, which is not a repository of this task on disk' % (name, ', '.join(gone)))
+        out = {}
+        for rel, top in sorted(REPOS.items()):
+            sha = rec.get(rel)
+            if not sha and since == 'base':
+                sha = fallback_base(top)
+            if not sha:
+                out[rel] = {'range': None, 'commits': None, 'state': 'unknown'}
+            elif git(top, 'merge-base', '--is-ancestor', sha, 'HEAD') is None:
+                out[rel] = {'range': None, 'commits': None, 'state': 'rewritten'}
+            else:
+                out[rel] = {'range': sha + '..HEAD', 'commits': count(top, sha), 'state': 'ok'}
+        return out
+
+    repos = measure(since)
+    # Per repository: a record the previous review or Done cannot give is measured from the base;
+    # the others keep theirs (conventions/task-ranges.md -> Ranges).
+    lost = [rel for rel, r in repos.items() if r['state'] != 'ok'] if fallback else []
+    if lost:
+        base = measure('base')
+        for rel in lost:
+            repos[rel] = dict(base[rel], since='base', fallback=repos[rel]['state'])
     print(json.dumps({'since': since, 'repos': repos}, sort_keys=True))
+elif CMD == 'since':
+    ACTIONS = ['run', 'continue', 'redo', 'restart', 'restart-full', 'catch-up', 'fix-review']
+    action = opt('--action', ACTIONS)
+    # The base Review reads from, by the rules of conventions/task-ranges.md -> Ranges.
+    if action == 'catch-up':
+        print('done')
+    elif action == 'fix-review':
+        print('reviewed')
+    elif action in ('restart', 'restart-full') or not os.path.isfile(os.path.join(TASK, 'Review.md')):
+        print('base')
+    else:
+        print('reviewed')
 elif CMD == 'dirty':
     if OPTS:
         die('usage: task-ranges.sh dirty <task-dir>')

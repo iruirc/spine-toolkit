@@ -59,9 +59,21 @@ and the number of commits in it. `rewritten` means the recorded sha is no longer
 to the nearest merge base with the repository's main branch, local or `origin`'s, so commits one
 of them holds and the other does not stay out; a merge base that is `HEAD` itself — work
 committed on the main branch — is `unknown` too. When a record has several lines for one
-repository, the first wins. The orchestrator turns the result into the
-`review_ranges` contract field; which `--since` it asks for, and what it does on `rewritten` or
-`unknown`, is its Resolution Algorithm, step 5.6; `fix-review` always asks for `--since reviewed`.
+repository, the first wins.
+`--fallback base`, allowed with `--since reviewed` and `--since done` only, measures each repository
+that comes back `rewritten` or `unknown` the way `--since base` would, and adds `"since": "base"` and
+`"fallback": "<the state before>"` to its entry; the other repositories keep their own record and get
+neither field, and the top-level `since` stays the one asked for. Where the base gives no range either,
+the entry is the one `--since base` gives, `range` null, with both fields. Without the flag the output
+is what it always was.
+
+`since --action <action>` prints the base Review reads from: `done` for `catch-up`,
+`reviewed` for `fix-review`, `base` for `restart` and `restart-full` and whenever the task folder
+holds no `Review.md`, `reviewed` otherwise. The orchestrator passes its answer on as the `review_since`
+contract field (its Resolution Algorithm, step 5.6), and Review runs
+`ranges --since <review_since> --fallback base` itself, as its first step — `--fallback` left out at
+`base`. A count taken before a stage that changes code says nothing about what Review reads: the
+range ends at `HEAD`, so a zero there is the state before the commit, never an empty range.
 `validated` reads `Validation.md` and has no fallback: with no `[VALIDATED_COMMIT]` line a
 repository is `unknown`, never measured from a merge base, because a Validation that did not end
 PASSED or PASSED_WITH_FLAKES has validated nothing.

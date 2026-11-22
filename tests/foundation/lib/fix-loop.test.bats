@@ -90,5 +90,5 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
            'It runs at every dispatch, so a' 'Review dispatched on its own (manual) is counted after the commits the earlier stages made'; do
     grep -qF -- "$f" <<<"$r" || { echo "resolution lost: $f"; return 1; }
   done
-  grep -qF '`fix-review` always asks for `--since reviewed`' "$ROOT/conventions/task-ranges.md" || { echo "task-ranges.md: no fix-review since"; return 1; }
+  grep -qF '`reviewed` for `fix-review`' "$ROOT/conventions/task-ranges.md" || { echo "task-ranges.md: no fix-review since"; return 1; }
 }

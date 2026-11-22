@@ -494,7 +494,7 @@ track_tasks() { # the tasks folder tracked by the project repository instead of 
 @test "the usage line names every command" {
   run "$TR" bogus
   [ "$status" -eq 2 ]
-  for c in record tips ranges dirty count unreachable commits last names owners; do
+  for c in record tips ranges since dirty count unreachable commits last names owners; do
     grep -qF "$c" <<<"$output" || { echo "usage lacks $c: $output"; return 1; }
   done
 }
@@ -527,4 +527,100 @@ track_tasks() { # the tasks folder tracked by the project repository instead of 
 @test "owners needs at least one sha" {
   run "$TR" owners "$TASK"
   [ "$status" -eq 2 ]
+}
+
+field() { # $1 repo key, $2 field; stdin: ranges JSON → the value, or "absent"
+  python3 -c 'import json,sys; r=json.load(sys.stdin)["repos"][sys.argv[1]]; print(r.get(sys.argv[2], "absent"))' "$1" "$2"
+}
+
+@test "since picks the review base by the action and Review.md" {
+  for a in run continue redo restart restart-full; do
+    [ "$("$TR" since "$TASK" --action "$a")" = base ] || { echo "$a without Review.md"; return 1; }
+  done
+  [ "$("$TR" since "$TASK" --action catch-up)" = done ] || { echo "catch-up"; return 1; }
+  [ "$("$TR" since "$TASK" --action fix-review)" = reviewed ] || { echo "fix-review"; return 1; }
+  "$TR" tips "$TASK" --kind reviewed >"$TASK/Review.md"
+  for a in run continue redo fix-review; do
+    [ "$("$TR" since "$TASK" --action "$a")" = reviewed ] || { echo "$a with Review.md"; return 1; }
+  done
+  for a in restart restart-full; do
+    [ "$("$TR" since "$TASK" --action "$a")" = base ] || { echo "$a with Review.md"; return 1; }
+  done
+  [ "$("$TR" since "$TASK" --action catch-up)" = done ] || { echo "catch-up with Review.md"; return 1; }
+}
+
+@test "since refuses a missing or unknown action" {
+  run "$TR" since "$TASK"
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  run "$TR" since "$TASK" --action review
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+}
+
+@test "fallback measures a rewritten repository from the base and leaves the others on reviewed" {
+  "$TR" record "$TASK"
+  commit "$PROJ" a.txt
+  commit "$PROJ/Packages/Core" b.txt
+  "$TR" tips "$TASK" --kind reviewed >"$TASK/Review.md"
+  git -C "$PROJ/Packages/Core" reset -q --hard HEAD~1
+  commit "$PROJ/Packages/Core" c.txt
+  run "$TR" ranges "$TASK" --since reviewed --fallback base
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(state . <<<"$output")" = "ok 0" ] || { echo "$output"; return 1; }
+  [ "$(field . fallback <<<"$output")" = absent ] || { echo "$output"; return 1; }
+  [ "$(field . since <<<"$output")" = absent ] || { echo "$output"; return 1; }
+  [ "$(state Packages/Core <<<"$output")" = "ok 1" ] || { echo "$output"; return 1; }
+  [ "$(field Packages/Core since <<<"$output")" = base ] || { echo "$output"; return 1; }
+  [ "$(field Packages/Core fallback <<<"$output")" = rewritten ] || { echo "$output"; return 1; }
+  [ "$(python3 -c 'import json,sys; print(json.load(sys.stdin)["since"])' <<<"$output")" = reviewed ] || { echo "$output"; return 1; }
+}
+
+@test "fallback measures a repository the review never recorded from the base" {
+  "$TR" record "$TASK"
+  commit "$PROJ/Packages/Core" b.txt
+  "$TR" tips "$TASK" --kind reviewed | grep -F '= .:' >"$TASK/Review.md"
+  run "$TR" ranges "$TASK" --since reviewed --fallback base
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(state Packages/Core <<<"$output")" = "ok 1" ] || { echo "$output"; return 1; }
+  [ "$(field Packages/Core fallback <<<"$output")" = unknown ] || { echo "$output"; return 1; }
+}
+
+@test "fallback with no base either keeps range null and says so" {
+  commit "$PROJ" a.txt
+  : >"$TASK/Review.md"
+  run "$TR" ranges "$TASK" --since reviewed --fallback base
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(state . <<<"$output")" = "unknown None" ] || { echo "$output"; return 1; }
+  [ "$(field . range <<<"$output")" = None ] || { echo "$output"; return 1; }
+  [ "$(field . fallback <<<"$output")" = unknown ] || { echo "$output"; return 1; }
+}
+
+@test "fallback refuses base and validated" {
+  run "$TR" ranges "$TASK" --since base --fallback base
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  run "$TR" ranges "$TASK" --since validated --fallback base
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+}
+
+@test "without fallback ranges prints what it printed before" {
+  "$TR" record "$TASK"
+  git -C "$PROJ" -c user.name=t -c user.email=t@t commit -q --amend -m amended
+  run "$TR" ranges "$TASK" --since base
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  ! grep -qF fallback <<<"$output" || { echo "$output"; return 1; }
+  run "$TR" ranges "$TASK" --since reviewed
+  ! grep -qF fallback <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "a range counted before the fix commit holds it once the commit lands" {
+  "$TR" record "$TASK"
+  commit "$PROJ/Packages/Core" b.txt
+  "$TR" tips "$TASK" --kind reviewed >"$TASK/Review.md"
+  before="$("$TR" ranges "$TASK" --since reviewed --fallback base)"
+  [ "$(state . <<<"$before")" = "ok 0" ] || { echo "$before"; return 1; }
+  [ "$(state Packages/Core <<<"$before")" = "ok 0" ] || { echo "$before"; return 1; }
+  commit "$PROJ/Packages/Core" fix.txt
+  after="$("$TR" ranges "$TASK" --since reviewed --fallback base)"
+  [ "$(state Packages/Core <<<"$after")" = "ok 1" ] || { echo "$after"; return 1; }
+  [ "$(field Packages/Core range <<<"$after")" = "$(field Packages/Core range <<<"$before")" ] || { echo "$before / $after"; return 1; }
+  [ "$("$TR" since "$TASK" --action fix-review)" = reviewed ] || return 1
 }
