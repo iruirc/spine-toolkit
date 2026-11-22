@@ -131,7 +131,7 @@ DocsMap.md: {docs_map_status}
 пропущена
 
 ## docs_map_status_created
-создан из шаблона — объявите в нём свои компоненты
+создан из шаблона — объяви в нём свои компоненты
 
 ## docs_map_status_already_existed
 уже существовал, не тронут

@@ -549,7 +549,7 @@ section() {
   en="$(awk '/^## warn_artifact_check_pre_split$/{p=1;next} /^## /{p=0} p' "$ROOT/skills/orchestrator/locales/en.md")"
   ru="$(awk '/^## warn_artifact_check_pre_split$/{p=1;next} /^## /{p=0} p' "$ROOT/skills/orchestrator/locales/ru.md")"
   grep -qF 'replace the `[ARTIFACT_CHECK] = [X]` line by hand' <<<"$en" || { echo "en.md: $en"; return 1; }
-  grep -qF "$(unescape '\u0437\u0430\u043c\u0435\u043d\u0438\u0442\u0435 \u0432\u0440\u0443\u0447\u043d\u0443\u044e \u0441\u0442\u0440\u043e\u043a\u0443 `[ARTIFACT_CHECK] = [X]`')" <<<"$ru" || { echo "ru.md: $ru"; return 1; }
+  grep -qF "$(unescape '\u0437\u0430\u043c\u0435\u043d\u0438 \u0432\u0440\u0443\u0447\u043d\u0443\u044e \u0441\u0442\u0440\u043e\u043a\u0443 `[ARTIFACT_CHECK] = [X]`')" <<<"$ru" || { echo "ru.md: $ru"; return 1; }
   for body in "$en" "$ru"; do
     grep -qF '`[PLAN_CHECK] = [X]`' <<<"$body" && grep -qF '`[DONE_CHECK] = [X]`' <<<"$body" \
       || { echo "the announcement does not name the two lines: $body"; return 1; }
