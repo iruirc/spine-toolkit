@@ -749,6 +749,23 @@ PY
   done
 }
 
+@test "a task id with no task stops: Routing never creates the task step 1 refuses" {
+  routing="$(awk '/^## Routing$/{r=1;next} /^## State Detection$/{r=0} r' "$SKILL")"
+  check4="$(awk '/^4\. \*\*Otherwise\*\*/{f=1;print;next} f&&/^[0-9]+\. /{exit} f' <<<"$routing")"
+  [ -n "$check4" ] || { echo "no check 4 in Routing"; return 1; }
+  # Step 1 answers a missing task with error_task_not_found and dispatches nothing;
+  # check 4 must not answer the same request by creating a task nobody asked for.
+  ! grep -qF 'task-new' <<<"$check4" || { echo "check 4 still runs task-new"; return 1; }
+  # Creating a task stays with the explicit request of check 2.
+  grep -E '^2\. \*\*Task management\*\*' <<<"$routing" | grep -qF '`task-new`' \
+    || { echo "check 2 no longer routes to task-new"; return 1; }
+  # The stop says how to create the task, in every locale.
+  for l in en ru; do
+    grep -A1 -x '## error_task_not_found' "$ROOT/skills/orchestrator/locales/$l.md" \
+      | grep -qF '/task-new' || { echo "locale $l: error_task_not_found does not say how to create the task"; return 1; }
+  done
+}
+
 @test "the known_failures paragraph says how each method carries it" {
   para="$(awk '/^`known_failures` —/{f=1} f{print} f&&/^$/{exit}' "$SKILL")"
   for token in 'Method A' 'Method B' 'Validation'; do

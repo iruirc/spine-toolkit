@@ -4,7 +4,7 @@
 Specify task number, e.g. `run 026` / `/spine-toolkit:task-run 026`.
 
 ## error_task_not_found
-Task `{task_id}` not found in `Tasks/`.
+Task `{task_id}` not found in `Tasks/`. Check the id and the project; to create a new task, run `/task-new <description>`.
 
 ## error_task_ambiguous
 More than one task matches `{task_id}`:

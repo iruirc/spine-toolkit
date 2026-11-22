@@ -149,9 +149,9 @@ The orchestrator does not activate on every user request — light commands bypa
 2. **Task management** — "create task" / "new task" / "ft" / "create sub-task for N" → skill `task-new`. "Move task" / "to DONE" / "step N of epic M to <STATUS>" → skill `task-move`. Orchestrator does not run.
 3. **Micro-edit** — "fix" / "rename" / "change" + ≤2 files with no interface changes → execute directly with a quick build check. Orchestrator does not run.
 4. **Otherwise** — this is task work. The orchestrator runs:
-   - Is there a project config (`SPINE.md`, or the pre-multi-runtime name)? No → answer with key `error_no_project_config` and stop. This precedes `task-new` and every question of the Resolution Algorithm on purpose: with no config there is no `## Platform`, so no manifest and no `agents` map, and nothing this branch resolves could be dispatched — scaffolding a task and asking about stack axes first would spend the user's answers on a dispatch that cannot happen. `error_no_platform_manifest` at step 5.7 is the neighbouring case, a config that exists but names no usable platform.
+   - Is there a project config (`SPINE.md`, or the pre-multi-runtime name)? No → answer with key `error_no_project_config` and stop. This precedes every question of the Resolution Algorithm on purpose: with no config there is no `## Platform`, so no manifest and no `agents` map, and nothing this branch resolves could be dispatched — asking about stack axes first would spend the user's answers on a dispatch that cannot happen. `error_no_platform_manifest` at step 5.7 is the neighbouring case, a config that exists but names no usable platform.
    - Is there a `Task.md` for `task_id`? Yes → read `[TASK_TYPE]`, `[WORKFLOW_MODE]` (if present), `## 4. [Stack]` (if present), `[STATUS]` (for steps).
-   - No → run `task-new`, then continue.
+   - No → Resolution step 1 stops with `error_task_not_found`. A task id with no task is more likely a typo or the wrong project than a request to create one, and check 4 never creates it: creating a task is check 2's, on an explicit request.
    - Determine the profile from `[TASK_TYPE]` (see Dispatch).
    - Confirmation/skip is governed in Resolution Algorithm, step 6 (single source of truth).
    - **Driver pre-flight.** Run this only when `drive_app` does not resolve to `off` **and** the
