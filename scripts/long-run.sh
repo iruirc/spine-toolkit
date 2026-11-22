@@ -61,7 +61,7 @@ task_above() {
 }
 
 cmd_start() {
-  local log='' parallel='' first
+  local log='' parallel='' first task
   while [ $# -gt 0 ]; do
     case "$1" in
       --log) [ $# -ge 2 ] || usage; log="$2"; shift 2 ;;

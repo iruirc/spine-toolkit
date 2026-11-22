@@ -667,7 +667,7 @@ section() {
   for token in 'stage-leftovers.sh snap' 'stage-leftovers.sh diff' 'stage-leftovers.sh kill' 'stage-leftovers.sh watch' \
                '`roots`' '`status: interrupted`' '`TaskStop`' 'stage_error_prompt' \
                '`run_in_background`' '`mcp__*`' 'long_run.stall' '`added` file in a root is shown, never removed' \
-               "--task-dir '…/Tasks/*/<task folder>'" 'leftovers_option_remove_added' 'whose `root` is the task folder' \
+               "--task-dir '…/Tasks/*/<task folder>'" 'leftovers_option_remove_added' 'whose `root` is the task folder' 'A path in double quotes' \
                'Act on nothing before the user answers' 'Method B has no watch' 'stage_watch_failed' \
                "status directory is replaced by \`*\`" "'…/Tasks/*/<task folder>'" '--since <now>'; do
     grep -qF -- "$token" <<<"$para" || { echo "the Stage leftovers paragraph does not name $token"; return 1; }
@@ -695,7 +695,7 @@ section() {
   [ -n "$para" ] || { echo "no task's documents paragraph in the orchestrator"; return 1; }
   for token in 'stage-leftovers.sh foreign' task_docs_foreign_file task_docs_foreign_prompt \
                task_docs_foreign_option_exclude task_docs_foreign_option_remove task_docs_foreign_option_commit_all \
-               "':(exclude,literal)<path>'"; do
+               "':(exclude,literal)<path>'" 'A path in double quotes'; do
     grep -qF -- "$token" <<<"$para" || { echo "the task's documents paragraph does not name $token"; return 1; }
   done
   check="$(grep -bo 'stage-leftovers.sh foreign' <<<"$para" | head -1 | cut -d: -f1)"

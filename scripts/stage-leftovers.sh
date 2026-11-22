@@ -135,6 +135,31 @@ def own_chain(table, sess):
     return ({pid} | descendants(table, pid)[0]) if pid in table else set()
 
 
+def literal(pattern):
+    # A pattern is a path whose `*` components are wildcards; every other character is itself, so a
+    # folder named "044 [x]" is not a character class that matches nothing.
+    return os.sep.join(c if c == "*" else glob.escape(c) for c in pattern.split(os.sep))
+
+
+def quoted(path):
+    # One finding is one line: a name with a control character, or bytes that are not UTF-8, is
+    # quoted as git quotes it, "a\nb", and the orchestrator shows it without acting on it.
+    if not any(c < " " or c == "\x7f" or "\udc80" <= c <= "\udcff" for c in path):
+        return path
+    esc = {"\n": "\\n", "\t": "\\t", "\r": "\\r", '"': '\\"', "\\": "\\\\"}
+    out = []
+    for c in path:
+        if c in esc:
+            out.append(esc[c])
+        elif "\udc80" <= c <= "\udcff":
+            out.append("\\%03o" % (ord(c) - 0xDC00))
+        elif c < " " or c == "\x7f":
+            out.append("\\%03o" % ord(c))
+        else:
+            out.append(c)
+    return '"%s"' % "".join(out)
+
+
 def dirty(root, excludes):
     # Porcelain paths are relative to the repository's top; report them relative to the root.
     top = subprocess.run(["git", "-C", root, "rev-parse", "--show-toplevel"],
@@ -152,8 +177,9 @@ def dirty(root, excludes):
             i += 1  # a rename carries its source path as the next field
         full = os.path.join(top, path)
         path = os.path.relpath(full, os.path.realpath(root))
-        if any(fnmatch.fnmatch(full, os.path.realpath(e)) or
-               fnmatch.fnmatch(full, os.path.realpath(e).rstrip(os.sep) + os.sep + "*") for e in excludes):
+        if any(fnmatch.fnmatch(full, literal(os.path.realpath(e))) or
+               fnmatch.fnmatch(full, literal(os.path.realpath(e)).rstrip(os.sep) + os.sep + "*")
+               for e in excludes):
             continue
         try:
             digest = hashlib.sha1(open(full, "rb").read()).hexdigest()
@@ -195,9 +221,9 @@ def task_candidates(task_dir):
     return sorted(found)
 
 
-def resolve_task_dir(pattern):
-    hits = sorted(h for h in glob.glob(pattern) if os.path.isdir(h))
-    return hits[0] if hits else None
+def resolve_task_dirs(pattern):
+    # Every folder the glob matches: a failed move can leave the task under two status directories.
+    return sorted(h for h in glob.glob(literal(pattern)) if os.path.isdir(h))
 
 
 def foreign(args):
@@ -205,7 +231,7 @@ def foreign(args):
         usage("foreign <task dir>")
     hits = [p for p in task_candidates(args[0]) if not lawful(p)]
     if hits:
-        print("\n".join("foreign path=%s" % p for p in hits))
+        print("\n".join("foreign path=%s" % quoted(p) for p in hits))
     sys.exit(1 if hits else 0)
 
 
@@ -238,9 +264,8 @@ def snap(args):
            "procs": {str(p): table[p][1] for p in below},
            "roots": {r: dirty(r, excludes) for r in roots},
            "task_dir": task_dir, "task_files": []}
-    resolved = task_dir and resolve_task_dir(task_dir)
-    if resolved:
-        doc["task_files"] = task_candidates(resolved)
+    if task_dir:
+        doc["task_files"] = sorted({p for d in resolve_task_dirs(task_dir) for p in task_candidates(d)})
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     json.dump(doc, open(out, "w", encoding="utf-8"))
 
@@ -354,15 +379,14 @@ def diff(args):
                 continue
             change = ("added" if xy in ("??", "A ") and path not in before
                       else "deleted" if digest is None else "modified")
-            lines.append("tree root=%s path=%s change=%s" % (root, path, change))
+            lines.append("tree root=%s path=%s change=%s" % (root, quoted(path), change))
     # The task folder is excluded above; what it may not hold is checked here, against the files it
     # had at the snapshot, under whichever status directory it is in now.
-    resolved = doc.get("task_dir") and resolve_task_dir(doc["task_dir"])
-    if resolved:
-        known = set(doc.get("task_files", []))
+    known = set(doc.get("task_files", []))
+    for resolved in resolve_task_dirs(doc["task_dir"]) if doc.get("task_dir") else []:
         for path in task_candidates(resolved):
             if path not in known and not lawful(path):
-                lines.append("tree root=%s path=%s change=added" % (resolved, path))
+                lines.append("tree root=%s path=%s change=added" % (resolved, quoted(path)))
     print("\n".join(lines))
     sys.exit(1 if lines else 0)
 

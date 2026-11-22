@@ -502,3 +502,33 @@ foreign path=x.log" ] || { echo "$output"; return 1; }
   run "$SL" foreign "$T/repo/Tasks/ACTIVE/042"
   [ "$status" -eq 1 ] && [ "$output" = "foreign path=x.log" ] || { echo "$output"; return 1; }
 }
+
+# A path is matched literally except where a component is `*`: a folder named with [x] in it is
+# not a character class that silently matches nothing.
+@test "a task folder whose name holds glob characters is still excluded and still checked" {
+  before; repo; mkdir -p 'Tasks/ACTIVE/044 [x]'; : >'Tasks/ACTIVE/044 [x]/Task.md'
+  git add . && git -c user.email=t@t -c user.name=t commit -qm task
+  snap --root "$T/repo" --exclude "$T/repo/Tasks/*/044 [x]" --task-dir "$T/repo/Tasks/*/044 [x]"
+  : >'Tasks/ACTIVE/044 [x]/Done.md'
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  : >'Tasks/ACTIVE/044 [x]/z.log'
+  run "$SL" diff "$T/snap"
+  [ "$output" = "tree root=$T/repo/Tasks/ACTIVE/044 [x] path=z.log change=added" ] || { echo "$output"; return 1; }
+}
+
+# One finding is one line: a name that holds a newline is quoted the way git quotes it.
+@test "a file name with a newline is quoted on one line" {
+  task; : >Tasks/ACTIVE/042/$'a\nb.log'
+  run "$SL" foreign "$T/repo/Tasks/ACTIVE/042"
+  [ "$status" -eq 1 ] && [ "$output" = 'foreign path="a\nb.log"' ] || { echo "$output"; return 1; }
+}
+
+# A failed move can leave the folder under two status directories: both are checked.
+@test "every folder the glob matches is checked" {
+  before; task; mkdir -p Tasks/DONE/042; : >Tasks/DONE/042/Task.md; : >Tasks/ACTIVE/042/mock.png
+  : >Tasks/DONE/042/mock.png; tsnap
+  : >Tasks/DONE/042/x.log
+  run "$SL" diff "$T/snap"
+  [ "$output" = "tree root=$T/repo/Tasks/DONE/042 path=x.log change=added" ] || { echo "$output"; return 1; }
+}

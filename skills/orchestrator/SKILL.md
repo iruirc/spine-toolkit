@@ -133,7 +133,9 @@ outside the allowlist the script names. On exit 1 report each line with key `tas
 and with the suffix `auq_stage_recovery_recommended_suffix`, appends `':(exclude,literal)<path>'` to
 `X` for each path and leaves the files on disk; `task_docs_foreign_option_remove` runs `rm -f` on
 them, then commits; `task_docs_foreign_option_commit_all` commits with `X` as it was. Exit 2 stops the
-commit and is announced as is. Then run `git -C <task dir> add -A X`, then
+commit and is announced as is. A path in double quotes is one whose name holds a control character,
+quoted as git quotes it: it is shown, never removed and never excluded, and `foreign` reports it again
+until someone renames it. Then run `git -C <task dir> add -A X`, then
 `git -C <task dir> commit -m '<message>' X` — one `docs` commit by `conventions/commit-messages.md`,
 holding nothing else the index has; nothing changed, no commit. An epic's commit holds its step
 folders, and its `foreign` runs once, on the epic's folder, its steps included.
@@ -1114,7 +1116,8 @@ line's `<pid>:<start>`; `leftovers_option_restore` runs `git -C <root> restore -
 `modified` and `deleted` lines only — an `added` file in a root is shown, never removed;
 `leftovers_option_remove_added`, offered only when some `added` line's `root` is the task folder, runs
 `rm -f -- <root>/<path>` for each `added` line whose `root` is the task folder, and for no other;
-`leftovers_option_leave` does nothing. Act on nothing before the user answers: the process may be another session's build
+`leftovers_option_leave` does nothing. A path in double quotes is one whose name holds a control
+character, quoted as git quotes it: show it, and leave it out of every option that acts on a path. Act on nothing before the user answers: the process may be another session's build
 that reparented, the file an edit the user made while the stage ran.
 
 Under Method A, once `Workflow` has accepted the call, start
