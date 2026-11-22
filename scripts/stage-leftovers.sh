@@ -214,8 +214,13 @@ def task_candidates(task_dir):
         out = subprocess.run(["git", "-C", task_dir, "ls-files", "--others", "--exclude-standard", "-z"],
                              capture_output=True, text=True, errors="surrogateescape").stdout
         return sorted(p for p in out.split("\0") if p)
+    # A nested repository is one entry, "clone/", as git lists it.
     found = []
     for d, dirs, files in os.walk(task_dir):
+        if d != task_dir and ".git" in dirs + files:
+            found.append(os.path.relpath(d, task_dir) + "/")
+            dirs[:] = []
+            continue
         dirs[:] = [x for x in dirs if x != ".git"]
         found += [os.path.relpath(os.path.join(d, f), task_dir) for f in files if f != ".DS_Store"]
     return sorted(found)

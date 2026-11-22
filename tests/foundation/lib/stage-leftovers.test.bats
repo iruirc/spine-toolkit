@@ -532,3 +532,14 @@ foreign path=x.log" ] || { echo "$output"; return 1; }
   run "$SL" diff "$T/snap"
   [ "$output" = "tree root=$T/repo/Tasks/DONE/042 path=x.log change=added" ] || { echo "$output"; return 1; }
 }
+
+# A repository a stage cloned into the task folder is one finding, a folder, in git and outside it:
+# the orchestrator shows it and never removes it, for it may hold work pushed nowhere.
+@test "a nested repository is one folder finding, in git and outside it" {
+  task; git init -q Tasks/ACTIVE/042/clone; : >Tasks/ACTIVE/042/clone/a.txt
+  run "$SL" foreign "$T/repo/Tasks/ACTIVE/042"
+  [ "$status" -eq 1 ] && [ "$output" = "foreign path=clone/" ] || { echo "$output"; return 1; }
+  mkdir -p "$T/plain"; : >"$T/plain/Task.md"; git init -q "$T/plain/clone"; : >"$T/plain/clone/a.txt"
+  run "$SL" foreign "$T/plain"
+  [ "$status" -eq 1 ] && [ "$output" = "foreign path=clone/" ] || { echo "$output"; return 1; }
+}
