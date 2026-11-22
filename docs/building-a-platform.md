@@ -293,7 +293,7 @@ testing          → `test-frameworks`
 
 The vocabulary is open — you may add rows of your own, and core never reads them. But core's
 methodology skills (`feature-requirements`, `feature-landscape`, `feature-estimation`,
-`ops-checklist`, `test-authoring`) ask for exactly these eleven names and **match them literally**.
+`ops-risks`, `test-authoring`) ask for exactly these eleven names and **match them literally**.
 Copy them before
 writing your platform, not after: a platform that spells `deep links` as `deeplinks` has no row for
 the topic core asked for, and the skills behind it go unconsulted on every task, silently.
@@ -337,7 +337,7 @@ Do **not** name that skill `setup`. It would collide with core's own in every na
 trigger — which is exactly why the binding goes through this table instead of a naming convention.
 The same applies to every other core skill name: `orchestrator`, `stack-detect`, `lang`,
 `agent-status`, `task-new`, `task-move`, `task-status`, `task-walkthrough`, `workflow-*`,
-`feature-*`, `run-forecast`, `ops-checklist`, `manual-checks`, `phase-verification`, `security-lens`, `task-documents`, `artifact-reader`.
+`feature-*`, `run-forecast`, `ops-risks`, `manual-checks`, `phase-verification`, `security-lens`, `task-documents`, `artifact-reader`.
 
 The direction runs both ways: wherever your own files reference a core skill by name — an agent
 brief, a reference doc, a manifest row — write it namespaced, `spine-toolkit:<skill>`. A bare

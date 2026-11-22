@@ -10,7 +10,7 @@ Estimates fail because they ignore the cost of what nobody wrote down: error sta
 > **Related skills:**
 > - `feature-landscape` — produces the work-items list this skill consumes
 > - `feature-requirements` — Secondary list and Known Unknowns directly drive the deltas
-> - `ops-checklist` — Applicable ops items either become baseline work items or add concrete days (feature flag wiring, analytics dashboards, on-call runbook)
+> - `ops-risks` — a triggered risk either becomes a baseline work item or adds concrete days (flag wiring, a migration, a deferred start-up task)
 >
 > Bold **topics** below are rows of the installed platform's manifest `## Topics`; resolve each to
 > that platform's own skills per `conventions/platform-contract.md`. The platform fragmentation

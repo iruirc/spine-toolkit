@@ -235,12 +235,8 @@ PY
     || { echo "the script's thresholds moved away from the convention's"; return 1; }
 }
 
-@test "the skills whose examples are English say which part of a line is translated" {
-  ops="$ROOT/skills/ops-checklist/SKILL.md"
+@test "manual-checks says which part of a line is translated" {
   mc="$ROOT/skills/manual-checks/SKILL.md"
-  for token in "Everything after the dash" "is prose in" "keeps \`N/A: Forced-upgrade\` and"; do
-    grep -qF -- "$token" "$ops" || { echo "ops-checklist does not say: $token"; return 1; }
-  done
   for token in 'field labels above stay English' "A case's title after \`### MC-<n>.\`" 'are prose in the project'; do
     grep -qF -- "$token" "$mc" || { echo "manual-checks does not say: $token"; return 1; }
   done
@@ -257,12 +253,4 @@ PY
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ "${lines[${#lines[@]}-1]}" = "artifact language passed" ]
-}
-
-@test "ops-checklist says the file is a list, never a table, and shows an evidence sentence with the test in brackets" {
-  s="$(tr '\n' ' ' <"$ROOT/skills/ops-checklist/SKILL.md" | tr -s ' ')"
-  for token in 'a list, never a table' 'class `format`' 'a sentence of words with the test or the file in brackets' \
-               '- [x] Feature flag wraps the feature — the cart opens the new screen only with the flag on (Features.cartV2)'; do
-    grep -qF -- "$token" <<<"$s" || { echo "ops-checklist does not say: $token"; return 1; }
-  done
 }

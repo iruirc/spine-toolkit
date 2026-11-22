@@ -19,9 +19,9 @@ scale_section() { # $1 = profile
 }
 
 # Files that must name one of the two skills.
-POINTERS='skills/workflow-bug skills/workflow-feature skills/workflow-refactor skills/workflow-test skills/workflow-quick skills/workflow-epic skills/workflow-research skills/workflow-review skills/orchestrator skills/docs-route skills/ops-checklist'
+POINTERS='skills/workflow-bug skills/workflow-feature skills/workflow-refactor skills/workflow-test skills/workflow-quick skills/workflow-epic skills/workflow-research skills/workflow-review skills/orchestrator skills/docs-route skills/ops-risks'
 
-@test "the eight workflow skills, the orchestrator, docs-route and ops-checklist name artifact-reader or task-documents" {
+@test "the eight workflow skills, the orchestrator, docs-route and ops-risks name artifact-reader or task-documents" {
   n=0
   for d in $POINTERS; do
     grep -qE '`(artifact-reader|task-documents)`|skills/(artifact-reader|task-documents)/SKILL\.md' "$ROOT/$d/SKILL.md" \

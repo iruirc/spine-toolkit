@@ -11,7 +11,7 @@ The file comes in two styles, and the contract's `manual_checks_style` decides w
 
 > **Related skills:**
 > - `artifact-reader` — the style rules every task artifact follows; this skill sets this file's reader and its format
-> - `ops-checklist` — the same late stage, the opposite direction: evidence for what WAS verified
+> - `ops-risks` — a closed list of operational risks that Review checks against the diff; a risk it triggers never becomes a case here, and its `## Touches` defines what the diff touches
 > - `task-walkthrough` — narrative for a reader; this is a procedure a tester runs
 > - `feature-requirements` — the Secondary list is where checks nothing can automate first become visible
 
@@ -42,7 +42,7 @@ For BUG the reproduction replay is not listed: its steps are already in `Reprodu
 
 ## Does this check need a person?
 
-Does the diff change this behaviour? Ask that first, before the three below, and take "change" as the `ops-checklist` skill defines touches: directly or through code on its path. When the diff does not change it, the check is not a case: it is a line in `## Not covered` with its reason. A constraint of the implementation ("no network is used") is not a behaviour the diff changes, so it gets no case. The same holds for a check the diff does not change that was deferred because a driver could not reach it: that alone is a reason the run could not do it, never a reason a person must. On a task whose diff changes no product behaviour, the question reads: does automation leave the behaviour the task targets unchecked? The one nothing-broke case is the exception: it guards a regression on a path the diff touches, so it is not behaviour the diff does not change.
+Does the diff change this behaviour? Ask that first, before the three below, and take "change" as the `ops-risks` skill's `## Touches` defines it: directly or through code on its path. When the diff does not change it, the check is not a case: it is a line in `## Not covered` with its reason. A constraint of the implementation ("no network is used") is not a behaviour the diff changes, so it gets no case. The same holds for a check the diff does not change that was deferred because a driver could not reach it: that alone is a reason the run could not do it, never a reason a person must. On a task whose diff changes no product behaviour, the question reads: does automation leave the behaviour the task targets unchecked? The one nothing-broke case is the exception: it guards a regression on a path the diff touches, so it is not behaviour the diff does not change.
 
 A `## Manual acceptance` of `Fully automatable.` does not forbid a case. When Validation still writes one, its `**What it checks:**` names the change of the diff it checks.
 
@@ -179,7 +179,7 @@ A case earns a tester's time only when its verdict says something about this cha
 
 **It tells the build before the change from the build after.** On the build before the change the case fails; on the build after it passes. Checks that pass the same on both fold into one case, "nothing broke", whose `**What it checks:**` says it is not a check of the fix. When automated tests or the driver already cover that regression, there is no such case, and `## Scope` names the evidence.
 
-**It checks what the diff touches.** A check becomes a case only when the diff touches that behaviour, as the `ops-checklist` skill defines touches. Otherwise it is a line in `## Not covered`, with its reason. The one nothing-broke case is the only case not built on changed code. Its row in `## Code references` names the code of the behaviour it guards.
+**It checks what the diff touches.** A check becomes a case only when the diff touches that behaviour, as the `ops-risks` skill's `## Touches` defines it. Otherwise it is a line in `## Not covered`, with its reason. The one nothing-broke case is the only case not built on changed code. Its row in `## Code references` names the code of the behaviour it guards.
 
 **It is settled by eye when the difference shows at normal speed.** That is so when the defect was found by eye, or when the check is tagged `visual judgment`. When the eye is unsure, the case says what to look for, and the eye decides. The person never reads frames, traces or logs. When no eye can see the difference at all, the check is no case of this file: `## No instrument in the file` says where it goes.
 

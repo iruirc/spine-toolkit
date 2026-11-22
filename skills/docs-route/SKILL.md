@@ -10,7 +10,6 @@ part computation cannot reach: whether it actually moved anything a component as
 to write when it did.
 
 > **Related skills:**
-> - `ops-checklist` — the same three-state vocabulary, at a different question
 > - `task-walkthrough` — the per-task account that feeds a progress component
 > - `manual-checks` — the other artifact whose shape a skill owns and a config field only levers
 
@@ -50,8 +49,8 @@ names the file, for example `The cart total now rounds per line (docs/cart-prici
 meaning first, the identifier in brackets.
 
 Default to **Applicable** unless there is a concrete reason not to. The conservative bias is
-deliberate and identical to `ops-checklist`'s: a false Applicable costs one line of reasoning, a
-false N/A costs a rule nobody can find.
+deliberate: a false Applicable costs one line of reasoning, a false N/A costs a rule nobody can
+find.
 
 Reasons that are good `N/A`, from what the corpus actually contains:
 

@@ -146,7 +146,7 @@ setup() {
 }
 
 @test "the skill ships no locales, like the other agent-facing skills" {
-  # ops-checklist and task-walkthrough have none either: nothing here is user-facing,
+  # ops-risks and task-walkthrough have none either: nothing here is user-facing,
   # and a locales/ directory would put this skill under lint-locales parity for no reader.
   [ ! -d "$ROOT/skills/manual-checks/locales" ] || { echo "manual-checks must not carry locales/"; return 1; }
 }
@@ -793,14 +793,6 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     || { echo "## The lint gives scriptable no repair rule"; return 1; }
 }
 
-@test "an ops item is judged against the task's diff, and an untouched one is N/A, not a case" {
-  O="$ROOT/skills/ops-checklist/SKILL.md"
-  for token in "judged against this task's diff" '`not changed by this task: the diff touches <X>`' \
-               'the conservative default applies to behaviour the diff touches'; do
-    grep -qF -- "$token" "$O" || { echo "ops-checklist does not say: $token"; return 1; }
-  done
-}
-
 @test "Review judges each case by what it must prove" {
   for p in $PROFILES; do
     b="$(review_brief "$ROOT/workflows/profile-$p.js")"
@@ -810,19 +802,11 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
     grep -qF '`## What a case must prove`' <<<"$m" \
       || { echo "workflow-$p/SKILL.md: Review does not judge a case by ## What a case must prove"; return 1; }
   done
-  grep -qF 'cross-checks Applicable items and N/A reasons against the actual diff' "$ROOT/skills/ops-checklist/SKILL.md" \
-    || { echo "ops-checklist: the reviewer does not check N/A reasons"; return 1; }
 }
 
-@test "the diff rule holds for a task's checklist, and touches reaches the behaviour's path" {
-  O="$ROOT/skills/ops-checklist/SKILL.md"
-  for token in "When the checklist is written for a task, an item is judged against this task's diff" \
-               'directly or through code on its path' 'When in doubt, it touches.' \
-               'have no task diff and judge the product' 'for the categories the diff touches'; do
-    grep -qF -- "$token" "$O" || { echo "ops-checklist does not say: $token"; return 1; }
-  done
-  skill_section '## What a case must prove' | grep -qF 'only when the diff touches that behaviour, as the `ops-checklist` skill defines touches' \
-    || { echo "## What a case must prove uses another verb than ops-checklist"; return 1; }
+@test "a case is built only on behaviour the diff touches, and touches is defined by ops-risks" {
+  skill_section '## What a case must prove' | grep -qF 'only when the diff touches that behaviour, as the `ops-risks` skill'"'"'s `## Touches` defines it' \
+    || { echo "## What a case must prove does not take touches from ops-risks"; return 1; }
 }
 
 @test "a task that changes no product behaviour still has cases worth a tester's time" {
@@ -858,7 +842,7 @@ SMELL='{"walk": ["I look for the start"], "smells": [{"case": "1", "step": "2", 
   grep -qF 'Does the diff change this behaviour?' <<<"$first" \
     || { echo "the section does not open with the question about the diff"; return 1; }
   for token in 'Does the diff change this behaviour?' 'the check is not a case' 'Fully automatable' \
-               '`## Not covered`' 'as the `ops-checklist` skill defines touches' 'because a driver could not reach it' 'that alone is a reason the run could not do it, never a reason a person must'; do
+               '`## Not covered`' "as the \`ops-risks\` skill's \`## Touches\` defines it" 'because a driver could not reach it' 'that alone is a reason the run could not do it, never a reason a person must'; do
     grep -qF -- "$token" <<<"$s" || { echo "## Does this check need a person? does not say: $token"; return 1; }
   done
   grep -qF 'names the change of the diff it checks' <<<"$s" \

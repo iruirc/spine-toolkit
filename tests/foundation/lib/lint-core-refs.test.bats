@@ -77,16 +77,16 @@ JSON
 }
 
 @test "fails when a namespaced reference names a skill core does not have" {
-  sed -i.bak 's|spine-toolkit:ops-checklist|spine-toolkit:ops-checklists|' \
+  sed -i.bak 's|spine-toolkit:feature-landscape|spine-toolkit:feature-landscapes|' \
     "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"ops-checklists"* ]] || false
+  [[ "$output" == *"feature-landscapes"* ]] || false
   [[ "$output" == *"does not exist"* ]] || false
 }
 
 @test "the violation names the file and the line" {
-  sed -i.bak 's|spine-toolkit:ops-checklist|spine-toolkit:ghost-skill|' \
+  sed -i.bak 's|spine-toolkit:feature-landscape|spine-toolkit:ghost-skill|' \
     "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 1 ]
@@ -108,7 +108,7 @@ JSON
   # core gained later and leaves the floor where it was.
   sed -i.bak 's|">=2.0.0 <3"|">=1.0.0 <2"|' "$TMP/p/.claude-plugin/plugin.json" \
     && rm -f "$TMP/p/.claude-plugin/plugin.json.bak"
-  sed -i.bak 's|spine-toolkit:ops-checklist|spine-toolkit:manual-checks|' \
+  sed -i.bak 's|spine-toolkit:feature-landscape|spine-toolkit:manual-checks|' \
     "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
   run "$LINT" "$TMP/p" --core "$ROOT" --ref 1.0.0
   [ "$status" -eq 1 ]
@@ -121,7 +121,7 @@ JSON
   # here, so the floor in plugin.json is the only thing driving the check.
   sed -i.bak 's|">=2.0.0 <3"|">=1.0.0 <2"|' "$TMP/p/.claude-plugin/plugin.json" \
     && rm -f "$TMP/p/.claude-plugin/plugin.json.bak"
-  sed -i.bak 's|spine-toolkit:ops-checklist|spine-toolkit:manual-checks|' \
+  sed -i.bak 's|spine-toolkit:feature-landscape|spine-toolkit:manual-checks|' \
     "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 1 ]
@@ -130,12 +130,12 @@ JSON
 }
 
 @test "fails when a hyphenated core skill is named bare in backticks" {
-  sed -i.bak 's|`spine-toolkit:ops-checklist`|`ops-checklist`|' \
+  sed -i.bak 's|`spine-toolkit:feature-landscape`|`feature-landscape`|' \
     "$TMP/p/agents/fixture-architect.md" && rm -f "$TMP/p/agents/fixture-architect.md.bak"
   run "$LINT" "$TMP/p" --core "$ROOT"
   [ "$status" -eq 1 ]
   [[ "$output" == *"bare"* ]] || false
-  [[ "$output" == *"ops-checklist"* ]] || false
+  [[ "$output" == *"feature-landscape"* ]] || false
 }
 
 @test "a single-word core skill name stays legal bare" {

@@ -9,7 +9,7 @@ Test double. Echo the stage name you were dispatched for and stop.
 
 ## Skills Reference (core)
 
-- `spine-toolkit:ops-checklist` — named in the namespaced form the contract requires, so
+- `spine-toolkit:feature-landscape` — named in the namespaced form the contract requires, so
   `lint-core-refs.sh` has something to resolve.
 
 The plugin.json floor is pinned high to give the suite a floor to test against, not as an example.

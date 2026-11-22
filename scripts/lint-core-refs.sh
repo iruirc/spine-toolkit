@@ -84,7 +84,7 @@ done < <(grep -rnoE "$CORE:[a-z][a-z0-9-]*" "$plugin/agents" "$plugin/skills" 2>
 # vocabulary (`lang`, `setup`, `orchestrator`) legitimately appears bare as a
 # dispatch field or an Entrypoints row, and 11 of the platform's occurrences are
 # exactly that. The cost is a known blind spot, named in the spec as D-11.
-# The pattern needs a backtick on both sides, so `spine-toolkit:ops-checklist`
+# The pattern needs a backtick on both sides, so `spine-toolkit:feature-landscape`
 # cannot match: the colon is outside the character class.
 while IFS= read -r hit; do
   tok="${hit##*:}"

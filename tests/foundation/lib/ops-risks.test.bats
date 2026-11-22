@@ -121,3 +121,18 @@ stage_prompt() { # $1 = profile, $2 = stage, $3 = label, $4 = scale
   s="$(section "$ROOT/skills/task-documents/SKILL.md" 'Review.md')"
   grep -qF '## Ops risks' <<<"$s" || { echo "task-documents ## Review.md does not name ## Ops risks"; return 1; }
 }
+
+@test "the old skill is gone and no file names it" {
+  [ ! -e "$ROOT/skills/ops-checklist" ] || { echo "skills/ops-checklist still exists"; return 1; }
+  hits="$(grep -rIl 'ops-checklist' --exclude-dir=.git "$ROOT" | sed "s|^$ROOT/||")"
+  [ "$hits" = "tests/foundation/lib/ops-risks.test.bats" ] || { echo "files naming it: $hits"; return 1; }
+}
+
+@test "manual-checks takes touches from ops-risks" {
+  mc="$ROOT/skills/manual-checks/SKILL.md"
+  for h in 'What a case must prove' 'Does this check need a person?'; do
+    s="$(section "$mc" "$h")"
+    grep -qF '`ops-risks`' <<<"$s" || { echo "## $h does not name ops-risks"; return 1; }
+    grep -qF '`## Touches`' <<<"$s" || { echo "## $h does not name ## Touches"; return 1; }
+  done
+}

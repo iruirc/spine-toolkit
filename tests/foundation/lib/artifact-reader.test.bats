@@ -89,7 +89,7 @@ section() { # $1 = heading text
 }
 
 @test "the core skills that write task artifacts point at artifact-reader" {
-  for s in task-walkthrough task-documents ops-checklist; do
+  for s in task-walkthrough task-documents; do
     grep -qF 'artifact-reader' "$ROOT/skills/$s/SKILL.md" || { echo "$s never names artifact-reader"; return 1; }
   done
 }

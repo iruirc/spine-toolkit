@@ -14,7 +14,7 @@ Commit messages do not make this artifact redundant. `conventions/commit-message
 > **Related skills:**
 > - `feature-landscape` — the design-time picture of the same feature; this is the after-the-fact one
 > - `feature-estimation` — `Done.md ## Estimate retrospective` accounts for effort; this accounts for substance
-> - `ops-checklist` — verification evidence with proof; this is narrative
+> - `ops-risks` — the risks Review checks against the diff, with proof; this is narrative
 
 ## When to use
 
@@ -494,7 +494,7 @@ The reader and style rules every task artifact follows are in the `artifact-read
 - **Restating the diff.** A hunk-by-hunk retelling. The diff is readable and does not rot; prose about it does. Quoting a signature or a doc comment is not this — see `## Style`. The test: does the excerpt carry the *why*, or is it there because it was in the change?
 - **Deep by reflex.** A five-part section for a commit that renamed a constant. Such a commit gets `**In short:**` alone, and the three menu sub-headings are earned one by one; an empty one filled to look complete is noise the reader has to wade through.
 - **A glossary of unused terms.** Entries earn their place by appearing later in the document.
-- **Feeding it to the Review stage.** The `reviewer` agent exists to read the diff independently; the author's narrative anchors it. `OpsChecklist.md` is fine as its input — that is evidence, not story. The reader of this file is a person.
+- **Feeding it to the Review stage.** The `reviewer` agent exists to read the diff independently; the author's narrative anchors it. Review's input is the diff and the task's evidence, such as `Validation.md`; this file is not. The reader of this file is a person.
 - **Copying the validation verdict in.** It lives in `Validation.md` and `Done.md`. Link, do not duplicate.
 - **A diagram per commit.** Two diagrams is the ceiling in `## How it works`, plus the one in `## Commit order`, and most tasks want fewer. Tables and ASCII sketches are not diagrams in this count.
 - **Rewriting `## Commits` on refresh.** That erases the rework, which is the part worth having. The exceptions are a refresh at a depth the file was not written at, and when a commit is gone from history — see `## Refreshing`.
