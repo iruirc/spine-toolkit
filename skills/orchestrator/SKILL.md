@@ -118,23 +118,25 @@ directive).
 **The task's documents.** Stages commit code, and only REVIEW and RESEARCH commit what they wrote;
 the rest is the orchestrator's, once a return's `last_completed_stage` is `Done` — after `Run.json`
 is deleted and a catch-up's task is back in `DONE/`, so the commit holds the folder as the run leaves
-it, `Walkthrough.md` included. With `X` for `-- . ':(exclude,glob)**/Run.json'`, first run
-`<core root>/scripts/stage-leftovers.sh foreign <task dir>`, for a folder the checks below commit: it
-prints `foreign path=<path>` for each file the commit would add that the task folder may not hold — a
-log, a long-run sidecar, anything outside the allowlist the script names. On exit 1 report each line
-with key `task_docs_foreign_file` (`{path}`), then AUQ with key `task_docs_foreign_prompt`:
-`task_docs_foreign_option_exclude`, first and with the suffix `auq_stage_recovery_recommended_suffix`, appends `':(exclude,literal)<path>'` to `X`
-for each path and leaves the files on disk; `task_docs_foreign_option_remove` runs `rm -f` on them,
-then commits; `task_docs_foreign_option_commit_all` commits with `X` as it was. Exit 2 stops the
-commit and is announced as is. An epic runs it once, on the epic's folder, its steps included. Then run
-`git -C <task dir> add -A X`, then `git -C <task dir> commit -m '<message>' X` — one `docs` commit
-by `conventions/commit-messages.md`, holding nothing else the index has; nothing changed, no commit.
-A folder where `git -C <task dir> rev-parse` fails, or `check-ignore -q .` matches, is not committed:
-announce `info_task_docs_uncommitted` (`{path}`). An epic's commit holds its step folders.
+it, `Walkthrough.md` included. A folder where `git -C <task dir> rev-parse` fails, or
+`check-ignore -q .` matches, is not committed: announce `info_task_docs_uncommitted` (`{path}`).
 Both checks run with `-C <task dir>`, never from the project root: when the tasks folder is
 a repository of its own, the project's `.gitignore` listing it does not reach that repository and is
 no reason to skip — the commit goes there. No stage decides the folder is ignored; `Done.md` does not
 say so, and this commit runs whatever it says.
+
+A folder that is committed is checked first. With `X` for `-- . ':(exclude,glob)**/Run.json'`, run
+`<core root>/scripts/stage-leftovers.sh foreign <task dir>`: it prints `foreign path=<path>` for each
+file the commit would add that the task folder may not hold — a log, a long-run sidecar, anything
+outside the allowlist the script names. On exit 1 report each line with key `task_docs_foreign_file`
+(`{path}`), then AUQ with key `task_docs_foreign_prompt`: `task_docs_foreign_option_exclude`, first
+and with the suffix `auq_stage_recovery_recommended_suffix`, appends `':(exclude,literal)<path>'` to
+`X` for each path and leaves the files on disk; `task_docs_foreign_option_remove` runs `rm -f` on
+them, then commits; `task_docs_foreign_option_commit_all` commits with `X` as it was. Exit 2 stops the
+commit and is announced as is. Then run `git -C <task dir> add -A X`, then
+`git -C <task dir> commit -m '<message>' X` — one `docs` commit by `conventions/commit-messages.md`,
+holding nothing else the index has; nothing changed, no commit. An epic's commit holds its step
+folders, and its `foreign` runs once, on the epic's folder, its steps included.
 
 ## Routing
 

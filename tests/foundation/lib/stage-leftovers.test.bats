@@ -489,3 +489,16 @@ foreign path=x.log" ] || { echo "$output"; return 1; }
   run "$SL" foreign "$T/nonexistent"
   [ "$status" -eq 2 ] || { echo "$output"; return 1; }
 }
+
+# A project whose .gitignore lists Tasks/ keeps its tasks out of git, and the stage's logs with them;
+# ls-files sees nothing there, and the logs still clutter the folder the documents cite them from.
+@test "a task folder its project ignores is walked, after a stage and by foreign" {
+  before; task; printf 'Tasks/\n' >.gitignore
+  git add .gitignore && git -c user.email=t@t -c user.name=t commit -qm ignore
+  tsnap
+  : >Tasks/ACTIVE/042/x.log; : >Tasks/ACTIVE/042/Plan.md; : >Tasks/ACTIVE/042/.DS_Store
+  run "$SL" diff "$T/snap"
+  [ "$output" = "tree root=$T/repo/Tasks/ACTIVE/042 path=x.log change=added" ] || { echo "$output"; return 1; }
+  run "$SL" foreign "$T/repo/Tasks/ACTIVE/042"
+  [ "$status" -eq 1 ] && [ "$output" = "foreign path=x.log" ] || { echo "$output"; return 1; }
+}

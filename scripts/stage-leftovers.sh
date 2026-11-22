@@ -180,13 +180,19 @@ def lawful(rel):
 
 
 def task_candidates(task_dir):
-    # The files a commit of the folder would add: untracked and not ignored. Outside git, every file.
-    if subprocess.run(["git", "-C", task_dir, "rev-parse"], capture_output=True).returncode == 0:
+    # The files a commit of the folder would add: untracked and not ignored. Outside git, or in a
+    # repository that ignores the folder whole, every file: nothing commits them, but they still sit
+    # beside the documents that cite them.
+    git = lambda *a: subprocess.run(["git", "-C", task_dir] + list(a), capture_output=True)
+    if git("rev-parse").returncode == 0 and git("check-ignore", "-q", ".").returncode != 0:
         out = subprocess.run(["git", "-C", task_dir, "ls-files", "--others", "--exclude-standard", "-z"],
                              capture_output=True, text=True, errors="surrogateescape").stdout
         return sorted(p for p in out.split("\0") if p)
-    return sorted(os.path.relpath(os.path.join(d, f), task_dir)
-                  for d, _dirs, files in os.walk(task_dir) for f in files)
+    found = []
+    for d, dirs, files in os.walk(task_dir):
+        dirs[:] = [x for x in dirs if x != ".git"]
+        found += [os.path.relpath(os.path.join(d, f), task_dir) for f in files if f != ".DS_Store"]
+    return sorted(found)
 
 
 def resolve_task_dir(pattern):

@@ -112,3 +112,24 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   grep -qF 'with wait --stall {stall} --max {max} (start takes neither);' "$ROOT/conventions/stage-dispatch.md"
   grep -qF 'Pass `--stall` and `--max` to `wait`' "$ROOT/conventions/agent-tooling.md"
 }
+
+@test "the convention forbids a log in the task folder and says to copy the log a document cites" {
+  sec="$(awk '/^## Long-running commands/{f=1; next} f&&/^## /{exit} f' "$ROOT/conventions/agent-tooling.md")"
+  for token in 'never inside the task folder' 'a project root' 'mktemp -d' 'sidecars' '`add -A`' \
+               'phase-evidence/' 'validation-evidence/' 'exits 2'; do
+    grep -qF -- "$token" <<<"$sec" || { echo "Long-running commands does not say $token"; return 1; }
+  done
+}
+
+@test "every brief carries the --log rule" {
+  for f in "$ROOT/workflow-src/prelude.js" "$ROOT"/workflows/profile-*.js; do
+    grep -qF -- '--log never inside the task folder or a project root' "$f" || { echo "$f lacks the --log rule"; return 1; }
+  done
+}
+
+@test "the document skills cite a copy taken from TMPDIR, without sidecars" {
+  grep -qF 'without its sidecars' "$ROOT/skills/task-documents/SKILL.md" \
+    || { echo "task-documents does not say the copy has no sidecars"; return 1; }
+  grep -qF 'without its sidecars' "$ROOT/skills/phase-verification/SKILL.md" \
+    || { echo "phase-verification does not say the copy has no sidecars"; return 1; }
+}

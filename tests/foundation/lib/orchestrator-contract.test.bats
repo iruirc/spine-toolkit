@@ -701,6 +701,9 @@ section() {
   check="$(grep -bo 'stage-leftovers.sh foreign' <<<"$para" | head -1 | cut -d: -f1)"
   add="$(grep -bo 'add -A X' <<<"$para" | head -1 | cut -d: -f1)"
   [ "$check" -lt "$add" ] || { echo "the foreign check comes after add -A"; return 1; }
+  gate="$(grep -bo 'rev-parse` fails' <<<"$para" | head -1 | cut -d: -f1)"
+  [ -n "$gate" ] && [ "$gate" -lt "$check" ] \
+    || { echo "the foreign check comes before the checks that decide the folder is committed at all"; return 1; }
 }
 
 @test "every task-docs foreign key exists in both locales" {
