@@ -419,8 +419,11 @@ Algorithm:
                       `{epic_id}`) and return {status: cancelled, reason: status_step_postponed}
                4. locale key `confirm_step_dispatch_skip` → close the step without a run: set it to SKIPPED by
                       `task-move`'s step process (`[STATUS]` in its Task.md, the ⊘ row in the epic's Plan.md) and report
-                      with `task-move`'s `report_moved_step`. The next entry of `pending_steps` gets the same question;
-                      after the last, the epic is re-dispatched as the `pending_steps` paragraph of the Return says
+                      with `report_moved_step` from `skills/task-move/locales/<lang>.md`. The next entry of
+                      `pending_steps` gets the same question; after the last, the epic is re-dispatched as the
+                      `pending_steps` paragraph of the Return says
+           Options 3 and 4, and the picker's Cancel, first delete the step's `Base.md` when step 5.6 wrote it in this
+           dispatch: it holds today's tip, and a step run later must record its own
            # four options, and AUQ allows no more: lite takes the picker's place, because suggest_lite holds only at
            # the profile's first stage of a task nothing of which has run, where there is no stage to fix
        otherwise:

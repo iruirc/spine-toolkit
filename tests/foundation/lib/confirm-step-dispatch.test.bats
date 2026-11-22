@@ -77,3 +77,14 @@ line_of() { printf '%s\n' "$BRANCH" | grep -nF -- "$1" | head -1 | cut -d: -f1; 
   grep -qF 'confirm_step_dispatch' <<<"$row" || { echo "the Codex row does not name the step question"; return 1; }
   ! grep -qF 'start_stage=Done' <<<"$row" || { echo "the Codex row still re-dispatches the epic at Done only"; return 1; }
 }
+
+@test "a step not run now leaves no Base.md that this dispatch wrote" {
+  # Step 5.6 records the base before step 6 asks; a postponed step would later start from a stale tip.
+  grep -qF 'Base.md' <<<"$BRANCH" || { echo "the step question does not undo the base 5.6 recorded"; return 1; }
+  grep -qF 'step 5.6 wrote' <<<"$BRANCH" || { echo "the step question does not limit the removal to this dispatch's Base.md"; return 1; }
+}
+
+@test "the skip report names the locale file it lives in" {
+  # report_moved_step is task-move's key: the orchestrator's own locale lookup fails loudly on it.
+  grep -qF 'skills/task-move/locales/<lang>.md' <<<"$BRANCH" || { echo "report_moved_step is looked up in the orchestrator's locales"; return 1; }
+}
