@@ -59,6 +59,9 @@ For each row below, ask: *what does this feature do in this scenario?* Mark **Ap
 | Concurrent updates | Two devices, same user — server-authoritative, LWW, or merge? |
 | Lifecycle | App backgrounded mid-flow — preserve state, refresh, or reset? |
 | Cancellation | User abandons screen mid-load — cancel network or finish silently? |
+| Rollout switch | Does the feature ship behind a flag? Who turns it off, and what does the user see then? |
+| Stored data | Does the feature change what is persisted? What happens to the old data on upgrade? |
+| Performance-sensitive path | Which path is hot (launch, scrolling, per-frame work, large collections)? What is its budget? |
 
 **Output of this step:** a table written into `Research.md ## Requirements ### Secondary` with three columns (Category / Status / Notes).
 
