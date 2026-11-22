@@ -5,6 +5,9 @@ description: "Use at Plan, to lay the proof of each operational risk into the ph
 
 # Ops Risks
 
+> The bold **topic** below is a row of the installed platform's manifest `## Topics`; resolve it to
+> that platform's own skills per `conventions/platform-contract.md`.
+
 A short, closed list of operational risks that show in a diff. It replaces a checklist read item by item with one question per risk: does this diff trigger it, and if so, where is the proof that it is handled? The architect lays the proof into a phase at Plan; the reviewer looks for it in the diff at Review. **Whether a risk applies follows from what the diff touches, never from the task's size.** It writes no artifact.
 
 Security is not repeated here: secrets, network, data at rest, entry points, authorization, personal data in logs and analytics, permissions and third-party dependencies are the perimeter of `security-lens`. The design questions that lead to these risks — a rollout switch, stored data, a performance-sensitive path — are asked earlier, in the Secondary list of `feature-requirements`; this skill checks in the diff that the risks which follow from the answers have proof.
@@ -27,6 +30,8 @@ The list is closed. Each risk has a label, the trigger in the diff, the proof, a
 | `hot-path` | changes code that Research or Plan names performance-sensitive, or adds work per frame or per element of a large collection | a measurement, a benchmark test, or the reason neither is needed | measurement or test |
 | `release-settings` | changes the minimum OS version, the build configuration, signing, the privacy manifest or the data disclosure of the store listing | the changes agree: the disclosure is updated together with the code, the minimum version matches the API in use | owner |
 
+**Release settings.** What must agree for `release-settings` — the privacy disclosure, the minimum OS version, signing — is in the platform's topic **release ops**, at Plan and at Review alike. Where the platform has no skill for it, proceed on your own knowledge and say so.
+
 Left out on purpose: a profiler run, "tests are green in CI", a manual pass with a real finger, an accessibility pass, analytics funnels, a staged rollout plan, flag TTLs, a crash-free threshold.
 
 ## Plan
@@ -41,7 +46,7 @@ The architect walks the seven risks against what the task will touch. For each r
 ## Review
 
 1. From the task's diff the reviewer decides which risks triggered, by `## Touches`.
-2. For each triggered risk the reviewer looks for the proof: in the diff, in the tests, in `Validation.md`.
+2. For each triggered risk the reviewer looks for the proof: in the diff, in the tests, in `Validation.md`. For `release-settings` the agreement to look for is the one topic **release ops** names.
 3. No proof is a finding under `### Findings`, with an `**Impact:**`:
    - **Major**, blocking, when code or a test can give the proof (`lifecycle`, `stored-data`, `contract`, `rollout-flag`; `startup` when the work can be deferred in code);
    - **Minor**, not blocking, when a measurement or the owner is needed (`startup` where nothing can be deferred, `hot-path` without a benchmark test, `release-settings`); the finding says what to measure or update.

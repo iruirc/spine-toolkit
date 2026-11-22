@@ -74,6 +74,15 @@ section() { # $1 = file, $2 = heading text without "## "
     || { echo "the skill does not state the rule"; return 1; }
 }
 
+@test "release-settings resolves topic release ops, in the skill that names the topic" {
+  grep -qF 'topic **release ops**' "$SKILL" || { echo "ops-risks does not name topic **release ops**"; return 1; }
+  s="$(section "$SKILL" 'Risks')"
+  for token in 'privacy disclosure' 'minimum OS version' 'signing'; do
+    grep -qF -- "$token" <<<"$s" || { echo "## Risks does not say $token"; return 1; }
+  done
+  grep -qF 'conventions/platform-contract.md' "$SKILL" || { echo "no pointer to the contract that resolves topics"; return 1; }
+}
+
 @test "feature-requirements asks the three design questions" {
   f="$ROOT/skills/feature-requirements/SKILL.md"
   for row in '| Rollout switch |' '| Stored data |' '| Performance-sensitive path |'; do

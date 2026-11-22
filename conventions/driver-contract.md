@@ -181,8 +181,8 @@ it to a human.** Anything that only changes cost or convenience belongs in `## P
 Seven are worth spelling out, because they do not read as obvious. `reset_state` — without resetting
 app state there is no way to check onboarding or a first run, a staple of hand-run lists. `webview`
 — a native-only driver sees the container and not its contents, so a hybrid screen is deferred
-whole. `locale` — switching the app's language, which the operational checklist already asks about
-and nothing can currently answer. `alerts` separately from `permissions` — a grant is given once,
+whole. `locale` — switching the app's language, which the localization row of the Secondary list in
+`feature-requirements` already asks about and nothing can currently answer. `alerts` separately from `permissions` — a grant is given once,
 while a modal is caught in the middle of a scenario. And the three rows that move a finger: `swipe`
 is one finger along a path with no hold at its start (a scroll, a fling, a one-finger pan);
 `gesture` is several fingers at once (a pinch, a rotation, a two-finger pan); `drag` presses,
