@@ -49,6 +49,20 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
   done
 }
 
+@test "a restart from Review is not told to restart from Review" {
+  for p in $RANGED quick; do
+    rp "$p" "$(contract Review ', "review_since": "base", "archive_paths": ["/p/Tasks/ACTIVE/001-x/_archive/Review-2026-09-24T100000.md"]')" '{}' "$(prompt_js review)"
+    r="${V[0]}"
+    grep -qF 'Resolved, Still open or Regressed' <<<"$r" || { echo "profile-$p: a restart lost the prior findings"; return 1; }
+    if grep -qF 'runs restart from Review' <<<"$r"; then echo "profile-$p: a restart is told to restart"; return 1; fi
+  done
+}
+
+@test "the TEST review judges only the tests in the ranges it counted" {
+  rp test "$(contract Review ', "review_since": "reviewed"')" '{}' "$(prompt_js review)"
+  grep -qF 'Judge only the tests in those ranges, not the production code.' <<<"${V[0]}" || { echo "profile-test: no antecedent for the ranges"; return 1; }
+}
+
 @test "a repository printed with no range is reviewed by its own commits" {
   for p in $RANGED; do
     rp "$p" "$(contract Review ', "review_since": "reviewed"')" '{}' "$(prompt_js review)"

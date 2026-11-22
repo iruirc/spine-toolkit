@@ -87,8 +87,11 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 @test "the fix-review precondition holds on its first dispatch, and every dispatch counts its ranges afresh" {
   r="$(section "$S" 'Resolution Algorithm')"
   for f in "checked on a fix-review's first dispatch (its code stage) only" 'does not re-check it' \
-           'It runs at every dispatch, so a' 'Review dispatched on its own (manual) is counted after the commits the earlier stages made'; do
+           'It runs at every dispatch, so a' 'Review dispatched on its own (manual) gets a review_since picked afresh' 'exit 2 from any call above is a stop'; do
     grep -qF -- "$f" <<<"$r" || { echo "resolution lost: $f"; return 1; }
+  done
+  for f in 'is counted after the commits the earlier stages made' 'exit 2 from either call'; do
+    if grep -qF -- "$f" <<<"$r"; then echo "resolution still says: $f"; return 1; fi
   done
   grep -qF '`reviewed` for `fix-review`' "$ROOT/conventions/task-ranges.md" || { echo "task-ranges.md: no fix-review since"; return 1; }
 }

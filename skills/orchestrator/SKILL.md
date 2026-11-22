@@ -336,7 +336,8 @@ Algorithm:
 5.6. Record the base, pick the review base and compute the validation ranges
      (FEATURE, BUG, REFACTOR, TEST, QUICK only; every other profile gets review_since="",
      validation_ranges={} and no Base.md). It runs at every dispatch, so a
-     Review dispatched on its own (manual) is counted after the commits the earlier stages made:
+     Review dispatched on its own (manual) gets a review_since picked afresh, and counts its ranges
+     itself after the commits the earlier stages made:
    • the range includes the profile's code-changing stage (Execute / Fix / Refactor / Write / Edit),
      and there is no Plan.md yet or no phase of its progress table is marked ✅
        → bash "<core root>/scripts/task-ranges.sh" record <task dir>      # writes Base.md once
@@ -359,7 +360,7 @@ Algorithm:
                   or any repository came back rewritten or unknown
        validation_ranges := {task, rerun}
    • otherwise validation_ranges := {}
-   ↓ exit 2 from either call is a stop, as for resolve-settings.sh: report its stderr, dispatch nothing
+   ↓ exit 2 from any call above is a stop, as for resolve-settings.sh: report its stderr, dispatch nothing
 
 5.7. Resolve agents (per-role) — the map every stage dispatches through:
    • platform := first non-empty line of ## Platform in the project config
