@@ -2,17 +2,18 @@
 # Shows what a stage left behind — processes it started, files it changed — and a stalled MCP call.
 # How the orchestrator uses it: skills/orchestrator/SKILL.md → Stage leftovers.
 #
-# Usage: scripts/stage-leftovers.sh snap --out <file> [--root <dir>]… [--exclude <dir>]…
+# Usage: scripts/stage-leftovers.sh snap --out <file> [--root <dir>]… [--exclude <dir>]… [--task-dir <glob>]
 #        scripts/stage-leftovers.sh diff [--out] <file>
+#        scripts/stage-leftovers.sh foreign <task dir>
 #        scripts/stage-leftovers.sh kill <pid>:<start>…
 #        scripts/stage-leftovers.sh watch --dir <transcript dir> --stall <s> --idle <s> [--since <epoch>]
 #        scripts/stage-leftovers.sh origin <pid>…
-# Exit: diff 0 nothing, 1 findings; kill 0; watch 4 stalled call, 5 idle, 6 session gone. 2: usage, any subcommand.
+# Exit: diff and foreign 0 nothing, 1 findings; kill 0; watch 4 stalled call, 5 idle, 6 session gone. 2: usage, any subcommand.
 set -uo pipefail
 
-[ $# -ge 1 ] || { sed -n '5,10p' "$0" >&2; exit 2; }
+[ $# -ge 1 ] || { sed -n '5,11p' "$0" >&2; exit 2; }
 exec python3 - "$@" <<'PY'
-import fnmatch, hashlib, json, os, re, signal, subprocess, sys, time
+import fnmatch, glob, hashlib, json, os, re, signal, subprocess, sys, time
 from datetime import datetime
 
 # Test seams: a ps listing, the session's claude pid, this process's pid, the clock, the registry path,
@@ -162,23 +163,65 @@ def dirty(root, excludes):
     return state
 
 
+# What a task folder may hold (skills/orchestrator/SKILL.md → Stage leftovers): its documents at any
+# depth, Run.json, _archive/, and the evidence folders whole except long-run.sh's sidecars. A step
+# folder holds the same.
+EVIDENCE = ("phase-evidence", "validation-evidence", "experiment")
+SIDECARS = (".pid", ".start", ".cwd", ".exit", ".exit.tmp")
+
+
+def lawful(rel):
+    parts = rel.split("/")
+    while len(parts) > 1 and parts[0].endswith(".step"):
+        parts = parts[1:]
+    if len(parts) > 1 and parts[0] in EVIDENCE:
+        return not rel.endswith(SIDECARS)
+    return rel.endswith(".md") or parts == ["Run.json"] or (len(parts) > 1 and parts[0] == "_archive")
+
+
+def task_candidates(task_dir):
+    # The files a commit of the folder would add: untracked and not ignored. Outside git, every file.
+    if subprocess.run(["git", "-C", task_dir, "rev-parse"], capture_output=True).returncode == 0:
+        out = subprocess.run(["git", "-C", task_dir, "ls-files", "--others", "--exclude-standard", "-z"],
+                             capture_output=True, text=True, errors="surrogateescape").stdout
+        return sorted(p for p in out.split("\0") if p)
+    return sorted(os.path.relpath(os.path.join(d, f), task_dir)
+                  for d, _dirs, files in os.walk(task_dir) for f in files)
+
+
+def resolve_task_dir(pattern):
+    hits = sorted(h for h in glob.glob(pattern) if os.path.isdir(h))
+    return hits[0] if hits else None
+
+
+def foreign(args):
+    if len(args) != 1 or not os.path.isdir(args[0]):
+        usage("foreign <task dir>")
+    hits = [p for p in task_candidates(args[0]) if not lawful(p)]
+    if hits:
+        print("\n".join("foreign path=%s" % p for p in hits))
+    sys.exit(1 if hits else 0)
+
+
 def age(seconds):
     m = int(seconds) // 60
     return "%dh%02dm" % (m // 60, m % 60) if m >= 60 else "%dm" % m
 
 
 def snap(args):
-    out, roots, excludes = None, [], []
+    out, roots, excludes, task_dir = None, [], [], None
     while args:
         flag = args.pop(0)
-        if flag in ("--out", "--root", "--exclude") and args:
+        if flag in ("--out", "--root", "--exclude", "--task-dir") and args:
             val = args.pop(0)
             if flag == "--out":
                 out = val
+            elif flag == "--task-dir":
+                task_dir = os.path.abspath(val)
             else:
                 (roots if flag == "--root" else excludes).append(os.path.abspath(val))
         else:
-            usage("snap --out <file> [--root <dir>]… [--exclude <dir>]…")
+            usage("snap --out <file> [--root <dir>]… [--exclude <dir>]… [--task-dir <glob>]")
     if not out:
         usage("snap needs --out")
     table = procs()
@@ -187,7 +230,11 @@ def snap(args):
     doc = {"taken": int(NOW),  # whole seconds, as long-run.sh writes the registry
            "session": sess, "excludes": excludes,
            "procs": {str(p): table[p][1] for p in below},
-           "roots": {r: dirty(r, excludes) for r in roots}}
+           "roots": {r: dirty(r, excludes) for r in roots},
+           "task_dir": task_dir, "task_files": []}
+    resolved = task_dir and resolve_task_dir(task_dir)
+    if resolved:
+        doc["task_files"] = task_candidates(resolved)
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     json.dump(doc, open(out, "w", encoding="utf-8"))
 
@@ -302,6 +349,14 @@ def diff(args):
             change = ("added" if xy in ("??", "A ") and path not in before
                       else "deleted" if digest is None else "modified")
             lines.append("tree root=%s path=%s change=%s" % (root, path, change))
+    # The task folder is excluded above; what it may not hold is checked here, against the files it
+    # had at the snapshot, under whichever status directory it is in now.
+    resolved = doc.get("task_dir") and resolve_task_dir(doc["task_dir"])
+    if resolved:
+        known = set(doc.get("task_files", []))
+        for path in task_candidates(resolved):
+            if path not in known and not lawful(path):
+                lines.append("tree root=%s path=%s change=added" % (resolved, path))
     print("\n".join(lines))
     sys.exit(1 if lines else 0)
 
@@ -423,6 +478,6 @@ def show_origin(args):
 
 
 cmd, rest = sys.argv[1], sys.argv[2:]
-{"snap": snap, "diff": diff, "kill": kill, "watch": watch, "origin": show_origin}.get(
+{"snap": snap, "diff": diff, "foreign": foreign, "kill": kill, "watch": watch, "origin": show_origin}.get(
     cmd, lambda _a: usage("unknown subcommand %s" % cmd))(rest)
 PY

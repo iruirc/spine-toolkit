@@ -410,3 +410,82 @@ orphans() {
   [ "$status" -eq 1 ] || { echo "$output"; return 1; }
   [[ "$output" == "process pid=311 "* ]] || { echo "$output"; return 1; }
 }
+
+# A stage left 25 xcodebuild logs and long-run sidecars in its step folder; the task folder is
+# excluded from the tree check, so diff said nothing and the task's commit would have taken them.
+task() { repo; mkdir -p Tasks/ACTIVE/042; : >Tasks/ACTIVE/042/Task.md; }
+tsnap() { snap --root "$T/repo" --exclude "$T/repo/Tasks/*/042" --task-dir "$T/repo/Tasks/*/042"; }
+
+@test "a long-run sidecar the stage left in the task folder is shown as added" {
+  before; task; tsnap
+  : >Tasks/ACTIVE/042/x.log.pid
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+  [ "$output" = "tree root=$T/repo/Tasks/ACTIVE/042 path=x.log.pid change=added" ] || { echo "$output"; return 1; }
+}
+
+@test "the task's documents, a step's documents and evidence logs are not leftovers" {
+  before; task; tsnap
+  cd Tasks/ACTIVE/042
+  mkdir -p 1.step validation-evidence/t phase-evidence/phase-1 experiment _archive/old
+  : >Done.md; : >Run.json; : >1.step/Plan.md; : >validation-evidence/t/a.log
+  : >phase-evidence/phase-1/m.log; : >experiment/s.png; : >_archive/old/x.bin
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "a sidecar inside an evidence folder and a log at the step's top are shown" {
+  before; task; tsnap
+  mkdir -p Tasks/ACTIVE/042/validation-evidence/t Tasks/ACTIVE/042/1.step
+  : >Tasks/ACTIVE/042/validation-evidence/t/a.log.exit; : >Tasks/ACTIVE/042/1.step/run.log
+  run "$SL" diff "$T/snap"
+  [ "$output" = "tree root=$T/repo/Tasks/ACTIVE/042 path=1.step/run.log change=added
+tree root=$T/repo/Tasks/ACTIVE/042 path=validation-evidence/t/a.log.exit change=added" ] || { echo "$output"; return 1; }
+}
+
+@test "a foreign file that was there before the snapshot is not shown" {
+  before; task; : >Tasks/ACTIVE/042/mock.png; tsnap
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "a foreign file is found under the status directory the folder moved to" {
+  before; task; tsnap
+  mv Tasks/ACTIVE Tasks/DONE; : >Tasks/DONE/042/x.log
+  run "$SL" diff "$T/snap"
+  [ "$output" = "tree root=$T/repo/Tasks/DONE/042 path=x.log change=added" ] || { echo "$output"; return 1; }
+}
+
+@test "a task folder that is gone at diff time adds no lines" {
+  before; task; tsnap
+  rm -rf Tasks/ACTIVE/042
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; return 1; }
+}
+
+@test "foreign lists untracked foreign files and leaves tracked and ignored ones alone" {
+  task; cd Tasks/ACTIVE/042
+  : >mock.png; printf 'ignored.bin\n' >.gitignore
+  git add . && git -c user.email=t@t -c user.name=t commit -qm docs
+  : >ignored.bin; : >x.log; : >'my notes.txt'; : >Plan.md
+  run "$SL" foreign "$T/repo/Tasks/ACTIVE/042"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+  [ "$output" = "foreign path=my notes.txt
+foreign path=x.log" ] || { echo "$output"; return 1; }
+}
+
+@test "foreign walks a task folder outside git" {
+  mkdir -p "$T/plain"; : >"$T/plain/Task.md"; : >"$T/plain/Done.md"
+  run "$SL" foreign "$T/plain"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; return 1; }
+  : >"$T/plain/x.log"
+  run "$SL" foreign "$T/plain"
+  [ "$status" -eq 1 ] && [ "$output" = "foreign path=x.log" ] || { echo "$output"; return 1; }
+}
+
+@test "foreign without a directory is a usage error" {
+  run "$SL" foreign
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  run "$SL" foreign "$T/nonexistent"
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+}
