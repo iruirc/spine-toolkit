@@ -124,7 +124,7 @@ passing Validation (`--since validated`). `rerun` is null when there is nothing 
 restart, a `redo` of the Validation stage, a repository whose record is rewritten or unknown — and
 null means every module of the set runs that no carried run covers: a phase's `ran:` line in
 `Plan.md`, or a green row of an earlier `Validation.md`. The orchestrator computes both in its Resolution Algorithm, step 5.6,
-next to `review_ranges`. A Validation that ends PASSED or PASSED_WITH_FLAKES writes its
+next to `review_since`. A Validation that ends PASSED or PASSED_WITH_FLAKES writes its
 `[VALIDATED_COMMIT]` lines in its closing block, from `tips --kind validated`.
 
 ## Review and Done

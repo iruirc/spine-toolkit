@@ -10,12 +10,13 @@ setup() {
 
 section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
-@test "the contract carries catch-up and review_ranges" {
+@test "the contract carries catch-up and review_since" {
   grep -qF '`action` | enum: `run` / `continue` / `redo` / `restart` / `restart-full` / `catch-up`' "$S" || { echo "input contract"; return 1; }
   c="$(section "$S" 'Outbound Contract')"
   grep -qF 'action=run|continue|redo|restart|restart-full|catch-up' <<<"$c" || { echo "example action"; return 1; }
-  grep -qE '^review_ranges=\{"since": ' <<<"$c" || { echo "example review_ranges"; return 1; }
-  grep -qF '`review_ranges` — ' <<<"$c" || { echo "no review_ranges paragraph"; return 1; }
+  grep -qE '^review_since=(base|reviewed|done)$' <<<"$c" || { echo "example review_since"; return 1; }
+  grep -qF '`review_since` — ' <<<"$c" || { echo "no review_since paragraph"; return 1; }
+  ! grep -qE '^review_ranges=' <<<"$c" || { echo "the example still carries review_ranges"; return 1; }
 }
 
 @test "the contract carries validation_ranges" {
@@ -26,8 +27,8 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   for f in '--since validated' 'rerun' 'validation_ranges := {task, rerun}' 'validation_ranges := {}'; do
     grep -qF -- "$f" <<<"$r" || { echo "step 5.6 lost: $f"; return 1; }
   done
-  rr="$(grep -F '`review_ranges` — ' <<<"$c")"
-  ! grep -qF 'what a `catch-up` validates' <<<"$rr" || { echo "review_ranges still says what a catch-up validates"; return 1; }
+  rr="$(grep -F '`review_since` — ' <<<"$c")"
+  ! grep -qF 'what a `catch-up` validates' <<<"$rr" || { echo "review_since says what a catch-up validates"; return 1; }
   grep -qF 'validation_ranges' "$ROOT/conventions/stage-dispatch.md" || { echo "Method B prompt does not name them"; return 1; }
 }
 
@@ -39,20 +40,23 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   grep -qF 'a `redo` of the Validation stage' <<<"$c" || { echo "the contract paragraph does not name the redo"; return 1; }
 }
 
-@test "step 5.6 records the base and asks for the right --since" {
+@test "step 5.6 asks the script for since" {
   r="$(section "$S" 'Resolution Algorithm')"
-  grep -qF '5.6. Record the base and compute the review ranges' <<<"$r" || { echo "no step 5.6"; return 1; }
-  for f in 'task-ranges.sh" record <task dir>' 'task-ranges.sh" ranges <task dir> --since <since>' \
-           'done     if action=catch-up' 'base     if Review.md is absent, or action is restart or restart-full' 'reviewed otherwise' \
+  grep -qF '5.6. Record the base, pick the review base and compute the validation ranges' <<<"$r" || { echo "no step 5.6"; return 1; }
+  for f in 'task-ranges.sh" record <task dir>' 'task-ranges.sh" since <task dir> --action <action>' 'review_since := ""' \
+           'ranges <task dir> --since done' 'info_catch_up_nothing' 'never from the previous contract' \
            'action=catch-up                → start at Validation' 'no phase of its progress table is marked'; do
-    grep -qF "$f" <<<"$r" || { echo "step 5/5.6 lost: $f"; return 1; }
+    grep -qF -- "$f" <<<"$r" || { echo "step 5/5.6 lost: $f"; return 1; }
+  done
+  for f in 'reviewed if action=fix-review' 'rerun with --since base' '--since <since>'; do
+    if grep -qF -- "$f" <<<"$r"; then echo "step 5.6 still picks since itself: $f"; return 1; fi
   done
 }
 
-@test "step 5.6 falls back to base and says so" {
+@test "the base fallback is Review's and still announced" {
   r="$(section "$S" 'Resolution Algorithm')"
-  grep -qF 'came back rewritten or unknown' <<<"$r" || { echo "no fallback"; return 1; }
-  grep -qF 'warn_review_ranges_full' <<<"$r" || { echo "the fallback is silent"; return 1; }
+  if grep -qF 'warn_review_ranges_full' <<<"$r"; then echo "5.6 still announces the fallback"; return 1; fi
+  grep -qE 'ranges_fallback.*warn_review_ranges_full|warn_review_ranges_full.*ranges_fallback' "$S" || { echo "the fallback is silent"; return 1; }
 }
 
 @test "State Detection offers catch-up first when Done is behind" {
@@ -75,16 +79,18 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   done
 }
 
-@test "every Method B Review reads review_ranges and every Done closes ## For Done" {
+@test "every Method B Review counts its ranges from review_since and every Done closes ## For Done" {
   for p in bug feature quick refactor test; do
     f="$ROOT/skills/workflow-$p/SKILL.md"
     if grep -qF 'narrows scope to the commits landed since its `[REVIEWED_COMMIT]` line' "$f"; then
       echo "workflow-$p: the reviewer still derives its own scope"; return 1
     fi
-    for s in 'reads exactly the ranges in `review_ranges`' '`## For Done`' '`## Review findings closed`' '`[DONE_COMMIT]`' 'Catch-up: commits after Done'; do
+    for s in 'runs `task-ranges.sh ranges` with `review_since`' '`## For Done`' '`## Review findings closed`' '`[DONE_COMMIT]`' 'Catch-up: commits after Done'; do
       grep -qF "$s" "$f" || { echo "workflow-$p lost: $s"; return 1; }
     done
   done
+  grep -qF 'review_since' "$ROOT/conventions/stage-dispatch.md" || { echo "stage-dispatch.md does not name review_since"; return 1; }
+  ! grep -rnw 'review_ranges' "$ROOT/skills" "$ROOT/conventions" || { echo "review_ranges is still named"; return 1; }
 }
 
 @test "the five workflow skills put the Review and Done record lines in the closing block" {

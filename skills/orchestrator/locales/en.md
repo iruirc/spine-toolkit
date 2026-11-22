@@ -325,7 +325,7 @@ Catch up: validate, review and close only these commits
 Done.md does not record where the repositories stood, so Review will read the whole task.
 
 ## warn_review_ranges_full
-No usable record for {repos} (history rewritten, or never recorded): Review reads those repositories from the task's base, and where there is no known base either, it reviews the task's own commits in that repository.
+Review read {repos} from the task's base: their record of the previous review was rewritten or never written. Where there is no known base either, it reviewed the task's own commits there.
 
 ## error_catch_up_not_done
 Cannot catch up `{task_id}` — it has no `Done.md`, so it was never finished. Use `run {task_id}` to carry on with it.

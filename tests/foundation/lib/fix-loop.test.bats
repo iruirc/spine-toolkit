@@ -22,7 +22,7 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 @test "fix-review starts at the code stage, needs CHANGES_REQUESTED and reads only the fixes" {
   r="$(section "$S" 'Resolution Algorithm')"
   for f in 'action=fix-review              → start at the code-changing stage' 'error_fix_review_nothing' \
-           'reviewed if action=fix-review'; do
+           'task-ranges.sh" since <task dir> --action <action>'; do
     grep -qF "$f" <<<"$r" || { echo "resolution lost: $f"; return 1; }
   done
 }

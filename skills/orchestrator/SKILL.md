@@ -333,8 +333,8 @@ Algorithm:
            return {status: error, reason: error_stage_not_in_profile,
                    notes: locale `error_stage_not_in_profile` with placeholders filled}
 
-5.6. Record the base and compute the review ranges and the validation ranges
-     (FEATURE, BUG, REFACTOR, TEST, QUICK only; every other profile gets review_ranges={},
+5.6. Record the base, pick the review base and compute the validation ranges
+     (FEATURE, BUG, REFACTOR, TEST, QUICK only; every other profile gets review_since="",
      validation_ranges={} and no Base.md). It runs at every dispatch, so a
      Review dispatched on its own (manual) is counted after the commits the earlier stages made:
    • the range includes the profile's code-changing stage (Execute / Fix / Refactor / Write / Edit),
@@ -342,18 +342,15 @@ Algorithm:
        → bash "<core root>/scripts/task-ranges.sh" record <task dir>      # writes Base.md once
      # a phase already landed: today's tip is not the task's start, so the base fallback decides
    • the range includes Review, or action=catch-up:
-       since := done     if action=catch-up
-                reviewed if action=fix-review
-                base     if Review.md is absent, or action is restart or restart-full
-                reviewed otherwise
-       review_ranges := bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since <since>
-       ↓ action=catch-up and every repository is ok at 0 commits
-         → announce `info_catch_up_nothing` with `{task_id}` and stop, dispatch nothing
-       ↓ since ≠ base and a repository came back rewritten or unknown
-         → rerun with --since base
-       ↓ a repository came back rewritten or unknown from either call — at --since base too,
-         where there is nothing to rerun → announce `warn_review_ranges_full` with {repos}
-   • otherwise review_ranges := {}
+       review_since := bash "<core root>/scripts/task-ranges.sh" since <task dir> --action <action>
+       ↓ action=catch-up:
+           bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since done
+           → every repository ok at 0 commits → announce `info_catch_up_nothing` with `{task_id}`
+             and stop, dispatch nothing
+   • otherwise review_since := ""
+     # Review counts its own ranges, as its first step, from review_since (conventions/task-ranges.md):
+     # a count taken here, before a stage that changes code has committed, says nothing about what
+     # Review reads. review_since comes from `since` on every dispatch, never from the previous contract.
    • the range includes Validation, or action=catch-up:
        task  := bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since base
        rerun := bash "<core root>/scripts/task-ranges.sh" ranges <task dir> --since validated
@@ -577,7 +574,7 @@ long_run={stall: 5, max: 30}
 plugin_root=/Users/<user>/.claude/plugins/cache/<marketplace>/spine-toolkit/<version>
 roots=[/Users/<user>/App, /Users/<user>/Packages/Net]
 known_failures=/Users/<user>/App/Tasks/KnownFailures.md
-review_ranges={"since": "reviewed", "repos": {".": {"range": "1a2b3c4..HEAD", "commits": 2, "state": "ok"}}}
+review_since=reviewed
 validation_ranges={"task": {"since": "base", "repos": {".": {"range": "9f8e7d6..HEAD", "commits": 5, "state": "ok"}}}, "rerun": {"since": "validated", "repos": {".": {"range": "4c5d6e7..HEAD", "commits": 1, "state": "ok"}}}}
 fix_findings=[]
 fix_round=0
@@ -687,7 +684,7 @@ size belongs to the task, not to one dispatch.
 
 `known_failures` — the project's registry of failures outside a task (`conventions/known-failures.md`): the absolute path of the file `## Paths` names under `Known failures` — written from the project root, a leading `/` included, or from the home folder with `~` — else `Tasks/KnownFailures.md` under the project root; `""` when there is no project config. Printed by the same run of `resolve-settings.sh json`; always a string, for every profile. A path that does not exist is an empty registry. Method A passes it as a JSON string, Method B as the `key=value` line above; either way the Validation stage names it to the validator, which only reads it. Only the orchestrator writes the registry (**Gating** → After Validation: failures outside the task).
 
-`review_ranges` — what Review reads, per repository of the task: the JSON `task-ranges.sh ranges` printed in Resolution step 5.6, as described in `conventions/task-ranges.md`. `{}` when the range holds neither Review nor a catch-up, and for RESEARCH, REVIEW and EPIC. Method A passes the object as real JSON; Method B names each range in the Review stage's prompt (`conventions/stage-dispatch.md`).
+`review_since` — the base Review counts its ranges from: `base`, `reviewed` or `done`, the word `task-ranges.sh since` printed in Resolution step 5.6. Review runs `task-ranges.sh ranges` with it itself, as its first step (`conventions/task-ranges.md`), so no count taken before a stage that changes code reaches it. `""` when the range holds neither Review nor a catch-up, and for RESEARCH, REVIEW and EPIC. Method A passes it as a string; Method B names it and that command in the Review stage's prompt (`conventions/stage-dispatch.md`).
 
 `validation_ranges` — what Validation covers: `task`, the task's whole range (`--since base`), and `rerun`, the commits after the last green Validation (`--since validated`), both the JSON `task-ranges.sh ranges` printed in Resolution step 5.6. `{}` for RESEARCH, REVIEW and EPIC, and when the range holds no Validation. `rerun` is null when there is nothing to narrow from — a restart, a `redo` of the Validation stage, or a repository whose record is rewritten or unknown — and null means every module of the set runs that no carried run covers — a phase's `ran:` line in `Plan.md` or a green row of an earlier `Validation.md` (`skills/phase-verification/SKILL.md` → `## Validation's regression`). Method A passes the object as real JSON; Method B names both ranges in the Validation stage's prompt (`conventions/stage-dispatch.md`).
 
@@ -935,6 +932,8 @@ durations inside an `auto` run do not exist; do not invent them.
 - With `known_failures_cleared` not empty, the removal is a question of its own, asked before `stage_done_prompt`, whatever that prompt offers: AUQ using key `known_failures_cleared` with `{ids}`, options `known_failures_remove` (each of those entries moves, as a row with the date and this task's id, into the registry's `## Removed`) and `known_failures_keep` (nothing changes). So an add and a removal are two answers, never one.
 - The owner's consent is picking the option; any other answer writes nothing. On consent, write the rows by the convention: the next `KF-<N>` is one past the highest in both sections; `Repository`, `Module` and `Tests` come from the item; `Cause` and `Passes where` from `Validation.md`; `Remove when` from `Validation.md` where it names the change that would let the test pass, else `—`, for the owner to fill in later; `Accepted` is `owner, <date>, <task id>/Questions.md`. Log the decision in the task's `Questions.md`, in the form `skills/task-documents/SKILL.md` gives, and commit the registry as a commit of its own, by `conventions/commit-messages.md`, in the repository that holds the file. A file outside git is edited without a commit.
 - In `auto` the registry does not change: the failures stay in `Validation.md`, the final report prints `known_failures_outside` for each Validation that found any, and nothing is offered.
+
+**After Review: repositories read from the base.** A run whose result carries a non-empty `ranges_fallback` — the repositories Review measured from the task's base because their record of the previous review or Done was rewritten or never written — announces `warn_review_ranges_full` with `{repos}`, the list joined by `, `, whatever the verdict.
 
 **After Review: `CHANGES_REQUESTED`.** FEATURE, BUG, REFACTOR, TEST and QUICK. The findings are the run's returned `blocking_findings` or, when this session holds no such return (Method B, a new session), every item of `Review.md` under `### Findings` → **Critical** and **Major**, one line each. With none — and for `DISCUSSION` — it is the ordinary `stage_done_prompt`.
 

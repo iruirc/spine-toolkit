@@ -55,7 +55,7 @@ The architect walks the seven risks against what the task will touch. For each r
 4. `Review.md` gets a section `## Ops risks`: one line per triggered risk, `- <label> — <the proof in words> (<ref>)`, or the single line `- none triggered — the diff touches <X>`, where `<X>` names what the diff touches.
 5. There is no case in ManualChecks.md for a risk, no Pending state, and no ritual of accept or defer.
 
-On a repeated review `## Ops risks` is written anew over `review_ranges`; a risk closed in an earlier pass is not checked again unless the new commits touch it.
+On a repeated review `## Ops risks` is written anew over the ranges Review reads; a risk closed in an earlier pass is not checked again unless the new commits touch it.
 
 **Language.** The labels, `none triggered` and the heading `## Ops risks` are in English; everything after the dash is in `[LANG]`.
 
