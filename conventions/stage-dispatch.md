@@ -33,7 +33,7 @@ root and `{stall}`, `{max}` the task's `long_run` values in seconds (minutes × 
 Long-running commands: follow {core}/conventions/agent-tooling.md → Long-running commands, with wait --stall {stall} --max {max} (start takes neither); --log never inside the task folder or a project root — a log a document cites is copied, alone, into phase-evidence/ or validation-evidence/.
 ```
 
-A Review stage's prompt also names the task's `review_since` and the `task-ranges.sh ranges` command Review runs with it as its first step, worded as the Method A Review prompt words them.
+A Review stage's prompt also names the task's `review_since` and the `task-ranges.sh ranges` command Review runs with it as its first step, worded as the Method A Review prompt words them, and asks the agent to name, in its reply and under `### Scope` of `Review.md`, every repository the command marked with `fallback`.
 A Validation stage's prompt names the range of the task's `validation_ranges.task` and, when it is not null, of `validation_ranges.rerun`, worded as the Method A Validation prompt words them; a null `rerun` means every module of the set that no carried run covers — a phase's `ran:` line or a green row of an earlier `Validation.md`.
 A Validation stage's prompt also names the task's `known_failures` registry, worded as the Method A brief words it: "The project's known failures registry is <path>; a missing file is an empty registry.", or "The project keeps no known failures registry." when `known_failures` is empty.
 

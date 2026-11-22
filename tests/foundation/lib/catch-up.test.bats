@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep skills
+# changed: sweep skills conventions
 # The orchestrator is the only side with a filesystem: it records the base, computes the
 # ranges and notices commits after Done. If it stops doing any of it, Review goes blind again.
 
@@ -90,6 +90,8 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     done
   done
   grep -qF 'review_since' "$ROOT/conventions/stage-dispatch.md" || { echo "stage-dispatch.md does not name review_since"; return 1; }
+  grep -qF 'every repository the command marked with `fallback`' "$ROOT/conventions/stage-dispatch.md" || { echo "a Method B Review does not report its base fallback"; return 1; }
+  grep -qF 'Under Method B the orchestrator reads those repositories from' "$S" || { echo "Method B never announces the base fallback"; return 1; }
   ! grep -rnw 'review_ranges' "$ROOT/skills" "$ROOT/conventions" || { echo "review_ranges is still named"; return 1; }
 }
 

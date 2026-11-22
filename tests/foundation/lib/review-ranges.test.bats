@@ -41,9 +41,11 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
     r="${V[0]}"
     for f in 'ranges /p/Tasks/ACTIVE/001-x --since reviewed --fallback base and keep what it prints' '_archive/Review-2026-09-24T100000.md' \
              'Resolved, Still open or Regressed' 'do not read those commits again' 'raise no new finding on commits outside them' \
-             'the owner runs restart from Review' 'When every repository it printed has 0 commits, do not rescan the tree'; do
+             'the owner runs restart from Review' 'When every repository it printed has 0 commits, do not rescan the tree' \
+             'already reviewed what came before these ranges'; do
       grep -qF -- "$f" <<<"$r" || { echo "profile-$p: re-review prompt lost: $f"; return 1; }
     done
+    if grep -qF 'approved what came before' <<<"$r"; then echo "profile-$p: a CHANGES_REQUESTED review is called approved"; return 1; fi
   done
 }
 
@@ -136,7 +138,7 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
     grep -qF 'catches up commits that landed after' <<<"$v" || { echo "profile-$p: validation is not told it catches up"; return 1; }
     grep -qF 'Packages/Core: d2..HEAD (1 commit)' <<<"$v" || { echo "profile-$p: validation lost a range"; return 1; }
     grep -qF -- '--since done --fallback base' <<<"${V[1]}" || { echo "profile-$p: review is not ranged since Done"; return 1; }
-    grep -qF 'ranges /p/Tasks/ACTIVE/001-x --since done' <<<"${V[2]}" || { echo "profile-$p: Done does not count its own ranges"; return 1; }
+    grep -qF 'ranges /p/Tasks/ACTIVE/001-x --since done --fallback base' <<<"${V[2]}" || { echo "profile-$p: Done does not count its own ranges, base fallback included"; return 1; }
     grep -qF 'Catch-up: commits after Done' <<<"${V[2]}" || { echo "profile-$p: Done adds no catch-up phase"; return 1; }
   done
 }
