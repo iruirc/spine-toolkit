@@ -62,3 +62,18 @@ line_of() { printf '%s\n' "$BRANCH" | grep -nF -- "$1" | head -1 | cut -d: -f1; 
   [ "$(sed -n '/^## auq_confirm_dispatch_pick_stage$/{n;p;}' "$ROOT/skills/orchestrator/locales/en.md")" = 'Change the start stage' ] \
     || { echo "option 2 of the dispatch confirmation still reads as a no"; return 1; }
 }
+
+@test "the pending_steps paragraph names the step question and both of its stops" {
+  para="$(grep '^EPIC returns more:' "$S")"
+  [ -n "$para" ] || { echo "the pending_steps paragraph is gone"; return 1; }
+  for w in 'confirm_step_dispatch' 'status_step_postponed' 'SKIPPED' 'State Detection item 4'; do
+    grep -qF -- "$w" <<<"$para" || { echo "the pending_steps paragraph does not name: $w"; return 1; }
+  done
+}
+
+@test "codex dispatches pending steps the way the orchestrator does" {
+  row="$(grep -F 'An EPIC always returns its steps as `pending_steps`' "$ROOT/runtimes/codex-cli.md")"
+  [ -n "$row" ] || { echo "the Codex runtime lost its pending_steps row"; return 1; }
+  grep -qF 'confirm_step_dispatch' <<<"$row" || { echo "the Codex row does not name the step question"; return 1; }
+  ! grep -qF 'start_stage=Done' <<<"$row" || { echo "the Codex row still re-dispatches the epic at Done only"; return 1; }
+}
