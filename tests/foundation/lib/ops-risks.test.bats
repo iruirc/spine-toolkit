@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# changed: sweep skills workflows
+# changed: sweep skills conventions templates workflows commands
 # ops-risks is a closed list of seven operational risks the diff can show. It writes no artifact:
 # the architect lays the proof into a phase at Plan, the reviewer checks it against the diff at
 # Review. This suite holds the text of the skill and the design questions that feed it.
@@ -20,9 +20,18 @@ section() { # $1 = file, $2 = heading text without "## "
   grep -qF 'It writes no artifact.' "$SKILL" || { echo "nothing says the skill writes no artifact"; return 1; }
 }
 
-@test "the skill carries its five sections" {
-  for h in 'Touches' 'Risks' 'Plan' 'Review' 'Language'; do
+@test "the skill carries its sections" {
+  for h in 'Touches' 'Risks' 'Plan' 'Review' 'Where it applies'; do
     grep -qxF "## $h" "$SKILL" || { echo "no ## $h"; return 1; }
+  done
+}
+
+@test "the language rule is a paragraph of Review, not a section" {
+  ! grep -qxF '## Language' "$SKILL" || { echo "## Language is a section again"; return 1; }
+  p="$(section "$SKILL" 'Review' | grep -F '**Language.**' || true)"
+  [ -n "$p" ] || { echo "## Review has no **Language.** paragraph"; return 1; }
+  for token in 'labels' '`none triggered`' '`## Ops risks`' 'English' 'after the dash' '`[LANG]`'; do
+    grep -qF -- "$token" <<<"$p" || { echo "the Language paragraph does not say $token"; return 1; }
   done
 }
 

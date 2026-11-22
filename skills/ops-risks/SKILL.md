@@ -52,9 +52,7 @@ The architect walks the seven risks against what the task will touch. For each r
 
 On a repeated review `## Ops risks` is written anew over `review_ranges`; a risk closed in an earlier pass is not checked again unless the new commits touch it.
 
-## Language
-
-The labels, `none triggered` and the heading `## Ops risks` are in English; everything after the dash is in `[LANG]`.
+**Language.** The labels, `none triggered` and the heading `## Ops risks` are in English; everything after the dash is in `[LANG]`.
 
 ## Where it applies
 
