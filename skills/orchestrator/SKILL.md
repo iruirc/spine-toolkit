@@ -118,7 +118,15 @@ directive).
 **The task's documents.** Stages commit code, and only REVIEW and RESEARCH commit what they wrote;
 the rest is the orchestrator's, once a return's `last_completed_stage` is `Done` — after `Run.json`
 is deleted and a catch-up's task is back in `DONE/`, so the commit holds the folder as the run leaves
-it, `Walkthrough.md` included. With `X` for `-- . ':(exclude,glob)**/Run.json'`, run
+it, `Walkthrough.md` included. With `X` for `-- . ':(exclude,glob)**/Run.json'`, first run
+`<core root>/scripts/stage-leftovers.sh foreign <task dir>`, for a folder the checks below commit: it
+prints `foreign path=<path>` for each file the commit would add that the task folder may not hold — a
+log, a long-run sidecar, anything outside the allowlist the script names. On exit 1 report each line
+with key `task_docs_foreign_file` (`{path}`), then AUQ with key `task_docs_foreign_prompt`:
+`task_docs_foreign_option_exclude`, first and with the suffix `auq_stage_recovery_recommended_suffix`, appends `':(exclude,literal)<path>'` to `X`
+for each path and leaves the files on disk; `task_docs_foreign_option_remove` runs `rm -f` on them,
+then commits; `task_docs_foreign_option_commit_all` commits with `X` as it was. Exit 2 stops the
+commit and is announced as is. An epic runs it once, on the epic's folder, its steps included. Then run
 `git -C <task dir> add -A X`, then `git -C <task dir> commit -m '<message>' X` — one `docs` commit
 by `conventions/commit-messages.md`, holding nothing else the index has; nothing changed, no commit.
 A folder where `git -C <task dir> rev-parse` fails, or `check-ignore -q .` matches, is not committed:
@@ -1085,7 +1093,10 @@ rather than trust the report. Before every dispatch, Method A or B, run
 `<core root>/scripts/stage-leftovers.sh snap --out "${TMPDIR:-/tmp}/spine-stage-leftovers/<task_id>.snap"`
 with `--root` for every entry of the contract's `roots` and `--exclude` with `<task_dir>` whose
 status directory is replaced by `*`, quoted (`'…/Tasks/*/<task folder>'`), so the task's own files
-stay out under whichever status directory the stage moves the folder to. For every folder `<dir>`
+stay out under whichever status directory the stage moves the folder to, and
+`--task-dir '…/Tasks/*/<task folder>'`, the same glob: what the task folder may not hold — a log, a
+long-run sidecar, anything outside the allowlist the script names — comes back as an `added` line
+whose `root` is the task folder. For every folder `<dir>`
 the `dirs` row of the platform manifest's `## Build traces` names, if it has one, add
 `--exclude '<root>/<dir>'` and `--exclude '<root>/*/<dir>'` for each root: the build's own traces
 are not leftovers (`conventions/platform-contract.md` → `## Build traces`). After the stage
@@ -1098,8 +1109,10 @@ On exit 1, report each `process` line with key `leftover_process` (`{pid}`, `{ag
 `{cmd}`) and each `tree` line with key `leftover_tree` (`{root}`, `{path}`, `{change}`), then AUQ
 with key `leftovers_prompt`: `leftovers_option_kill` runs `stage-leftovers.sh kill` with each
 line's `<pid>:<start>`; `leftovers_option_restore` runs `git -C <root> restore -- <path>` for the
-`modified` and `deleted` lines only — an `added` file is shown, never removed; `leftovers_option_leave`
-does nothing. Act on nothing before the user answers: the process may be another session's build
+`modified` and `deleted` lines only — an `added` file in a root is shown, never removed;
+`leftovers_option_remove_added`, offered only when some `added` line's `root` is the task folder, runs
+`rm -f -- <root>/<path>` for each `added` line whose `root` is the task folder, and for no other;
+`leftovers_option_leave` does nothing. Act on nothing before the user answers: the process may be another session's build
 that reparented, the file an edit the user made while the stage ran.
 
 Under Method A, once `Workflow` has accepted the call, start

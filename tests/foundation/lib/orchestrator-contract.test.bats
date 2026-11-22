@@ -666,7 +666,8 @@ section() {
   [ -n "$para" ] || { echo "no Stage leftovers paragraph in the orchestrator"; return 1; }
   for token in 'stage-leftovers.sh snap' 'stage-leftovers.sh diff' 'stage-leftovers.sh kill' 'stage-leftovers.sh watch' \
                '`roots`' '`status: interrupted`' '`TaskStop`' 'stage_error_prompt' \
-               '`run_in_background`' '`mcp__*`' 'long_run.stall' '`added` file is shown, never removed' \
+               '`run_in_background`' '`mcp__*`' 'long_run.stall' '`added` file in a root is shown, never removed' \
+               "--task-dir '…/Tasks/*/<task folder>'" 'leftovers_option_remove_added' 'whose `root` is the task folder' \
                'Act on nothing before the user answers' 'Method B has no watch' 'stage_watch_failed' \
                "status directory is replaced by \`*\`" "'…/Tasks/*/<task folder>'" '--since <now>'; do
     grep -qF -- "$token" <<<"$para" || { echo "the Stage leftovers paragraph does not name $token"; return 1; }
@@ -681,8 +682,30 @@ section() {
 
 @test "every leftovers key exists in both locales" {
   for key in leftover_process leftover_tree leftovers_prompt leftovers_option_kill leftovers_option_restore \
-             leftovers_option_leave stage_call_hung stage_call_hung_option_kill stage_call_hung_option_wait \
+             leftovers_option_leave leftovers_option_remove_added stage_call_hung stage_call_hung_option_kill stage_call_hung_option_wait \
              stage_call_hung_option_stop stage_watch_failed; do
+    for l in en ru; do
+      grep -qx "## $key" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no $key"; return 1; }
+    done
+  done
+}
+
+@test "the task's documents are checked for foreign files before add -A" {
+  para="$(awk '/^\*\*The task.s documents\.\*\*/{f=1} f&&/^## /{exit} f' "$SKILL")"
+  [ -n "$para" ] || { echo "no task's documents paragraph in the orchestrator"; return 1; }
+  for token in 'stage-leftovers.sh foreign' task_docs_foreign_file task_docs_foreign_prompt \
+               task_docs_foreign_option_exclude task_docs_foreign_option_remove task_docs_foreign_option_commit_all \
+               "':(exclude,literal)<path>'"; do
+    grep -qF -- "$token" <<<"$para" || { echo "the task's documents paragraph does not name $token"; return 1; }
+  done
+  check="$(grep -bo 'stage-leftovers.sh foreign' <<<"$para" | head -1 | cut -d: -f1)"
+  add="$(grep -bo 'add -A X' <<<"$para" | head -1 | cut -d: -f1)"
+  [ "$check" -lt "$add" ] || { echo "the foreign check comes after add -A"; return 1; }
+}
+
+@test "every task-docs foreign key exists in both locales" {
+  for key in task_docs_foreign_file task_docs_foreign_prompt task_docs_foreign_option_exclude \
+             task_docs_foreign_option_remove task_docs_foreign_option_commit_all; do
     for l in en ru; do
       grep -qx "## $key" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no $key"; return 1; }
     done

@@ -261,6 +261,9 @@ Method B ({skill}): {why}
 ## leftovers_option_leave
 Оставить всё как есть
 
+## leftovers_option_remove_added
+Удалить файлы, которые стадия добавила в папку задачи
+
 ## stage_call_hung
 Агент `{agent}` ждёт `{tool}` уже {age}, а инструмент не отвечает. Процессы под ним:
 
@@ -409,6 +412,21 @@ Review требует изменений:
 
 ## info_task_docs_uncommitted
 `{path}` вне git или игнорируется им, поэтому документы задачи не закоммичены.
+
+## task_docs_foreign_file
+В папке задачи лежит `{path}`, и это не документ задачи.
+
+## task_docs_foreign_prompt
+Как закоммитить документы задачи?
+
+## task_docs_foreign_option_exclude
+Закоммитить без этих файлов
+
+## task_docs_foreign_option_remove
+Удалить эти файлы и закоммитить
+
+## task_docs_foreign_option_commit_all
+Закоммитить всё как есть
 
 ## warn_run_file_tracked
 `{path}` лежит в git, значит, это не ваше слово на этот запуск, а файл, который мог написать кто угодно: он проигнорирован. Если настройки и уточнение нужны, скажите их снова.

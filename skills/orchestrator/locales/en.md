@@ -261,6 +261,9 @@ Restore the modified and deleted files to their committed state
 ## leftovers_option_leave
 Leave everything as it is
 
+## leftovers_option_remove_added
+Delete the files the stage added to the task folder
+
 ## stage_call_hung
 Agent `{agent}` has waited {age} for `{tool}`, and the tool has not answered. The processes under it:
 
@@ -409,6 +412,21 @@ The task's `Task.md` already says `[SCALE] = [full]`, so "lite for this run" is 
 
 ## info_task_docs_uncommitted
 `{path}` is outside git or ignored by it, so the task's documents were not committed.
+
+## task_docs_foreign_file
+The task folder holds `{path}`, which is not a task document.
+
+## task_docs_foreign_prompt
+How to commit the task's documents?
+
+## task_docs_foreign_option_exclude
+Commit without these files
+
+## task_docs_foreign_option_remove
+Delete these files, then commit
+
+## task_docs_foreign_option_commit_all
+Commit everything as it is
 
 ## warn_run_file_tracked
 `{path}` is tracked by git, so it is not your word for this run but a file anyone could have written: it is ignored. Say the settings and the directive again if you meant them.
