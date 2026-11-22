@@ -88,3 +88,40 @@ line_of() { printf '%s\n' "$BRANCH" | grep -nF -- "$1" | head -1 | cut -d: -f1; 
   # report_moved_step is task-move's key: the orchestrator's own locale lookup fails loudly on it.
   grep -qF 'skills/task-move/locales/<lang>.md' <<<"$BRANCH" || { echo "report_moved_step is looked up in the orchestrator's locales"; return 1; }
 }
+
+@test "not now does not claim a status the step may not have" {
+  # pending_steps carries an IN_PROGRESS step that stopped at a gate as well as a PENDING one.
+  L="$ROOT/skills/orchestrator/locales"
+  [ "$(sed -n '/^## confirm_step_dispatch_later$/{n;p;}' "$L/en.md")" = 'Not now: the step and the epic wait' ] \
+    || { echo "the en not-now label is not the agreed one"; return 1; }
+  for l in en ru; do
+    for k in confirm_step_dispatch_later info_step_postponed; do
+      ! sed -n "/^## $k\$/{n;p;}" "$L/$l.md" | grep -qF 'PENDING' || { echo "$l.md $k still says PENDING"; return 1; }
+    done
+  done
+  ! grep -qF 'stay PENDING' <<<"$BRANCH" || { echo "the step question still says the step stays PENDING"; return 1; }
+}
+
+@test "the step question is asked once per entry, not before each of its stages" {
+  grep -qF 'asked once per entry' <<<"$BRANCH" || { echo "the step question may be re-asked before every stage"; return 1; }
+  grep -qF 'stage_done_prompt' <<<"$BRANCH" || { echo "the step question does not hand later stages to stage_done_prompt"; return 1; }
+}
+
+@test "the codex row says a postponed step leaves the epic waiting" {
+  row="$(grep -F 'An EPIC always returns its steps as `pending_steps`' "$ROOT/runtimes/codex-cli.md")"
+  grep -qF 'postponed' <<<"$row" || { echo "the Codex row re-dispatches the epic unconditionally"; return 1; }
+}
+
+@test "option 2 of the dispatch confirmation does not open with a no in either locale" {
+  L="$ROOT/skills/orchestrator/locales"
+  no_ru="$(printf '\320\235\320\265\321\202')"   # the Russian "no", spelled in bytes: no Cyrillic in a .bats file
+  en="$(sed -n '/^## auq_confirm_dispatch_pick_stage$/{n;p;}' "$L/en.md")"
+  ru="$(sed -n '/^## auq_confirm_dispatch_pick_stage$/{n;p;}' "$L/ru.md")"
+  [ -n "$en" ] && [ -n "$ru" ] || { echo "a label is missing"; return 1; }
+  case "$en" in No*) echo "en label opens with No"; return 1;; esac
+  case "$ru" in "$no_ru"*) echo "ru label opens with a no"; return 1;; esac
+}
+
+@test "status_step_postponed is declared a reason code, not a string to render" {
+  grep -qF 'not a locale key' <<<"$BRANCH" || { echo "status_step_postponed reads as a locale key nobody declared"; return 1; }
+}

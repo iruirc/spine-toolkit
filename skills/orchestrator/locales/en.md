@@ -94,13 +94,13 @@ Step `{step_id}` of epic `{epic_id}`: profile `{profile}`, stack `{stack}`, star
 Run
 
 ## confirm_step_dispatch_later
-Not now: the step stays PENDING, the epic waits
+Not now: the step and the epic wait
 
 ## confirm_step_dispatch_skip
 Close it without a run (SKIPPED)
 
 ## info_step_postponed
-Step `{step_id}` is postponed — it and the later steps of epic `{epic_id}` stay PENDING. To go on: `continue {epic_id}`.
+Step `{step_id}` is postponed — it and the later steps of epic `{epic_id}` wait, their status unchanged. To go on: `continue {epic_id}`.
 
 ## scale_lite_suggest
 This looks like a small task: {reason}. It can run at `lite`, which writes shorter artifacts and keeps the same checks. The scale can still be raised to `full` later.

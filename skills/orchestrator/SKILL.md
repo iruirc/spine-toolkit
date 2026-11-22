@@ -415,13 +415,16 @@ Algorithm:
                   When suggest_lite: locale key `scale_lite_suggest_option` in place of `auq_confirm_dispatch_pick_stage`,
                   with the action it has in `confirm_dispatch` below
                3. locale key `confirm_step_dispatch_later` → dispatch no later entry, and the epic is not re-dispatched:
-                      the step and every one after it stay PENDING. Announce `info_step_postponed` (`{step_id}`,
-                      `{epic_id}`) and return {status: cancelled, reason: status_step_postponed}
+                      the step and every one after it keep their status. Announce `info_step_postponed`
+                      (`{step_id}`, `{epic_id}`) and return {status: cancelled, reason: status_step_postponed} —
+                      a reason code, not a locale key: what the user reads is `info_step_postponed`
                4. locale key `confirm_step_dispatch_skip` → close the step without a run: set it to SKIPPED by
                       `task-move`'s step process (`[STATUS]` in its Task.md, the ⊘ row in the epic's Plan.md) and report
                       with `report_moved_step` from `skills/task-move/locales/<lang>.md`. The next entry of
                       `pending_steps` gets the same question; after the last, the epic is re-dispatched as the
                       `pending_steps` paragraph of the Return says
+           The step question is asked once per entry, before its first stage: the stages after it are gated by
+           `stage_done_prompt`, as for any task.
            Options 3 and 4, and the picker's Cancel, first delete the step's `Base.md` when step 5.6 wrote it in this
            dispatch: it holds today's tip, and a step run later must record its own
            # four options, and AUQ allows no more: lite takes the picker's place, because suggest_lite holds only at
