@@ -52,7 +52,7 @@ The first line of every phase's detail section in `Plan.md`:
 
 Under it, one checkbox per check the line names; the platform agent writes the commands. The line is *what*, the checkbox is *how*. The line is written at `full` too, so a phase without one means the plan predates this rule or was written outside the pipeline — never a project's choice.
 
-A check that runs a module whole and green gets one more line under its checkbox, written after the phase commit (the tasks folder is no change) and committed with the next one: `ran: <repository> <module> HEAD <sha> Executed <N> log phase-evidence/phase-<id>/<module>.log`. `<sha>` is the phase commit, `<N>` the count of the run's result line, the log the run's copy in the task folder. A run of named classes, and a red run, get none. Validation carries the line (`## Validation's regression`).
+A check that runs a module whole and green gets one more line under its checkbox, written after the phase commit (the tasks folder is no change) and committed with the next one: `ran: <repository> <module> HEAD <sha> Executed <N> log phase-evidence/phase-<id>/<module>.log`. `<sha>` is the phase commit, `<N>` the count of the run's result line, the log the run's copy in the task folder, taken from `$TMPDIR` without its sidecars. A run of named classes, and a red run, get none. Validation carries the line (`## Validation's regression`).
 
 ## Who does what
 

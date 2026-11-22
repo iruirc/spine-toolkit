@@ -78,8 +78,13 @@ it returns something other than `running`. On `done`, read the exit code and the
 `stalled` or `timeout`, capture what shows why — the tail, the process tree, the platform's own
 state — then `stop`, and report the command as hung or over budget, not as failed.
 Pass `--stall` and `--max` to `wait`, exactly as your brief gives them — `start` takes neither and
-exits 2 on them. Leave out `--log` and `start` picks a unique file; to name your logs, put them in one directory from `mktemp -d` — never a fixed path
-such as `/tmp/v<task>.log`, which another clone running the same task writes too. One job at a time per folder: `start` refuses while a job it started from the same folder still runs, because two builds sharing derived data corrupt each other — wait for the first. Start a job that builds nothing — a log stream, an emulator, a server — with `--parallel`: it neither waits nor blocks a build. Give each `wait` call a tool timeout
+exits 2 on them. Leave out `--log` and `start` picks a unique file in `$TMPDIR`; to name your logs, put them in one directory from `mktemp -d`.
+`--log` is never inside the task folder — any folder with `Task.md` above it, `phase-evidence/` and `validation-evidence/`
+included — or a project root: `start` writes its sidecars (`.pid`, `.start`, `.cwd`, `.exit`) beside the log, the task
+folder is committed with `add -A`, and `start` exits 2 on such a `--log`. It is never a fixed path such as
+`/tmp/v<task>.log` either, which another clone running the same task writes too. A log a document cites is copied, alone,
+without its sidecars, into `phase-evidence/phase-<id>/` or `validation-evidence/<timestamp>/`; the document names
+that copy and quotes its numbers (`Executed N tests`), never the path in `$TMPDIR`. One job at a time per folder: `start` refuses while a job it started from the same folder still runs, because two builds sharing derived data corrupt each other — wait for the first. Start a job that builds nothing — a log stream, an emulator, a server — with `--parallel`: it neither waits nor blocks a build. Give each `wait` call a tool timeout
 above its `--for`, or pass a `--for` your tool's limit allows. `start` also records the job
 for the orchestrator, which shows the user every job still running after the stage: `stop` what
 you started. `stop` exits 2 and says so when the host refuses the signal — a sandbox looking at a

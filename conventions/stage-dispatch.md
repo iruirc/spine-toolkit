@@ -30,7 +30,7 @@ A subagent's prompt names core files by absolute path and names the core root it
 root and `{stall}`, `{max}` the task's `long_run` values in seconds (minutes × 60):
 
 ```text
-Long-running commands: follow {core}/conventions/agent-tooling.md → Long-running commands, with wait --stall {stall} --max {max} (start takes neither).
+Long-running commands: follow {core}/conventions/agent-tooling.md → Long-running commands, with wait --stall {stall} --max {max} (start takes neither); --log never inside the task folder or a project root — a log a document cites is copied, alone, into phase-evidence/ or validation-evidence/.
 ```
 
 A Review stage's prompt also names every range of the task's `review_ranges`, worded as the Method A Review prompt words it.
