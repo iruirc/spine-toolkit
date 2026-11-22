@@ -203,26 +203,31 @@ const fixGuidance = (guidance) =>
     : guidance
 // Fixes that follow a catch-up close that catch-up too.
 const AFTER_DONE = FIX_REVIEW && A.after_done === true
-const RANGES = A.review_ranges && A.review_ranges.repos && typeof A.review_ranges.repos === 'object' && Object.keys(A.review_ranges.repos).length ? A.review_ranges : null
+// The base Review counts its ranges from (task-ranges.sh since); Review runs ranges itself, so no count predates its commits.
+const REVIEW_SINCE = ['base', 'reviewed', 'done'].includes(A.review_since) ? A.review_since : null
 const PRIOR_REVIEW = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Review-[^/]*\.md$/.test(p))
 // Where the last green Validation's counts and HEADs are: its archived copy, or Validation.md itself, read before it is overwritten.
 const PRIOR_VALIDATION = (Array.isArray(A.archive_paths) ? A.archive_paths : []).find((p) => /(^|\/)_archive\/Validation-[^/]*\.md$/.test(p))
-// This run commits code before Review, so the counts in review_ranges predate it.
+// This run commits code before Validation, so the counts in validation_ranges predate it.
 const CODE_RUNS = ['Fix', 'Execute', 'Refactor', 'Write', 'Edit'].some((s) => ORDER.includes(s) && runs(s))
 // What Validation runs: the task's ranges, and where the last green Validation stood (null: run every module no carried run covers).
 const VR = RANGED && A.validation_ranges && A.validation_ranges.task && A.validation_ranges.task.repos && typeof A.validation_ranges.task.repos === 'object' && Object.keys(A.validation_ranges.task.repos).length ? A.validation_ranges : null
 const VR_RERUN = VR && VR.rerun && VR.rerun.repos && typeof VR.rerun.repos === 'object' && Object.keys(VR.rerun.repos).length ? VR.rerun : null
-// One clause per repository, as review_ranges names them; validation_ranges names them the same way.
-const rangeList = (r = RANGES, noBase = "review this task's own commits there and say so under ### Scope") =>
+// One clause per repository, as validation_ranges names them.
+const rangeList = (r, noBase) =>
   Object.entries(r.repos)
     .map(([repo, x]) => (x.range ? `${repo}: ${x.range}${CODE_RUNS ? '' : ` (${x.commits} commit${x.commits === 1 ? '' : 's'})`}` : `${repo}: no known base — ${noBase}`))
     .join('; ')
-// What Review reads; an older orchestrator sends no ranges, and the stage's own wording stands.
+// What Review reads; an orchestrator that sends no review_since leaves the stage's own wording.
 const reviewScope = (fallback) => {
-  if (!RANGED || !RANGES) return fallback
-  const again = RANGES.since !== 'base' || !!PRIOR_REVIEW
-  const idle = !CODE_RUNS && again && Object.values(RANGES.repos).every((r) => r.commits === 0)
-  return `Review exactly these ranges, one per repository, and nothing outside them: ${rangeList()}.${CODE_RUNS ? " The commits this run's own phases added are inside these ranges." : ''}${again ? ` Your previous review is ${PRIOR_REVIEW || `${DIR}/Review.md — read it before you overwrite it`}: mark each of its Critical and Major findings Resolved, Still open or Regressed. A prior Critical or Major that is Still open or Regressed is a finding of this review too: list it under ### Findings at its severity and in blocking_findings.` : ''}${idle ? ' No range holds a commit: do not rescan the tree; restate the open items of the previous verdict.' : ''}`
+  if (!RANGED || !REVIEW_SINCE) return fallback
+  const again = REVIEW_SINCE !== 'base' || !!PRIOR_REVIEW
+  const command = `"${core('scripts/task-ranges.sh')}" ranges ${DIR} --since ${REVIEW_SINCE}${REVIEW_SINCE === 'base' ? '' : ' --fallback base'}`
+  return `Before you read anything else, and before you overwrite Review.md, run ${command} and keep what it prints. Review exactly those ranges, one per repository, and nothing outside them; write what it printed under ### Scope. Return in ranges_fallback every repository it marks with fallback. A repository it prints with no range: review this task's own commits there and say so under ### Scope.${
+    again
+      ? ` Your previous review (${PRIOR_REVIEW || `${DIR}/Review.md — read it before you overwrite it`}) approved what came before these ranges; do not read those commits again. Check two things. First, mark each of its Critical and Major findings Resolved, Still open or Regressed. A prior Critical or Major that is Still open or Regressed is a finding of this review too: list it under ### Findings at its severity and in blocking_findings. Second, check whether these commits break what was approved. Open code outside the ranges only as context for that, and raise no new finding on commits outside them. If you judge the task needs a full re-read, say so in your summary: the owner runs restart from Review. When every repository it printed has 0 commits, do not rescan the tree; restate the open items of the previous verdict.`
+      : ''
+  }`
 }
 // Review's share of the record, and the one finding class that does not block Done.
 const REVIEW_RECORD = RANGED
@@ -249,7 +254,7 @@ const REVIEW_VALIDATION = RANGED
   : ''
 // Done's share: close what Review left it, stamp where the repositories stand.
 const doneRecord = (handed) =>
-  `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings.${walkthroughWriter() ? ` Never edit ${DIR}/Walkthrough.md: an item about it goes into walkthrough_findings instead, and under ## Review findings closed as handed to the walkthrough writer, who runs after you. Return committed_outside_tasks true when any commit you made changes a file outside the Tasks folder, false when none does: the writer runs only when it has something to do.` : ''} The closing block of Done.md holds the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP ? ` This run catches up commits that landed after the previous Done${RANGES ? ` — ${rangeList()}` : ''}: append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names those ranges, marked ✅, with a **Verification:** line naming the regression set Validation ran: what it ran and what it carried.` : ''}${AFTER_DONE ? ` These fixes follow a catch-up: before you rewrite Done.md, run "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since done, then append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names the ranges it printed, marked ✅, with a **Verification:** line naming the regression set Validation ran: what it ran and what it carried.` : ''}`
+  `\n\nFirst close every item under ## For Done in ${DIR}/Review.md, if the section exists${handed && handed.length ? ` — this run's Review listed them: ${handed.join('; ')}` : ''}. Edit only the task's files, never code; record each item and how you closed it under ## Review findings closed in Done.md, and return the items in closed_findings.${walkthroughWriter() ? ` Never edit ${DIR}/Walkthrough.md: an item about it goes into walkthrough_findings instead, and under ## Review findings closed as handed to the walkthrough writer, who runs after you. Return committed_outside_tasks true when any commit you made changes a file outside the Tasks folder, false when none does: the writer runs only when it has something to do.` : ''} The closing block of Done.md holds the lines "${core('scripts/task-ranges.sh')}" tips ${DIR} --kind done prints, run right before you finish.${CATCH_UP || AFTER_DONE ? ` ${CATCH_UP ? 'This run catches up commits that landed after the previous Done' : 'These fixes follow a catch-up'}: before you rewrite Done.md, run "${core('scripts/task-ranges.sh')}" ranges ${DIR} --since done, then append to ${DIR}/Plan.md a phase titled "Catch-up: commits after Done" — a row in the top-level progress table and a detail section — that names the ranges it printed, marked ✅, with a **Verification:** line naming the regression set Validation ran: what it ran and what it carried.` : ''}`
 // Whether a writer runs after Done to take its items about Walkthrough.md; without one Done closes them.
 const walkthroughWriter = () =>
   !!WALKTHROUGH_AGENT && A.walkthrough !== 'off' && A.walkthrough !== false && !!A.agents[WALKTHROUGH_AGENT] && A.agents[WALKTHROUGH_AGENT] !== '—'
@@ -377,12 +382,15 @@ const REVIEW = {
     artifact_path: { type: 'string' },
     blocking_findings: { type: 'array', items: { type: 'string' } },
     done_findings: { type: 'array', items: { type: 'string' }, description: 'closed by editing files in the task folder, never by a code commit' },
+    ranges_fallback: { type: 'array', items: { type: 'string' }, description: "repositories the ranges command measured from the task's base" },
     summary: { type: 'string' },
     directive_declined: DECLINED,
   },
 }
 
 const result = { status: 'ok', last_completed_stage: null, artifact_path: null, notes: [], stages: [] }
+// The repositories Review read from the base; the orchestrator announces them (warn_review_ranges_full).
+let rangesFallback = []
 
 // The Validation gate. PASSED_WITH_FLAKES passes it: the only failures it carries are flaky tests
 // outside the task, which the note puts in front of the user instead of stopping before Review.
@@ -468,6 +476,7 @@ const finish = (next, extra) => ({
   handback,
   scale,
   scale_escalation: scaleEscalation,
+  ...(rangesFallback.length ? { ranges_fallback: rangesFallback } : {}),
   ...(extra || {}),
 })
 // stages[] is the per-stage report auto has no other source for: there one return covers the whole
@@ -478,6 +487,7 @@ const declinedIn = {}
 const record = (stage, r) => {
   result.last_completed_stage = stage
   if (r && r.artifact_path) result.artifact_path = r.artifact_path
+  if (stage === 'Review' && r && Array.isArray(r.ranges_fallback) && r.ranges_fallback.length) rangesFallback = r.ranges_fallback
   result.stages.push({
     stage,
     agent: AGENT_OF[stage] || 'unnamed',

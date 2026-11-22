@@ -9,7 +9,6 @@ setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   WRITERS="bug feature refactor test quick"
   AGENTS='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"—","diagnostics":"g","init":"—"}'
-  TWO='{"since": "base", "repos": {".": {"range": "a1..HEAD", "commits": 3, "state": "ok"}}}'
   BASE='"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s"}, "walkthrough": {"ok": true, "artifact_path": "w", "summary": "s", "changed": true}, "walkthrough:revise": {"ok": true, "artifact_path": "w", "summary": "s", "changed": true}'
 }
 
@@ -21,7 +20,7 @@ block() {
 # The check value is $1, `on` unless a test says otherwise.
 # $1 is the value of the check, `on` unless a test names another.
 contract() {
-  printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "Review", "stage_scope": "forward", "review_ranges": %s, "walkthrough": "deep", "walkthrough_check": "%s"}' "$AGENTS" "$TWO" "${1:-on}"
+  printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "Review", "stage_scope": "forward", "review_since": "base", "walkthrough": "deep", "walkthrough_check": "%s"}' "$AGENTS" "${1:-on}"
 }
 
 # $3 is the value of the check, `on` unless a test names another.
@@ -171,7 +170,7 @@ from_stage() {
   local code
   case "$1" in bug) code=Fix ;; feature) code=Execute ;; refactor) code=Refactor ;; test) code=Write ;; quick) code=Edit ;; esac
   local c rest
-  c="$(printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "%s", "stage_scope": "forward", "review_ranges": %s, "walkthrough": "deep"%s}' "$AGENTS" "$code" "$TWO" "$2")"
+  c="$(printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "%s", "stage_scope": "forward", "review_since": "base", "walkthrough": "deep"%s}' "$AGENTS" "$code" "$2")"
   rest='"edit": {"ok": true, "artifact_path": "e", "summary": "s", "committed": true}, "review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s"}, "validation": {"validation_status": "PASSED", "reproduction_status": "fixed", "artifact_path": "v", "summary": "s", "driver_status": "ok"}, "done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": '"${3:-false}"'}'
   node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-$1.js" "$c" "{$rest}"
 }

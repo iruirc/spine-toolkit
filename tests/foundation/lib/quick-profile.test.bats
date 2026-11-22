@@ -6,7 +6,6 @@
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   AGENTS='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"—","diagnostics":"g","init":"—"}'
-  RANGES='{"since": "base", "repos": {".": {"range": "c3..HEAD", "commits": 1, "state": "ok"}}}'
   EDITED='"edit": {"ok": true, "phase_id": "1", "committed": true, "summary": "s"}'
   PASSED='"validation": {"validation_status": "PASSED", "artifact_path": "v", "summary": "s", "driver_status": "ok"}'
   APPROVED='"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s"}'
@@ -15,7 +14,7 @@ setup() {
 
 # report off: the resolver's auto for QUICK (task-report-flow.test.bats drives the report itself).
 contract() { # $1 extra JSON members (leading comma)
-  printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "Edit", "stage_scope": "forward", "scale": "lite", "walkthrough": "off", "report": "off", "need_test": false, "review_ranges": %s%s}' "$AGENTS" "$RANGES" "$1"
+  printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "Edit", "stage_scope": "forward", "scale": "lite", "walkthrough": "off", "report": "off", "need_test": false, "review_since": "base"%s}' "$AGENTS" "$1"
 }
 
 run_quick() { node "$ROOT/tests/foundation/helpers/run-profile.js" "$ROOT/workflows/profile-quick.js" "$1" "$2"; }
@@ -78,7 +77,7 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
 
 @test "Review holds the change to the QUICK bar and the perimeter" {
   r="$(run_quick "$(contract '')" "{$EDITED, $PASSED, $APPROVED, $DONE}" | prompt_of review)"
-  for f in 'is it still a QUICK change' 'a diff that touches the perimeter anyway is a blocking finding' 'c3..HEAD' '--kind reviewed' '## For Done'; do
+  for f in 'is it still a QUICK change' 'a diff that touches the perimeter anyway is a blocking finding' 'ranges /p/Tasks/ACTIVE/001-x --since base' '--kind reviewed' '## For Done'; do
     grep -qF -- "$f" <<<"$r" || { echo "the Review brief lost: $f"; return 1; }
   done
 }

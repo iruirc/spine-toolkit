@@ -20,52 +20,73 @@ contract() { # $1 start stage, $2 extra JSON members (leading comma)
 prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""' "$1"; }
 count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
 
-@test "Review reads exactly the ranges the contract names" {
-  for p in $RANGED; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" '{}' "$(prompt_js review)"
+@test "Review counts its ranges first, with the command the contract's since names" {
+  for p in $RANGED quick; do
+    rp "$p" "$(contract Review ', "review_since": "base"')" '{}' "$(prompt_js review)"
     r="${V[0]}"
-    for f in 'Review exactly these ranges, one per repository' '.: a1..HEAD (3 commits)' 'Packages/Core: b2..HEAD (1 commit)'; do
+    for f in 'Before you read anything else, and before you overwrite Review.md, run "/core/scripts/task-ranges.sh" ranges /p/Tasks/ACTIVE/001-x --since base and keep what it prints' \
+             'Review exactly those ranges, one per repository, and nothing outside them' 'under ### Scope' 'ranges_fallback'; do
       grep -qF "$f" <<<"$r" || { echo "profile-$p: review prompt lost: $f"; return 1; }
     done
-    if grep -qF 'Your previous review' <<<"$r"; then echo "profile-$p: a first pass is told of a previous review"; return 1; fi
+    for f in '--fallback' 'Your previous review'; do
+      if grep -qF -- "$f" <<<"$r"; then echo "profile-$p: a first pass got: $f"; return 1; fi
+    done
+    if grep -qE '[0-9]+ commits?\)' <<<"$r"; then echo "profile-$p: a count reached the brief"; return 1; fi
   done
 }
 
-@test "a re-review checks the previous findings, and an idle one does not rescan" {
-  idle='{"since": "reviewed", "repos": {".": {"range": "a1..HEAD", "commits": 0, "state": "ok"}}}'
-  for p in $RANGED; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $idle, \"archive_paths\": [\"/p/Tasks/ACTIVE/001-x/_archive/Review-2026-09-24T100000.md\"]")" '{}' "$(prompt_js review)"
+@test "a re-review counts since its record, falls back per repository, and reads no approved commit again" {
+  for p in $RANGED quick; do
+    rp "$p" "$(contract Review ', "review_since": "reviewed", "archive_paths": ["/p/Tasks/ACTIVE/001-x/_archive/Review-2026-09-24T100000.md"]')" '{}' "$(prompt_js review)"
     r="${V[0]}"
-    for f in '_archive/Review-2026-09-24T100000.md' 'Resolved, Still open or Regressed' 'do not rescan the tree'; do
-      grep -qF "$f" <<<"$r" || { echo "profile-$p: re-review prompt lost: $f"; return 1; }
+    for f in 'ranges /p/Tasks/ACTIVE/001-x --since reviewed --fallback base and keep what it prints' '_archive/Review-2026-09-24T100000.md' \
+             'Resolved, Still open or Regressed' 'do not read those commits again' 'raise no new finding on commits outside them' \
+             'the owner runs restart from Review' 'When every repository it printed has 0 commits, do not rescan the tree'; do
+      grep -qF -- "$f" <<<"$r" || { echo "profile-$p: re-review prompt lost: $f"; return 1; }
     done
   done
 }
 
-@test "a repository with no known base is scoped by hand, never read as idle" {
-  blind='{"since": "reviewed", "repos": {".": {"range": "a1..HEAD", "commits": 0, "state": "ok"}, "Packages/Core": {"range": null, "commits": null, "state": "unknown"}}}'
+@test "a repository printed with no range is reviewed by its own commits" {
   for p in $RANGED; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $blind, \"archive_paths\": [\"/p/Tasks/ACTIVE/001-x/_archive/Review-2026-09-24T100000.md\"]")" '{}' "$(prompt_js review)"
-    r="${V[0]}"
-    grep -qF "Packages/Core: no known base — review this task's own commits there" <<<"$r" || { echo "profile-$p: no clause for the unknown repository"; return 1; }
-    if grep -qF 'do not rescan the tree' <<<"$r"; then echo "profile-$p: an unknown repository reads as idle"; return 1; fi
+    rp "$p" "$(contract Review ', "review_since": "reviewed"')" '{}' "$(prompt_js review)"
+    grep -qF "A repository it prints with no range: review this task's own commits there and say so under ### Scope" <<<"${V[0]}" \
+      || { echo "profile-$p: no clause for a repository with no range"; return 1; }
   done
 }
 
-@test "without review_ranges the Review prompt reads as before" {
-  for p in bug feature refactor; do
-    rp "$p" "$(contract Review '')" '{}' "$(prompt_js review)"
-    r="${V[0]}"
-    grep -qF 'Review the diff this task produced' <<<"$r" || { echo "profile-$p: the old wording is gone"; return 1; }
+@test "a review_since outside the three keeps the old wording" {
+  for x in '' ', "review_since": "everything"' ', "review_since": ""'; do
+    for p in bug feature refactor; do
+      rp "$p" "$(contract Review "$x")" '{}' "$(prompt_js review)"
+      r="${V[0]}"
+      grep -qF 'Review the diff this task produced' <<<"$r" || { echo "profile-$p [$x]: the old wording is gone"; return 1; }
+      if grep -qF 'task-ranges.sh" ranges' <<<"$r"; then echo "profile-$p [$x]: a ranges command with a bogus since"; return 1; fi
+    done
+    rp test "$(contract Review "$x")" '{}' "$(prompt_js review)"
+    grep -qF 'Review the TESTS this task added — not the production code' <<<"${V[0]}" || { echo "profile-test [$x]: the old wording is gone"; return 1; }
   done
-  rp test "$(contract Review '')" '{}' "$(prompt_js review)"
-  r="${V[0]}"
-  grep -qF 'Review the TESTS this task added — not the production code' <<<"$r" || { echo "profile-test: the old wording is gone"; return 1; }
+}
+
+@test "ranges_fallback reaches the profile result" {
+  for p in $RANGED; do
+    rp "$p" "$(contract Review ', "review_since": "reviewed"')" '{}' \
+      "JSON.stringify(Object.keys(o.calls.find((c) => c.label === 'review').schema.properties).includes('ranges_fallback'))"
+    [ "${V[0]}" = true ] || { echo "profile-$p: REVIEW schema has no ranges_fallback"; return 1; }
+    for st in APPROVED CHANGES_REQUESTED; do
+      replies='{"review": {"review_status": "'"$st"'", "artifact_path": "r", "summary": "s", "ranges_fallback": ["Packages/Core"]}, "done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": []}}'
+      rp "$p" "$(contract Review ', "review_since": "reviewed"')" "$replies" 'JSON.stringify(o.result.ranges_fallback)'
+      [ "${V[0]}" = '["Packages/Core"]' ] || { echo "profile-$p $st: ${V[0]}"; return 1; }
+    done
+    replies='{"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s", "ranges_fallback": []}, "done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": []}}'
+    rp "$p" "$(contract Review ', "review_since": "reviewed"')" "$replies" 'String("ranges_fallback" in o.result)'
+    [ "${V[0]}" = false ] || { echo "profile-$p: an empty ranges_fallback reached the result"; return 1; }
+  done
 }
 
 @test "Review records its tips and knows what goes to Done" {
   for p in $RANGED; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" '{}' "$(prompt_js review)" \
+    rp "$p" "$(contract Review ", \"review_since\": \"base\"")" '{}' "$(prompt_js review)" \
       "JSON.stringify(Object.keys(o.calls.find((c) => c.label === 'review').schema.properties).includes('done_findings'))"
     r="${V[0]}"
     for f in '/core/scripts/task-ranges.sh" tips /p/Tasks/ACTIVE/001-x --kind reviewed' 'done_findings' '## For Done' 'without a single code commit'; do
@@ -79,7 +100,7 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
 @test "an APPROVED review with done_findings runs Done, which is handed them" {
   replies='{"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s", "done_findings": ["swap the package commit in ## Release"]}, "done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": ["swap the package commit in ## Release"]}}'
   for p in $RANGED; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies" 'o.result.next_recommended_action' "$(prompt_js done)" 'o.result'
+    rp "$p" "$(contract Review ", \"review_since\": \"base\"")" "$replies" 'o.result.next_recommended_action' "$(prompt_js done)" 'o.result'
     [ "${V[0]}" = stop ] || { echo "profile-$p: ${V[2]}"; return 1; }
     d="${V[1]}"
     for f in 'swap the package commit in ## Release' '## Review findings closed' 'closed_findings' '--kind done'; do
@@ -91,7 +112,7 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
 @test "Done that leaves an item open stops the run" {
   replies='{"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s", "done_findings": ["swap the package commit"]}, "done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": []}}'
   for p in $RANGED; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies" 'o.result.next_recommended_action' 'o.result' 'o.result.notes'
+    rp "$p" "$(contract Review ", \"review_since\": \"base\"")" "$replies" 'o.result.next_recommended_action' 'o.result' 'o.result.notes'
     [ "${V[0]}" = ask_user ] || { echo "profile-$p: ${V[1]}"; return 1; }
     grep -qF 'swap the package commit' <<<"${V[2]}" || { echo "profile-$p: the note does not name the item"; return 1; }
   done
@@ -100,7 +121,7 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
 @test "CHANGES_REQUESTED still stops before Done" {
   replies='{"review": {"review_status": "CHANGES_REQUESTED", "artifact_path": "r", "summary": "s", "blocking_findings": ["a race"], "done_findings": ["x"]}}'
   for p in $RANGED; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies" "$(prompt_js done)"
+    rp "$p" "$(contract Review ", \"review_since\": \"base\"")" "$replies" "$(prompt_js done)"
     [ -z "${V[0]}" ] || { echo "profile-$p: Done ran after CHANGES_REQUESTED"; return 1; }
   done
 }
@@ -110,11 +131,12 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
   replies="{$PASSED, \"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\"}}"
   vr="\"validation_ranges\": {\"task\": $TWO, \"rerun\": $delta}"
   for p in $RANGED; do
-    rp "$p" "$(contract Validation ", \"action\": \"catch-up\", $vr, \"review_ranges\": $delta")" "$replies" "$(prompt_js validation)" "$(prompt_js review)" "$(prompt_js done)"
+    rp "$p" "$(contract Validation ", \"action\": \"catch-up\", $vr, \"review_since\": \"done\"")" "$replies" "$(prompt_js validation)" "$(prompt_js review)" "$(prompt_js done)"
     v="${V[0]}"
     grep -qF 'catches up commits that landed after' <<<"$v" || { echo "profile-$p: validation is not told it catches up"; return 1; }
     grep -qF 'Packages/Core: d2..HEAD (1 commit)' <<<"$v" || { echo "profile-$p: validation lost a range"; return 1; }
-    grep -qF 'Review exactly these ranges' <<<"${V[1]}" || { echo "profile-$p: review is not ranged"; return 1; }
+    grep -qF -- '--since done --fallback base' <<<"${V[1]}" || { echo "profile-$p: review is not ranged since Done"; return 1; }
+    grep -qF 'ranges /p/Tasks/ACTIVE/001-x --since done' <<<"${V[2]}" || { echo "profile-$p: Done does not count its own ranges"; return 1; }
     grep -qF 'Catch-up: commits after Done' <<<"${V[2]}" || { echo "profile-$p: Done adds no catch-up phase"; return 1; }
   done
 }
@@ -134,7 +156,7 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
 @test "the walkthrough is refreshed after Done, which is told to keep out of it" {
   replies='{"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s"}}'
   for p in $RANGED quick; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies" \
+    rp "$p" "$(contract Review ", \"review_since\": \"base\"")" "$replies" \
       "o.calls.map((c) => c.label).filter((l) => l === 'done' || l === 'walkthrough').join(' ')" "$(prompt_js done)" \
       "JSON.stringify(Object.keys(o.calls.find((c) => c.label === 'done').schema.properties).includes('walkthrough_findings'))"
     order="${V[0]}"
@@ -162,7 +184,7 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
   handed='"done": {"ok": true, "artifact_path": "d", "summary": "s", "closed_findings": [], "committed_outside_tasks": false, "walkthrough_findings": ["name the third commit"]}, "review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s", "done_findings": ["name the third commit"]}, "walkthrough": {"ok": true, "artifact_path": "w", "summary": "s", "changed": true}'
   approved='"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s"}'
   for p in $RANGED quick; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "{$approved, $idle}" \
+    rp "$p" "$(contract Review ", \"review_since\": \"base\", \"walkthrough_current\": true")" "{$approved, $idle}" \
       "$(count_js walkthrough)" 'o.result.notes' 'o.result.next_recommended_action' 'o.result' \
       "JSON.stringify(o.calls.find((c) => c.label === 'done').schema.required.includes('committed_outside_tasks'))"
     [ "${V[0]}" = 0 ] || { echo "profile-$p: a writer ran over a current file"; return 1; }
@@ -170,12 +192,12 @@ count_js() { printf 'o.calls.filter((c) => c.label === "%s").length' "$1"; }
     [ "${V[2]}" = stop ] || { echo "profile-$p: ${V[3]}"; return 1; }
     [ "${V[4]}" = true ] \
       || { echo "profile-$p: Done need not say whether it committed"; return 1; }
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "{$approved, $busy}" "$(count_js walkthrough)"
+    rp "$p" "$(contract Review ", \"review_since\": \"base\", \"walkthrough_current\": true")" "{$approved, $busy}" "$(count_js walkthrough)"
     [ "${V[0]}" = 1 ] || { echo "profile-$p: no writer after a Done that committed outside the tasks"; return 1; }
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "{$handed}" "$(count_js walkthrough)" "$(count_js walkthrough:patch)"
+    rp "$p" "$(contract Review ", \"review_since\": \"base\", \"walkthrough_current\": true")" "{$handed}" "$(count_js walkthrough)" "$(count_js walkthrough:patch)"
     [ "${V[0]}" = 0 ] || { echo "profile-$p: a current file was rewritten for a Review finding"; return 1; }
     [ "${V[1]}" = 1 ] || { echo "profile-$p: the finding was not patched"; return 1; }
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" "{$approved, $idle}" "$(count_js walkthrough)"
+    rp "$p" "$(contract Review ", \"review_since\": \"base\"")" "{$approved, $idle}" "$(count_js walkthrough)"
     [ "${V[0]}" = 1 ] || { echo "profile-$p: no writer without the orchestrator's measure"; return 1; }
   done
 }
@@ -190,7 +212,7 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
   patched="{\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"closed_findings\": [\"$item\"]}"
   replies="$(patch_replies "[\"$item\"]" "$patched")"
   for p in $RANGED quick; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "$replies" \
+    rp "$p" "$(contract Review ", \"review_since\": \"base\", \"walkthrough_current\": true")" "$replies" \
       'o.result.next_recommended_action' 'o.result' 'o.result.notes'
     [ "${V[0]}" = stop ] || { echo "profile-$p: ${V[1]}"; return 1; }
     grep -qF 'Walkthrough.md patched: 1 of 1 Review finding(s) closed.' <<<"${V[2]}" \
@@ -205,7 +227,7 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
   patched="{\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"closed_findings\": [\"$one\"]}"
   replies="$(patch_replies "[\"$one\", \"$two\"]" "$patched")"
   for p in $RANGED quick; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "$replies" \
+    rp "$p" "$(contract Review ", \"review_since\": \"base\", \"walkthrough_current\": true")" "$replies" \
       'o.result.next_recommended_action' 'o.result' 'o.result.notes'
     [ "${V[0]}" = ask_user ] || { echo "profile-$p: ${V[1]}"; return 1; }
     grep -qF "$two" <<<"${V[2]}" || { echo "profile-$p: the note does not name the open finding"; return 1; }
@@ -220,7 +242,7 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
   done_own='swap the package commit in ## Release'
   replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$mine\", \"$done_own\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"committed_outside_tasks\": false, \"walkthrough_findings\": [\"$mine\"]}, \"walkthrough:patch\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"closed_findings\": [\"$mine\", \"$mine\", \"$done_own\", \"an entry of its own\"]}}"
   for p in $RANGED quick; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "$replies" \
+    rp "$p" "$(contract Review ", \"review_since\": \"base\", \"walkthrough_current\": true")" "$replies" \
       'o.result.next_recommended_action' 'o.result' 'o.result.notes'
     [ "${V[0]}" = ask_user ] || { echo "profile-$p: ${V[1]}"; return 1; }
     grep -qF "$done_own" <<<"${V[2]}" || { echo "profile-$p: the note does not name Done's open finding"; return 1; }
@@ -234,7 +256,7 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
   # open, so unclosed() asks, as for that writer.
   item='name the third commit in ## Commits'
   for p in $RANGED quick; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "$(patch_replies "[\"$item\"]" null)" \
+    rp "$p" "$(contract Review ", \"review_since\": \"base\", \"walkthrough_current\": true")" "$(patch_replies "[\"$item\"]" null)" \
       'o.result.next_recommended_action' 'o.result' 'o.result.notes' 'o.result.status || ""'
     [ "${V[0]}" = ask_user ] || { echo "profile-$p: ${V[1]}"; return 1; }
     [ "${V[3]}" != error ] || { echo "profile-$p: an empty patch ended the run in an error"; return 1; }
@@ -248,9 +270,9 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
   rest="\"edit\": {\"ok\": true, \"artifact_path\": \"e\", \"summary\": \"s\", \"committed\": true}, \"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\"}, $PASSED, $idle"
   for p in $RANGED quick; do
     case "$p" in bug) code=Fix ;; feature) code=Execute ;; refactor) code=Refactor ;; test) code=Write ;; quick) code=Edit ;; esac
-    rp "$p" "$(contract "$code" ", \"walkthrough_when\": \"stage\", \"review_ranges\": $TWO")" "{$rest}" "$(count_js walkthrough)" 'o.calls.map((c) => c.label)'
+    rp "$p" "$(contract "$code" ", \"walkthrough_when\": \"stage\", \"review_since\": \"base\"")" "{$rest}" "$(count_js walkthrough)" 'o.calls.map((c) => c.label)'
     [ "${V[0]}" = 1 ] || { echo "profile-$p: ${V[1]}"; return 1; }
-    rp "$p" "$(contract "$code" ", \"walkthrough_when\": \"stage\", \"review_ranges\": $TWO, \"walkthrough_current\": true")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"Walkthrough.md: count: x\"}}" "$(count_js walkthrough)"
+    rp "$p" "$(contract "$code" ", \"walkthrough_when\": \"stage\", \"review_since\": \"base\", \"walkthrough_current\": true")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"Walkthrough.md: count: x\"}}" "$(count_js walkthrough)"
     [ "${V[0]}" = 2 ] || { echo "profile-$p: a writer that left lint lines stood for current"; return 1; }
   done
 }
@@ -262,7 +284,7 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
   style='Walkthrough.md: style: sentence of 31 words (## Summary)\nWalkthrough.md: style: missing **In short:** (### 1)'
   for p in $RANGED quick; do
     case "$p" in bug) code=Fix ;; feature) code=Execute ;; refactor) code=Refactor ;; test) code=Write ;; quick) code=Edit ;; esac
-    rp "$p" "$(contract "$code" ", \"walkthrough_when\": \"stage\", \"review_ranges\": $TWO")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"$style\"}}" \
+    rp "$p" "$(contract "$code" ", \"walkthrough_when\": \"stage\", \"review_since\": \"base\"")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"$style\"}}" \
       "$(count_js walkthrough)" 'o.result.notes'
     [ "${V[0]}" = 1 ] || { echo "profile-$p: a style line sent the writer back at Done"; return 1; }
     grep -qF 'Walkthrough.md lint: Walkthrough.md: style: sentence of 31 words' <<<"${V[1]}" \
@@ -277,7 +299,7 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
   mixed='Walkthrough.md: style: sentence of 31 words (## Summary)\nWalkthrough.md: unreachable: abc1234 (## Commits)'
   for p in $RANGED quick; do
     case "$p" in bug) code=Fix ;; feature) code=Execute ;; refactor) code=Refactor ;; test) code=Write ;; quick) code=Edit ;; esac
-    rp "$p" "$(contract "$code" ", \"walkthrough_when\": \"stage\", \"review_ranges\": $TWO")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"$mixed\"}}" \
+    rp "$p" "$(contract "$code" ", \"walkthrough_when\": \"stage\", \"review_since\": \"base\"")" "{$rest, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true, \"lint\": \"$mixed\"}}" \
       "$(count_js walkthrough)" 'o.result.notes'
     [ "${V[0]}" = 2 ] || { echo "profile-$p: a non-style line beside a style one did not send the writer back"; return 1; }
     grep -qF 'Walkthrough.md: unreachable: abc1234' <<<"${V[1]}" \
@@ -289,7 +311,7 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
   item='name the third commit in ## Commits'
   replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$item\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"walkthrough_findings\": [\"$item\"]}, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": true}}"
   for p in $RANGED quick; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies" 'o.result.next_recommended_action' 'o.result' "$(prompt_js walkthrough)"
+    rp "$p" "$(contract Review ", \"review_since\": \"base\"")" "$replies" 'o.result.next_recommended_action' 'o.result' "$(prompt_js walkthrough)"
     [ "${V[0]}" = stop ] || { echo "profile-$p: ${V[1]}"; return 1; }
     grep -qF "Close these Review findings in the file, even when [COVERS] already ends at the last commit: $item" <<<"${V[2]}" \
       || { echo "profile-$p: the writer was not handed the item"; return 1; }
@@ -300,7 +322,7 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
   item='name the third commit in ## Commits'
   replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$item\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"walkthrough_findings\": [\"$item\"]}, \"walkthrough\": {\"ok\": false, \"summary\": \"s\"}}"
   for p in $RANGED quick; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies" 'o.result.next_recommended_action' 'o.result' 'o.result.notes'
+    rp "$p" "$(contract Review ", \"review_since\": \"base\"")" "$replies" 'o.result.next_recommended_action' 'o.result' 'o.result.notes'
     [ "${V[0]}" = ask_user ] || { echo "profile-$p: ${V[1]}"; return 1; }
     grep -qF "$item" <<<"${V[2]}" || { echo "profile-$p: the note does not name the item"; return 1; }
   done
@@ -310,7 +332,7 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
   item='name the third commit in ## Commits'
   replies="{\"review\": {\"review_status\": \"APPROVED\", \"artifact_path\": \"r\", \"summary\": \"s\", \"done_findings\": [\"$item\"]}, \"done\": {\"ok\": true, \"artifact_path\": \"d\", \"summary\": \"s\", \"closed_findings\": [], \"walkthrough_findings\": [\"$item\"]}, \"walkthrough\": {\"ok\": true, \"artifact_path\": \"w\", \"summary\": \"s\", \"changed\": false}}"
   for p in $RANGED quick; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" "$replies" 'o.result.next_recommended_action' 'o.result' "$(prompt_js walkthrough)"
+    rp "$p" "$(contract Review ", \"review_since\": \"base\"")" "$replies" 'o.result.next_recommended_action' 'o.result' "$(prompt_js walkthrough)"
     [ "${V[0]}" = ask_user ] || { echo "profile-$p: ${V[1]}"; return 1; }
     grep -qF 'even when [COVERS] already ends at the last commit' <<<"${V[2]}" \
       || { echo "profile-$p: the writer may still take the change-nothing shortcut"; return 1; }
@@ -320,7 +342,7 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
 @test "with no walkthrough written, Done closes the items about it itself" {
   replies='{"review": {"review_status": "APPROVED", "artifact_path": "r", "summary": "s"}}'
   for p in $RANGED quick; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO, \"walkthrough\": \"off\"")" "$replies" "$(prompt_js done)"
+    rp "$p" "$(contract Review ", \"review_since\": \"base\", \"walkthrough\": \"off\"")" "$replies" "$(prompt_js done)"
     d="${V[0]}"
     [ -n "$d" ] || { echo "profile-$p: Done did not run"; return 1; }
     if grep -qF 'Never edit' <<<"$d"; then echo "profile-$p: Done is told to hand items to a writer that will not run"; return 1; fi
@@ -335,7 +357,7 @@ patch_replies() { # $1 the findings as a JSON array, $2 the walkthrough:patch re
     ! grep -qE 'directly under the first line|The first lines of Done.md' "$f" || { echo "profile-$p: an old position is left"; return 1; }
   done
   for p in $RANGED; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" '{}' "$(prompt_js review)"
+    rp "$p" "$(contract Review ", \"review_since\": \"base\"")" '{}' "$(prompt_js review)"
     grep -qF 'write those lines in the closing block of Review.md, exactly as printed; the first line stays the status line' <<<"${V[0]}" || { echo "profile-$p: review prompt"; return 1; }
   done
 }

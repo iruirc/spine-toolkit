@@ -6,7 +6,6 @@
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   AGENTS='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"—","diagnostics":"g","init":"—"}'
-  RANGES='{"since": "reviewed", "repos": {".": {"range": "c3..HEAD", "commits": 0, "state": "ok"}}}'
   FINDINGS='["a race in the cache", "the retry never stops"]'
 }
 
@@ -14,7 +13,7 @@ setup() {
 PAIRS="bug:Fix feature:Execute refactor:Refactor test:Write"
 
 contract() { # $1 start stage, $2 extra JSON members (leading comma)
-  printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "%s", "stage_scope": "forward", "review_ranges": %s%s}' "$AGENTS" "$1" "$RANGES" "$2"
+  printf '{"task_id": "001", "task_dir": "/p/Tasks/ACTIVE/001-x", "plugin_root": "/core", "lang": "en", "agents": %s, "start_stage": "%s", "stage_scope": "forward", "review_since": "reviewed"%s}' "$AGENTS" "$1" "$2"
 }
 
 replies() { # $1 lower-case stage, $2 committed true|false
@@ -86,10 +85,9 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
   for pair in $PAIRS; do
     p="${pair%%:*}"; s="${pair#*:}"; l="$(tr '[:upper:]' '[:lower:]' <<<"$s")"
     r="$(run_profile "$p" "$(contract "$s" ", \"action\": \"fix-review\", \"fix_findings\": $FINDINGS, \"fix_round\": 2, \"after_done\": false")" "$(replies "$l" true)" | prompt_of review)"
-    grep -qF '.: c3..HEAD' <<<"$r" || { echo "profile-$p: Review lost the range"; return 1; }
-    grep -qF "The commits this run's own phases added are inside these ranges." <<<"$r" || { echo "profile-$p: Review is not told of the fix commits"; return 1; }
-    for f in 'do not rescan' '(0 commits)'; do
-      if grep -qF "$f" <<<"$r"; then echo "profile-$p: Review got the stale: $f"; return 1; fi
+    grep -qF -- '--since reviewed --fallback base' <<<"$r" || { echo "profile-$p: Review is not counted since its record"; return 1; }
+    for f in '--since base ' '(0 commits)' 'commits: 0'; do
+      if grep -qF -- "$f" <<<"$r"; then echo "profile-$p: Review got the stale: $f"; return 1; fi
     done
   done
 }

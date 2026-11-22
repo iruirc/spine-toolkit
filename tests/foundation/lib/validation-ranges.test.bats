@@ -101,7 +101,7 @@ prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""
 
 @test "Review reads Validation's record before it re-runs anything" {
   for p in $RANGED; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" '{}' "$(prompt_js review)"
+    rp "$p" "$(contract Review ", \"review_since\": \"base\"")" '{}' "$(prompt_js review)"
     for f in 'run "/core/scripts/lint-validation-scope.sh" /p/Tasks/ACTIVE/001-x' 'run no suite yourself' \
              'a module of the set Validation did not run' 'blocking_findings, even when your re-run is green' 'outside the set'; do
       grep -qF -- "$f" <<<"${V[0]}" || { echo "profile-$p: review prompt lost: $f"; return 1; }
@@ -228,7 +228,7 @@ prompt_js() { printf '(o.calls.find((c) => c.label === "%s") || {}).prompt || ""
 
 @test "Review confirms reach lines and the failures outside the task" {
   for p in $RANGED; do
-    rp "$p" "$(contract Review ", \"review_ranges\": $TWO")" '{}' "$(prompt_js review)"
+    rp "$p" "$(contract Review ", \"review_since\": \"base\"")" '{}' "$(prompt_js review)"
     for f in 'Lines of class reach are not findings' '## Outside the task' 'blocking_findings' 'When it prints no finding, run no suite yourself' 'from the diff and the manifests that'; do
       grep -qF -- "$f" <<<"${V[0]}" || { echo "profile-$p: review prompt lost: $f"; return 1; }
     done
