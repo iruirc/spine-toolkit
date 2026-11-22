@@ -154,7 +154,7 @@ either value — the mode governs the stage boundary, not the commit.
 **Defined by:** [`../conventions/task-scale.md`](../conventions/task-scale.md)
 
 How deep a task's pipeline goes. `lite` — investigation folds into the artifact that consumes it,
-each artifact carries a line ceiling, and no estimation section or ops checklist is produced;
+each artifact carries a line ceiling, and no estimation section is produced;
 `full` — every stage gets its own agent and its own artifact. The floor is identical at both values:
 one commit per green phase, a reproduction before a bug fix, a Validation stage with its own agent,
 and a Review stage with an independent one. `lite` is cheaper, not looser.
@@ -184,7 +184,7 @@ this project has nothing to drive or no way to drive it. A platform whose valida
 tooling at all declares the deviation itself; this field is for the project's own choice.
 
 `off` does not delete the check: the validator writes the cases a human has to run into a separate
-`ManualChecks.md` in the task folder and marks the matching `OpsChecklist.md` items Pending. For BUG
+`ManualChecks.md` in the task folder. For BUG
 the deferred check is the reproduction replay itself.
 
 ### [MANUAL_CHECKS]

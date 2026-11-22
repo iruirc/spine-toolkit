@@ -113,21 +113,42 @@ PY
 }
 
 @test "a file of short English sections is caught as a whole" {
-  cp "$FIX/ops-short.en.md" "$TASK/OpsChecklist.md"
+  {
+    printf '# Validation\n\n'
+    for n in 1 2 3 4 5 6; do
+      printf '## Check %s\n\nThe promo code is taken from the goods only, and the delivery is priced after it, so the total stays right.\n\n' "$n"
+    done
+  } >"$TASK/Validation.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 1 ] || { echo "$output"; return 1; }
   [ "$(findings)" -eq 1 ] || { echo "$output"; return 1; }
-  grep -qF 'OpsChecklist.md § (file):' <<<"$output" || { echo "$output"; return 1; }
+  grep -qF 'Validation.md § (file):' <<<"$output" || { echo "$output"; return 1; }
 }
 
-@test "a checklist that keeps its item text English and writes its reasons in Russian passes" {
-  cp "$FIX/ops-compliant.ru.md" "$TASK/OpsChecklist.md"
+@test "no file reads a list line from its dash" {
+  # The English text before the dash is prose like any other, and so is the Russian text after it.
+  ru="$(head -n 1 "$FIX/paragraph.ru.md" | cut -d' ' -f1)"
+  {
+    printf '# Validation\n\n## Checks\n\n'
+    for n in 1 2 3 4 5 6; do
+      printf -- '- N/A: The promo code is taken from the goods only and the delivery is priced after it, number %s, so the total of the order stays right for every customer who pays with a code — %s.\n' "$n" "$ru"
+    done
+  } >"$TASK/Validation.md"
+  run "$LINT" "$TASK"
+  [ "$status" -eq 1 ] || { echo "the English before the dash was skipped"; echo "$output"; return 1; }
+  grep -qF 'Validation.md § ## Checks:' <<<"$output" || { echo "$output"; return 1; }
+}
+
+@test "an OpsChecklist.md is not an artifact the language lint reads" {
+  {
+    printf '# Ops Checklist\n\n## Release\n\n'
+    for n in 1 2 3 4 5 6; do
+      printf 'The promo code is taken from the goods only, and the delivery is priced after it, so the total stays right.\n'
+    done
+  } >"$TASK/OpsChecklist.md"
   run "$LINT" "$TASK"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-  # Only OpsChecklist.md reads a list line from its dash: anywhere else the item text is prose.
-  mv "$TASK/OpsChecklist.md" "$TASK/Validation.md"
-  run "$LINT" "$TASK"
-  [ "$status" -eq 1 ] || { echo "the dash rule reached a file other than OpsChecklist.md"; echo "$output"; return 1; }
+  ! grep -qF 'OpsChecklist.md' <<<"$output" || { echo "$output"; return 1; }
 }
 
 @test "Task.md, Questions.md, _archive/ and step folders are not read" {
@@ -244,23 +265,4 @@ PY
                '- [x] Feature flag wraps the feature — the cart opens the new screen only with the flag on (Features.cartV2)'; do
     grep -qF -- "$token" <<<"$s" || { echo "ops-checklist does not say: $token"; return 1; }
   done
-}
-
-@test "the ops-checklist example and template keep the catalog item and the dash, and both lints pass them" {
-  ops="$ROOT/skills/ops-checklist/SKILL.md"
-  # The fenced blocks of ## Output artifact: the Structure template, then the Form example.
-  blocks="$(awk '/^## Output artifact$/{f=1;next} !f{next} /^```/{c=!c;next} c{print;next} /^## /{exit}' "$ops")"
-  applicable="$(grep -E '^- \[x\] ' <<<"$blocks")"
-  [ "$(wc -l <<<"$applicable")" -ge 5 ] || { echo "too few Applicable lines: $applicable"; return 1; }
-  while IFS= read -r line; do
-    [[ "$line" == *' — '* ]] || { echo "no dash before the evidence: $line"; return 1; }
-    [[ "$line" == *')' ]] || { echo "the evidence does not end on its identifier in brackets: $line"; return 1; }
-    ! grep -qF '`' <<<"$line" || { echo "a bare backticked identifier as evidence: $line"; return 1; }
-  done <<<"$applicable"
-  printf '## Project settings\n\n[LANG] = [en]\n' >"$PROJ/CLAUDE-spine-toolkit.md"
-  { printf '# Ops Checklist\n\n## Release & rollout\n\n'; grep -E '^- ' <<<"$blocks"; } >"$TASK/OpsChecklist.md"
-  run "$LINT" "$TASK"
-  [ "$status" -eq 0 ] || { echo "lint-artifact-lang: $output"; return 1; }
-  run "$ROOT/scripts/lint-artifact-readability.sh" "$TASK/OpsChecklist.md"
-  [ "$status" -eq 0 ] || { echo "lint-artifact-readability: $output"; return 1; }
 }

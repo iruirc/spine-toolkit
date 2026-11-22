@@ -26,7 +26,6 @@ INLINE = [
 HEADING = re.compile(r'^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$')
 FENCE = re.compile(r'^\s*(`{3,}|~{3,})(.*)$')
 DROPPED_LINE = re.compile(r'^\s*(\||>|\[[A-Z_]+\]\s*=|\*\*Run:\*\*|\*\*Device:\*\*)')
-LIST_ITEM = re.compile(r'^\s*[-*+]\s')
 
 # The default threshold: a sentence longer than this many words is a style finding. The threshold a
 # lint applies is the budget key words-per-sentence of the task (words_per_sentence() below);
@@ -55,7 +54,7 @@ _BUDGETS = {}
 _WARNED = set()
 
 
-def chunks(text, checklist=False):
+def chunks(text):
     """(heading, prose) pairs: the text before the first heading, then the text under each
     heading up to the next one of any level. A fence may be indented under a list item, and
     what it holds is code whatever the indentation."""
@@ -79,12 +78,6 @@ def chunks(text, checklist=False):
             continue
         if DROPPED_LINE.match(line):
             continue
-        if checklist and LIST_ITEM.match(line):
-            # A checklist item's own text is the catalog's, English at any [LANG]: prose is what
-            # follows its first dash, and an item with no dash has none.
-            if ' — ' not in line:
-                continue
-            line = line.split(' — ', 1)[1]
         buf.append(line)
     out.append((title, '\n'.join(buf)))
     return out

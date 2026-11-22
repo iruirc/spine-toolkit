@@ -1,8 +1,7 @@
 #!/usr/bin/env bats
-# The readability lint of the artifacts a task leaves (Done, Plan, Review, Research, Questions,
-# OpsChecklist): a sentence over words-per-sentence words, identifiers piled into the first section
-# or one table cell, a label (M1, u3) without a gloss, a Questions.md entry without a question and a
-# table in an OpsChecklist.md. The fixtures are synthetic (a shopping cart); a Russian one is named
+# The readability lint of the artifacts a task leaves (Done, Plan, Review, Research, Questions):
+# a sentence over words-per-sentence words, identifiers piled into the first section or one table
+# cell, a label (M1, u3) without a gloss, and a Questions.md entry without a question. The fixtures are synthetic (a shopping cart); a Russian one is named
 # *.ru.md and is copied here under the artifact's real name. Russian words never appear in this
 # file: lint-i18n.sh keeps Cyrillic out of it.
 
@@ -39,7 +38,7 @@ expect() {
 }
 
 @test "the good fixtures pass in both languages" {
-  for a in Done Plan Review Research Questions OpsChecklist; do fixture "$a.en.md" "$a.md"; done
+  for a in Done Plan Review Research Questions; do fixture "$a.en.md" "$a.md"; done
   expect 0
   rm -f "${TASK:?}"/*.md
   for a in Done Plan; do fixture "$a.ru.md" "$a.md"; done
@@ -507,7 +506,7 @@ MD
   expect 0
 }
 
-@test "format: a table row in OpsChecklist.md is a finding" {
+@test "an OpsChecklist.md is not an artifact the lint reads" {
   write OpsChecklist.md <<'MD'
 # Ops checklist
 
@@ -517,48 +516,9 @@ MD
 |---|---|
 | Analytics | done |
 MD
-  expect 1 'OpsChecklist.md: format: table row; the checklist is a list (Applicable)'
-}
-
-@test "format: a table in another artifact, or a table in a fence, is not a format finding" {
-  write Done.md <<'MD'
-# Done
-
-## Verification
-
-| Item | State |
-|---|---|
-| Analytics | done |
-MD
-  write OpsChecklist.md <<'MD'
-# Ops checklist
-
-## Applicable
-
-```
-| Item | State |
-```
-
-- Analytics: done
-MD
-  expect 0
-}
-
-@test "format: a table after a heading is its own finding, even with no blank line between" {
-  write OpsChecklist.md <<'MD'
-# Ops checklist
-
-## Applicable
-| Item | State |
-|---|---|
-| Analytics | done |
-## Not applicable
-| Item | State |
-|---|---|
-| Push | none |
-MD
-  expect 1 'OpsChecklist.md: format: table row; the checklist is a list (Applicable)' \
-    'OpsChecklist.md: format: table row; the checklist is a list (Not applicable)'
+  run "$LINT" "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  ! grep -qF 'OpsChecklist.md' <<<"$output" || { echo "$output"; return 1; }
 }
 
 @test "the Done fixtures follow the section order and the Plan fixtures keep the progress table for the owner" {

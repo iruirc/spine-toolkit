@@ -39,11 +39,6 @@ Everything the authoring rule keeps English at any `[LANG]` is removed before co
 - quoted commit subjects, `type(scope): …` or `type: …`, for the types in
   `conventions/commit-messages.md`.
 
-In `OpsChecklist.md`, a list item (`-`, `*` or `+`) keeps only its text after the first ` — `
-(space, em dash, space), and an item with no ` — ` is removed whole: an item's own text is the
-catalog's, English at any `[LANG]` (`skills/ops-checklist/SKILL.md` → Output artifact). Every other
-line is read as in any other artifact.
-
 What remains is prose, and a Latin word in it counts: a term, an unquoted identifier, a status word
 inside a sentence. The check asks what language a part is written in, not how much of another
 language it carries.
@@ -66,7 +61,7 @@ thresholds from 3% to 10%.
 ## Which files
 
 The artifacts in the task folder itself: `Research.md`, `Reproduce.md`, `Plan.md`, `Validation.md`,
-`Review.md`, `ChangesRequested.md`, `Done.md`, `Walkthrough.md`, `OpsChecklist.md`,
+`Review.md`, `ChangesRequested.md`, `Done.md`, `Walkthrough.md`,
 `ManualChecks.md`, `Docs.md`.
 
 Not read: `Task.md` and `Questions.md`, which carry the user's own words; anything under `_archive/`;
@@ -79,7 +74,7 @@ own run, or, for the steps an EPIC range ran as nested workflows, by the orchest
 One line per finding, then a total:
 
 ```
-Tasks/ACTIVE/042-promo/OpsChecklist.md § ## Testing: 0% Cyrillic in 214 letters of prose (lang ru)
+Tasks/ACTIVE/042-promo/Validation.md § ## Testing: 0% Cyrillic in 214 letters of prose (lang ru)
 artifact language failed: 1 finding(s)
 ```
 

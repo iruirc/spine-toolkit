@@ -95,8 +95,8 @@ layout — three unrelated branches of one package, where a glob either misses o
 ## What the mechanism does not decide
 
 Routing says a component **may** have been touched. Whether documentation is owed is a separate
-question, answered per phase in the task's `Docs.md`, in the vocabulary `ops-checklist` already
-uses: **Applicable** / **N/A (reason)** / **Pending**, defaulting to Applicable. The criterion,
+question, answered per phase in the task's `Docs.md`, in one of three states: **Applicable**,
+**N/A (reason)** or **Pending**, defaulting to Applicable. The criterion,
 and what makes a good reason, is the `docs-route` skill.
 
 ## Suspending the mechanism

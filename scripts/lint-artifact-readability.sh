@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Measures the prose of the artifacts a task leaves against the reader who did not follow the task:
-# Done.md, Plan.md, Review.md, Research.md, Questions.md, OpsChecklist.md. Its classes:
+# Done.md, Plan.md, Review.md, Research.md, Questions.md. Its classes:
 #   sentence     a sentence over words-per-sentence words (the budget key of the task's directory,
 #                30 unless a Task.md, an epic or the project sets it, or the run's value passed in
 #                --words-per-sentence), in any section
@@ -15,7 +15,6 @@ set -euo pipefail
 #   question     Questions.md only: an entry of the log without a **Question:** of three words; an
 #                entry already written in the old form (an id, then RESOLVED or DEFERRED, with no
 #                **Question:**) stays as it is
-#   format       OpsChecklist.md only: a table, where the checklist is a list
 # What counts as prose is scripts/lib/prose.py, the same text lint-artifact-lang.sh and
 # lint-walkthrough.sh measure: fences, tables, quotes, headings and the machine lines of the closing
 # block ([DONE_COMMIT], [REVIEW_FIXES], [REVIEWED_COMMIT], **Run:**, **Device:**) are not prose,
@@ -45,7 +44,7 @@ set -euo pipefail
 #          resolver that could not answer.
 
 HERE="$(dirname -- "${BASH_SOURCE[0]}")"
-ARTIFACTS="Done.md Plan.md Review.md Research.md Questions.md OpsChecklist.md"
+ARTIFACTS="Done.md Plan.md Review.md Research.md Questions.md"
 
 usage() { echo "usage: $0 [--words-per-sentence <n>] <task-dir|file>  (artifacts: $ARTIFACTS)" >&2; exit 2; }
 wps=
@@ -355,19 +354,6 @@ def question_pass(text):
     return out
 
 
-def format_pass(text):
-    out, inside, last = [], False, None
-    for where, line in lines_by_heading(text):
-        # A heading ends a table: the table under the next heading is a finding of its own.
-        if where != last:
-            inside, last = False, where
-        table = line.lstrip().startswith('|')
-        if table and not inside:
-            out.append('format: table row; the checklist is a list (%s)' % where)
-        inside = table
-    return out
-
-
 limit = int(WPS) if WPS else words_per_sentence(os.path.abspath(DIR), 'lint-artifact-readability.sh')
 found = []
 for path in FILES:
@@ -377,8 +363,6 @@ for path in FILES:
     lines = prose_pass(text, limit, name == 'Questions.md') + identifier_pass(text)
     if name == 'Questions.md':
         lines += question_pass(text)
-    if name == 'OpsChecklist.md':
-        lines += format_pass(text)
     found += ['%s: %s' % (name, line) for line in lines]
 
 if found:

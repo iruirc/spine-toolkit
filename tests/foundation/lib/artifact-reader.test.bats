@@ -27,9 +27,9 @@ section() { # $1 = heading text
   [ "$got" = '## Reader|## Style|## Self-check|## Anti-patterns|## Check|## Scope' ] || { echo "headings: '$got'"; return 1; }
 }
 
-@test "Scope names all ten artifacts and the precedence sentence" {
+@test "Scope names all nine artifacts and the precedence sentence" {
   scope="$(section Scope)"
-  for a in Walkthrough.md ManualChecks.md Done.md Plan.md Review.md Questions.md Research.md OpsChecklist.md Validation.md Docs.md; do
+  for a in Walkthrough.md ManualChecks.md Done.md Plan.md Review.md Questions.md Research.md Validation.md Docs.md; do
     grep -qF "$a" <<<"$scope" || { echo "Scope never names $a"; return 1; }
   done
   grep -qF 'wins over any brevity instruction in an agent body' <<<"$scope" \
@@ -52,7 +52,7 @@ section() { # $1 = heading text
   scope="$(section Scope)"
   grep -qF '`scripts/lint-artifact-readability.sh`' <<<"$scope" || { echo "Scope never names the lint"; return 1; }
   lint="$(grep -F 'lint-artifact-readability.sh' <<<"$scope")"
-  for a in Done.md Plan.md Review.md Research.md Questions.md OpsChecklist.md; do
+  for a in Done.md Plan.md Review.md Research.md Questions.md; do
     grep -qF "\`$a\`" <<<"$lint" || { echo "the lint's paragraph never names $a"; return 1; }
   done
   grep -qF 'fixes its findings once' <<<"$scope" || { echo "Scope never says the writer fixes the findings once"; return 1; }

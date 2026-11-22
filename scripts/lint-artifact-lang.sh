@@ -31,7 +31,7 @@ SCRIPTS = {
 MIN_LETTERS = 200
 FLOOR_PERCENT = 10
 ARTIFACTS = ['Research.md', 'Reproduce.md', 'Plan.md', 'Validation.md', 'Review.md',
-             'ChangesRequested.md', 'Done.md', 'Walkthrough.md', 'OpsChecklist.md',
+             'ChangesRequested.md', 'Done.md', 'Walkthrough.md',
              'ManualChecks.md', 'Docs.md']
 
 
@@ -100,7 +100,7 @@ for d in dirs:
         except (OSError, UnicodeDecodeError):
             print('%s: unreadable, skipping' % path, file=sys.stderr)
             continue
-        parts = [(title, prose(body)) for title, body in chunks(text, artifact == 'OpsChecklist.md')]
+        parts = [(title, prose(body)) for title, body in chunks(text)]
         found = [f for f in (finding(path, title, body, lang) for title, body in parts) if f]
         # The whole file is for one made of short parts: a file already named needs no second line.
         if not found:

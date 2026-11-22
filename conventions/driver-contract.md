@@ -252,8 +252,8 @@ contract existed, and the state fires for it only when it has no tooling to driv
 at all, which its validator announces as a declared deviation.
 
 All three non-working states take the existing "deferred, not dropped" branch: the checks go to
-`ManualChecks.md`, the matching `OpsChecklist.md` items become Pending, and **the verdict is not
-lowered**. Distinguishing them is required because the user's next action differs in each: install a
+`ManualChecks.md`, and **the verdict is not lowered**. Distinguishing them is required because the
+user's next action differs in each: install a
 driver, connect the server, pick a different one, or nothing at all.
 
 `unavailable` covers three situations with one consequence and three different causes: no tool

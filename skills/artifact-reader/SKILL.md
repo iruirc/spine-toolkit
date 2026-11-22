@@ -1,6 +1,6 @@
 ---
 name: artifact-reader
-description: "Use when writing, refreshing or rewriting any task artifact in Tasks/ — Walkthrough.md, ManualChecks.md, Done.md, Plan.md, Review.md, Questions.md, Research.md, OpsChecklist.md, Validation.md, Docs.md. The reader is someone who was not on the task and does not know this area of the code. The single source of the reader, the style rules for every artifact an agent writes, and the fresh reader's check of Done.md and Plan.md."
+description: "Use when writing, refreshing or rewriting any task artifact in Tasks/ — Walkthrough.md, ManualChecks.md, Done.md, Plan.md, Review.md, Questions.md, Research.md, Validation.md, Docs.md. The reader is someone who was not on the task and does not know this area of the code. The single source of the reader, the style rules for every artifact an agent writes, and the fresh reader's check of Done.md and Plan.md."
 ---
 
 # Artifact Reader
@@ -85,7 +85,7 @@ The run notes one line per file: `Plan.md check: 3 place(s), revised.`, `Plan.md
 
 ## Scope
 
-This skill governs the prose of every task artifact an agent writes: `Walkthrough.md`, `ManualChecks.md`, `Done.md`, `Plan.md`, `Review.md`, `Questions.md`, `Research.md`, `OpsChecklist.md`, `Validation.md` and `Docs.md`.
+This skill governs the prose of every task artifact an agent writes: `Walkthrough.md`, `ManualChecks.md`, `Done.md`, `Plan.md`, `Review.md`, `Questions.md`, `Research.md`, `Validation.md` and `Docs.md`.
 
 Where an agent body asks for brevity and this skill asks for a full sentence, the Style above wins over any brevity instruction in an agent body. Brevity here means no padding, not compression. A line budget still holds: meet it by covering less, never by compressing the sentences.
 
@@ -93,4 +93,4 @@ Lines the toolkit's scripts parse stay where the toolkit's contracts put them. T
 
 Machine lines go in the closing block at the end of the file (`conventions/stage-dispatch.md` → Closing block): the marker lines first, then `**Run:**`, then `**Device:**`. Two lines keep their place: the status line `[REVIEW_STATUS] = …` is line 1 of `Review.md`, and `[COVERS]` is line 2 of `Walkthrough.md`.
 
-`scripts/lint-artifact-readability.sh` measures six of these files: `Done.md`, `Plan.md`, `Review.md`, `Research.md`, `Questions.md` and `OpsChecklist.md`. It reports a sentence over the `words-per-sentence` budget: 30 words unless the task, its epic or the project sets another number, and a run passes its own as `--words-per-sentence`. It also reports backticked identifiers piled into the first section or into one table cell, and a label with nothing beside it that says what it means. It reports a `Questions.md` entry without its question, and an `OpsChecklist.md` written as a table. It skips the closing block. The writer runs it once on its own file, fixes its findings once, and names what is left in its summary. Nothing sends the file back for a lint line a second time. `Walkthrough.md` and `ManualChecks.md` have lints of their own.
+`scripts/lint-artifact-readability.sh` measures five of these files: `Done.md`, `Plan.md`, `Review.md`, `Research.md` and `Questions.md`. It reports a sentence over the `words-per-sentence` budget: 30 words unless the task, its epic or the project sets another number, and a run passes its own as `--words-per-sentence`. It also reports backticked identifiers piled into the first section or into one table cell, and a label with nothing beside it that says what it means. It reports a `Questions.md` entry without its question. It skips the closing block. The writer runs it once on its own file, fixes its findings once, and names what is left in its summary. Nothing sends the file back for a lint line a second time. `Walkthrough.md` and `ManualChecks.md` have lints of their own.
