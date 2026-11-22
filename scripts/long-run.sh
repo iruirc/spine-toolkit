@@ -6,7 +6,8 @@
 #        scripts/long-run.sh wait <log> [--for s] [--stall s] [--max s]
 #        scripts/long-run.sh stop <log>
 # Exit (wait): 0 done ok, 1 done failed, 3 running, 4 stalled, 5 timeout. 2: usage, any subcommand.
-# Exit (start): 2 also while a job started from the same folder still runs, unless --parallel.
+# Exit (start): 2 also while a job started from the same folder still runs, unless --parallel, and on
+# a --log inside a task folder (a folder with Task.md above it).
 # Exit (stop): 2 also when the host refuses the signal (a sandbox; the command runs outside it).
 set -uo pipefail
 
@@ -48,6 +49,17 @@ running_here() {
   return 1
 }
 
+# The task folder a log path lies in: the nearest folder with Task.md above the log's own folder.
+task_above() {
+  local d
+  d="$(cd "$(dirname "$1")" 2>/dev/null && pwd -P)" || return 1
+  while [ -n "$d" ] && [ "$d" != / ]; do
+    [ -f "$d/Task.md" ] && { echo "$d"; return 0; }
+    d="$(dirname "$d")"
+  done
+  return 1
+}
+
 cmd_start() {
   local log='' parallel='' first
   while [ $# -gt 0 ]; do
@@ -59,6 +71,12 @@ cmd_start() {
     esac
   done
   [ $# -gt 0 ] || usage
+  # long-run writes its .pid, .start, .cwd and .exit beside the log, and the task folder is
+  # committed whole: a log there takes four more files into the task's commit.
+  if [ -n "$log" ] && task="$(task_above "$log")"; then
+    echo "long-run: --log $log is inside the task folder $task; logs live in \$TMPDIR — leave out --log or use a directory from mktemp -d" >&2
+    exit 2
+  fi
   if [ -z "$parallel" ] && first="$(running_here)"; then
     echo "long-run: a job is still running in this folder: $first; wait for it; a job that builds nothing starts with --parallel" >&2
     exit 2

@@ -226,3 +226,50 @@ second_job_teardown() { [ -f "$LOG2.pid" ] && kill -KILL -- "-$(cat "$LOG2.pid")
   second_job_teardown
   [ "$status" -eq 0 ] || { echo "status $status: $output"; return 1; }
 }
+
+# A stage wrote phase5-run1.log into its step folder with --log, and long-run.sh put the .pid,
+# .start, .cwd and .exit files beside it: 25 files the task's own commit would have taken.
+task_folder() { TASK="$BATS_TEST_TMPDIR/task"; mkdir -p "$TASK"; : >"$TASK/Task.md"; TASK="$(cd "$TASK" && pwd -P)"; }
+
+@test "a log inside the task folder is refused and nothing is written" {
+  task_folder
+  run "$LR" start --log "$TASK/x.log" -- true
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  [[ "$output" == *"is inside the task folder $TASK"* ]] || { echo "$output"; return 1; }
+  [ "$(ls -A "$TASK")" = Task.md ] || { ls -A "$TASK"; return 1; }
+}
+
+@test "a log in an evidence folder or a step folder of a task is refused" {
+  task_folder
+  mkdir -p "$TASK/validation-evidence" "$TASK/a.step"
+  for log in "$TASK/validation-evidence/x.log" "$TASK/a.step/x.log"; do
+    run "$LR" start --log "$log" -- true
+    [ "$status" -eq 2 ] || { echo "$log: $output"; return 1; }
+    ! ls "$log"* 2>/dev/null || { echo "$log was written"; return 1; }
+  done
+}
+
+@test "a relative log inside the task folder is refused" {
+  task_folder; cd "$TASK"
+  run "$LR" start --log x.log -- true
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+}
+
+@test "a log through a symlink into the task folder is refused" {
+  task_folder; ln -s "$TASK" "$BATS_TEST_TMPDIR/link"
+  run "$LR" start --log "$BATS_TEST_TMPDIR/link/x.log" -- true
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+}
+
+@test "a log in a mktemp directory is accepted, even when started from a task folder" {
+  task_folder; cd "$TASK"
+  D="$(mktemp -d)"
+  run "$LR" start --log "$D/x.log" -- true
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  run "$LR" wait "$D/x.log" --for 10
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  run "$LR" start -- true
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  log="${output##*log=}"; "$LR" wait "$log" --for 10 >/dev/null
+  rm -rf "$D" "$log"*
+}
