@@ -76,7 +76,7 @@ Pick a different starting stage for profile `{profile}`:
 (Recommended)
 
 ## auq_confirm_dispatch_pick_stage
-No, pick a different stage
+Change the start stage
 
 ## error_stage_not_in_profile
 `{invalid_stage}` is not a valid stage of profile `{profile}`. Allowed: {profile_stages_list}.
@@ -86,6 +86,21 @@ Yes
 
 ## confirm_dispatch_cancel
 Cancel
+
+## confirm_step_dispatch
+Step `{step_id}` of epic `{epic_id}`: profile `{profile}`, stack `{stack}`, start `{start_stage}`. Run it now?
+
+## confirm_step_dispatch_run
+Run
+
+## confirm_step_dispatch_later
+Not now: the step stays PENDING, the epic waits
+
+## confirm_step_dispatch_skip
+Close it without a run (SKIPPED)
+
+## info_step_postponed
+Step `{step_id}` is postponed — it and the later steps of epic `{epic_id}` stay PENDING. To go on: `continue {epic_id}`.
 
 ## scale_lite_suggest
 This looks like a small task: {reason}. It can run at `lite`, which writes shorter artifacts and keeps the same checks. The scale can still be raised to `full` later.

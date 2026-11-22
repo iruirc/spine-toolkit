@@ -76,7 +76,7 @@
 (Рекомендуется)
 
 ## auq_confirm_dispatch_pick_stage
-Нет, выбрать другую стадию
+Поправить стартовую стадию
 
 ## error_stage_not_in_profile
 `{invalid_stage}` — недопустимая стадия профиля `{profile}`. Допустимы: {profile_stages_list}.
@@ -86,6 +86,21 @@
 
 ## confirm_dispatch_cancel
 Отмена
+
+## confirm_step_dispatch
+Шаг `{step_id}` эпика `{epic_id}`: профиль `{profile}`, стек `{stack}`, старт `{start_stage}`. Запустить сейчас?
+
+## confirm_step_dispatch_run
+Запустить
+
+## confirm_step_dispatch_later
+Не сейчас: шаг остаётся PENDING, эпик ждёт
+
+## confirm_step_dispatch_skip
+Закрыть без прогона (SKIPPED)
+
+## info_step_postponed
+Шаг `{step_id}` отложен — он и следующие шаги эпика `{epic_id}` остаются PENDING. Продолжить: `продолжи {epic_id}`.
 
 ## scale_lite_suggest
 Похоже на маленькую задачу: {reason}. Её можно вести на `lite` — артефакты короче, проверки те же. Размер всё равно можно позже поднять до `full`.

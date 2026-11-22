@@ -405,30 +405,50 @@ Algorithm:
              a task past its first stage is under the ratchet, which only raises
            • Task.md reads as a small task by the signs of `conventions/task-scale.md` → Suggesting lite
              (qualitative, no counts); a Task.md silent on a sign does not show it
-       AUQ using key `confirm_dispatch` with placeholders `{profile}`, `{mode}`, `{stack}`, `{start_stage}`;
-       when suggest_lite, the text of key `scale_lite_suggest` (placeholder `{reason}`: the signs that held, in
-       a phrase) is appended to the question text
-       options (in this order):
-           1. locale key `confirm_dispatch_yes`     → dispatch as resolved
-           2. locale key `auq_confirm_dispatch_pick_stage` → open the picker:
-                  recommended := start_stage (the stage that arrived from step 5/5.5 — by construction valid)
-                  options := stage_picker_options(recommended, profile_stages)
-                  AUQ using key `auq_stage_override_question`  (placeholder: `{profile}`)
-                  → user picks S → start_stage := S, then dispatch
-                  → user picks Cancel → return {status: cancelled, reason: status_cancelled_user_no}
-           3. only when suggest_lite: locale key `scale_lite_suggest_option` → dispatch as resolved, at lite:
-                  write `[SCALE] = [lite]` into Task.md immediately after the `[NEED_REVIEW]` line (where a
-                  raise writes `full`), repeat the step 3 call with `--set scale=lite` added, and take every
-                  field from it: scale-dependent fields move with the value. Nothing step 3 already announced
-                  is announced again. `scale=lite` does not go into `run_settings` or Run.json: the owner's
-                  word for this run is in Task.md now, and a rerun reads it from there
-           4. locale key `confirm_dispatch_cancel`  → return {status: cancelled, reason: status_cancelled_user_no}
-       # the lite option is the fourth only when it is offered: three options become four, and AUQ allows no more
-       # the offer is a suggestion, never a lowering: any other answer writes nothing
+       if this dispatch is an entry of an epic's `pending_steps` — the orchestrator offers the step, nobody asked for it:
+           AUQ using key `confirm_step_dispatch` with placeholders `{step_id}`, `{epic_id}`, `{profile}`, `{stack}`,
+           `{start_stage}`; when suggest_lite, the text of key `scale_lite_suggest` is appended, as below
+           options (in this order):
+               1. locale key `confirm_step_dispatch_run` → dispatch as resolved
+               2. locale key `auq_confirm_dispatch_pick_stage` → the picker of `confirm_dispatch` below; its Cancel →
+                      as option 3 (status_step_postponed), not a cancel.
+                  When suggest_lite: locale key `scale_lite_suggest_option` in place of `auq_confirm_dispatch_pick_stage`,
+                  with the action it has in `confirm_dispatch` below
+               3. locale key `confirm_step_dispatch_later` → dispatch no later entry, and the epic is not re-dispatched:
+                      the step and every one after it stay PENDING. Announce `info_step_postponed` (`{step_id}`,
+                      `{epic_id}`) and return {status: cancelled, reason: status_step_postponed}
+               4. locale key `confirm_step_dispatch_skip` → close the step without a run: set it to SKIPPED by
+                      `task-move`'s step process (`[STATUS]` in its Task.md, the ⊘ row in the epic's Plan.md) and report
+                      with `task-move`'s `report_moved_step`. The next entry of `pending_steps` gets the same question;
+                      after the last, the epic is re-dispatched as the `pending_steps` paragraph of the Return says
+           # four options, and AUQ allows no more: lite takes the picker's place, because suggest_lite holds only at
+           # the profile's first stage of a task nothing of which has run, where there is no stage to fix
+       otherwise:
+           AUQ using key `confirm_dispatch` with placeholders `{profile}`, `{mode}`, `{stack}`, `{start_stage}`;
+           when suggest_lite, the text of key `scale_lite_suggest` (placeholder `{reason}`: the signs that held, in
+           a phrase) is appended to the question text
+           options (in this order):
+               1. locale key `confirm_dispatch_yes`     → dispatch as resolved
+               2. locale key `auq_confirm_dispatch_pick_stage` → open the picker:
+                      recommended := start_stage (the stage that arrived from step 5/5.5 — by construction valid)
+                      options := stage_picker_options(recommended, profile_stages)
+                      AUQ using key `auq_stage_override_question`  (placeholder: `{profile}`)
+                      → user picks S → start_stage := S, then dispatch
+                      → user picks Cancel → return {status: cancelled, reason: status_cancelled_user_no}
+               3. only when suggest_lite: locale key `scale_lite_suggest_option` → dispatch as resolved, at lite:
+                      write `[SCALE] = [lite]` into Task.md immediately after the `[NEED_REVIEW]` line (where a
+                      raise writes `full`), repeat the step 3 call with `--set scale=lite` added, and take every
+                      field from it: scale-dependent fields move with the value. Nothing step 3 already announced
+                      is announced again. `scale=lite` does not go into `run_settings` or Run.json: the owner's
+                      word for this run is in Task.md now, and a rerun reads it from there
+               4. locale key `confirm_dispatch_cancel`  → return {status: cancelled, reason: status_cancelled_user_no}
+           # the lite option is the fourth only when it is offered: three options become four, and AUQ allows no more
+           # the offer is a suggestion, never a lowering: any other answer writes nothing
    else:
        skip confirmation, go straight to Dispatch   # no suggestion in `auto`
 
    Confirmation is also skipped if both key parameters (profile AND mode) are explicitly stated in the user's original command; the `scale_lite_suggest` offer is skipped with it, since it is asked only inside that confirmation.
+   That rule does not apply to the step question (`confirm_step_dispatch`): the command named the epic, not its step, so in `manual` a step from `pending_steps` is always asked.
    "Explicitly stated" = present as literal keywords in the request text.
    Example: `run 026 as BUG automatically` — confirmation skipped (both "BUG" and "automatically" are present).
    Example: `run 026` — confirmation required (neither profile nor mode is explicit).
