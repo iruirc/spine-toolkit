@@ -1266,3 +1266,11 @@ PY
   grep -qF 'inherits the epic'"'"'s value unless its own `Task.md` names it' "$ROOT/docs/configuration.md" \
     || { echo "docs/configuration.md states another precedence"; return 1; }
 }
+
+@test "a scene's data takes its generators from scene_data, CLAUDE.md the fallback" {
+  p="$(grep -F "**A scene's data**" "$SKILL")"
+  for t in '`scene_data`' 'scripts/resolve-settings.sh json <task dir>' '`CLAUDE.md`' '`**dev-only:**`' 'in the words of the screen'; do
+    grep -qF -- "$t" <<<"$p" || { echo "the paragraph does not say: $t"; return 1; }
+  done
+  ! grep -qF "Which generators a project has is said in the project's \`CLAUDE.md\`" <<<"$p" || { echo "old sentence still there"; return 1; }
+}
