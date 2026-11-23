@@ -71,7 +71,8 @@ written anew from the template, and `## Stack` and `## Modules` by the platform,
 template: when the project has edited them, `/setup` asks whether to keep the edit or take the new
 template. The project's own blocks — `## Agents`, `## EstimationDeltas`, `## DeliveryMode`,
 `## AILeverage`, `## Paths`, and any block the project adds — are filled by hand and
-survive `/setup` verbatim.
+survive `/setup` verbatim. Only the template's note in parentheses inside one of the five is renewed
+from the new template; a block the project adds is kept whole.
 
 ## Project settings
 

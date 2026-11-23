@@ -142,3 +142,23 @@ line_of() { grep -nF -- "$2" <<<"$1" | head -1 | cut -d: -f1; }
   done
   grep -qF 'survive `/setup`' "$ROOT/docs/configuration.md" || { echo "docs/configuration.md does not say which blocks survive"; return 1; }
 }
+
+@test "state C names the two field blocks among those it writes anew" {
+  state_c_branch | tr -s ' \n' ' ' | grep -qF 'Project settings and Task defaults are written anew from the answers'
+}
+
+# A project block carried whole kept the template's note of the version that wrote it, so a newer
+# note never reached a configured project, and every 2.x config reported all five blocks as kept.
+@test "state C renews a project block's note and carries only the project's own lines" {
+  b="$(state_c_branch | tr -s ' \n' ' ')"
+  for t in "the template's note" 'from a line opening with `(` to a line closing with `)`' \
+           "is replaced by the new template's" "its other lines are the project's and are carried verbatim" \
+           'a heading the template lacks is carried whole'; do
+    grep -qF -- "$t" <<<"$b" || { echo "state C does not say: $t"; return 1; }
+  done
+}
+
+@test "a project block whose own lines are the template's is neither carried nor reported" {
+  state_c_branch | tr -s ' \n' ' ' | grep -qF 'is not carried and is not in {kept_blocks}'
+  grep -qF 'note in parentheses' "$ROOT/docs/configuration.md" || { echo "docs/configuration.md does not say the note is renewed"; return 1; }
+}

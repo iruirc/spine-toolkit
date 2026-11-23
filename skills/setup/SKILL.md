@@ -194,15 +194,25 @@ anything — which is what lets F, G and C take the language and the platform fr
         template's `[PLAN_CHECK]` and `[DONE_CHECK]` lines where they stand (Block-to-field mapping).
      d. Parse the old config with state F's section parser and sort its blocks; nothing is written
         yet, so a stop here still leaves every file as it was.
+        - Project settings and Task defaults are written anew from the answers: q0, qM, qP and
+          qMS, the lines step c carries over, and the template's value for every other field.
         - Platform, Orchestration, Stack and Modules are written anew: Platform and Orchestration
           from the template, Stack and Modules by the platform half (step 5). A row typed into
           `## Modules` by hand does not survive a reconfigure; the platform regenerates the block.
         - The project's blocks — Agents, EstimationDeltas, DeliveryMode, AILeverage, Paths — and
           any heading in neither the canonical list nor the mapping are carried verbatim,
           in place, as state F step c places them; a heading the template lacks goes right after
-          the block it followed in the old file, and a block the old file lacks stays the template's. Setup
-          asks nothing about them: they hold what the project wrote, `## Paths` above all, whose
-          `Known failures` line is the only place the registry's path is read from.
+          the block it followed in the old file, and a block the old file lacks stays the template's.
+          Setup asks nothing about them: they hold what the project wrote, `## Paths`
+          above all, whose `Known failures` line is the only place the registry's path is read
+          from.
+          Of a project block, the template's note — the paragraphs from a line opening with `(` to
+          a line closing with `)`, such as `## Paths`' `(optional: …)` — is replaced by the new
+          template's, so a note a newer toolkit rewrote reaches a configured project; its other
+          lines are the project's and are carried verbatim. A block whose own lines are the
+          template's — none at all, or `manual` under DeliveryMode — is not carried and is not in
+          {kept_blocks}: the new template's block stands. All of a heading outside the template is
+          the project's, so a heading the template lacks is carried whole, parentheses included.
         - Persona and Rules come from the template, and the project may have edited them. Compare
           each with the same block of the template; the `Communication language:` line is left out
           of the comparison, and is always rendered with the language q0 chose, under Keep yours
@@ -359,7 +369,8 @@ anything — which is what lets F, G and C take the language and the platform fr
    - States A/B/C/E → key `setup_done` with placeholders {platform}, {stack}, {mode},
      {progress}, {lang}, {tasks_status}, {docs_map_status}, {notes}.
      State C adds `report_reconfigure_kept_blocks` with {kept_blocks} — the blocks step 4(d)
-     carried, Persona and Rules included when kept — on a line of its own after `setup_done`;
+     carried, which leaves out a project block holding only the template's lines, Persona and
+     Rules included when kept — on a line of its own after `setup_done`;
      with nothing carried there is no such line.
    - State D → key `report_migration_success` with placeholders {moved_sections},
      {kept_sections}, {filled_default_sections}, {filled_default_fields}, {warnings},
