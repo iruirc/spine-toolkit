@@ -10,7 +10,9 @@ set -euo pipefail
 #                                                  # the core root it runs from, and roots, the folders
 #                                                  # a stage may search, known_failures, the path of
 #                                                  # the registry of failures outside a task ("" with
-#                                                  # no config), project_config, the file
+#                                                  # no config), scene_data, the path of the
+#                                                  # document naming the generators of manual-check
+#                                                  # scene data ("" with no line), project_config, the file
 #                                                  # the settings came from, and runtime, the id
 #                                                  # whose runtimes/<id>.json gave the model and
 #                                                  # effort vocabulary (default claude-code), and
@@ -783,21 +785,37 @@ def search_roots():
     return roots
 
 
-def known_failures():
-    """Not a setting either: where the project keeps its failures outside a task
-    (conventions/known-failures.md). ## Paths names it under Known failures from the project root,
-    a leading / included, as External packages is written, or from the home folder with ~; else
-    Tasks/KnownFailures.md there. A path, whether or not the file exists: no config, no path."""
+def paths_line(label):
+    """The absolute path a `- <label>: <path>` line of ## Paths names: from the project root, a
+    leading / included, as External packages is written, or from the home folder with ~. None when
+    the line is absent or empty, and when there is no config."""
     if not CFG:
-        return ''
+        return None
     home = os.path.dirname(CFG)
     for line in block(CFG, 'Paths'):
-        m = re.match(r'^-\s*Known failures:\s*(.+?)\s*$', line)
+        m = re.match(r'^-\s*' + re.escape(label) + r':\s*(.+?)\s*$', line)
         if m:
             p = m.group(1)
             p = os.path.expanduser(p) if p.startswith('~') else p.lstrip('/')
             return os.path.normpath(os.path.join(home, p))
-    return os.path.join(home, 'Tasks', 'KnownFailures.md')
+    return None
+
+
+def known_failures():
+    """Not a setting either: where the project keeps its failures outside a task
+    (conventions/known-failures.md). ## Paths names it under Known failures; else
+    Tasks/KnownFailures.md under the project root. A path, whether or not the file exists: no
+    config, no path."""
+    if not CFG:
+        return ''
+    return paths_line('Known failures') or os.path.join(os.path.dirname(CFG), 'Tasks', 'KnownFailures.md')
+
+
+def scene_data():
+    """Not a setting either: the project's document of the generators and presets that give a
+    manual-check scene its data (skills/manual-checks). ## Paths names it under Scene data; with no
+    line there is none, and the path is empty, as it is with no config."""
+    return paths_line('Scene data') or ''
 
 
 def session_core_compat(core_root=None):
@@ -820,7 +838,7 @@ def session_core_compat(core_root=None):
 if CMD == 'json':
     print(json.dumps(dict(resolved, sources=sources, plugin_root=os.environ['SPINE_CORE_ROOT'],
                           core_compat=session_core_compat(),
-                          roots=search_roots(), known_failures=known_failures(), project_config=CFG, runtime=RUNTIME,
+                          roots=search_roots(), known_failures=known_failures(), scene_data=scene_data(), project_config=CFG, runtime=RUNTIME,
                           model_tiers=MODEL_TIER_OF),
                      ensure_ascii=False, sort_keys=True))
     sys.exit(0)

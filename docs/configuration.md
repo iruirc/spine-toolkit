@@ -60,6 +60,11 @@ Validation again. When the test of a `permanent` entry passes, it offers to move
 `## Removed`. Consent writes the row, logs the decision in the task's `Questions.md` and commits the
 registry on its own. In `auto` the registry does not change.
 
+`Scene data` names the project's document of the generators and presets in the build that give a
+manual-check scene its data, and of how the screen names them (`skills/manual-checks`). It is written
+as `Known failures` is; left out, there is none, and `manual-checks` looks for them in the project's
+`CLAUDE.md`. The resolver prints its absolute path, or `""` with no line, as `scene_data`.
+
 A reconfiguring `/setup` treats every block after the two of fields three ways. `## Platform` and `## Orchestration` are
 written anew from the template, and `## Stack` and `## Modules` by the platform, so a row typed into
 `## Modules` by hand does not outlive a reconfigure. `## Persona` and `## Rules` come from the

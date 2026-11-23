@@ -1309,6 +1309,43 @@ $BATS_TEST_TMPDIR/assets"
   [ "$(field known_failures <<<"$output")" = "$BATS_TEST_TMPDIR/home/Failing.md" ] || { echo "$output"; return 1; }
 }
 
+@test "scene_data follows ## Paths from the project root, a leading slash included, or from ~" {
+  printf '## Paths\n\n- Scene data: /Docs/S.md\n' >>"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field scene_data <<<"$output")" = "$PROJ/Docs/S.md" ] || { echo "$output"; return 1; }
+  printf '# CLAUDE-spine-toolkit.md\n\n## Task defaults\n\n[WORKFLOW_MODE] = [manual]\n\n## Paths\n\n- Scene data: Docs/S.md\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$TASK"
+  [ "$(field scene_data <<<"$output")" = "$PROJ/Docs/S.md" ] || { echo "$output"; return 1; }
+  printf '# CLAUDE-spine-toolkit.md\n\n## Task defaults\n\n[WORKFLOW_MODE] = [manual]\n\n## Paths\n\n- Scene data: ~/S.md\n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  HOME="$BATS_TEST_TMPDIR/home" run "$RESOLVE" json "$TASK"
+  [ "$(field scene_data <<<"$output")" = "$BATS_TEST_TMPDIR/home/S.md" ] || { echo "$output"; return 1; }
+}
+
+# The key must be there and be "": a missing key also prints nothing through field().
+empty_scene_data() { python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("scene_data", None) == "" else 1)'; }
+
+@test "scene_data is empty with no line, an empty line or no config, and is not a setting" {
+  run "$RESOLVE" json "$TASK"
+  empty_scene_data <<<"$output" || { echo "no line: $output"; return 1; }
+  printf '## Paths\n\n- Scene data:\n' >>"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$TASK"
+  empty_scene_data <<<"$output" || { echo "empty line: $output"; return 1; }
+  printf '# CLAUDE-spine-toolkit.md\n\n## Task defaults\n\n[WORKFLOW_MODE] = [manual]\n\n## Paths\n\n- Scene data:   \n' >"$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$TASK"
+  empty_scene_data <<<"$output" || { echo "blank value: $output"; return 1; }
+  run "$RESOLVE" show "$TASK" --all
+  ! grep -qi 'scene_data' <<<"$output" || { echo "$output"; return 1; }
+  rm "$PROJ/CLAUDE-spine-toolkit.md"
+  run "$RESOLVE" json "$PROJ"   # a task folder with no config is an error; a plain folder resolves
+  empty_scene_data <<<"$output" || { echo "no config: $output"; return 1; }
+}
+
+@test "the Scene data line is documented where Known failures is" {
+  grep -F '| `scene_data` |' "$ROOT/conventions/task-settings.md" | grep -qF '`- Scene data: <path>`' || { echo "task-settings.md: no scene_data row"; return 1; }
+  grep -qF -- '- Scene data: ' "$ROOT/templates/spine-md/en.md" || { echo "template: no example"; return 1; }
+  grep -qF '`scene_data`' "$ROOT/docs/configuration.md" || { echo "docs/configuration.md: no scene_data"; return 1; }
+}
+
 @test "profile-epic.js forwards known_failures" {
   E="$ROOT/workflows/profile-epic.js"
   grep -qF 'known_failures: KNOWN_FAILURES,' "$E" || { echo "profile-epic.js does not forward known_failures"; return 1; }

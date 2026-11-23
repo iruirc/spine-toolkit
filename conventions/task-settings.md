@@ -195,6 +195,7 @@ answers.
 | `effort` | `[EFFORT]` | `[EFFORT]`, entries `<key>: <value>` | the runtime's `effort` list (`runtimes/<id>.json`); `session` always | `session` |
 | `long_run` | `[LONG_RUN]` | `[LONG_RUN]`, entries `<key>: <minutes>` | keys `stall` `max`, a whole number of minutes > 0 | `stall: 5, max: 30` |
 | `known_failures` | — | `## Paths`, line `- Known failures: <path>` | a path from the project root, a leading `/` included, or from `~`; the file need not exist | `<project root>/Tasks/KnownFailures.md`; `""` with no config |
+| `scene_data` | — | `## Paths`, line `- Scene data: <path>` | a path from the project root, a leading `/` included, or from `~`; the file need not exist | `""`: no line, an empty one, or no config |
 
 `driver` walks this same chain but never rides the Outbound Contract: a workflow script must not
 gate on it, so it stays a pre-flight concern of the orchestrator alone
