@@ -45,6 +45,15 @@ spine-toolkit is already configured (`SPINE.md` exists). What should I do?
 ## auq_reconfigure_toolkit_options
 Cancel | Backup-and-overwrite | Overwrite
 
+## auq_reconfigure_template_blocks
+These blocks of `SPINE.md` differ from the toolkit's template — edited in the project, or written by an older template: {blocks}. Which version should the new `SPINE.md` carry?
+
+## auq_reconfigure_template_blocks_options
+Keep yours | Take the template's
+
+## report_reconfigure_kept_blocks
+Kept unchanged from the old `SPINE.md`: {kept_blocks}
+
 ## auq_migrate_old_format
 Detected the old single-file format (`CLAUDE.md` contains toolkit sections). I will migrate to the two-file layout: move toolkit sections to `SPINE.md`, keep your sections in `CLAUDE.md`, insert the import line, and back up the original to `CLAUDE.md.bak`. Proceed?
 

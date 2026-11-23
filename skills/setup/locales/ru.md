@@ -45,6 +45,15 @@ spine-toolkit уже настроен в проекте (`SPINE.md` сущест
 ## auq_reconfigure_toolkit_options
 Cancel | Backup-and-overwrite | Overwrite
 
+## auq_reconfigure_template_blocks
+Эти блоки `SPINE.md` отличаются от шаблона toolkit — их поправили в проекте или их писал шаблон прошлой версии: {blocks}. Какую версию взять в новый `SPINE.md`?
+
+## auq_reconfigure_template_blocks_options
+Оставить свои | Взять из шаблона
+
+## report_reconfigure_kept_blocks
+Сохранено без изменений из старого `SPINE.md`: {kept_blocks}
+
 ## auq_migrate_old_format
 Обнаружен старый однофайловый формат (`CLAUDE.md` содержит toolkit-секции). Я перенесу его в двухфайловую раскладку: toolkit-секции уедут в `SPINE.md`, твои секции останутся в `CLAUDE.md`, добавится import-строка, оригинал сохранится в `CLAUDE.md.bak`. Продолжить?
 

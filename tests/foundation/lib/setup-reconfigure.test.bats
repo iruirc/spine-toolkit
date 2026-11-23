@@ -76,3 +76,54 @@ line_of() { grep -nF -- "$2" <<<"$1" | head -1 | cut -d: -f1; }
   done
   grep -qF '(Cancel / Backup-and-overwrite / Overwrite)' "$ROOT/skills/setup/SKILL.md"
 }
+
+@test "state C keeps the project's blocks verbatim, in place" {
+  b="$(state_c_branch)"
+  for t in 'Agents, EstimationDeltas, DeliveryMode, AILeverage, Paths' \
+           'any heading in neither the canonical list nor the mapping' \
+           'in place, as state F step c places them' \
+           'a block the old file lacks stays the template'"'"'s'; do
+    grep -qF -- "$t" <<<"$b" || { echo "state C does not say: $t"; return 1; }
+  done
+}
+
+@test "state C writes Platform, Stack, Modules and Orchestration anew" {
+  state_c_branch | grep -qF 'Platform, Orchestration, Stack and Modules are written anew'
+}
+
+@test "state C compares Persona and Rules under the old config's language" {
+  b="$(state_c_branch)"
+  for t in 'Persona' 'Rules' "rendered with the old config's \`[LANG]\`" \
+           '`auq_reconfigure_template_blocks`' 'unchanged → the new template, asked nothing'; do
+    grep -qF -- "$t" <<<"$b" || { echo "state C does not say: $t"; return 1; }
+  done
+}
+
+@test "the state C report names the blocks it kept" {
+  algorithm_step 7 | grep -qF '`report_reconfigure_kept_blocks`'
+}
+
+@test "the state table says state C keeps the project's blocks" {
+  grep -F '| **C · already_configured**' "$SKILL" | grep -qF "keeps the project's blocks"
+}
+
+@test "the reconfigure keys exist in both locales with their placeholders" {
+  for l in en ru; do
+    f="$ROOT/skills/setup/locales/$l.md"
+    for k in auq_reconfigure_template_blocks auq_reconfigure_template_blocks_options report_reconfigure_kept_blocks; do
+      grep -qx "## $k" "$f" || { echo "$l.md: no $k"; return 1; }
+    done
+    awk '/^## auq_reconfigure_template_blocks$/{f=1;next} f&&/^## /{exit} f' "$f" | grep -qF '{blocks}' || { echo "$l.md: no {blocks}"; return 1; }
+    awk '/^## report_reconfigure_kept_blocks$/{f=1;next} f&&/^## /{exit} f' "$f" | grep -qF '{kept_blocks}' || { echo "$l.md: no {kept_blocks}"; return 1; }
+    [ "$(awk '/^## auq_reconfigure_template_blocks_options$/{f=1;next} f&&NF{print;exit}' "$f" | awk -F' \\| ' '{print NF}')" = 2 ] || { echo "$l.md: options are not two"; return 1; }
+  done
+}
+
+@test "the SPINE.md header lets the project edit its own blocks" {
+  h="$(sed -n '1,/^## /p' "$ROOT/templates/spine-md/en.md")"
+  ! grep -qF 'Do not edit by hand' <<<"$h" || { echo "header still forbids editing"; return 1; }
+  for t in '`## Paths`' 'survive `/setup`' '`/setup` asks before replacing your edits'; do
+    grep -qF -- "$t" <<<"$h" || { echo "header does not say: $t"; return 1; }
+  done
+  grep -qF 'survive `/setup`' "$ROOT/docs/configuration.md" || { echo "docs/configuration.md does not say which blocks survive"; return 1; }
+}

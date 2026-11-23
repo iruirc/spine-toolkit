@@ -1,7 +1,7 @@
 # SPINE.md — Spine Configuration
 
-> Toolkit-owned configuration. Created and updated by `spine-toolkit:setup`.
-> **Do not edit by hand unless you know what you're doing** — running `/setup` again may overwrite your changes (after backup).
+> Spine configuration. Created and updated by `spine-toolkit:setup`.
+> Fields `[...]` and the blocks `## Platform`, `## Stack`, `## Modules`, `## Orchestration` are written by `/setup`. `## Persona` and `## Rules` come from the template; `/setup` asks before replacing your edits. The project's own blocks — `## Agents`, `## Paths`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, and any block you add — are filled by hand and survive `/setup`.
 > User-owned project instructions live in `CLAUDE.md`. Claude Code reads this file through the `@./SPINE.md` line in `CLAUDE.md`; other runtimes read it through their own startup file.
 > Task-orchestration logic is in the `spine-toolkit:*` skills (see "Orchestration" below).
 > Every field below is documented in the toolkit's `docs/configuration.md` — what each governs, its values, its default, and whether a task can override it.

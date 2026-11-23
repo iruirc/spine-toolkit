@@ -92,7 +92,7 @@ The skill's behavior is determined by the project state, computed from five chec
 |---|---|---|---|---|---|---|
 | **A · new_install** | absent | absent | absent | absent | — | Ask q0, qM, qP, qMS. Create both files. |
 | **B · existing_md** | present | absent | absent | absent | no | Ask q0, qM, qP, qMS. Backup CLAUDE.md. Insert `@import` line. Create `SPINE.md`. |
-| **C · already_configured** | present | present, 2.0 fields | any | — | no | AUQ `auq_reconfigure_toolkit` first, in the config's language; q0 and the platform only after Overwrite. Self-heal `CLAUDE.md` if `@import` is missing. |
+| **C · already_configured** | present | present, 2.0 fields | any | — | no | AUQ `auq_reconfigure_toolkit` first, in the config's language; q0 and the platform only after Overwrite. State C keeps the project's blocks and asks before replacing an edited Persona or Rules (step 4). Self-heal `CLAUDE.md` if `@import` is missing. |
 | **D · old_format** | present | absent | absent | absent | yes | AUQ `auq_migrate_old_format`. Run the migration algorithm (see below). |
 | **E · renamed_config** | present | absent | absent | present | — | AUQ `auq_migrate_config_name`. Rename the file, reconcile blocks, rewrite the `@import` line. |
 | **F · old_block_format** | present | present, 1.x headings | — | — | no | Migrate the config's format without asking. Back up, rewrite, report. |
@@ -192,9 +192,30 @@ anything — which is what lets F, G and C take the language and the platform fr
         A config that holds the line keeps its value, and the rewritten file carries it over. A
         `[ARTIFACT_CHECK]` line is carried over as the two lines it now is: its value replaces the
         template's `[PLAN_CHECK]` and `[DONE_CHECK]` lines where they stand (Block-to-field mapping).
-     d. Backup-and-overwrite → rename SPINE.md → SPINE.md.bak (timestamp on collision). Then
-        render the toolkit template and write it to SPINE.md (overwrite).
-     e. Self-heal CLAUDE.md: if the `@./SPINE.md` line is missing, run the
+     d. Parse the old config with state F's section parser and sort its blocks; nothing is written
+        yet, so a stop here still leaves every file as it was.
+        - Platform, Orchestration, Stack and Modules are written anew: Platform and Orchestration
+          from the template, Stack and Modules by the platform half (step 5). A row typed into
+          `## Modules` by hand does not survive a reconfigure; the platform regenerates the block.
+        - The project's blocks — Agents, EstimationDeltas, DeliveryMode, AILeverage, Paths — and
+          any heading in neither the canonical list nor the mapping are carried verbatim,
+          in place, as state F step c places them; a block the old file lacks stays the template's. Setup
+          asks nothing about them: they hold what the project wrote, `## Paths` above all, whose
+          `Known failures` line is the only place the registry's path is read from.
+        - Persona and Rules come from the template, and the project may have edited them. Compare
+          each with the same block of the template rendered with the old config's `[LANG]` — not
+          the language q0 just chose, so that switching the language alone never reads as an
+          edit. Equal, i.e. unchanged → the new template, asked nothing, rendered with the
+          language q0 chose. Different → one AUQ `auq_reconfigure_template_blocks` with
+          {blocks} = the blocks that differ, options `auq_reconfigure_template_blocks_options`
+          (Keep yours / Take the template's); Keep yours comes first, the menu's default, and
+          carries the block like the project's blocks. A block the old file lacks takes the
+          template, asked nothing.
+     e. Backup-and-overwrite → rename SPINE.md → SPINE.md.bak (timestamp on collision). Then
+        render the toolkit template, put every block step d carried in its place, and write it to
+        SPINE.md (overwrite). Both answers carry the same blocks; only Backup-and-overwrite
+        leaves a `.bak`.
+     f. Self-heal CLAUDE.md: if the `@./SPINE.md` line is missing, run the
         insertion logic from State B step (d), with backup; a `@./CLAUDE-spine-toolkit.md` line
         left behind is rewritten to `@./SPINE.md` rather than joined by a second import.
 
@@ -336,6 +357,9 @@ anything — which is what lets F, G and C take the language and the platform fr
 7. Render the report:
    - States A/B/C/E → key `setup_done` with placeholders {platform}, {stack}, {mode},
      {progress}, {lang}, {tasks_status}, {docs_map_status}, {notes}.
+     State C adds `report_reconfigure_kept_blocks` with {kept_blocks} — the blocks step 4(d)
+     carried, Persona and Rules included when kept — on a line of its own after `setup_done`;
+     with nothing carried there is no such line.
    - State D → key `report_migration_success` with placeholders {moved_sections},
      {kept_sections}, {filled_default_sections}, {filled_default_fields}, {warnings},
      {backup_path}, {notes}.

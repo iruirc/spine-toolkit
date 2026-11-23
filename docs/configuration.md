@@ -41,8 +41,8 @@ The config's line is the project's default for these fields, and the task's own 
 
 Every other block of the file — `## Persona`, `## Rules`, `## Platform`, `## Agents`, `## Stack`,
 `## Modules`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`,
-`## Orchestration` — is read by a skill for its own purposes and holds no resolved field. One
-exception feeds every task: the folders `## Paths` names under `External packages` and `Roots`,
+`## Orchestration` — is read by a skill for its own purposes and holds no resolved field. One exception
+feeds every task: the folders `## Paths` names under `External packages` and `Roots`,
 with the project root, are the only places a stage agent may search for a file. A second one:
 `Known failures` names the project's registry of failures outside a task (`conventions/known-failures.md`),
 written from the project root as `External packages` is, a leading `/` included, or from the home
@@ -59,6 +59,14 @@ An entry is added and removed only on the owner's word, in `manual`, after Valid
 Validation again. When the test of a `permanent` entry passes, it offers to move the entry to
 `## Removed`. Consent writes the row, logs the decision in the task's `Questions.md` and commits the
 registry on its own. In `auto` the registry does not change.
+
+A reconfiguring `/setup` treats every block after the two of fields three ways. `## Platform` and `## Orchestration` are
+written anew from the template, and `## Stack` and `## Modules` by the platform, so a row typed into
+`## Modules` by hand does not outlive a reconfigure. `## Persona` and `## Rules` come from the
+template: when the project has edited them, `/setup` asks whether to keep the edit or take the new
+template. The project's own blocks — `## Agents`, `## EstimationDeltas`, `## DeliveryMode`,
+`## AILeverage`, `## Paths`, and any block the project adds — are filled by hand and
+survive `/setup` verbatim.
 
 ## Project settings
 
