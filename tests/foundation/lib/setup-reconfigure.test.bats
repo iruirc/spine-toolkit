@@ -93,10 +93,25 @@ line_of() { grep -nF -- "$2" <<<"$1" | head -1 | cut -d: -f1; }
 
 @test "state C compares Persona and Rules under the old config's language" {
   b="$(state_c_branch)"
-  for t in 'Persona' 'Rules' "rendered with the old config's \`[LANG]\`" \
-           '`auq_reconfigure_template_blocks`' 'unchanged → the new template, asked nothing'; do
+  for t in 'Persona' 'Rules' '`auq_reconfigure_template_blocks`' 'unchanged → the new template, asked nothing'; do
     grep -qF -- "$t" <<<"$b" || { echo "state C does not say: $t"; return 1; }
   done
+}
+
+# Final review: /lang changes [LANG] alone, so Persona's language line can disagree with the config's
+# language without anyone editing it; comparing it raised a false question, and Keep yours kept the stale
+# language.
+@test "state C leaves Persona's language line out of the comparison and always writes it from q0" {
+  b="$(state_c_branch | tr -s ' \n' ' ')"
+  for t in 'the `Communication language:` line is left out of the comparison' \
+           'always rendered with the language q0 chose, under Keep yours too'; do
+    grep -qF -- "$t" <<<"$b" || { echo "state C does not say: $t"; return 1; }
+  done
+  ! grep -qF "old config's \`[LANG]\`" <<<"$b" || { echo "state C still compares under the old language"; return 1; }
+}
+
+@test "state C puts a heading the template lacks after the block it followed" {
+  state_c_branch | tr -s ' \n' ' ' | grep -qF 'a heading the template lacks goes right after the block it followed in the old file'
 }
 
 @test "the state C report names the blocks it kept" {

@@ -199,18 +199,19 @@ anything — which is what lets F, G and C take the language and the platform fr
           `## Modules` by hand does not survive a reconfigure; the platform regenerates the block.
         - The project's blocks — Agents, EstimationDeltas, DeliveryMode, AILeverage, Paths — and
           any heading in neither the canonical list nor the mapping are carried verbatim,
-          in place, as state F step c places them; a block the old file lacks stays the template's. Setup
+          in place, as state F step c places them; a heading the template lacks goes right after
+          the block it followed in the old file, and a block the old file lacks stays the template's. Setup
           asks nothing about them: they hold what the project wrote, `## Paths` above all, whose
           `Known failures` line is the only place the registry's path is read from.
         - Persona and Rules come from the template, and the project may have edited them. Compare
-          each with the same block of the template rendered with the old config's `[LANG]` — not
-          the language q0 just chose, so that switching the language alone never reads as an
-          edit. Equal, i.e. unchanged → the new template, asked nothing, rendered with the
-          language q0 chose. Different → one AUQ `auq_reconfigure_template_blocks` with
-          {blocks} = the blocks that differ, options `auq_reconfigure_template_blocks_options`
-          (Keep yours / Take the template's); Keep yours comes first, the menu's default, and
-          carries the block like the project's blocks. A block the old file lacks takes the
-          template, asked nothing.
+          each with the same block of the template; the `Communication language:` line is left out
+          of the comparison, and is always rendered with the language q0 chose, under Keep yours
+          too — `/lang` changes `[LANG]` alone, so that line may disagree with the config without
+          anyone having edited it. Equal, i.e. unchanged → the new template, asked nothing.
+          Different → one AUQ `auq_reconfigure_template_blocks` with {blocks} = the blocks that
+          differ, options `auq_reconfigure_template_blocks_options` (Keep yours / Take the
+          template's); Keep yours comes first, the menu's default, and carries the block like the
+          project's blocks. A block the old file lacks takes the template, asked nothing.
      e. Backup-and-overwrite → rename SPINE.md → SPINE.md.bak (timestamp on collision). Then
         render the toolkit template, put every block step d carried in its place, and write it to
         SPINE.md (overwrite). Both answers carry the same blocks; only Backup-and-overwrite
