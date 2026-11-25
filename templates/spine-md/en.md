@@ -119,13 +119,17 @@ manual
 directory it resolves to is a checkout the project builds against; a checkout carrying its own
 `DocsMap.md` contributes its components to this project's registry, declared once at the
 package and read by every project that holds it. Paths inside a package's registry are written
-relative to that package's root. In Codex CLI, setup also lets the sandbox write there: the folder
-before the glob goes into `writable_roots` of the project's `.codex/config.toml`.
+relative to that package's root. Spine writes to three kinds of folder: the tasks folder, each
+external package and each documentation component's `places`. Those that lie outside the project
+after symlinks are followed need write access from the runtime, and `/setup` adds them with the
+user's consent: to `writable_roots` of the project's `.codex/config.toml` in Codex CLI, to
+`permissions.additionalDirectories` of `.claude/settings.local.json` in Claude Code.
 
 `Roots` may repeat too and names a folder outside the build that the project may read — an assets
 repository, shared fixtures. It is absolute, or relative to the project root. Together with the
 project root and every external package it is where a stage agent may search for a file, and
-nowhere else. It stays read-only in Codex CLI.
+nowhere else. It stays read-only in both runtimes. A `Tasks` or `Docs` folder that is a symlink
+needs no `Roots` line: the write access above covers it.
 
 `Known failures` names the file where the project keeps the failures that are not any task's
 (`conventions/known-failures.md`), written from the project root as `External packages` is — a

@@ -160,10 +160,17 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   done
 }
 
-@test "the SPINE.md template says External packages are writable in Codex and Roots are not" {
+@test "the SPINE.md template says where Spine writes in both runtimes and that Roots stay read-only" {
   T="$ROOT/templates/spine-md/en.md"
-  awk '/^`External packages` may repeat/{on=1} on && /^$/{exit} on' "$T" | grep -qF 'writable_roots' || { echo "External packages paragraph lacks writable_roots"; false; }
-  awk '/^`Roots` may repeat/{on=1} on && /^$/{exit} on' "$T" | grep -qF 'read-only in Codex CLI' || { echo "Roots paragraph lacks read-only"; false; }
+  ext="$(awk '/^`External packages` may repeat/{on=1} on && /^$/{exit} on' "$T")"
+  for s in 'writable_roots' 'additionalDirectories' 'tasks folder' '`places`'; do
+    grep -qF -- "$s" <<<"$ext" || { echo "External packages paragraph lacks: $s"; false; }
+  done
+  roots="$(awk '/^`Roots` may repeat/{on=1} on && /^$/{exit} on' "$T")"
+  grep -qF 'read-only' <<<"$roots" || { echo "Roots paragraph lacks read-only"; false; }
+  grep -qF '`Tasks`' <<<"$roots" || { echo "Roots paragraph does not name Tasks"; false; }
+  grep -qF '`Docs`' <<<"$roots" || { echo "Roots paragraph does not name Docs"; false; }
+  grep -qF 'no `Roots` line' <<<"$roots" || { echo "Roots paragraph lacks the no-Roots-line rule"; false; }
 }
 
 @test "the Codex map says how commits pass the read-only .git" {
