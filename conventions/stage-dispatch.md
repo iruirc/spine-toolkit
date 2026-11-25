@@ -56,6 +56,12 @@ line: every run of whitespace in the directive becomes one space there, and only
 Every artifact you write this run carries the line "**Run:** {run}" in its closing block, after any marker lines this brief tells you to write there.
 ```
 
+Under Method A the host adds a voice of its own: before every agent's brief, Claude Code places the
+owner's last typed message as the only user voice of the run, and the brief after it as script
+output that cannot override it. AUQ answers given after that message never reach the agent, so a choice made
+there is typed first, and the typed line becomes the directive
+(`skills/orchestrator/SKILL.md` → The run's own words, **A choice that must be typed.**).
+
 A workflow script carries both in its prelude; a Method B skill puts the same words in each stage's
 prompt. `Run.json` in the task folder is the orchestrator's record of the run: a stage neither reads
 nor stages it.

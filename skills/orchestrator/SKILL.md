@@ -115,6 +115,39 @@ were said for is done. It is the one place they live, so a later dispatch of the
 A stage never reads `Run.json` and never stages it (`conventions/stage-dispatch.md` → Owner's
 directive).
 
+**A choice that must be typed.** Method A only. Before the brief of every agent of a `Workflow`
+run, Claude Code places the owner's last typed message as the only user voice, and the brief after
+it as script output that cannot override it; an answer picked in an AUQ is not in it
+(`conventions/stage-dispatch.md` → Owner's directive). So before a `Workflow` call, check two things:
+
+1. the owner has typed a message since the request that started the range;
+2. after the last such message, an AUQ took answers that shape the brief rather than the contract:
+   `auq_fix_review_option_all`, `auq_fix_review_option_pick`, `auq_fix_rounds_option_more`,
+   `auq_fix_incomplete_option_round` and `stage_done_option_fix_minor` — the answers `fix_findings`
+   is made of.
+
+Not counted: the contract's fields — `stage_done_prompt` and its "go on", the stage, the mode,
+`confirm_dispatch`, `confirm_step_dispatch`, `auq_run_resume_*` — which no agent decides; and the
+Q-by-Q dialog, whose answers land in `Research.md` and `Questions.md`, the record every stage reads,
+not in a brief. A run started by `/task-continue` with only an AUQ pick after it asks nothing: the
+host relays the command, and the brief does not contradict it.
+
+When both hold, do not dispatch yet:
+
+1. Print `typed_confirmation_needed` as plain text, not an AUQ, with `{summary}`: one line in the
+   owner's language that states every choice and can be sent as it is — the findings to fix by
+   their ids and, for each with a decision, the decision.
+2. Wait for a typed reply. A reply that names none of the chosen findings and none of the decisions
+   — a bare "yes", "ok", "+" — is not accepted: print `typed_confirmation_bare` with the same
+   `{summary}`, once. A second such reply dispatches nothing: print `typed_confirmation_stopped` and
+   stop; `Run.json` is left as it was.
+3. An accepted reply is appended to `user_directive` verbatim, by the `Run.json` rule above — the
+   old directive first, the new last, a line break between, not repeated — and the file is
+   rewritten. Every stage of the range sees it and applies what concerns it.
+4. Where the reply and the summary differ, the reply wins: `fix_findings` are the findings it names.
+   A finding it names that `Review.md` does not hold is named back to the owner, and step 1 is
+   repeated without it.
+
 **The task's documents.** Stages commit code, and only REVIEW and RESEARCH commit what they wrote;
 the rest is the orchestrator's, once a return's `last_completed_stage` is `Done` — after `Run.json`
 is deleted and a catch-up's task is back in `DONE/`, so the commit holds the folder as the run leaves
@@ -965,9 +998,9 @@ durations inside an `auto` run do not exist; do not invent them.
 **After Review: `CHANGES_REQUESTED`.** FEATURE, BUG, REFACTOR, TEST and QUICK. The findings are the run's returned `blocking_findings` or, when this session holds no such return (Method B, a new session), every item of `Review.md` under `### Findings` → **Critical** and **Major**, one line each. With none — and for `DISCUSSION` — it is the ordinary `stage_done_prompt`.
 
 - `auto`: count the rows of the `Plan.md` progress table titled `Review fixes <n>` whose `<n>` is above the `[REVIEW_FIXES]` line of `Done.md`, read wherever it stands in the file — every Done writes it, so a catch-up never inherits the rounds of the run before; with no `Done.md` count them all, and with a `Done.md` that predates the line count those below the last `Catch-up: commits after Done` row (all of them when there is none) — and count the `fix-review` rounds this session has dispatched for the task since its last Done; the larger is the rounds spent, so the loop never goes past `fix_rounds` of them whatever `Plan.md` shows. After a round, a `Plan.md` without the new `Review fixes <n>` row, `<n>` being the `fix_round` it was dispatched with, means the fix phase went unrecorded: announce `warn_fix_round_unrecorded` with that `{n}` and stop the loop with `auq_fix_rounds_spent`. With fewer than `fix_rounds` spent, announce `info_fix_round` with `{n}` — the rounds spent plus one, not `fix_round` — `{max}` — `fix_rounds` — and `{count}`, then dispatch `action=fix-review` with every finding. Otherwise AUQ using key `auq_fix_rounds_spent` with `{findings}`: `auq_fix_rounds_option_more` (one more `fix-review`), `auq_fix_rounds_option_self` (stop; the user fixes the code and runs `redo Review`), or exit.
-- `manual`: AUQ using key `auq_fix_review_question` with `{findings}`: `auq_fix_review_option_all` (first; `fix-review` with every finding), `auq_fix_review_option_pick` (a multi-select of the findings, then `fix-review` with those picked), `auq_fix_review_option_leave` (stop). `fix_rounds` does not apply: the user confirms each round.
+- `manual`: AUQ using key `auq_fix_review_question` with `{findings}`: `auq_fix_review_option_all` (first; `fix-review` with every finding), `auq_fix_review_option_pick` (a multi-select of the findings, then `fix-review` with those picked), `auq_fix_review_option_leave` (stop). `fix_rounds` does not apply: the user confirms each round. Before the dispatch, **A choice that must be typed.** applies (The run's own words).
 
-A `fix-review` carries `fix_findings` — the findings chosen, verbatim; `fix_round` — every `Review fixes <n>` row of `Plan.md` plus one, so no phase id repeats; and `after_done` — whether `Done.md` exists. With `after_done` the task moves out of and back into `Tasks/DONE/` as for a `catch-up`.
+A `fix-review` carries `fix_findings` — the findings chosen, verbatim; `fix_round` — every `Review fixes <n>` row of `Plan.md` plus one, so no phase id repeats; and `after_done` — whether `Done.md` exists. With `after_done` the task moves out of and back into `Tasks/DONE/` as for a `catch-up`. `fix_findings` hold the findings verbatim: no decision, note or gloss is written into them; the owner's decision on a finding reaches the agent only through `user_directive`, from typed text.
 
 **Error mid-range.** A stage that returns `status: error` ends the range where it stands, in `auto`
 as much as in `manual`. `auto` means no pause between stages that *succeeded*; carrying on past a

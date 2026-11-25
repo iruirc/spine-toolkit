@@ -351,6 +351,17 @@ Nothing to catch up: no repository of `{task_id}` has commits after its Done.
 ## error_fix_review_nothing
 Task `{task_id}` has no review asking for changes — there is nothing for fix-review to fix.
 
+## typed_confirmation_needed
+The agent hears only what you type: an answer picked in a question does not reach it. Send this line as it is, or say the same in your own words:
+{summary}
+
+## typed_confirmation_bare
+That reply names none of the choices, so the agent would not know what it confirms. Send the line itself, or your own words for it:
+{summary}
+
+## typed_confirmation_stopped
+Nothing was dispatched: the choices were not typed. Name the findings and what to do with each, and the run goes on.
+
 ## info_fix_round
 Fix round {n} of {max}: {count} finding(s) from Review go into one plan phase.
 
