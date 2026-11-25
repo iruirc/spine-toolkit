@@ -202,7 +202,7 @@ const FIX_PLAN = { artifact_path: `${DIR}/Plan.md`, phases: [{ id: `R${FIX_ROUND
 // The fix phase is not in Plan.md yet, so its guidance says how to add it; any other phase keeps its own.
 const fixGuidance = (guidance) =>
   FIX_REVIEW
-    ? `${guidance}\n\nThis phase is not in Plan.md yet: first append it — a row in the top-level table with id R${FIX_ROUND}, titled exactly "Review fixes ${FIX_ROUND}", in English whatever the prose language, and a detail section under the same heading with the findings below as its checkboxes and a **Verification:** line chosen by the spine-toolkit:phase-verification skill. Then fix exactly these findings, nothing else, commit, and mark the phase ✅. A finding you do not fix — you decline it, cannot do it, or it needs a decision the owner has not given — you leave its checkbox unticked: commit what you fixed, mark the row ⏸ instead of ✅, and return each such finding verbatim in unfixed, followed by " — " and why. Nothing in the stage guidance above adds work to this phase — a regression test included — unless a finding asks for it. Findings:\n- ${A.fix_findings.join('\n- ')}`
+    ? `${guidance}\n\nThis phase is not in Plan.md yet: first append it — a row in the top-level table with id R${FIX_ROUND}, titled exactly "Review fixes ${FIX_ROUND}", in English whatever the prose language, and a detail section under the same heading with the findings below as its checkboxes and a **Verification:** line chosen by the spine-toolkit:phase-verification skill. Then fix exactly these findings, nothing else, commit, and mark the phase ✅. A finding you do not fix — you decline it, cannot do it, or it needs a decision the owner has not given — you leave its checkbox unticked: commit what you fixed, mark the row ⏸ instead of ✅, and return each such finding verbatim in unfixed, followed by " — " and why; return ok true and committed true, since the phase did what it could and is recorded. Fixed none of them: commit nothing and return committed false, saying why. This phase is done when every finding is either fixed and ticked or returned in unfixed — that overrides the rule below that every checkbox be ticked. Nothing in the stage guidance above adds work to this phase — a regression test included — unless a finding asks for it. Findings:\n- ${A.fix_findings.join('\n- ')}`
     : guidance
 // Fixes that follow a catch-up close that catch-up too.
 const AFTER_DONE = FIX_REVIEW && A.after_done === true
@@ -572,13 +572,13 @@ The phase is not done until every checkbox is ticked AND it is committed. If you
       { label: `${stage.toLowerCase()}:${ph.id}`, phase: stage, agentType: A.agents[role], schema: PHASE, ...tuning(role, 'stage') },
     )
     if (done && done.directive_declined) declinedIn[stage] = [declinedIn[stage], `${ph.id}: ${done.directive_declined}`].filter(Boolean).join('; ')
-    if (!done || !done.ok || !done.committed) {
-      result.notes.push(`${stage} stopped at phase ${ph.id}: ${done ? done.summary : 'the agent returned nothing'}`)
-      return false
-    }
-    if (FIX_REVIEW && Array.isArray(done.unfixed) && done.unfixed.length) {
+    if (FIX_REVIEW && done && done.committed && Array.isArray(done.unfixed) && done.unfixed.length) {
       fixUnfixed.push(...done.unfixed)
       result.notes.push(`${stage} left findings unfixed in phase ${ph.id}: ${done.unfixed.join('; ')}`)
+      return false
+    }
+    if (!done || !done.ok || !done.committed) {
+      result.notes.push(`${stage} stopped at phase ${ph.id}: ${done ? done.summary : 'the agent returned nothing'}`)
       return false
     }
   }

@@ -109,6 +109,7 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   done
   d="$(section "$S" 'State Detection')"
   grep -qF 'a last `R<n>` row at `⏸`' <<<"$d" || { echo "State Detection: no paused fix round"; return 1; }
+  grep -qF 'checked before item 1' <<<"$d" || { echo "State Detection: a finished task skips the paused round"; return 1; }
   for l in en ru; do
     for k in info_fix_incomplete auq_fix_incomplete auq_fix_incomplete_option_round \
              auq_fix_incomplete_option_accept auq_fix_incomplete_option_stop; do

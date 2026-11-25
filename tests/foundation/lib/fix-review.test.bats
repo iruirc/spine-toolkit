@@ -163,3 +163,23 @@ replies_unfixed() { replies "$1" true | node -e 'const o = JSON.parse(require("f
     [ "$(pick 'o.result.unfixed_findings === undefined' <<<"$out")" = true ] || { echo "profile-$p: unfixed_findings returned"; return 1; }
   done
 }
+
+@test "a committed fix phase that says it is not ok still returns the findings it left" {
+  for pair in $PAIRS; do
+    p="${pair%%:*}"; s="${pair#*:}"; l="$(tr '[:upper:]' '[:lower:]' <<<"$s")"
+    rep="$(replies_unfixed "$l" '["a race in the cache — needs a decision"]' | node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8")); o[process.argv[1] + ":R2"].ok = false; console.log(JSON.stringify(o))' "$l")"
+    out="$(run_profile "$p" "$(contract "$s" ", \"action\": \"fix-review\", \"fix_findings\": $FINDINGS, \"fix_round\": 2, \"after_done\": false")" "$rep")"
+    [ "$(pick 'o.result.unfixed_findings[0]' <<<"$out")" = 'a race in the cache — needs a decision' ] || { echo "profile-$p: $(pick 'o.result' <<<"$out")"; return 1; }
+    [ -z "$(prompt_of validation <<<"$out")" ] || { echo "profile-$p: Validation ran"; return 1; }
+  done
+}
+
+@test "the fix brief says how a partial and an empty fix return" {
+  for pair in $PAIRS; do
+    p="${pair%%:*}"; s="${pair#*:}"; l="$(tr '[:upper:]' '[:lower:]' <<<"$s")"
+    ph="$(run_profile "$p" "$(contract "$s" ", \"action\": \"fix-review\", \"fix_findings\": $FINDINGS, \"fix_round\": 2, \"after_done\": false")" "$(replies "$l" true)" | prompt_of "$l:R2")"
+    for f in 'return ok true and committed true' 'Fixed none of them: commit nothing and return committed false'; do
+      grep -qF "$f" <<<"$ph" || { echo "profile-$p: fix brief lost: $f"; return 1; }
+    done
+  done
+}

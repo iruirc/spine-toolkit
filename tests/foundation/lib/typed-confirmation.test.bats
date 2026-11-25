@@ -1,5 +1,4 @@
 #!/usr/bin/env bats
-# changed: sweep skills
 # A Method A agent hears the owner's last typed message as the only user voice; a choice picked in
 # an AUQ reaches it only once typed. These hold the orchestrator to that rule.
 
@@ -15,6 +14,7 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   for f in '**A choice that must be typed.**' 'Method A only' \
            'the owner has typed a message since the request that started the range' \
            'answers that shape the brief rather than the contract' \
+           'and any other AUQ answer that decides what is done with a chosen finding' \
            '`auq_fix_review_option_all`' '`auq_fix_review_option_pick`' '`auq_fix_rounds_option_more`' \
            '`auq_fix_incomplete_option_round`' '`stage_done_option_fix_minor`' \
            'typed_confirmation_needed' 'typed_confirmation_bare' 'typed_confirmation_stopped' \

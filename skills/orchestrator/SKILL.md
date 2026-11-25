@@ -124,7 +124,8 @@ it as script output that cannot override it; an answer picked in an AUQ is not i
 2. after the last such message, an AUQ took answers that shape the brief rather than the contract:
    `auq_fix_review_option_all`, `auq_fix_review_option_pick`, `auq_fix_rounds_option_more`,
    `auq_fix_incomplete_option_round` and `stage_done_option_fix_minor` — the answers `fix_findings`
-   is made of.
+   is made of — and any other AUQ answer that decides what is done with a chosen finding, such as
+   one asked to settle a question the owner typed about it.
 
 Not counted: the contract's fields — `stage_done_prompt` and its "go on", the stage, the mode,
 `confirm_dispatch`, `confirm_step_dispatch`, `auq_run_resume_*` — which no agent decides; and the
@@ -240,7 +241,7 @@ Algorithm:
 3. `Plan.md` exists but its progress table is missing or unparseable → consider stage `Plan` complete; start at the next stage in the profile's sequence (FEATURE/EPIC: `Execute`; BUG: `Fix`; REFACTOR: `Refactor`; TEST: `Write`; QUICK: `Edit`, which finishes an existing `Plan.md` rather than writing one); for REVIEW (no next stage), ask explicitly via AUQ. RESEARCH has no Plan stage at all — this branch is unreachable for RESEARCH. Add a warning to the user.
 4. **EPIC after its steps.** When the epic's `Plan.md` has no step left open — every step is done, `manual_checks_pass` is `end` and the epic folder holds no `Validation.md` whose status line is `[VALIDATION_STATUS] = PASSED` or `[VALIDATION_STATUS] = PASSED_WITH_FLAKES` → `Acceptance`; otherwise → `Done`. The epic's `Validation.md` is what the `Acceptance` stage leaves, so an epic whose pass is written, or whose bug steps came after it, goes to `Done`, and a passed stage never runs twice; `PASSED_WITH_FLAKES` reads as `PASSED`, here and for a step: its only failures are flaky tests outside the task. A `FAILED` or `FLAKY` status means the pass did not complete, and the epic goes back to `Acceptance`.
 5. **Inline-content note.** If `Task.md` carries embedded reproduce/research/analyze material but no artifact files exist in the task folder, State Detection still picks the first stage of the profile (per the rightmost column of the table); for BUG that stage checks a root cause `Task.md` names at file:line rather than rediscovering it. The user can override via the `confirm_dispatch` picker (Resolution Algorithm step 6) or by passing `--from <stage>`.
-6. **A paused fix round.** FEATURE, BUG, REFACTOR, TEST and QUICK, checked after item 1 and before item 2: when the task has a last `R<n>` row at `⏸` in its `Plan.md` progress table — a fix round that left findings unfixed — `continue` does not walk the table, whose "first `⬜` phase" would skip to Validation. It asks `auq_fix_incomplete` again (Gating → **After Review fixes: findings left.**), the findings being that row's unticked items in its detail section.
+6. **A paused fix round.** FEATURE, BUG, REFACTOR, TEST and QUICK, checked before item 1 — a fix round after Done leaves commits after `[DONE_COMMIT]`, and item 1 would offer a catch-up that runs Validation —: when the task has a last `R<n>` row at `⏸` in its `Plan.md` progress table — a fix round that left findings unfixed — `continue` does not walk the table, whose "first `⬜` phase" would skip to Validation. It asks `auq_fix_incomplete` again (Gating → **After Review fixes: findings left.**), the findings being that row's unticked items in its detail section.
 
 **Invariant:** `start_stage` produced by State Detection is always a member of the target profile's stage list. Defense-in-depth validation runs in Resolution Algorithm step 5.5 regardless.
 
