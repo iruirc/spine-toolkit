@@ -1,30 +1,34 @@
 #!/usr/bin/env bash
 # Says which of Spine's permission settings a project is missing for a runtime, and writes the ones the
-# user agreed to. Only codex-cli is implemented; claude-code is accepted and exits 2 until it is.
-# How setup and the orchestrator use it: skills/setup/SKILL.md → Codex permissions (Codex CLI).
+# user agreed to. codex-cli: rule files, the menu flag, MCP approval and writable_roots. claude-code:
+# the folders Spine writes that permissions.additionalDirectories does not cover.
+# How setup and the orchestrator use it: skills/setup/SKILL.md → Permissions.
 #
 # Usage: scripts/spine-permissions.sh check --runtime claude-code|codex-cli --project <dir> [--platform-root <dir>] [--config-home <dir>]
 #        scripts/spine-permissions.sh apply --runtime claude-code|codex-cli --project <dir> [--platform-root <dir>] [--config-home <dir>] <item>…
-# check prints one item per line — rules <file> missing|outdated, menu off, mcp <server> prompts,
-# root <path> missing|unlisted|stale — and exits 0 when it printed none, 1 when it did. apply takes
-# those lines as items and writes only them. 2: usage, either.
-# --config-home defaults to ${CODEX_HOME:-~/.codex}.
+# check prints one item per line and exits 0 when it printed none, 1 when it did. apply takes those
+# lines as items and writes only them. 2: usage, either.
+#   codex-cli:   rules <file> missing|outdated, menu off, mcp <server> prompts, root <path> missing|unlisted|stale
+#   claude-code: root <path> missing; apply writes settings.local.json of the project; --platform-root is ignored
+# --config-home defaults to ${CODEX_HOME:-~/.codex} for codex-cli, ~/.claude for claude-code.
 #
 # The folders Spine writes, for every runtime: the project's Tasks folder, each External packages root
 # of the project config, each `places` folder of the DocsMap components — by realpath, those inside the
 # project left out, a folder under another one named by the outer one only.
 #
-# Each item is a fact about Spine's settings, not about what Codex will do: rules missing — the file is
-# not there; menu off — the flag is not set; mcp prompts — the server has no approval mode. A root is
+# Each Codex item is a fact about Spine's settings, not about what Codex will do: rules missing — the file
+# is not there; menu off — the flag is not set; mcp prompts — the server has no approval mode. A root is
 # missing when the writable_roots Codex uses do not cover it and this process cannot write there,
 # unlisted when they do not cover it but this process can: check creates and removes a dotfile in it, or
 # in its nearest existing folder. That is the session's own access only when check runs in its sandbox.
+# For Claude Code a root is missing when no additionalDirectories entry of the user's settings.json, the
+# project's settings.json or its settings.local.json holds it or a folder above it.
 set -uo pipefail
 
-[ $# -ge 1 ] || { sed -n '6,12p' "$0" >&2; exit 2; }
+[ $# -ge 1 ] || { sed -n '7,13p' "$0" >&2; exit 2; }
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 exec python3 - "$HERE" "$@" <<'PY'
-import argparse, glob, json, os, re, subprocess, sys, tempfile
+import argparse, collections, glob, json, os, re, subprocess, sys, tempfile
 
 HERE = sys.argv[1]
 CORE_RULES = os.path.join(HERE, "..", "templates", "codex-rules", "spine.rules")
@@ -430,8 +434,74 @@ class State:
         return item == "menu off"
 
 
+class ClaudeState:
+    """What check reports and apply writes for Claude Code, read once from the three settings files."""
+
+    def __init__(self, a):
+        self.a = a
+        self.local = os.path.join(a.project, ".claude", "settings.local.json")
+        self.wanted = write_roots(a.project)
+        self.listed = []
+        for path in (os.path.join(a.config_home, "settings.json"),
+                     os.path.join(a.project, ".claude", "settings.json"), self.local):
+            self.listed += directories(load_settings(path))
+        self.uncovered = [r for r in self.wanted if not covers(self.listed, r)]
+
+    def items(self):
+        return ["root %s missing" % r for r in self.uncovered]
+
+    def known(self, item):
+        m = re.match(r"^root (.+) missing$", item)
+        # A root already covered is no longer printed; apply takes it again and adds nothing.
+        return bool(m) and m.group(1) in self.wanted
+
+
+def load_settings(path):
+    # A settings file as ordered JSON; absent is {}; one that is not an object is as unreadable as bad JSON.
+    if not os.path.isfile(path):
+        return collections.OrderedDict()
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f, object_pairs_hook=collections.OrderedDict)
+    if not isinstance(data, dict):
+        raise ValueError("%s is not a JSON object" % path)
+    return data
+
+
+def directories(data):
+    perms = data.get("permissions")
+    dirs = perms.get("additionalDirectories") if isinstance(perms, dict) else None
+    return [d for d in dirs if isinstance(d, str)] if isinstance(dirs, list) else []
+
+
+def apply_claude(a, wanted):
+    # Every item is checked before the write; the file is read as is and written back with the roots added.
+    st = ClaudeState(a)
+    for item in wanted:
+        if not st.known(item):
+            usage("unknown item: " + item)
+    data = load_settings(st.local)
+    perms = data.setdefault("permissions", collections.OrderedDict())
+    if not isinstance(perms, dict):
+        usage("%s: permissions is not an object" % st.local)
+    dirs = perms.setdefault("additionalDirectories", [])
+    if not isinstance(dirs, list):
+        usage("%s: permissions.additionalDirectories is not a list" % st.local)
+    for item in wanted:
+        root = item[len("root "):-len(" missing")]
+        if root not in dirs and not covers(st.listed, root):
+            dirs.append(root)
+    if subprocess.run(["git", "-C", a.project, "check-ignore", "-q", ".claude/settings.local.json"],
+                      stdin=subprocess.DEVNULL, capture_output=True).returncode == 1:
+        print("spine-permissions: %s is not ignored by git; it holds paths of this machine" % st.local,
+              file=sys.stderr)
+    os.makedirs(os.path.dirname(st.local), exist_ok=True)
+    with open(st.local, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+
 def check(a):
-    return State(a).items()
+    return (ClaudeState(a) if a.runtime == "claude-code" else State(a)).items()
 
 
 def apply(a, wanted):
@@ -494,13 +564,14 @@ def main():
     p.add_argument("--runtime", required=True, choices=["codex-cli", "claude-code"])
     p.add_argument("--project", required=True)
     p.add_argument("--platform-root")
-    p.add_argument("--config-home", default=os.environ.get("CODEX_HOME") or os.path.expanduser("~/.codex"))
+    p.add_argument("--config-home")
     p.add_argument("items", nargs="*")
     a = p.parse_intermixed_args(sys.argv[2:])
     a.project = os.path.abspath(os.path.expanduser(a.project))
+    if a.config_home is None:
+        a.config_home = ("~/.claude" if a.runtime == "claude-code"
+                         else os.environ.get("CODEX_HOME") or "~/.codex")
     a.config_home = os.path.expanduser(a.config_home)
-    if a.runtime == "claude-code":
-        usage("runtime claude-code is not implemented")
     if a.command == "check":
         if a.items:
             usage("check takes no items")
@@ -510,7 +581,7 @@ def main():
         sys.exit(1 if items else 0)
     if not a.items:
         usage("apply needs at least one item")
-    apply(a, a.items)
+    (apply_claude if a.runtime == "claude-code" else apply)(a, a.items)
 
 
 try:

@@ -4,6 +4,8 @@
 # spine-permissions.sh says which of Spine's Codex settings are missing or stale, and writes the
 # ones the user agreed to, touching nothing else in the files it edits.
 
+bats_require_minimum_version 1.5.0
+
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   CP="$ROOT/scripts/spine-permissions.sh"
@@ -181,7 +183,6 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
   [ "$output" = "root $(cd "$PROJ/.." && pwd -P)/pkgs unlisted" ] || { echo "$output"; false; }
 }
 
-# /vendor/Kit lies inside the project, which the session can write anyway: it is no root.
 # /vendor/Kit lies inside the project, which the session can write anyway: it is no root.
 @test "each External packages line is its own root" {
   spine_md $'- External packages: /../pkgs/*\n- External packages: /vendor/Kit'
@@ -363,12 +364,6 @@ docs_map() { printf '# DocsMap\n\n## Ledger\n\ngenre: state\nstrictness: advisor
   [[ "$output" == spine-permissions:* ]] || { echo "$output"; false; }
 }
 
-@test "claude-code is accepted by the parser and not implemented yet" {
-  run "$CP" check --runtime claude-code --project "$PROJ" --config-home "$CH"
-  [ "$status" -eq 2 ]
-  [ "$output" = 'spine-permissions: runtime claude-code is not implemented' ] || { echo "$output"; false; }
-}
-
 @test "a Tasks folder that links outside the project is a root" {
   mkdir "$BATS_TEST_TMPDIR/tasks-repo"
   ln -s "$BATS_TEST_TMPDIR/tasks-repo" "$PROJ/Tasks"
@@ -520,4 +515,131 @@ docs_map() { printf '# DocsMap\n\n## Ledger\n\ngenre: state\nstrictness: advisor
   [ "$status" -eq 2 ]
   [[ "$output" == *"cannot read"* ]] || { echo "$output"; false; }
   [ "$(cat "$PROJ/.codex/rules/spine-swift.rules")" = "$before" ]
+}
+
+# --- claude-code -----------------------------------------------------------------------------------
+# A root is covered by permissions.additionalDirectories of the user's settings.json, the project's
+# settings.json or the project's settings.local.json; apply writes only the last.
+
+CCH="$BATS_TEST_TMPDIR/claude-home"
+cchk() { run "$CP" check --runtime claude-code --project "$PROJ" --config-home "$CCH"; }
+capp() { run "$CP" apply --runtime claude-code --project "$PROJ" --config-home "$CCH" "$@"; }
+tasks_outside() {
+  mkdir -p "$BATS_TEST_TMPDIR/tasks-repo"
+  ln -s "$BATS_TEST_TMPDIR/tasks-repo" "$PROJ/Tasks"
+  TROOT="$(cd "$BATS_TEST_TMPDIR/tasks-repo" && pwd -P)"
+}
+
+@test "claude-code: a Tasks link outside the project is missing, and apply makes check clean" {
+  tasks_outside
+  cchk
+  [ "$status" -eq 1 ]
+  [ "$output" = "root $TROOT missing" ] || { echo "$output"; false; }
+  capp "root $TROOT missing"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(jq -r '.permissions.additionalDirectories[0]' "$PROJ/.claude/settings.local.json")" = "$TROOT" ]
+  cchk
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "claude-code: a Tasks folder inside the project says nothing" {
+  mkdir "$PROJ/Tasks"
+  cchk
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "claude-code: an entry in the user's settings.json covers the root" {
+  tasks_outside
+  mkdir -p "$CCH"
+  printf '{"permissions":{"additionalDirectories":["%s"]}}\n' "$(dirname "$TROOT")" >"$CCH/settings.json"
+  cchk
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "claude-code: an entry in the project's settings.json covers the root" {
+  tasks_outside
+  mkdir -p "$PROJ/.claude"
+  printf '{"permissions":{"additionalDirectories":["%s"]}}\n' "$(dirname "$TROOT")" >"$PROJ/.claude/settings.json"
+  cchk
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "claude-code: a relative entry covers nothing" {
+  tasks_outside
+  mkdir -p "$PROJ/.claude"
+  printf '{"permissions":{"additionalDirectories":["../tasks-repo"]}}\n' >"$PROJ/.claude/settings.json"
+  cchk
+  [ "$status" -eq 1 ]
+  [ "$output" = "root $TROOT missing" ] || { echo "$output"; false; }
+}
+
+@test "claude-code: apply keeps the other keys and their order" {
+  tasks_outside
+  mkdir -p "$PROJ/.claude"
+  printf '{"permissions":{"allow":["Bash(ls)"],"additionalDirectories":["/u/own"]},"hooks":{}}\n' >"$PROJ/.claude/settings.local.json"
+  capp "root $TROOT missing"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(jq -c . "$PROJ/.claude/settings.local.json")" = \
+    "{\"permissions\":{\"allow\":[\"Bash(ls)\"],\"additionalDirectories\":[\"/u/own\",\"$TROOT\"]},\"hooks\":{}}" ] \
+    || { cat "$PROJ/.claude/settings.local.json"; false; }
+}
+
+@test "claude-code: apply twice adds the root once" {
+  tasks_outside
+  capp "root $TROOT missing"
+  capp "root $TROOT missing"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(jq -r '.permissions.additionalDirectories | length' "$PROJ/.claude/settings.local.json")" = 1 ]
+}
+
+@test "claude-code: settings.local.json not ignored by git warns and still writes" {
+  tasks_outside
+  # The machine's own global ignore file may already name settings.local.json.
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+  git init -q "$PROJ"
+  run --separate-stderr "$CP" apply --runtime claude-code --project "$PROJ" --config-home "$CCH" "root $TROOT missing"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *'spine-permissions: '*'settings.local.json is not ignored by git'* ]] || { echo "$stderr"; false; }
+  [ -f "$PROJ/.claude/settings.local.json" ]
+  rm -r "$PROJ/.claude"
+  printf '.claude/settings.local.json\n' >"$PROJ/.gitignore"
+  run --separate-stderr "$CP" apply --runtime claude-code --project "$PROJ" --config-home "$CCH" "root $TROOT missing"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ] || { echo "$stderr"; false; }
+}
+
+@test "claude-code: a project that is not a git repository gets no warning" {
+  tasks_outside
+  run --separate-stderr "$CP" apply --runtime claude-code --project "$PROJ" --config-home "$CCH" "root $TROOT missing"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ] || { echo "$stderr"; false; }
+}
+
+@test "claude-code: a settings file that is not JSON is exit 2 and left alone" {
+  tasks_outside
+  mkdir -p "$PROJ/.claude"
+  printf '{oops' >"$PROJ/.claude/settings.local.json"
+  capp "root $TROOT missing"
+  [ "$status" -eq 2 ]
+  [ "$(cat "$PROJ/.claude/settings.local.json")" = '{oops' ]
+  cchk
+  [ "$status" -eq 2 ]
+  [[ "$output" == spine-permissions:* ]] || { echo "$output"; false; }
+}
+
+@test "claude-code: apply refuses an item check does not print" {
+  tasks_outside
+  capp 'menu off'
+  [ "$status" -eq 2 ]
+  capp 'root /elsewhere missing'
+  [ "$status" -eq 2 ]
+  [ ! -e "$PROJ/.claude" ]
+}
+
+@test "claude-code: Codex-only items never show" {
+  tasks_outside
+  run "$CP" check --runtime claude-code --project "$PROJ" --platform-root "$PLAT" --config-home "$CCH"
+  [ "$status" -eq 1 ]
+  [ "$output" = "root $TROOT missing" ] || { echo "$output"; false; }
 }
