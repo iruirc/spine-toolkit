@@ -21,17 +21,24 @@ plan_brief() {
   n=0
   for f in "$ROOT"/workflows/profile-*.js; do
     n=$((n + 1))
-    for s in 'add one line "ran: <repository> <module> HEAD <the phase commit'"'"'s short sha> Executed <N> log phase-evidence/phase-${ph.id}/<module>.log"' \
+    for s in 'add one line '"'"'ran: <repository> <module> HEAD <the phase commit'"'"'s short sha> tests <N> result "<result line>" log phase-evidence/phase-${ph.id}/<module>.log'"'"'' \
+             'N being the sum of their counts' 'a line of the log that counts no tests is not quoted' \
              'a run of named test classes gets none' 'after the commit, take its short sha in the module'"'"'s repository'; do
       grep -qF -- "$s" "$f" || { echo "$(basename "$f"): the phase brief lacks: $s"; return 1; }
     done
+    ! grep -qF 'Executed <N>' "$f" || { echo "$(basename "$f"): the phase brief still writes Executed <N>"; return 1; }
   done
   [ "$n" -eq 8 ] || { echo "scanned $n script(s), expected 8"; return 1; }
 }
 
 @test "phase-verification gives the form of a ran: line and what the tests of the perimeter are" {
-  grep -qF 'ran: <repository> <module> HEAD <sha> Executed <N> log phase-evidence/phase-<id>/<module>.log' <<<"$(section "$SKILL" 'The line')" \
-    || { echo "The line does not give the form of a ran: line"; return 1; }
+  line="$(section "$SKILL" 'The line')"
+  for t in 'ran: <repository> <module> HEAD <sha> tests <N> result "<result line>" log phase-evidence/phase-<id>/<module>.log' \
+           'is quoted exactly as the log has it' "the platform's \`test-frameworks\`" \
+           'a result line that counts no tests is not quoted' '`<N>` is the sum of the counts of the quoted lines' \
+           'has `Executed <N>` where `tests <N>` stands'; do
+    grep -qF -- "$t" <<<"$line" || { echo "The line does not say: $t"; return 1; }
+  done
   grep -qF 'every test of the modules it edits' <<<"$(section "$SKILL" 'The rungs')" \
     || { echo "The rungs never say what the tests of the perimeter are"; return 1; }
   grep -qF 'with no modules, the whole suite is the perimeter' <<<"$(section "$SKILL" 'The rungs')" \

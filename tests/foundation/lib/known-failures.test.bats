@@ -75,7 +75,7 @@ outside_gate() {
     f="$ROOT/skills/workflow-$p/SKILL.md"
     for t in '`known_failures`' '### Failures outside the task' '## Outside the task' '`outside_failures`' \
       '`known_failures_cleared`' '`carried <sha> (phase <N>)`' '`carried <sha> (validation)`' \
-      'ran: <repository> <module> HEAD <sha> Executed <N> log phase-evidence/phase-<id>/<module>.log' \
+      'ran: <repository> <module> HEAD <sha> tests <N> result "<result line>" log phase-evidence/phase-<id>/<module>.log' \
       'On PASSED or PASSED_WITH_FLAKES' 'Validation passed with <n> flake(s) outside the task.' 'class `reach`'; do
       grep -qF -- "$t" "$f" || { echo "workflow-$p does not say: $t"; return 1; }
     done
