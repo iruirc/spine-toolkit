@@ -64,7 +64,8 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   for p in bug feature refactor test; do
     f="$ROOT/skills/workflow-$p/SKILL.md"
     grep -qF 'Used for `action=run`/`continue`/`restart`/`catch-up`/`fix-review`.' "$f" || { echo "workflow-$p: forward bullet"; return 1; }
-    for s in 'Under `fix-review`' '"Review fixes <n>"' '`fix_findings`' '`after_done`'; do
+    for s in 'Under `fix-review`' '"Review fixes <n>"' '`fix_findings`' '`after_done`' 'row id `R<n>`' \
+             'a finding left unfixed stays unticked, the row goes to ⏸'; do
       grep -qF "$s" "$f" || { echo "workflow-$p lost: $s"; return 1; }
     done
     grep -E '^- \*\*(Fix|Execute|Refactor|Write)\*\* — ' "$f" | grep -qF 'Under `fix-review` it runs the single "Review fixes <n>" phase built from `fix_findings` instead of `Plan.md`'"'"'s phases (see Done).' \
@@ -94,4 +95,21 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     if grep -qF -- "$f" <<<"$r"; then echo "resolution still says: $f"; return 1; fi
   done
   grep -qF '`reviewed` for `fix-review`' "$ROOT/conventions/task-ranges.md" || { echo "task-ranges.md: no fix-review since"; return 1; }
+}
+
+@test "a fix round that left findings is neither closed nor passed to Validation" {
+  g="$(section "$S" 'Gating')"
+  for f in '**After Review fixes: findings left.**' '`unfixed_findings`' 'info_fix_incomplete' 'auq_fix_incomplete' \
+           'auq_fix_incomplete_option_round' 'auq_fix_incomplete_option_accept' 'auq_fix_incomplete_option_stop' \
+           '`→ R<n+1>`' '`⊘ left by owner, <date>`' 'at every `progress` value'; do
+    grep -qF -- "$f" <<<"$g" || { echo "Gating lost: $f"; return 1; }
+  done
+  d="$(section "$S" 'State Detection')"
+  grep -qF 'a last `R<n>` row at `⏸`' <<<"$d" || { echo "State Detection: no paused fix round"; return 1; }
+  for l in en ru; do
+    for k in info_fix_incomplete auq_fix_incomplete auq_fix_incomplete_option_round \
+             auq_fix_incomplete_option_accept auq_fix_incomplete_option_stop; do
+      grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l: no $k"; return 1; }
+    done
+  done
 }

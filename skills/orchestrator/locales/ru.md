@@ -362,6 +362,23 @@ Review прочитал {repos} от базы задачи: их запись п
 ## typed_confirmation_stopped
 Ничего не запущено: решения не набраны. Назови находки и что сделать с каждой, и прогон продолжится.
 
+## info_fix_incomplete
+Review fixes {n}: остались неисправленные находки: {findings}
+
+## auq_fix_incomplete
+Review fixes {n} не исправил эти находки:
+{findings}
+Что делаем?
+
+## auq_fix_incomplete_option_round
+Исправить оставшиеся новым раундом
+
+## auq_fix_incomplete_option_accept
+Оставить их и перейти к Validation
+
+## auq_fix_incomplete_option_stop
+Остановиться
+
 ## info_fix_round
 Круг исправлений {n} из {max}: {count} находок из Review уходят в одну фазу плана.
 

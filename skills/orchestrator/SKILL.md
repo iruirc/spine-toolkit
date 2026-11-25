@@ -240,6 +240,7 @@ Algorithm:
 3. `Plan.md` exists but its progress table is missing or unparseable → consider stage `Plan` complete; start at the next stage in the profile's sequence (FEATURE/EPIC: `Execute`; BUG: `Fix`; REFACTOR: `Refactor`; TEST: `Write`; QUICK: `Edit`, which finishes an existing `Plan.md` rather than writing one); for REVIEW (no next stage), ask explicitly via AUQ. RESEARCH has no Plan stage at all — this branch is unreachable for RESEARCH. Add a warning to the user.
 4. **EPIC after its steps.** When the epic's `Plan.md` has no step left open — every step is done, `manual_checks_pass` is `end` and the epic folder holds no `Validation.md` whose status line is `[VALIDATION_STATUS] = PASSED` or `[VALIDATION_STATUS] = PASSED_WITH_FLAKES` → `Acceptance`; otherwise → `Done`. The epic's `Validation.md` is what the `Acceptance` stage leaves, so an epic whose pass is written, or whose bug steps came after it, goes to `Done`, and a passed stage never runs twice; `PASSED_WITH_FLAKES` reads as `PASSED`, here and for a step: its only failures are flaky tests outside the task. A `FAILED` or `FLAKY` status means the pass did not complete, and the epic goes back to `Acceptance`.
 5. **Inline-content note.** If `Task.md` carries embedded reproduce/research/analyze material but no artifact files exist in the task folder, State Detection still picks the first stage of the profile (per the rightmost column of the table); for BUG that stage checks a root cause `Task.md` names at file:line rather than rediscovering it. The user can override via the `confirm_dispatch` picker (Resolution Algorithm step 6) or by passing `--from <stage>`.
+6. **A paused fix round.** FEATURE, BUG, REFACTOR, TEST and QUICK, checked after item 1 and before item 2: when the task has a last `R<n>` row at `⏸` in its `Plan.md` progress table — a fix round that left findings unfixed — `continue` does not walk the table, whose "first `⬜` phase" would skip to Validation. It asks `auq_fix_incomplete` again (Gating → **After Review fixes: findings left.**), the findings being that row's unticked items in its detail section.
 
 **Invariant:** `start_stage` produced by State Detection is always a member of the target profile's stage list. Defense-in-depth validation runs in Resolution Algorithm step 5.5 regardless.
 
@@ -1001,6 +1002,16 @@ durations inside an `auto` run do not exist; do not invent them.
 - `manual`: AUQ using key `auq_fix_review_question` with `{findings}`: `auq_fix_review_option_all` (first; `fix-review` with every finding), `auq_fix_review_option_pick` (a multi-select of the findings, then `fix-review` with those picked), `auq_fix_review_option_leave` (stop). `fix_rounds` does not apply: the user confirms each round. Before the dispatch, **A choice that must be typed.** applies (The run's own words).
 
 A `fix-review` carries `fix_findings` — the findings chosen, verbatim; `fix_round` — every `Review fixes <n>` row of `Plan.md` plus one, so no phase id repeats; and `after_done` — whether `Done.md` exists. With `after_done` the task moves out of and back into `Tasks/DONE/` as for a `catch-up`. `fix_findings` hold the findings verbatim: no decision, note or gloss is written into them; the owner's decision on a finding reaches the agent only through `user_directive`, from typed text.
+
+**After Review fixes: findings left.** FEATURE, BUG, REFACTOR, TEST and QUICK. A fix round whose phase left findings unfixed returns `unfixed_findings` — under Method B the code stage's reply names them — and its range ended before Validation; the row `R<n>` stands at `⏸` with those findings unticked. Announce `info_fix_incomplete` (`{n}`, `{findings}`) right after the stage report, at every `progress` value: like a declined directive, it is a refusal, not progress.
+
+- `manual`: AUQ using key `auq_fix_incomplete` with `{n}` and `{findings}`:
+  - `auq_fix_incomplete_option_round` — a new round on the findings left: the row `R<n>` goes to ✅ and each of its unticked items gets a line `→ R<n+1>` under it; then `fix-review` with those findings, `fix_round` being `n+1`, under **A choice that must be typed.** (The run's own words).
+  - `auq_fix_incomplete_option_accept` — the row `R<n>` goes to ✅ and each unticked item gets `⊘ left by owner, <date>`; then the range goes on from Validation.
+  - `auq_fix_incomplete_option_stop` — stop; the row stays at `⏸`, and a later `continue` asks again (State Detection item 6).
+- `auto`: stop the loop with `auq_fix_rounds_spent`, as for an unrecorded round.
+
+These `Plan.md` edits are the orchestrator's; they are committed with the task's documents, as its other records are.
 
 **Error mid-range.** A stage that returns `status: error` ends the range where it stands, in `auto`
 as much as in `manual`. `auto` means no pause between stages that *succeeded*; carrying on past a

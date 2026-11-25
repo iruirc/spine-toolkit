@@ -362,6 +362,23 @@ That reply names none of the choices, so the agent would not know what it confir
 ## typed_confirmation_stopped
 Nothing was dispatched: the choices were not typed. Name the findings and what to do with each, and the run goes on.
 
+## info_fix_incomplete
+Review fixes {n} left findings unfixed: {findings}
+
+## auq_fix_incomplete
+Review fixes {n} left these findings unfixed:
+{findings}
+What should happen?
+
+## auq_fix_incomplete_option_round
+Fix the rest in a new round
+
+## auq_fix_incomplete_option_accept
+Leave them and go on to Validation
+
+## auq_fix_incomplete_option_stop
+Stop here
+
 ## info_fix_round
 Fix round {n} of {max}: {count} finding(s) from Review go into one plan phase.
 
