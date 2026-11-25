@@ -134,8 +134,8 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   done
   for k in perm_root_missing codex_perm_root_unlisted; do
     txt="$(awk -v k="## $k" '$0==k{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/ru.md")"
-    for w in задачи 'внешние пакеты' документация; do
-      grep -qF -- "$w" <<<"$txt" || { echo "ru $k lacks: $w"; false; }
+    for w in '\u0437\u0430\u0434\u0430\u0447\u0438' '\u0432\u043d\u0435\u0448\u043d\u0438\u0435 \u043f\u0430\u043a\u0435\u0442\u044b' '\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430\u0446\u0438\u044f'; do
+      grep -qF -- "$(unescape "$w")" <<<"$txt" || { echo "ru $k lacks: $w"; false; }
     done
   done
 }
