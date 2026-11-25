@@ -48,6 +48,7 @@ decision() { codex execpolicy check --resolve-host-executables --rules "$TPL" "$
   for s in '--runtime <runtime>' 'claude-code' 'codex-cli'; do
     grep -qF -- "$s" <<<"$SECTION" || { echo "missing: $s"; false; }
   done
+  ! grep -qF -- '{setting} = ``' <<<"$SECTION" || { echo "{setting} is still an English phrase in the body"; false; }
   grep -qE '^6d\. Permissions' "$SK" || { echo "step 6d is not Permissions"; false; }
   ! grep -E '^6d\. ' "$SK" | grep -qF 'Codex CLI only' || { echo "step 6d still says Codex CLI only"; false; }
   ! grep -qF 'Codex permissions (Codex CLI)' "$SK" || { echo "SKILL.md still names the old section"; false; }
@@ -71,7 +72,8 @@ decision() { codex execpolicy check --resolve-host-executables --rules "$TPL" "$
 }
 
 @test "Claude Code writes settings.local.json and says how to reach this session" {
-  for s in '.claude/settings.local.json' 'perm_how_claude_code' 'perm_when_claude_code' 'perm_how_codex' 'perm_when_codex'; do
+  for s in '.claude/settings.local.json' 'perm_how_claude_code' 'perm_when_claude_code' 'perm_how_codex' 'perm_when_codex' \
+           '{setting} = `perm_setting_codex`' '{setting} = `perm_setting_claude_code`' 'report_permissions_not_ignored'; do
     grep -qF -- "$s" <<<"$SECTION" || { echo "missing: $s"; false; }
   done
   for l in en ru; do
@@ -121,6 +123,7 @@ decision() { codex execpolicy check --resolve-host-executables --rules "$TPL" "$
   new='auq_permissions auq_permissions_options auq_permission_item auq_permission_item_options perm_item_root_missing
        report_permissions_written report_permissions_declined report_permissions_error
        perm_how_codex perm_how_claude_code perm_when_codex perm_when_claude_code
+       perm_setting_codex perm_setting_claude_code report_permissions_not_ignored
        codex_item_rules_core codex_item_rules_platform codex_item_menu codex_item_mcp codex_item_root_unlisted codex_item_root_stale'
   gone='auq_codex_permissions auq_codex_permissions_options auq_codex_permission_item auq_codex_permission_item_options
         codex_item_root_missing report_codex_permissions_written report_codex_permissions_declined report_codex_permissions_error
@@ -133,6 +136,12 @@ decision() { codex execpolicy check --resolve-host-executables --rules "$TPL" "$
     body perm_when_codex | grep -qF 'codex app-server daemon restart' || { echo "$l perm_when_codex lacks the restart"; false; }
     body perm_how_codex | grep -qF 'codex app-server daemon restart' || { echo "$l perm_how_codex lacks the restart"; false; }
     body perm_how_claude_code | grep -qF '.claude/settings.local.json' || { echo "$l perm_how_claude_code lacks the file"; false; }
+    body perm_how_claude_code | grep -qF 'additionalDirectories' || { echo "$l perm_how_claude_code does not undo in additionalDirectories"; false; }
+    body perm_setting_codex | grep -qF '`writable_roots`' && body perm_setting_codex | grep -qF '`.codex/config.toml`' \
+      || { echo "$l perm_setting_codex"; false; }
+    body perm_setting_claude_code | grep -qF '`permissions.additionalDirectories`' && body perm_setting_claude_code | grep -qF '`.claude/settings.local.json`' \
+      || { echo "$l perm_setting_claude_code"; false; }
+    body report_permissions_not_ignored | grep -qF '{path}' || { echo "$l report_permissions_not_ignored lacks {path}"; false; }
     body auq_permissions | grep -qF '{host}' && body auq_permissions | grep -qF '{items}' && body auq_permissions | grep -qF '{how}' \
       || { echo "$l auq_permissions lacks a placeholder"; false; }
     body report_permissions_written | grep -qF '{host}' && body report_permissions_written | grep -qF '{when}' \
@@ -147,6 +156,8 @@ decision() { codex execpolicy check --resolve-host-executables --rules "$TPL" "$
     body codex_item_menu | grep -qF '{config_path}' || { echo "$l menu item lacks the file"; false; }
     body codex_item_mcp | grep -qF '{server}' || { echo "$l mcp item lacks the server"; false; }
   done
+  ! awk '/^## auq_permissions$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/setup/locales/en.md" | grep -qF 'many of its own steps' \
+    || { echo "auq_permissions overstates for Claude Code"; false; }
   for k in $gone; do ! grep -qwF -- "$k" "$SK" || { echo "SKILL.md still names $k"; false; }; done
   for k in perm_item_root_missing codex_item_root_unlisted codex_item_root_stale; do
     grep -A1 -x "## $k" "$ROOT/skills/setup/locales/en.md" | grep -qF 'a folder Spine writes to' || { echo "en $k does not say it"; false; }

@@ -161,7 +161,7 @@ Added the project config block to the end of `AGENTS.md` (backup: `{backup_path}
 `AGENTS.md` now names the renamed project config (backup: `{backup_path}`).
 
 ## auq_permissions
-In {host}, Spine would stop to ask you before many of its own steps. It can set {host} up so they run without asking:
+In {host}, Spine would stop to ask you before some of its own steps — a write to a folder, a command it runs. It can set {host} up so they run without asking:
 
 {items}
 
@@ -206,13 +206,22 @@ Write | Skip
 Codex asks you once to approve writing these files. It all takes effect after a restart: exit Codex, run `codex app-server daemon restart`, and start Codex again. To undo a setting, delete the file or the line it names.
 
 ## perm_how_claude_code
-Spine writes `.claude/settings.local.json`; to undo, delete the line.
+Spine writes `.claude/settings.local.json`; to undo, remove the path from `additionalDirectories`.
 
 ## perm_when_codex
 They take effect after a restart: exit Codex, run `codex app-server daemon restart`, and start Codex again.
 
 ## perm_when_claude_code
 They take effect in the next Claude Code session; for this one, `/add-dir <path>` adds a folder now.
+
+## perm_setting_codex
+`writable_roots` of the project's `.codex/config.toml`
+
+## perm_setting_claude_code
+`permissions.additionalDirectories` of `.claude/settings.local.json`
+
+## report_permissions_not_ignored
+`{path}` is not ignored by git, and it holds paths of this machine: add it to `.gitignore` so it is not committed.
 
 ## report_permissions_declined
 {host} settings left as they were: {host} will keep asking before those steps.

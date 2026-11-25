@@ -161,7 +161,7 @@ DocsMap.md: {docs_map_status}
 `AGENTS.md` теперь называет переименованный конфиг проекта (бэкап: `{backup_path}`).
 
 ## auq_permissions
-В {host} Spine будет спрашивать подтверждение перед многими своими шагами. Он может настроить {host} так, чтобы они шли без вопросов:
+В {host} Spine будет спрашивать подтверждение перед некоторыми своими шагами — записью в папку, запуском команды. Он может настроить {host} так, чтобы они шли без вопросов:
 
 {items}
 
@@ -206,13 +206,22 @@ DocsMap.md: {docs_map_status}
 Codex один раз попросит подтвердить запись этих файлов. Всё заработает после перезапуска: выйди из Codex, выполни `codex app-server daemon restart` и запусти Codex снова. Чтобы отменить настройку, удали названный файл или строку.
 
 ## perm_how_claude_code
-Spine запишет их в `.claude/settings.local.json`; чтобы отменить, удали строку.
+Spine запишет их в `.claude/settings.local.json`; чтобы отменить, убери путь из `additionalDirectories`.
 
 ## perm_when_codex
 Заработают после перезапуска: выйди из Codex, выполни `codex app-server daemon restart` и запусти Codex снова.
 
 ## perm_when_claude_code
 Заработают со следующей сессии Claude Code; чтобы папка стала доступна уже в этой, выполни `/add-dir <path>`.
+
+## perm_setting_codex
+`writable_roots` в `.codex/config.toml` проекта
+
+## perm_setting_claude_code
+`permissions.additionalDirectories` в `.claude/settings.local.json`
+
+## report_permissions_not_ignored
+git не игнорирует `{path}`, а в нём пути этой машины: добавь его в `.gitignore`, чтобы он не попал в коммит.
 
 ## report_permissions_declined
 Настройки {host} не изменены: {host} продолжит спрашивать перед этими шагами.

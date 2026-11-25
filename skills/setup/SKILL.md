@@ -444,19 +444,21 @@ with no platform, leave the flag out. `<config home>` is `${CODEX_HOME:-~/.codex
 
 - In Codex CLI, `check` runs inside the sandbox, not escalated: it reads the session's own write
   access. `{config_path}` below is the `config.toml` of `<config home>`. {host} = `Codex`,
-  {how} = `perm_how_codex`, {when} = `perm_when_codex`, {setting} = `` `writable_roots` of the
-  project's `.codex/config.toml` ``. `apply` runs with `sandbox_permissions: "require_escalated"`:
-  `.codex/` is protected like `.git`, and `{config_path}` lies outside the project, so Codex asks the
-  user once — one approval for every file. Codex reads rules and its config when a session starts,
+  {how} = `perm_how_codex`, {when} = `perm_when_codex`, {setting} = `perm_setting_codex`. `apply`
+  runs with `sandbox_permissions: "require_escalated"`: `.codex/` is protected like `.git`, and
+  `{config_path}` lies outside the project, so Codex asks the user once — one approval for every
+  file. Codex reads rules and its config when a session starts,
   so what was written applies after a restart with `codex app-server daemon restart`, which
   `perm_when_codex` names. This skill does not commit `.codex/`: whether it goes into the repository
   is the user's call.
 - In Claude Code, `check` and `apply` are ordinary Bash calls, nothing escalated: `apply` writes only
-  `.claude/settings.local.json`, the project's local settings, and warns when git does not ignore it.
+  `.claude/settings.local.json`, the project's local settings. When `apply` warns on stderr that git
+  does not ignore that file, the write still happened: report `report_permissions_not_ignored` with
+  {path} = `.claude/settings.local.json`, on a line of its own after `report_permissions_written`.
   {host} = `Claude Code`, {how} = `perm_how_claude_code`, {when} = `perm_when_claude_code`,
-  {setting} = `` `permissions.additionalDirectories` of `.claude/settings.local.json` ``. Claude Code
-  reads its settings when a session starts, so a folder written there applies from the next
-  session; `/add-dir <path>` adds it to this one, which `perm_when_claude_code` says.
+  {setting} = `perm_setting_claude_code`. Claude Code reads its settings when a session starts, so a
+  folder written there applies from the next session; `/add-dir <path>` adds it to this one, which
+  `perm_when_claude_code` says.
 
 What `check` exits with:
 
