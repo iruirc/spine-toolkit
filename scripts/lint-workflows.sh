@@ -21,6 +21,8 @@ set -euo pipefail
 #   - every script's prelude block equals workflow-src/prelude.js (a script cannot import, so
 #     scripts/sync-workflow-prelude.sh copies the source into each one; this keeps hand edits out)
 #   - none of the sandbox-forbidden globals, and no worktree isolation (decision D5)
+#   - every schema an agent() call passes is measured in the script's own scope, with every stage
+#     skipped, and fails over the 4096 characters Claude Code starts unreviewed in auto mode
 
 cd "$(dirname "$0")/.."
 
@@ -28,7 +30,8 @@ cd "$(dirname "$0")/.."
 # workflows/ reports success for the one state that removes every check below.
 [ -d workflows ] || { echo "no workflows/ directory — the scripts this lints are gone"; exit 1; }
 
-python3 - <<'PY'
+py=0
+python3 - <<'PY' || py=$?
 import os, re, sys
 
 # Mirrors scripts/lint-manifest.sh's ROLES — the vocabulary a platform's manifest and a
@@ -383,5 +386,112 @@ if violations:
     print(f'workflow lint failed: {len(violations)} violation(s)')
     sys.exit(1)
 
-print(f'workflow lint passed: {len(files)} script(s), stages in sync with their skills, every dispatch gated and tuned, preludes match workflow-src/prelude.js')
 PY
+
+# The schema sizes, in Node: a schema is a JavaScript expression over the script's own constants
+# and the prelude's functions, and some grow with the contract. The Python block above stays silent
+# on success, so the run prints one success line, and only when both blocks pass.
+js=0
+PY_STATUS=$py node - <<'JS' || js=$?
+const fs = require('fs')
+
+// Claude Code in auto permission mode does not start an agent whose output schema is longer than this:
+// "output schema is over 4096 characters, too large to pass unreviewed in auto mode".
+const HOST_SCHEMA_LIMIT = 4096
+const SCHEMA_WARN = 3600
+
+// The prelude's stage gate. Forcing it false runs every top-level declaration and no stage.
+const RUNS_ANCHOR = 'return i >= startAt && i <= endAt'
+
+// A setting that adds fields to a schema goes into the second contract, so its largest form is measured.
+const AGENTS = Object.fromEntries('architect developer tester reviewer refactorer validator security diagnostics init'.split(' ').map((r) => [r, r]))
+const BASE = { task_id: '1', task_dir: '/p/Tasks/ACTIVE/1-x', plugin_root: '/core', lang: 'en', mode: 'auto', agents: AGENTS }
+const CONTRACTS = [BASE, { ...BASE, estimation: 'on', estimation_unit: 'both', research_experiment: 'on', scale: 'full' }]
+
+// Where the expression starting at i ends: the first comma or unmatched closer outside brackets and quotes.
+const exprEnd = (s, i) => {
+  let depth = 0
+  for (let j = i; j < s.length; j++) {
+    const c = s[j]
+    if (c === "'" || c === '"' || c === '`') {
+      for (j++; j < s.length && s[j] !== c; j++) if (s[j] === '\\') j++
+      continue
+    }
+    if ('{(['.includes(c)) depth++
+    else if ('})]'.includes(c)) { if (!depth) return j; depth-- }
+    else if (c === ',' && !depth) return j
+  }
+  return s.length
+}
+
+// Every schema: key with its line, the label of its agent() call and its expression.
+const schemaExprs = (src) =>
+  [...src.matchAll(/\bschema: /g)].map((m) => {
+    const at = m.index + m[0].length
+    const before = src.slice(0, m.index)
+    const call = before.lastIndexOf('agent(')
+    const lab = before.slice(call).match(/label: ('[^']*'|"[^"]*"|`[^`]*`)(?![\s\S]*label: )/)
+    return { line: before.split('\n').length, label: lab ? lab[1].slice(1, -1) : '?', expr: src.slice(at, exprEnd(src, at)).trim() }
+  })
+
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
+globalThis.agent = async () => null
+globalThis.workflow = async () => { throw new Error('workflow is not defined') }
+globalThis.parallel = async (fns) => Promise.all(fns.map((f) => f()))
+
+;(async () => {
+  const files = fs.readdirSync('workflows').filter((f) => /^profile-.*\.js$/.test(f)).sort()
+  const violations = []
+  const warnings = []
+  for (const f of files) {
+    const path = `workflows/${f}`
+    const src = fs.readFileSync(path, 'utf8')
+    if (src.split(RUNS_ANCHOR).length !== 2) {
+      violations.push(`${path}: lint-workflows.sh cannot find runs() in the prelude to skip every stage — update its anchor`)
+      continue
+    }
+    const exprs = schemaExprs(src)
+    const body = 'function __probe(e) { return eval(e) }\nglobalThis.__probe = __probe\n' +
+      src.replace(/^export const meta/m, 'const meta').replace(RUNS_ANCHOR, 'return false')
+    const size = new Map()
+    const error = new Map()
+    let ran = true
+    for (const contract of CONTRACTS) {
+      try {
+        await new AsyncFunction('args', 'log', body)(contract, () => {})
+      } catch (e) {
+        violations.push(`${path}: lint-workflows.sh could not run the script with every stage skipped (${e.message})`)
+        ran = false
+        break
+      }
+      for (const x of exprs) {
+        try {
+          const v = globalThis.__probe(`(${x.expr})`)
+          if (!v || typeof v !== 'object') throw new Error('not an object')
+          size.set(x, Math.max(size.get(x) || 0, JSON.stringify(v).length))
+        } catch (e) {
+          if (!error.has(x)) error.set(x, e.message)
+        }
+      }
+    }
+    if (!ran) continue
+    for (const x of exprs) {
+      const where = `${path}:${x.line}: dispatch '${x.label}'`
+      if (error.has(x)) violations.push(`${where} has a schema lint-workflows.sh cannot measure (${error.get(x)}) — define it where the script's top level can see it`)
+      else if (size.get(x) > HOST_SCHEMA_LIMIT) violations.push(`${where} has a ${size.get(x)}-character schema, over the ${HOST_SCHEMA_LIMIT} Claude Code starts unreviewed in auto mode — shorten it`)
+      else if (size.get(x) >= SCHEMA_WARN) warnings.push(`warning: ${where} has a ${size.get(x)}-character schema, ${HOST_SCHEMA_LIMIT - size.get(x)} under the ${HOST_SCHEMA_LIMIT} auto-mode limit`)
+    }
+  }
+  for (const w of warnings) console.log(w)
+  for (const v of violations) console.log(v)
+  if (violations.length) {
+    console.log(`\nschema lint failed: ${violations.length} violation(s)`)
+    process.exit(1)
+  }
+  if (process.env.PY_STATUS === '0') {
+    console.log(`workflow lint passed: ${files.length} script(s), stages in sync with their skills, every dispatch gated and tuned, preludes match workflow-src/prelude.js, every schema under ${HOST_SCHEMA_LIMIT} characters`)
+  }
+})().catch((e) => { console.log(`schema lint crashed: ${e.stack}`); process.exit(1) })
+JS
+
+exit $(( py || js ))

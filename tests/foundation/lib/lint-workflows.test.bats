@@ -41,6 +41,8 @@ REVIEW_LINE="{ label: 'review', phase: 'Review', agentType: A.agents.reviewer, s
 @test "the unmodified tree passes" {
   run "$T/scripts/lint-workflows.sh"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  case "$output" in *"every schema under 4096 characters"*) ;; *) echo "$output"; return 1 ;; esac
+  case "$output" in *warning:*) echo "$output"; return 1 ;; esac
 }
 
 @test "a dispatch with no tuning fails" {
@@ -150,4 +152,64 @@ PY
 @test "a half-quoted tuning kind fails" {
   mutate profile-quick.js "schema: DONE_ARTIFACT, ...tuning('developer', 'done') }" "schema: DONE_ARTIFACT, ...tuning('developer', 'done) }"
   expect_violation "dispatch 'done' carries 0 tuning() call(s)"
+}
+
+# ── schema size ──────────────────────────────────────────────────────────────
+# Claude Code in auto permission mode does not start an agent whose output schema is over 4096
+# characters. The lint runs each script with every stage skipped and measures every schema: in the
+# script's own scope, so a schema built from the prelude's functions is measured as it is sent.
+
+STACK_FIELD="stack: { type: 'string', description: 'only when the step declares its own ## 4. [Stack]' }"
+
+pad() { printf 'x%.0s' $(seq "$1"); }
+
+# Grows the epic's STEP, which only STEPS carries, by $1 characters.
+grow_step() {
+  mutate profile-epic.js "$STACK_FIELD" "stack: { type: 'string', description: 'only when the step declares its own ## 4. [Stack]$(pad "$1")' }"
+}
+
+expect_warning() { # $1 = substring of the warning
+  run "$T/scripts/lint-workflows.sh"
+  [ "$status" -eq 0 ] || { echo "lint failed: $output"; return 1; }
+  case "$output" in *"$1"*) ;; *) echo "no '$1' in: $output"; return 1 ;; esac
+}
+
+@test "a schema over the host's limit fails" {
+  grow_step 1000
+  expect_violation "dispatch 'execute:read-steps' has a"
+  case "$output" in *"over the 4096 Claude Code starts unreviewed in auto mode"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a schema close to the limit warns and passes" {
+  grow_step 1000
+  run "$T/scripts/lint-workflows.sh"
+  n="$(sed -n "s/.*dispatch 'execute:read-steps' has a \([0-9]*\)-character schema.*/\1/p" <<<"$output" | head -1)"
+  [ -n "$n" ] || { echo "$output"; return 1; }
+  rm -rf "$T/workflows" && cp -R "$ROOT/workflows" "$T/"
+  grow_step $(( 3800 - (n - 1000) ))
+  expect_warning "dispatch 'execute:read-steps' has a 3800-character schema, 296 under the 4096 auto-mode limit"
+  case "$output" in *"warning: workflows/profile-epic.js:"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a schema the lint cannot evaluate fails" {
+  mutate profile-review.js "schema: REVIEW," "schema: notDefinedHere,"
+  expect_violation "dispatch 'review' has a schema lint-workflows.sh cannot measure"
+}
+
+@test "a lost runs() anchor fails" {
+  mutate profile-review.js "return i >= startAt && i <= endAt" "return startAt <= i && i <= endAt"
+  expect_violation "workflows/profile-review.js: lint-workflows.sh cannot find runs() in the prelude"
+}
+
+@test "a schema that grows with the contract fails" {
+  mutate profile-research.js "status: { type: 'string', enum: ['done', 'partial', 'not_run', 'blocked'] }," "status: { type: 'string', enum: ['done', 'partial', 'not_run', 'blocked'], description: '$(pad 3000)' },"
+  expect_violation 'dispatch '"'"'research:${picked}'"'"' has a'
+  case "$output" in *"over the 4096"*) ;; *) echo "$output"; return 1 ;; esac
+}
+
+@test "a schema violation is reported beside a dispatch violation" {
+  grow_step 1000
+  mutate profile-review.js "$REVIEW_LINE" "{ label: 'review', phase: 'Review', agentType: A.agents.reviewer, schema: REVIEW },"
+  expect_violation "dispatch 'review' carries 0 tuning() call(s)"
+  case "$output" in *"dispatch 'execute:read-steps' has a"*) ;; *) echo "$output"; return 1 ;; esac
 }

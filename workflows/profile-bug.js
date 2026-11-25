@@ -1139,21 +1139,23 @@ Set reproducible to no only when you could not make it happen at all, and record
   }
 }
 
+// What each Diagnose lens returns.
+const LENS = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['root_cause', 'affected_components', 'risks'],
+  properties: {
+    root_cause: { type: 'string' },
+    affected_components: { type: 'array', items: { type: 'string' } },
+    risks: { type: 'array', items: { type: 'string' } },
+  },
+}
+
 // ── Diagnose ────────────────────────────────────────────────────────────────
 // A genuine barrier: the synthesis reads every lens. The parallel call is the whole fan-out, and
 // the security lens's own triage delays only its branch.
 if (runs('Diagnose') && !lite()) {
   if (!need('Diagnose', 'architect')) return finish('ask_user')
-  const LENS = {
-    type: 'object',
-    additionalProperties: false,
-    required: ['root_cause', 'affected_components', 'risks'],
-    properties: {
-      root_cause: { type: 'string' },
-      affected_components: { type: 'array', items: { type: 'string' } },
-      risks: { type: 'array', items: { type: 'string' } },
-    },
-  }
   const lenses = [
     {
       role: 'diagnostics',
