@@ -288,7 +288,7 @@ def real(path):
 
 
 def places(project):
-    # The `places` paths of the DocsMap components, from docs-route.sh; a file stands for its folder.
+    # The `places` paths of the DocsMap components, from docs-route.sh.
     # A registry docs-route.sh rejects is its own problem: no places, one line on stderr.
     r = subprocess.run([os.path.join(HERE, "docs-route.sh"), "registry", project, "--paths"],
                        stdin=subprocess.DEVNULL, capture_output=True, text=True)
@@ -301,10 +301,19 @@ def places(project):
         parts = line.split("\t")
         if len(parts) < 3 or parts[1] != "places":
             continue
-        path = os.path.join(project, parts[2])
-        base = os.path.basename(path.rstrip("/"))
-        if os.path.isfile(path) or (not os.path.exists(path) and "." in base and not parts[2].endswith("/")):
-            path = os.path.dirname(path.rstrip("/"))
+        # A glob is cut at its first glob part and what is left is already a folder; a plain path that
+        # is a file stands for its folder, a glob for the folder before it.
+        kept, cut = [], False
+        for part in parts[2].lstrip("/").split("/"):
+            if re.search(r"[*?\[]", part):
+                cut = True
+                break
+            kept.append(part)
+        path = os.path.normpath(os.path.join(project, *kept))
+        base = os.path.basename(path)
+        if not cut and (os.path.isfile(path)
+                        or (not os.path.exists(path) and "." in base and not parts[2].endswith("/"))):
+            path = os.path.dirname(path)
         out.append(path)
     return out
 

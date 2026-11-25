@@ -387,6 +387,20 @@ docs_map() { printf '# DocsMap\n\n## Ledger\n\ngenre: state\nstrictness: advisor
   [ "$output" = "root $(cd "$BATS_TEST_TMPDIR/docs-repo" && pwd -P)/Ledger unlisted" ] || { echo "$output"; false; }
 }
 
+@test "a places glob stands for the folder before it" {
+  mkdir -p "$BATS_TEST_TMPDIR/docs-repo/adr"
+  ln -s "$BATS_TEST_TMPDIR/docs-repo" "$PROJ/Docs"
+  real="$(cd "$BATS_TEST_TMPDIR/docs-repo" && pwd -P)"
+  docs_map 'Docs/**'
+  chk_rest
+  [ "$status" -eq 1 ]
+  [ "$output" = "root $real unlisted" ] || { echo "$output"; false; }
+  docs_map 'Docs/adr/*'
+  chk_rest
+  [ "$status" -eq 1 ]
+  [ "$output" = "root $real/adr unlisted" ] || { echo "$output"; false; }
+}
+
 @test "a places file stands for its folder" {
   mkdir -p "$BATS_TEST_TMPDIR/docs-repo/Ledger"
   : >"$BATS_TEST_TMPDIR/docs-repo/Ledger/README.md"
@@ -538,6 +552,22 @@ tasks_outside() {
   capp "root $TROOT missing"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [ "$(jq -r '.permissions.additionalDirectories[0]' "$PROJ/.claude/settings.local.json")" = "$TROOT" ]
+  cchk
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "claude-code: a places link outside the project is missing" {
+  mkdir -p "$BATS_TEST_TMPDIR/docs-repo"
+  ln -s "$BATS_TEST_TMPDIR/docs-repo" "$PROJ/Docs"
+  docs_map 'Docs/**'
+  cchk
+  [ "$status" -eq 1 ]
+  [ "$output" = "root $(cd "$BATS_TEST_TMPDIR/docs-repo" && pwd -P) missing" ] || { echo "$output"; false; }
+}
+
+@test "claude-code: an External packages folder inside the project is not named" {
+  mkdir -p "$PROJ/vendor/Kit"
+  spine_md '- External packages: /vendor/*'
   cchk
   [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
