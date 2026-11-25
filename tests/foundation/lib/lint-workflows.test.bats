@@ -213,3 +213,14 @@ expect_warning() { # $1 = substring of the warning
   expect_violation "dispatch 'review' carries 0 tuning() call(s)"
   case "$output" in *"dispatch 'execute:read-steps' has a"*) ;; *) echo "$output"; return 1 ;; esac
 }
+
+@test "a schema key written without a space is measured" {
+  grow_step 1000
+  mutate profile-epic.js "{ label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema: STEPS," "{ label: 'execute:read-steps', phase: 'Execute', agentType: A.agents.architect, schema:STEPS,"
+  expect_violation "dispatch 'execute:read-steps' has a"
+}
+
+@test "an agent() call whose schema is no schema: key fails" {
+  mutate profile-review.js "schema: REVIEW," "...{ schema_: REVIEW },"
+  expect_violation "workflows/profile-review.js: 13 agent() call(s) but 12 schema: key(s)"
+}

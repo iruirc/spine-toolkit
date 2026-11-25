@@ -59,7 +59,7 @@ read_steps() {
 @test "STEP carries one shared description instead of one per setting" {
   items="$(step_items "$(read_steps)" execute:read-steps)"
   node -e 'const s = JSON.parse(process.argv[1])
-    if (!/resolve-settings\.sh json/.test(s.description || "")) { console.log("no shared description"); process.exit(1) }
+    if (!/^A setting with no description of its own .*resolve-settings\.sh json/.test(s.description || "")) { console.log("no shared description for the settings alone: " + s.description); process.exit(1) }
     if (s.properties.drive_app.description !== undefined) { console.log("drive_app keeps its own"); process.exit(1) }
     if (s.properties.step_id.description === undefined) { console.log("step_id lost its own"); process.exit(1) }' "$items"
 }

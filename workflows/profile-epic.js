@@ -1104,7 +1104,7 @@ Return changed true once the file is revised. Change no production code and no t
 // always reads it back off disk: only that reader runs the resolver over each step folder.
 const STEP = {
   type: 'object',
-  description: "A field with no description of its own carries the same key of the step folder's own resolve-settings.sh json; estimation_from is its sources.estimation, device_from its sources.device, resolved_models its models.",
+  description: "A setting with no description of its own carries the same key of the step folder's own resolve-settings.sh json; estimation_from is its sources.estimation, device_from its sources.device, resolved_models its models.",
   additionalProperties: false,
   required: ['step_id', 'task_id', 'task_type', 'status'],
   properties: {

@@ -424,9 +424,10 @@ const exprEnd = (s, i) => {
   return s.length
 }
 
-// Every schema: key with its line, the label of its agent() call and its expression.
+// Every schema: key with its line, the label of its agent() call and its expression. Spacing is free:
+// a key this misses is a schema nobody measures, and the count check below catches the rest.
 const schemaExprs = (src) =>
-  [...src.matchAll(/\bschema: /g)].map((m) => {
+  [...src.matchAll(/\bschema\s*:/g)].map((m) => {
     const at = m.index + m[0].length
     const before = src.slice(0, m.index)
     const call = before.lastIndexOf('agent(')
@@ -444,13 +445,15 @@ globalThis.parallel = async (fns) => Promise.all(fns.map((f) => f()))
   const violations = []
   const warnings = []
   for (const f of files) {
-    const path = `workflows/${f}`
+    const path = 'workflows/' + f
     const src = fs.readFileSync(path, 'utf8')
     if (src.split(RUNS_ANCHOR).length !== 2) {
       violations.push(`${path}: lint-workflows.sh cannot find runs() in the prelude to skip every stage — update its anchor`)
       continue
     }
     const exprs = schemaExprs(src)
+    const calls = (src.match(/\bagent\(/g) || []).length
+    if (calls !== exprs.length) violations.push(`${path}: ${calls} agent() call(s) but ${exprs.length} schema: key(s) — lint-workflows.sh measures a schema only as a schema: key in the call's options`)
     const body = 'function __probe(e) { return eval(e) }\nglobalThis.__probe = __probe\n' +
       src.replace(/^export const meta/m, 'const meta').replace(RUNS_ANCHOR, 'return false')
     const size = new Map()
