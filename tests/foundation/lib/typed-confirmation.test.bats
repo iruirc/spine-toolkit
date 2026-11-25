@@ -12,7 +12,7 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 @test "a choice made in an AUQ is typed before a Workflow call" {
   w="$(section "$S" "The run's own words")"
   for f in '**A choice that must be typed.**' 'Method A only' \
-           'the owner has typed a message since the request that started the range' \
+           'the owner has typed a message since the last launch request' 'A launch request is the typed command or trigger phrase' \
            'answers that shape the brief rather than the contract' \
            'and any other AUQ answer that decides what is done with a chosen finding' \
            '`auq_fix_review_option_all`' '`auq_fix_review_option_pick`' '`auq_fix_rounds_option_more`' \

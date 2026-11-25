@@ -156,6 +156,19 @@ origin_at() { # $1 commit: origin/main stands there and is the remote's HEAD, as
   printf '| R1 | Review fixes 1 | ✅ |\n| R3 | Review fixes 3 | ✅ |\n| R2 | Review fixes 2 | ✅ |\n' >"$TASK/Plan.md"
   run "$TR" tips "$TASK" --kind done
   grep -qx '\[REVIEW_FIXES\] = 3' <<<"$output" || { echo "$output"; return 1; }
+  printf '| R1 | Correcciones de la revision 1 | ✅ |\n| R2 | Review fixes 2 | ⏸ |\n' >"$TASK/Plan.md"
+  run "$TR" tips "$TASK" --kind done
+  grep -qx '\[REVIEW_FIXES\] = 2' <<<"$output" || { echo "a round is counted by its id: $output"; return 1; }
+  printf '| R1 | Correcciones de la revision 1 | ✅ |\n' >"$TASK/Plan.md"
+  run "$TR" tips "$TASK" --kind done
+  grep -qx '\[REVIEW_FIXES\] = 1' <<<"$output" || { echo "a translated title hid the round: $output"; return 1; }
+  printf '| R7 | the cart total is capped |\n' >"$TASK/Plan.md"
+  run "$TR" tips "$TASK" --kind done
+  grep -qx '\[REVIEW_FIXES\] = 0' <<<"$output" || { echo "a requirement row counted as a round: $output"; return 1; }
+  printf '| 4 | Review fixes 4 | ✅ |\n' >"$TASK/Plan.md"
+  run "$TR" tips "$TASK" --kind done
+  grep -qx '\[REVIEW_FIXES\] = 4' <<<"$output" || { echo "an older Plan.md lost its round: $output"; return 1; }
+  printf '| R1 | Review fixes 1 | ✅ |\n| R3 | Review fixes 3 | ✅ |\n| R2 | Review fixes 2 | ✅ |\n' >"$TASK/Plan.md"
   run "$TR" tips "$TASK" --kind reviewed
   ! grep -q REVIEW_FIXES <<<"$output" || { echo "$output"; return 1; }
   "$TR" tips "$TASK" --kind done >"$TASK/Done.md"

@@ -349,7 +349,7 @@ Cannot catch up `{task_id}` — it has no `Done.md`, so it was never finished. U
 Nothing to catch up: no repository of `{task_id}` has commits after its Done.
 
 ## error_fix_review_nothing
-Task `{task_id}` has no review asking for changes — there is nothing for fix-review to fix.
+Task `{task_id}` has nothing for fix-review to fix: Review.md is missing, its verdict is DISCUSSION, or it lists no finding.
 
 ## typed_confirmation_needed
 The agent hears only what you type: an answer picked in a question does not reach it. Send this line as it is, or say the same in your own words:

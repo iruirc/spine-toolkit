@@ -232,7 +232,9 @@ elif CMD == 'tips':
         # Where Done left the fix rounds: a later catch-up counts its own from here.
         plan = os.path.join(TASK, 'Plan.md')
         text = open(plan, encoding='utf-8').read() if os.path.isfile(plan) else ''
-        lines.append('[REVIEW_FIXES] = %d' % max([int(n) for n in re.findall(r'Review fixes (\d+)', text)] or [0]))
+        # A round is a progress row, a status in it, whose id is R<n>; the title is the fallback for a Plan.md that predates the id.
+        rounds = re.findall(r'^\|\s*R(\d+)\s*\|.*(?:⬜|🔄|✅|⏸|🚫|⊘)', text, re.M) + re.findall(r'Review fixes (\d+)', text)
+        lines.append('[REVIEW_FIXES] = %d' % max([int(n) for n in rounds] or [0]))
     print('\n'.join(lines))
 elif CMD == 'ranges':
     SINCES = ['base', 'reviewed', 'done', 'validated']

@@ -130,3 +130,17 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     grep -qx '## stage_done_option_fix_minor' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l: no stage_done_option_fix_minor"; return 1; }
   done
 }
+
+@test "auto after a fix round that left findings goes on with those findings only" {
+  g="$(section "$S" 'Gating')"
+  for f in '`{findings}` being the findings left' '`auq_fix_rounds_option_more` dispatches only those' \
+           '`auq_fix_rounds_option_self` marks each of them `⊘ left by owner, <date>`'; do
+    grep -qF -- "$f" <<<"$g" || { echo "Gating lost: $f"; return 1; }
+  done
+}
+
+@test "error_fix_review_nothing fits an approving review with nothing listed" {
+  for l in en ru; do
+    awk '/^## error_fix_review_nothing$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orchestrator/locales/$l.md" | grep -qF 'DISCUSSION' || { echo "$l: the message still assumes CHANGES_REQUESTED"; return 1; }
+  done
+}

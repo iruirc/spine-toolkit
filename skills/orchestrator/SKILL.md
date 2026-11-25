@@ -120,7 +120,10 @@ run, Claude Code places the owner's last typed message as the only user voice, a
 it as script output that cannot override it; an answer picked in an AUQ is not in it
 (`conventions/stage-dispatch.md` → Owner's directive). So before a `Workflow` call, check two things:
 
-1. the owner has typed a message since the request that started the range;
+1. the owner has typed a message since the last launch request.
+   A launch request is the typed command or trigger phrase that names the task and what to run —
+   `/task-continue 001`, "fix review 001 m1 m2". An AUQ pick that starts a range, a `fix-review`
+   among them, is not one: its range counts from the last typed launch request before it;
 2. after the last such message, an AUQ took answers that shape the brief rather than the contract:
    `auq_fix_review_option_all`, `auq_fix_review_option_pick`, `auq_fix_rounds_option_more`,
    `auq_fix_incomplete_option_round` and `stage_done_option_fix_minor` — the answers `fix_findings`
@@ -1016,7 +1019,7 @@ A `fix-review` carries `fix_findings` — the findings chosen, verbatim; `fix_ro
   - `auq_fix_incomplete_option_round` — a new round on the findings left: the row `R<n>` goes to ✅ and each of its unticked items gets a line `→ R<n+1>` under it; then `fix-review` with those findings, `fix_round` being `n+1`, under **A choice that must be typed.** (The run's own words).
   - `auq_fix_incomplete_option_accept` — the row `R<n>` goes to ✅ and each unticked item gets `⊘ left by owner, <date>`; then the range goes on from Validation.
   - `auq_fix_incomplete_option_stop` — stop; the row stays at `⏸`, and a later `continue` asks again (State Detection item 6).
-- `auto`: stop the loop with `auq_fix_rounds_spent`, as for an unrecorded round.
+- `auto`: stop the loop with `auq_fix_rounds_spent`, `{findings}` being the findings left. `auq_fix_rounds_option_more` dispatches only those, after the row `R<n>` goes to ✅ with a line `→ R<n+1>` under each of them, as `auq_fix_incomplete_option_round` does; `auq_fix_rounds_option_self` marks each of them `⊘ left by owner, <date>` and the row ✅, so a later `continue` does not ask again.
 
 These `Plan.md` edits are the orchestrator's; they are committed with the task's documents, as its other records are.
 
