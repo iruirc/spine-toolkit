@@ -58,3 +58,10 @@ plan_brief() {
     done
   done
 }
+
+@test "the Tests column and the tooling convention count by the result lines, not by one framework's words" {
+  grep -qF '`Tests` is a number: the sum of the counts of the run'"'"'s result lines, as `skills/phase-verification/SKILL.md` → `## The line` defines them' \
+    "$ROOT/skills/task-documents/SKILL.md" || { echo "task-documents: Tests column undefined"; return 1; }
+  ! grep -qF 'Executed N tests' "$ROOT/conventions/agent-tooling.md" || { echo "agent-tooling quotes one framework's summary"; return 1; }
+  grep -qF 'quotes its result line' "$ROOT/conventions/agent-tooling.md" || { echo "agent-tooling: no result line"; return 1; }
+}
