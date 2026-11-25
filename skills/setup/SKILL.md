@@ -458,7 +458,8 @@ with no platform, leave the flag out. `<config home>` is `${CODEX_HOME:-~/.codex
   {host} = `Claude Code`, {how} = `perm_how_claude_code`, {when} = `perm_when_claude_code`,
   {setting} = `perm_setting_claude_code`. Claude Code reads its settings when a session starts, so a
   folder written there applies from the next session; `/add-dir <path>` adds it to this one, which
-  `perm_when_claude_code` says.
+  `perm_when_claude_code` says; the `<path>` there stays as written, and the user types one of the
+  folders just listed in its place.
 
 What `check` exits with:
 

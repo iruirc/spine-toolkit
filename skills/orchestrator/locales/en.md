@@ -476,7 +476,7 @@ To write them, run `/setup`; for this session only, `/add-dir <path>`.
 - The MCP server `{server}` has no approval mode in the config: Codex may ask before its calls, unless this session already approves them.
 
 ## perm_root_missing
-- `{path}`: a folder Spine writes to — tasks, external packages or documentation. {setting} does not cover it, and this session cannot write there: the runtime may ask before a write to it.
+- `{path}`: a folder Spine writes to — tasks, external packages or documentation. {setting} does not cover it: a write to it may stop on a question.
 
 ## codex_perm_root_unlisted
 - `{path}`: a folder Spine writes to — tasks, external packages or documentation. `writable_roots` does not cover it, but this session can write there: nothing changes in this run; in a session started from another folder Codex may ask.
