@@ -65,17 +65,31 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   grep -F 'ps is not permitted here' <<<"$sec" | grep -qF 'rule' || { echo "skip is not tied to the missing rule"; false; }
 }
 
-@test "the orchestrator checks Spine's Codex settings at the start of a task in Codex only" {
+@test "the orchestrator checks permissions once per run in both runtimes" {
   ORCH="$ROOT/skills/orchestrator/SKILL.md"
   para="$(grep -F 'spine-permissions.sh check' "$ORCH")"
   [ -n "$para" ] || { echo "no check in the orchestrator"; false; }
-  for s in 'codex-cli' 'codex_permissions_outdated' 'carries on'; do
+  [ "$(grep -cF 'spine-permissions.sh check' "$ORCH")" = 1 ] || { echo "the check is named in more than one paragraph"; false; }
+  [[ "$para" == '**Permissions.**'* ]] || { echo "the paragraph is not **Permissions.**"; false; }
+  for s in '--runtime <runtime>' 'once per run' 'carries on' 'permissions_outdated' 'perm_hint_codex' 'perm_hint_claude_code' 'codex-cli' 'claude-code'; do
     grep -qF -- "$s" <<<"$para" || { echo "missing: $s"; false; }
   done
+  ! grep -qF 'In Claude Code nothing runs' <<<"$para" || { echo "Claude Code still runs nothing"; false; }
+  grep -qiF 'not escalated' <<<"$para" || { echo "the Codex check may be escalated"; false; }
   for l in en ru; do
-    grep -qx '## codex_permissions_outdated' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "no key in $l"; false; }
+    for k in permissions_outdated perm_hint_codex perm_hint_claude_code; do
+      grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "no $k in $l"; false; }
+    done
+    for k in codex_permissions_outdated codex_perm_root_missing; do
+      ! grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$k still in $l"; false; }
+    done
   done
   grep -qF 'spine-permissions.sh check' "$ROOT/runtimes/codex-cli.md" || { echo "the map does not name the check"; false; }
+}
+
+@test "the Codex map names the renamed check" {
+  grep -qF 'spine-permissions.sh check --runtime codex-cli' "$ROOT/runtimes/codex-cli.md" || { echo "the map names the old script"; false; }
+  ! grep -qF 'codex-permissions.sh' "$ROOT/runtimes/codex-cli.md" || { echo "the old script is still named"; false; }
 }
 
 # A field project: one line "settings are missing or out of date" for five items, one of them a root the
@@ -84,21 +98,59 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
 @test "the orchestrator names each item of the check with its own line" {
   ORCH="$ROOT/skills/orchestrator/SKILL.md"
   para="$(grep -F 'spine-permissions.sh check' "$ORCH")"
-  for k in codex_perm_rules codex_perm_rules_outdated codex_perm_menu codex_perm_mcp codex_perm_root_missing codex_perm_root_unlisted codex_perm_root_stale; do
+  for k in codex_perm_rules codex_perm_rules_outdated codex_perm_menu codex_perm_mcp perm_root_missing codex_perm_root_unlisted codex_perm_root_stale; do
     grep -qF -- "$k" <<<"$para" || { echo "SKILL.md does not map $k"; false; }
     for l in en ru; do
       grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "no $k in $l"; false; }
     done
   done
   for l in en ru; do
-    awk '/^## codex_permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/$l.md" \
+    awk '/^## permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/$l.md" \
       | grep -qF '{items}' || { echo "$l report lacks the items"; false; }
+    awk '/^## permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/$l.md" \
+      | grep -qF '{host}' || { echo "$l report lacks the host"; false; }
+    awk '/^## permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/$l.md" \
+      | grep -qF '{hint}' || { echo "$l report lacks the hint"; false; }
   done
-  awk '/^## codex_permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/en.md" \
+  awk '/^## permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/en.md" \
     | grep -qF "only Spine's" || { echo "en report does not say what the check cannot see"; false; }
-  awk '/^## codex_permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/ru.md" \
+  awk '/^## permissions_outdated$/{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/ru.md" \
     | grep -qF 'Spine' || { echo "ru report does not say what the check cannot see"; false; }
-  grep -qiF 'not escalated' <<<"$para" || { echo "the check may be escalated"; false; }
+}
+
+@test "the root texts name every folder Spine writes to" {
+  for l in en ru; do
+    for k in perm_root_missing codex_perm_root_unlisted codex_perm_root_stale; do
+      txt="$(awk -v k="## $k" '$0==k{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/$l.md")"
+      [ -n "$txt" ] || { echo "no $k in $l"; false; }
+    done
+  done
+  for k in perm_root_missing codex_perm_root_unlisted; do
+    txt="$(awk -v k="## $k" '$0==k{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/en.md")"
+    for w in tasks 'external packages' documentation; do
+      grep -qF -- "$w" <<<"$txt" || { echo "en $k lacks: $w"; false; }
+    done
+    ! grep -qF '(external packages)' <<<"$txt" || { echo "en $k names only external packages"; false; }
+  done
+  for k in perm_root_missing codex_perm_root_unlisted; do
+    txt="$(awk -v k="## $k" '$0==k{on=1; next} on && /^## /{exit} on' "$ROOT/skills/orchestrator/locales/ru.md")"
+    for w in задачи 'внешние пакеты' документация; do
+      grep -qF -- "$w" <<<"$txt" || { echo "ru $k lacks: $w"; false; }
+    done
+  done
+}
+
+@test "the setting a missing root names is a locale key per runtime, never inline text" {
+  ORCH="$ROOT/skills/orchestrator/SKILL.md"
+  para="$(grep -F 'spine-permissions.sh check' "$ORCH")"
+  for l in en ru; do
+    for k in perm_setting_codex perm_setting_claude_code; do
+      grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "no $k in $l"; false; }
+      grep -qF -- "$k" <<<"$para" || { echo "the paragraph does not bind $k"; false; }
+    done
+  done
+  ! grep -oE '\{setting\} *= *`[^`]*`' <<<"$para" | grep -qvE '= *`perm_setting_(codex|claude_code)`' || { echo "{setting} is bound to a backticked literal"; false; }
+  ! grep -qE '\{setting\} *= *"' <<<"$para" || { echo "{setting} is bound to a quoted literal"; false; }
 }
 
 @test "the setup question has a line for an unlisted root" {

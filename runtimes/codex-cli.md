@@ -39,7 +39,7 @@ The user reads the same reports as in Claude Code, and nothing about the plumbin
 
 - A stage report says what the stage found or changed, its artifact and its checks — nothing else.
 - Runtime `codex-cli`, Method B, and a leftovers check skipped because `ps` is refused are named
-  only in the final report, once each; stale Codex settings, in one line when the task starts.
+  only in the final report, once each; stale Spine permissions, in one line when the task starts.
 - The resolver's stderr lines (`<source>: '<entry>' has no fast@codex-cli in [MODEL_TIERS], read as session`,
   `… is not a codex-cli model, read as session`, …) are a protocol for the orchestrator, never relayed to the
   user as they are: the user reads only the locale texts the orchestrator's table names.
@@ -97,7 +97,7 @@ platform, whatever the sandbox refuses the same way — goes the same way.
 
 ## Spine's Codex settings
 
-When a task starts, the orchestrator runs `spine-permissions.sh check --runtime codex-cli` (see its **Runtime**
+When a task starts, the orchestrator runs `spine-permissions.sh check --runtime codex-cli` (see its **Permissions**
 paragraph); each line on its output is a fact about Spine's own settings — the rules file is not
 there, the question menu flag or the MCP server's approval mode is not set, a writable root is not
 listed — not proof that a step will ask: the check does not see the session's approvals or the
