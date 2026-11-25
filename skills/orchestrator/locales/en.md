@@ -379,11 +379,14 @@ Leave them and go on to Validation
 ## auq_fix_incomplete_option_stop
 Stop here
 
+## stage_done_option_fix_minor
+Fix some of the review's findings
+
 ## info_fix_round
 Fix round {n} of {max}: {count} finding(s) from Review go into one plan phase.
 
 ## warn_fix_round_unrecorded
-Fix round {n} left no `Review fixes {n}` row in Plan.md: the fix phase went unrecorded, so the automatic loop stops here.
+Fix round {n} left no `R{n}` row in Plan.md: the fix phase went unrecorded, so the automatic loop stops here.
 
 ## auq_fix_review_question
 Review asked for changes:

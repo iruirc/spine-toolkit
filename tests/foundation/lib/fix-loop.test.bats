@@ -40,7 +40,9 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   g="$(section "$S" 'Gating')"
   grep -qF 'whose `<n>` is above the `[REVIEW_FIXES]` line of `Done.md`' <<<"$g" || { echo "round limit not reset by a Done"; return 1; }
   grep -qF 'below the last `Catch-up: commits after Done` row' <<<"$g" || { echo "round limit not reset by a catch-up"; return 1; }
-  grep -qF 'every `Review fixes <n>` row of `Plan.md` plus one' <<<"$g" || { echo "fix_round is not task-wide"; return 1; }
+  grep -qF 'every `R<n>` row of `Plan.md` plus one' <<<"$g" || { echo "fix_round is not task-wide"; return 1; }
+  grep -qF 'rows of the `Plan.md` progress table whose id is `R<n>`' <<<"$g" || { echo "rounds not counted by id"; return 1; }
+  grep -qF 'a row titled `Review fixes <n>` with no such id counts too' <<<"$g" || { echo "an older Plan.md lost its rounds"; return 1; }
 }
 
 @test "fix-review has its triggers, its rows and every key in both locales" {
@@ -83,6 +85,7 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   for l in en ru; do
     grep -qx '## warn_fix_round_unrecorded' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l: no warn_fix_round_unrecorded"; return 1; }
   done
+  awk '/^## warn_fix_round_unrecorded$/{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orchestrator/locales/en.md" | grep -qF '`R{n}`' || { echo "warn_fix_round_unrecorded does not name the R row"; return 1; }
 }
 
 @test "the fix-review precondition holds on its first dispatch, and every dispatch counts its ranges afresh" {
@@ -111,5 +114,18 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
              auq_fix_incomplete_option_accept auq_fix_incomplete_option_stop; do
       grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l: no $k"; return 1; }
     done
+  done
+}
+
+@test "fix-review is legal after APPROVED with the findings the owner chose" {
+  r="$(section "$S" 'Resolution Algorithm')"
+  grep -qF 'its first line is neither `CHANGES_REQUESTED` nor `APPROVED`, or it is `APPROVED` and `Review.md` lists no finding' <<<"$r" || { echo "precondition still needs CHANGES_REQUESTED"; return 1; }
+  g="$(section "$S" 'Gating')"
+  for f in '**After Review: `APPROVED` with findings.**' 'stage_done_option_fix_minor' 'any severity' 'In `auto` nothing changes'; do
+    grep -qF -- "$f" <<<"$g" || { echo "Gating lost: $f"; return 1; }
+  done
+  grep -qF 'after `CHANGES_REQUESTED`, or after `APPROVED` with the findings the owner chose' "$S" || { echo "action row"; return 1; }
+  for l in en ru; do
+    grep -qx '## stage_done_option_fix_minor' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l: no stage_done_option_fix_minor"; return 1; }
   done
 }
