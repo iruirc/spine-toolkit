@@ -1104,6 +1104,7 @@ Return changed true once the file is revised. Change no production code and no t
 // always reads it back off disk: only that reader runs the resolver over each step folder.
 const STEP = {
   type: 'object',
+  description: "A field with no description of its own carries the same key of the step folder's own resolve-settings.sh json; estimation_from is its sources.estimation, device_from its sources.device, resolved_models its models.",
   additionalProperties: false,
   required: ['step_id', 'task_id', 'task_type', 'status'],
   properties: {
@@ -1117,31 +1118,41 @@ const STEP = {
     need_test: { type: 'boolean', description: "the step's own [NEED_TEST] from its Task.md" },
     need_review: { type: 'boolean', description: "the step's own [NEED_REVIEW] from its Task.md" },
     scale: { type: 'string', enum: ['lite', 'full'], description: 'only when the step declares its own [SCALE]' },
-    drive_app: { type: 'string', enum: ['auto', 'off'], description: "the step folder's own resolve-settings.sh drive_app value" },
-    device: { type: 'string', description: "the step folder's own resolve-settings.sh device value" },
-    device_from: { type: 'string', description: "the step folder's own resolve-settings.sh sources.device value" },
-    manual_checks: { type: 'string', enum: ['auto', 'always'], description: "the step folder's own resolve-settings.sh manual_checks value" },
-    manual_checks_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh manual_checks_check value" },
-    manual_checks_style: { type: 'string', enum: ['brief', 'full'], description: "the step folder's own resolve-settings.sh manual_checks_style value" },
-    manual_checks_pass: { type: 'string', enum: ['per-step', 'end'], description: "the step folder's own resolve-settings.sh manual_checks_pass value" },
-    plan_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh plan_check value" },
-    done_check: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh done_check value" },
-    estimation: { type: 'string', enum: ['on', 'off'], description: "the step folder's own resolve-settings.sh estimation value" },
-    estimation_unit: { type: 'string', enum: ['agent-run', 'days', 'both'], description: "the step folder's own resolve-settings.sh estimation_unit value" },
-    estimation_from: { type: 'string', enum: ['run', 'task', 'epic', 'project', 'default', 'scale'], description: "the step folder's own resolve-settings.sh estimation_from value, its sources.estimation" },
-    report: { type: 'string', enum: ['auto', 'on', 'off'], description: "the step folder's own resolve-settings.sh report value" },
-    phase_verification: { type: 'string', enum: ['proportional', 'full'], description: "the step folder's own resolve-settings.sh phase_verification value" },
-    walkthrough: { type: 'string', enum: ['brief', 'deep', 'off'], description: "the step folder's own resolve-settings.sh walkthrough value" },
-    walkthrough_check: { type: 'string', enum: ['on', 'once', 'off'], description: "the step folder's own resolve-settings.sh walkthrough_check value" },
-    walkthrough_when: { type: 'string', enum: ['stage', 'done'], description: "the step folder's own resolve-settings.sh walkthrough_when value" },
-    security: { type: 'string', enum: ['auto', 'on', 'off'], description: "the step folder's own resolve-settings.sh security value" },
-    long_run: { type: 'object', required: ['stall', 'max'], properties: { stall: { type: 'integer' }, max: { type: 'integer' } }, description: "the step folder's own resolve-settings.sh long_run value" },
+    drive_app: { type: 'string', enum: ['auto', 'off'] },
+    device: { type: 'string' },
+    device_from: { type: 'string' },
+    manual_checks: { type: 'string', enum: ['auto', 'always'] },
+    manual_checks_check: { type: 'string', enum: ['on', 'off'] },
+    manual_checks_style: { type: 'string', enum: ['brief', 'full'] },
+    manual_checks_pass: { type: 'string', enum: ['per-step', 'end'] },
+    plan_check: { type: 'string', enum: ['on', 'off'] },
+    done_check: { type: 'string', enum: ['on', 'off'] },
+    estimation: { type: 'string', enum: ['on', 'off'] },
+    estimation_unit: { type: 'string', enum: ['agent-run', 'days', 'both'] },
+    estimation_from: { type: 'string', enum: ['run', 'task', 'epic', 'project', 'default', 'scale'] },
+    report: { type: 'string', enum: ['auto', 'on', 'off'] },
+    phase_verification: { type: 'string', enum: ['proportional', 'full'] },
+    walkthrough: { type: 'string', enum: ['brief', 'deep', 'off'] },
+    walkthrough_check: { type: 'string', enum: ['on', 'once', 'off'] },
+    walkthrough_when: { type: 'string', enum: ['stage', 'done'] },
+    security: { type: 'string', enum: ['auto', 'on', 'off'] },
+    long_run: { type: 'object', required: ['stall', 'max'], properties: { stall: { type: 'integer' }, max: { type: 'integer' } } },
     models: { type: 'string', description: 'only when the step declares its own [MODELS]: the text between its brackets' },
-    resolved_models: { type: 'object', additionalProperties: { type: 'string' }, description: "the step folder's own resolve-settings.sh models value, every key as it came out" },
+    resolved_models: { type: 'object', additionalProperties: { type: 'string' } },
     effort: { type: 'string', description: 'only when the step declares its own [EFFORT]: the text between its brackets' },
     research_agent: { type: 'string', description: 'only for a RESEARCH step whose Task.md carries [RESEARCH_AGENT]' },
     research_experiment: { type: 'string', description: 'only for a RESEARCH step whose Task.md carries [RESEARCH_EXPERIMENT]: the value between its brackets' },
   },
+}
+
+// What Plan returns of a step: enough to find a QUICK type and count the steps. Execute reads the rest off disk.
+const PLANNED_STEP = {
+  type: 'object',
+  additionalProperties: false,
+  required: STEP.required,
+  properties: Object.fromEntries(
+    ['step_id', 'task_id', 'task_type', 'status', 'title', 'need_test', 'need_review'].map((k) => [k, STEP.properties[k]]),
+  ),
 }
 
 const EPIC_PLAN = {
@@ -1151,7 +1162,7 @@ const EPIC_PLAN = {
   properties: {
     ...ARTIFACT.properties,
     branch: { type: 'string', enum: ['decomposition', 'pure_research'] },
-    steps: { type: 'array', items: STEP, description: 'empty on the pure_research branch' },
+    steps: { type: 'array', items: PLANNED_STEP, description: 'empty on the pure_research branch' },
     report_decision: PLAN.properties.report_decision,
   },
 }
@@ -1167,6 +1178,7 @@ const STEPS = {
     summary: { type: 'string' },
   },
 }
+const PLANNED_STEPS = { ...STEPS, properties: { ...STEPS.properties, steps: { type: 'array', items: PLANNED_STEP } } }
 
 // ── Research ────────────────────────────────────────────────────────────────
 // This script never picks the branch. The architect records the verdict inside Research.md
@@ -1261,7 +1273,7 @@ If you wrote Plan.md: Run "${core('scripts/lint-artifact-readability.sh')}" --wo
   if (quickPlanned.length) {
     const retyped = await agent(
       brief('Plan', `You typed step(s) ${quickPlanned.join(', ')} [TASK_TYPE] = QUICK, which only the user chooses. Give each another type — BUG, FEATURE, REFACTOR or TEST, by what the step does — in its Task.md and in the type column of ${DIR}/Plan.md. Touch nothing else. Return every step of the epic as it now stands on disk.`),
-      { label: 'plan:retype', phase: 'Plan', agentType: A.agents.architect, schema: STEPS, ...tuning('architect', 'stage') },
+      { label: 'plan:retype', phase: 'Plan', agentType: A.agents.architect, schema: PLANNED_STEPS, ...tuning('architect', 'stage') },
     )
     const still = !retyped || !retyped.steps ? quickPlanned : retyped.steps.filter((s) => s.task_type === 'QUICK').map((s) => s.step_id)
     if (still.length) return finish('stop', { status: 'error', reason: `step(s) ${still.join(', ')} are still typed QUICK on disk, which only the user chooses; a rerun would run them as QUICK — give them another [TASK_TYPE] in their Task.md first` })

@@ -532,13 +532,13 @@ FIELDS
     || { echo "profile-epic.js does not forward the device to a step"; return 1; }
   grep -qF "walkthrough_check: { type: 'string', enum: ['on', 'once', 'off']" "$E" \
     || { echo "the step record has no walkthrough_check"; return 1; }
-  grep -qF "walkthrough_when: { type: 'string', enum: ['stage', 'done'], description: \"the step folder's own resolve-settings.sh walkthrough_when value\" }" "$E" \
+  grep -qF "walkthrough_when: { type: 'string', enum: ['stage', 'done'] }" "$E" \
     || { echo "the step record has no walkthrough_when"; return 1; }
   grep -qF 'walkthrough_when: st.walkthrough_when === undefined ? WALKTHROUGH_WHEN : st.walkthrough_when,' "$E" \
     || { echo "profile-epic.js does not forward walkthrough_when to a step"; return 1; }
   for f in plan_check done_check; do
     F="$(tr '[:lower:]' '[:upper:]' <<<"$f")"
-    grep -qF "$f: { type: 'string', enum: ['on', 'off'], description: \"the step folder's own resolve-settings.sh $f value\" }" "$E" \
+    grep -qF "$f: { type: 'string', enum: ['on', 'off'] }" "$E" \
       || { echo "the step record has no $f"; return 1; }
     grep -qF "$f: st.$f === undefined ? $F : st.$f," "$E" \
       || { echo "profile-epic.js does not forward $f to a step"; return 1; }
@@ -553,16 +553,16 @@ FIELDS
   # The origin rides with the value: a step that names its own estimation and no origin reads as explicit.
   grep -qF "estimation_from: st.estimation === undefined ? ESTIMATION_FROM : (st.estimation_from || 'task')," "$E" \
     || { echo "profile-epic.js does not key estimation_from on the step's own estimation"; return 1; }
-  grep -qF "estimation_from: { type: 'string', enum: ['run', 'task', 'epic', 'project', 'default', 'scale'], description: \"the step folder's own resolve-settings.sh estimation_from value" "$E" \
+  grep -qF "estimation_from: { type: 'string', enum: ['run', 'task', 'epic', 'project', 'default', 'scale'] }" "$E" \
     || { echo "the step record's estimation_from is not run, task, epic, project, default or scale"; return 1; }
-  grep -qF "estimation: { type: 'string', enum: ['on', 'off'], description: \"the step folder's own resolve-settings.sh estimation value\" }" "$E" \
+  grep -qF "estimation: { type: 'string', enum: ['on', 'off'] }" "$E" \
     || { echo "the step record's estimation is not on or off"; return 1; }
-  grep -qF "estimation_unit: { type: 'string', enum: ['agent-run', 'days', 'both'], description: \"the step folder's own resolve-settings.sh estimation_unit value\" }" "$E" \
+  grep -qF "estimation_unit: { type: 'string', enum: ['agent-run', 'days', 'both'] }" "$E" \
     || { echo "the step record's estimation_unit is not agent-run, days or both"; return 1; }
   grep -qF "its sources.estimation as estimation_from" "$E" \
     || { echo "read-steps never asks for sources.estimation"; return 1; }
   ! grep -q 'artifact_check\|ARTIFACT_CHECK' "$E" || { echo "profile-epic.js still names artifact_check"; return 1; }
-  grep -qF "report: { type: 'string', enum: ['auto', 'on', 'off'], description: \"the step folder's own resolve-settings.sh report value\" }" "$E" \
+  grep -qF "report: { type: 'string', enum: ['auto', 'on', 'off'] }" "$E" \
     || { echo "the step record has no report"; return 1; }
   grep -qF "report: st.report === undefined ? REPORT : st.report," "$E" \
     || { echo "profile-epic.js does not forward report to a step"; return 1; }
