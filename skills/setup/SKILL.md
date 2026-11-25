@@ -435,7 +435,7 @@ without the user, so they are the user's to give. Which runtime you are in is th
 paragraph (**Agent Tooling**).
 
 - In Claude Code: nothing — no file is read or written.
-- In Codex CLI, run `<core root>/scripts/codex-permissions.sh check --project <project root>
+- In Codex CLI, run `<core root>/scripts/spine-permissions.sh check --runtime codex-cli --project <project root>
   --platform-root <platform root> --config-home <config home>` inside the sandbox. `<platform root>`
   is the root of the platform the project config names, found by content (`conventions/agent-tooling.md`
   → Plugin Roots); with no platform, leave the flag out. `<config home>` is `${CODEX_HOME:-~/.codex}`,
@@ -455,7 +455,7 @@ paragraph (**Agent Tooling**).
     | `root <path> unlisted` | `codex_item_root_unlisted` | {path} |
     | `root <path> stale` | `codex_item_root_stale` | {path} |
 
-    - First option (apply all) → `codex-permissions.sh apply` with the same flags and every item
+    - First option (apply all) → `spine-permissions.sh apply` with the same flags and every item
       `check` printed, each as one quoted argument, run with `sandbox_permissions: "require_escalated"`:
       `.codex/` is protected like `.git`, and `{config_path}` lies outside the project, so Codex asks
       the user once — one approval for every file. Report `report_codex_permissions_written`.

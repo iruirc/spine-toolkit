@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-# Says which of Spine's Codex CLI settings a project is missing, and writes the ones the user agreed to.
+# Says which of Spine's permission settings a project is missing for a runtime, and writes the ones the
+# user agreed to. Only codex-cli is implemented; claude-code is accepted and exits 2 until it is.
 # How setup and the orchestrator use it: skills/setup/SKILL.md → Codex permissions (Codex CLI).
 #
-# Usage: scripts/codex-permissions.sh check --project <dir> [--platform-root <dir>] [--config-home <dir>]
-#        scripts/codex-permissions.sh apply --project <dir> [--platform-root <dir>] [--config-home <dir>] <item>…
+# Usage: scripts/spine-permissions.sh check --runtime claude-code|codex-cli --project <dir> [--platform-root <dir>] [--config-home <dir>]
+#        scripts/spine-permissions.sh apply --runtime claude-code|codex-cli --project <dir> [--platform-root <dir>] [--config-home <dir>] <item>…
 # check prints one item per line — rules <file> missing|outdated, menu off, mcp <server> prompts,
 # root <path> missing|unlisted|stale — and exits 0 when it printed none, 1 when it did. apply takes
 # those lines as items and writes only them. 2: usage, either.
 # --config-home defaults to ${CODEX_HOME:-~/.codex}.
+#
+# The folders Spine writes, for every runtime: the project's Tasks folder, each External packages root
+# of the project config, each `places` folder of the DocsMap components — by realpath, those inside the
+# project left out, a folder under another one named by the outer one only.
 #
 # Each item is a fact about Spine's settings, not about what Codex will do: rules missing — the file is
 # not there; menu off — the flag is not set; mcp prompts — the server has no approval mode. A root is
@@ -16,17 +21,17 @@
 # in its nearest existing folder. That is the session's own access only when check runs in its sandbox.
 set -uo pipefail
 
-[ $# -ge 1 ] || { sed -n '5,10p' "$0" >&2; exit 2; }
+[ $# -ge 1 ] || { sed -n '6,12p' "$0" >&2; exit 2; }
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 exec python3 - "$HERE" "$@" <<'PY'
-import argparse, glob, json, os, re, sys, tempfile
+import argparse, glob, json, os, re, subprocess, sys, tempfile
 
 HERE = sys.argv[1]
 CORE_RULES = os.path.join(HERE, "..", "templates", "codex-rules", "spine.rules")
 
 
 def usage(msg):
-    print("codex-permissions: " + msg, file=sys.stderr)
+    print("spine-permissions: " + msg, file=sys.stderr)
     sys.exit(2)
 
 
@@ -240,7 +245,7 @@ def package_name(arg):
     return scope + rest.split("@")[0]
 
 
-def wanted_roots(project):
+def external_roots(project):
     # Each `- External packages: <glob>` line of the project config, cut before its first glob part.
     for name in ("SPINE.md", "CLAUDE-spine-toolkit.md"):
         path = os.path.join(project, name)
@@ -262,6 +267,53 @@ def wanted_roots(project):
         if root not in out:
             out.append(root)
     return out
+
+
+def real(path):
+    # realpath of the nearest existing ancestor joined with the rest, so a folder not made yet under a
+    # linked parent is named the way the sandbox will see it once it is.
+    path = os.path.abspath(path)
+    rest = []
+    while not os.path.lexists(path):
+        parent = os.path.dirname(path)
+        if parent == path:
+            break
+        rest.insert(0, os.path.basename(path))
+        path = parent
+    return os.path.join(os.path.realpath(path), *rest)
+
+
+def places(project):
+    # The `places` paths of the DocsMap components, from docs-route.sh; a file stands for its folder.
+    # A registry docs-route.sh rejects is its own problem: no places, one line on stderr.
+    r = subprocess.run([os.path.join(HERE, "docs-route.sh"), "registry", project, "--paths"],
+                       stdin=subprocess.DEVNULL, capture_output=True, text=True)
+    if r.returncode == 2:
+        print("spine-permissions: DocsMap skipped: " + (r.stderr.strip().splitlines() or ["unreadable"])[0],
+              file=sys.stderr)
+        return []
+    out = []
+    for line in r.stdout.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 3 or parts[1] != "places":
+            continue
+        path = os.path.join(project, parts[2])
+        base = os.path.basename(path.rstrip("/"))
+        if os.path.isfile(path) or (not os.path.exists(path) and "." in base and not parts[2].endswith("/")):
+            path = os.path.dirname(path.rstrip("/"))
+        out.append(path)
+    return out
+
+
+def write_roots(project):
+    # Where Spine writes, as realpaths: the tasks folder, the external packages, the documentation places.
+    inside = real(project)
+    out = []
+    for r in map(real, [os.path.join(project, "Tasks")] + external_roots(project) + places(project)):
+        if r == inside or r.startswith(inside.rstrip(os.sep) + os.sep) or r in out:
+            continue
+        out.append(r)
+    return [r for r in out if not any(o != r and r.startswith(o.rstrip(os.sep) + os.sep) for o in out)]
 
 
 ROOTS = ("sandbox_workspace_write",)
@@ -337,11 +389,13 @@ class State:
                     isinstance(x, str) and not x.startswith("-") and package_name(x) in names
                     for x in (args if isinstance(args, list) else []))):
                 self.servers[path[1]] = path
-        self.wanted = wanted_roots(a.project)
+        self.wanted = write_roots(a.project)
         self.listed, self.own = listed_roots(self.conf)
         # Codex lays the project's config over the user's, and an array replaces the one below it.
         layer = self.conf if self.conf.has(ROOTS, "writable_roots") else self.user
-        self.covering = sum(listed_roots(layer), [])
+        # A root Spine wrote by a path that is no longer one of the wanted ones covers nothing: it is stale.
+        user, own = listed_roots(layer)
+        self.covering = user + [r for r in own if r in self.wanted]
         self.uncovered = [r for r in self.wanted if not covers(self.covering, r)]
         self.can_write = {r: writable(r) for r in self.uncovered}
 
@@ -435,8 +489,9 @@ def apply(a, wanted):
 
 
 def main():
-    p = Parser(prog="codex-permissions.sh")
+    p = Parser(prog="spine-permissions.sh")
     p.add_argument("command", choices=["check", "apply"])
+    p.add_argument("--runtime", required=True, choices=["codex-cli", "claude-code"])
     p.add_argument("--project", required=True)
     p.add_argument("--platform-root")
     p.add_argument("--config-home", default=os.environ.get("CODEX_HOME") or os.path.expanduser("~/.codex"))
@@ -444,6 +499,8 @@ def main():
     a = p.parse_intermixed_args(sys.argv[2:])
     a.project = os.path.abspath(os.path.expanduser(a.project))
     a.config_home = os.path.expanduser(a.config_home)
+    if a.runtime == "claude-code":
+        usage("runtime claude-code is not implemented")
     if a.command == "check":
         if a.items:
             usage("check takes no items")

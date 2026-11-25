@@ -32,8 +32,8 @@ decision() { codex execpolicy check --resolve-host-executables --rules "$TPL" "$
     run decision $cmd
     [[ "$output" == *'"decision":"allow"'* ]] || { echo "$cmd: $output"; false; }
   done
-  run decision /c/scripts/codex-permissions.sh apply 'menu off'
-  [[ "$output" == *'"matchedRules":[]'* ]] || { echo "codex-permissions.sh must ask: $output"; false; }
+  run decision /c/scripts/spine-permissions.sh apply 'menu off'
+  [[ "$output" == *'"matchedRules":[]'* ]] || { echo "spine-permissions.sh must ask: $output"; false; }
 }
 
 @test "the rule template says who writes it and the risk it takes" {
@@ -52,8 +52,8 @@ decision() { codex execpolicy check --resolve-host-executables --rules "$TPL" "$
 
 # Milestone 5: up to five settings (core rules, platform rules, the menu, approve for the platform's
 # MCP server, writable roots) — one question for all of them, one escalated write.
-@test "the step asks codex-permissions.sh what is missing and asks nothing when it is all there" {
-  for s in 'scripts/codex-permissions.sh' 'check --project' '--platform-root' '--config-home' 'Plugin Roots'; do
+@test "the step asks spine-permissions.sh what is missing and asks nothing when it is all there" {
+  for s in 'scripts/spine-permissions.sh' 'check --runtime codex-cli --project' '--platform-root' '--config-home' 'Plugin Roots'; do
     grep -qF -- "$s" <<<"$SECTION" || { echo "missing: $s"; false; }
   done
   grep -F 'Exit 0' <<<"$SECTION" | grep -qF 'no question' || { echo "exit 0 does not skip the question"; false; }

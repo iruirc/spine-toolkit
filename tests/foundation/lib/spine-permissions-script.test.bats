@@ -1,12 +1,12 @@
 #!/usr/bin/env bats
 # In Codex CLI every build, test run and leftovers check asked the user, and so did every call of
 # the user's XcodeBuildMCP and every write to an external package (multi-llm milestone 5).
-# codex-permissions.sh says which of Spine's Codex settings are missing or stale, and writes the
+# spine-permissions.sh says which of Spine's Codex settings are missing or stale, and writes the
 # ones the user agreed to, touching nothing else in the files it edits.
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
-  CP="$ROOT/scripts/codex-permissions.sh"
+  CP="$ROOT/scripts/spine-permissions.sh"
   PROJ="$BATS_TEST_TMPDIR/proj"
   CH="$BATS_TEST_TMPDIR/codex-home"
   PLAT="$BATS_TEST_TMPDIR/spine-platform-swift"
@@ -15,8 +15,8 @@ setup() {
   printf '{"servers": ["xcodebuildmcp", "mobilebuildmcp"]}\n' >"$PLAT/runtimes/codex-cli/mcp.json"
 }
 
-chk() { run "$CP" check --project "$PROJ" --platform-root "$PLAT" --config-home "$CH"; }
-app() { run "$CP" apply --project "$PROJ" --platform-root "$PLAT" --config-home "$CH" "$@"; }
+chk() { run "$CP" check --runtime codex-cli --project "$PROJ" --platform-root "$PLAT" --config-home "$CH"; }
+app() { run "$CP" apply --runtime codex-cli --project "$PROJ" --platform-root "$PLAT" --config-home "$CH" "$@"; }
 menu_on() { printf '[features]\ndefault_mode_request_user_input = true\n' >"$CH/config.toml"; }
 rules_in_place() {
   mkdir -p "$PROJ/.codex/rules"
@@ -33,7 +33,7 @@ rules_in_place() {
 }
 
 @test "check without a platform root names only the core rules and the menu" {
-  run "$CP" check --project "$PROJ" --config-home "$CH"
+  run "$CP" check --runtime codex-cli --project "$PROJ" --config-home "$CH"
   [ "$status" -eq 1 ]
   [ "$output" = $'rules spine.rules missing\nmenu off' ] || { echo "$output"; false; }
 }
@@ -113,7 +113,7 @@ rules_in_place() {
 }
 
 @test "check without --project is a usage error" {
-  run "$CP" check
+  run "$CP" check --runtime codex-cli
   [ "$status" -eq 2 ]
 }
 
@@ -178,13 +178,15 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
 @test "External packages become writable roots, the folder before the glob" {
   spine_md '- External packages: /../pkgs/*'
   chk_rest
-  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs unlisted" ] || { echo "$output"; false; }
+  [ "$output" = "root $(cd "$PROJ/.." && pwd -P)/pkgs unlisted" ] || { echo "$output"; false; }
 }
 
+# /vendor/Kit lies inside the project, which the session can write anyway: it is no root.
+# /vendor/Kit lies inside the project, which the session can write anyway: it is no root.
 @test "each External packages line is its own root" {
   spine_md $'- External packages: /../pkgs/*\n- External packages: /vendor/Kit'
   chk_rest
-  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs unlisted"$'\n'"root $PROJ/vendor/Kit unlisted" ] || { echo "$output"; false; }
+  [ "$output" = "root $(cd "$PROJ/.." && pwd -P)/pkgs unlisted" ] || { echo "$output"; false; }
 }
 
 @test "the template's example line is not a path" {
@@ -202,12 +204,12 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
 @test "CLAUDE-spine-toolkit.md is read when SPINE.md is absent" {
   spine_md '- External packages: /../pkgs/*' CLAUDE-spine-toolkit.md
   chk_rest
-  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs unlisted" ] || { echo "$output"; false; }
+  [ "$output" = "root $(cd "$PROJ/.." && pwd -P)/pkgs unlisted" ] || { echo "$output"; false; }
 }
 
 @test "no .codex folder: apply creates config.toml with the root" {
   spine_md '- External packages: /../pkgs/*'
-  root="$(cd "$PROJ/.." && pwd)/pkgs"
+  root="$(cd "$PROJ/.." && pwd -P)/pkgs"
   app "root $root missing"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [ "$(cat "$PROJ/.codex/config.toml")" = $'[sandbox_workspace_write]\nwritable_roots = [\n  "'"$root"$'", # spine\n]' ] \
@@ -216,7 +218,7 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
 
 @test "apply writes writable_roots as a multi-line array and keeps the user's own" {
   spine_md '- External packages: /../pkgs/*'
-  root="$(cd "$PROJ/.." && pwd)/pkgs"
+  root="$(cd "$PROJ/.." && pwd -P)/pkgs"
   mkdir -p "$PROJ/.codex"
   printf 'model = "m"\n\n[sandbox_workspace_write]\nnetwork_access = true\nwritable_roots = ["/u/own"]\n' >"$PROJ/.codex/config.toml"
   app "root $root missing"
@@ -238,7 +240,7 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
 
 @test "a root the user listed is never named" {
   spine_md '- External packages: /../pkgs/*'
-  root="$(cd "$PROJ/.." && pwd)/pkgs"
+  root="$(cd "$PROJ/.." && pwd -P)/pkgs"
   mkdir -p "$PROJ/.codex"
   printf '[sandbox_workspace_write]\nwritable_roots = ["/u/own", "%s"]\n' "$root" >"$PROJ/.codex/config.toml"
   chk_rest
@@ -250,7 +252,7 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
 @test "a root under a folder the project's config lists is not named" {
   spine_md '- External packages: /../pkgs/*'
   mkdir -p "$PROJ/.codex"
-  printf '[sandbox_workspace_write]\nwritable_roots = ["%s"]\n' "$(cd "$PROJ/.." && pwd)" >"$PROJ/.codex/config.toml"
+  printf '[sandbox_workspace_write]\nwritable_roots = ["%s"]\n' "$(cd "$PROJ/.." && pwd -P)" >"$PROJ/.codex/config.toml"
   chk_rest
   [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
@@ -258,7 +260,7 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
 @test "a root the user's config.toml covers is not named" {
   spine_md '- External packages: /../pkgs/*'
   printf '[features]\ndefault_mode_request_user_input = true\n\n[sandbox_workspace_write]\nwritable_roots = ["%s/"]\n' \
-    "$(cd "$PROJ/.." && pwd)" >"$CH/config.toml"
+    "$(cd "$PROJ/.." && pwd -P)" >"$CH/config.toml"
   chk_rest
   [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
@@ -266,9 +268,9 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
 @test "a sibling folder with a shared prefix does not cover a root" {
   spine_md '- External packages: /../pkgs/*'
   mkdir -p "$PROJ/.codex"
-  printf '[sandbox_workspace_write]\nwritable_roots = ["%s/pk"]\n' "$(cd "$PROJ/.." && pwd)" >"$PROJ/.codex/config.toml"
+  printf '[sandbox_workspace_write]\nwritable_roots = ["%s/pk"]\n' "$(cd "$PROJ/.." && pwd -P)" >"$PROJ/.codex/config.toml"
   chk_rest
-  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs unlisted" ] || { echo "$output"; false; }
+  [ "$output" = "root $(cd "$PROJ/.." && pwd -P)/pkgs unlisted" ] || { echo "$output"; false; }
 }
 
 @test "a root this run can write but no config lists is unlisted, and the probe leaves nothing" {
@@ -276,7 +278,7 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
   mkdir -p "$PROJ/../pkgs"
   chk_rest
   [ "$status" -eq 1 ]
-  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs unlisted" ] || { echo "$output"; false; }
+  [ "$output" = "root $(cd "$PROJ/.." && pwd -P)/pkgs unlisted" ] || { echo "$output"; false; }
   [ -z "$(ls -A "$PROJ/../pkgs")" ] || { ls -A "$PROJ/../pkgs"; false; }
 }
 
@@ -286,14 +288,14 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
   mkdir -p "$PROJ/../pkgs"; chmod 555 "$PROJ/../pkgs"
   chk_rest
   chmod 755 "$PROJ/../pkgs"
-  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs missing" ] || { echo "$output"; false; }
+  [ "$output" = "root $(cd "$PROJ/.." && pwd -P)/pkgs missing" ] || { echo "$output"; false; }
 }
 
 @test "a root not created yet under a folder this run can write is unlisted" {
   spine_md '- External packages: /../w/new/*'
   mkdir -p "$PROJ/../w"
   chk_rest
-  [ "$output" = "root $(cd "$PROJ/.." && pwd)/w/new unlisted" ] || { echo "$output"; false; }
+  [ "$output" = "root $(cd "$PROJ/.." && pwd -P)/w/new unlisted" ] || { echo "$output"; false; }
   [ -z "$(ls -A "$PROJ/../w")" ] || { ls -A "$PROJ/../w"; false; }
 }
 
@@ -304,20 +306,20 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
   spine_md '- External packages: /../pkgs/*'
   mkdir -p "$PROJ/../pkgs" "$PROJ/.codex"; chmod 555 "$PROJ/../pkgs"
   printf '[features]\ndefault_mode_request_user_input = true\n\n[sandbox_workspace_write]\nwritable_roots = ["%s"]\n' \
-    "$(cd "$PROJ/.." && pwd)" >"$CH/config.toml"
+    "$(cd "$PROJ/.." && pwd -P)" >"$CH/config.toml"
   printf '[sandbox_workspace_write]\nwritable_roots = []\n' >"$PROJ/.codex/config.toml"
   chk_rest
   chmod 755 "$PROJ/../pkgs"
-  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs missing" ] || { echo "$output"; false; }
+  [ "$output" = "root $(cd "$PROJ/.." && pwd -P)/pkgs missing" ] || { echo "$output"; false; }
 }
 
 @test "a ~/ root in the user's config covers what lies under it" {
   spine_md '- External packages: /../pkgs/*'
   mkdir -p "$BATS_TEST_TMPDIR/home"
-  ln -s "$(cd "$PROJ/.." && pwd)" "$BATS_TEST_TMPDIR/home/work"
+  ln -s "$(cd "$PROJ/.." && pwd -P)" "$BATS_TEST_TMPDIR/home/work"
   printf '[features]\ndefault_mode_request_user_input = true\n\n[sandbox_workspace_write]\nwritable_roots = ["~/work"]\n' >"$CH/config.toml"
   rules_in_place
-  HOME="$BATS_TEST_TMPDIR/home" run "$CP" check --project "$PROJ" --platform-root "$PLAT" --config-home "$CH"
+  HOME="$BATS_TEST_TMPDIR/home" run "$CP" check --runtime codex-cli --project "$PROJ" --platform-root "$PLAT" --config-home "$CH"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
@@ -326,7 +328,7 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
   mkdir -p "$PROJ/.codex"
   printf '[sandbox_workspace_write]\nwritable_roots = ["."]\n' >"$PROJ/.codex/config.toml"
   chk_rest
-  [ "$output" = "root $(cd "$PROJ/.." && pwd)/pkgs unlisted" ] || { echo "$output"; false; }
+  [ "$output" = "root $(cd "$PROJ/.." && pwd -P)/pkgs unlisted" ] || { echo "$output"; false; }
 }
 
 @test "usage prints the whole usage block" {
@@ -338,10 +340,118 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
 @test "apply writes an unlisted root like a missing one" {
   spine_md '- External packages: /../pkgs/*'
   mkdir -p "$PROJ/../pkgs"
-  root="$(cd "$PROJ/.." && pwd)/pkgs"
+  root="$(cd "$PROJ/.." && pwd -P)/pkgs"
   app "root $root unlisted"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   grep -qF "\"$root\", # spine" "$PROJ/.codex/config.toml" || { cat "$PROJ/.codex/config.toml"; false; }
+  chk_rest; [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+# --- the shared write roots: the tasks folder, documentation places, realpath ---------------------
+
+docs_map() { printf '# DocsMap\n\n## Ledger\n\ngenre: state\nstrictness: advisory\nplaces:\n  - %s\ncovers:\n  - Sources/**\n' "$1" >"$PROJ/DocsMap.md"; }
+
+@test "check without --runtime is a usage error" {
+  run "$CP" check --project "$PROJ" --config-home "$CH"
+  [ "$status" -eq 2 ]
+  [[ "$output" == spine-permissions:* ]] || { echo "$output"; false; }
+}
+
+@test "an unknown --runtime is a usage error" {
+  run "$CP" check --runtime nope --project "$PROJ" --config-home "$CH"
+  [ "$status" -eq 2 ]
+  [[ "$output" == spine-permissions:* ]] || { echo "$output"; false; }
+}
+
+@test "claude-code is accepted by the parser and not implemented yet" {
+  run "$CP" check --runtime claude-code --project "$PROJ" --config-home "$CH"
+  [ "$status" -eq 2 ]
+  [ "$output" = 'spine-permissions: runtime claude-code is not implemented' ] || { echo "$output"; false; }
+}
+
+@test "a Tasks folder that links outside the project is a root" {
+  mkdir "$BATS_TEST_TMPDIR/tasks-repo"
+  ln -s "$BATS_TEST_TMPDIR/tasks-repo" "$PROJ/Tasks"
+  chk_rest
+  [ "$status" -eq 1 ]
+  [ "$output" = "root $(cd "$BATS_TEST_TMPDIR/tasks-repo" && pwd -P) unlisted" ] || { echo "$output"; false; }
+}
+
+@test "a Tasks folder inside the project is not a root" {
+  mkdir "$PROJ/Tasks"
+  chk_rest
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "a places folder that links outside the project is a root" {
+  mkdir -p "$BATS_TEST_TMPDIR/docs-repo"
+  ln -s "$BATS_TEST_TMPDIR/docs-repo" "$PROJ/Docs"
+  docs_map 'Docs/Ledger/'
+  chk_rest
+  [ "$status" -eq 1 ]
+  [ "$output" = "root $(cd "$BATS_TEST_TMPDIR/docs-repo" && pwd -P)/Ledger unlisted" ] || { echo "$output"; false; }
+}
+
+@test "a places file stands for its folder" {
+  mkdir -p "$BATS_TEST_TMPDIR/docs-repo/Ledger"
+  : >"$BATS_TEST_TMPDIR/docs-repo/Ledger/README.md"
+  ln -s "$BATS_TEST_TMPDIR/docs-repo" "$PROJ/Docs"
+  docs_map 'Docs/Ledger/README.md'
+  chk_rest
+  [ "$output" = "root $(cd "$BATS_TEST_TMPDIR/docs-repo" && pwd -P)/Ledger unlisted" ] || { echo "$output"; false; }
+}
+
+@test "a places file not created yet stands for its folder too" {
+  mkdir -p "$BATS_TEST_TMPDIR/docs-repo"
+  ln -s "$BATS_TEST_TMPDIR/docs-repo" "$PROJ/Docs"
+  docs_map 'Docs/Ledger/README.md'
+  chk_rest
+  [ "$output" = "root $(cd "$BATS_TEST_TMPDIR/docs-repo" && pwd -P)/Ledger unlisted" ] || { echo "$output"; false; }
+}
+
+@test "a malformed DocsMap skips places and checks the rest" {
+  printf '# DocsMap\n\n## Ledger\n\nstrictness: advisory\nplaces:\n  - ../elsewhere/Docs/\n' >"$PROJ/DocsMap.md"
+  spine_md '- External packages: /../pkgs/*'
+  rules_in_place; menu_on
+  run --separate-stderr "$CP" check --runtime codex-cli --project "$PROJ" --platform-root "$PLAT" --config-home "$CH"
+  [ "$status" -eq 1 ]
+  [ "$output" = "root $(cd "$PROJ/.." && pwd -P)/pkgs unlisted" ] || { echo "$output"; false; }
+  [ -n "$stderr" ]
+  [[ "$stderr" == 'spine-permissions: DocsMap skipped: '* ]] || { echo "$stderr"; false; }
+}
+
+@test "a folder not created yet under a symlinked parent is named by the parent's realpath" {
+  mkdir -p "$BATS_TEST_TMPDIR/docs-repo"
+  ln -s "$BATS_TEST_TMPDIR/docs-repo" "$PROJ/Docs"
+  docs_map 'Docs/New/'
+  chk_rest
+  [ "$output" = "root $(cd "$BATS_TEST_TMPDIR/docs-repo" && pwd -P)/New unlisted" ] || { echo "$output"; false; }
+  [ ! -e "$BATS_TEST_TMPDIR/docs-repo/New" ]
+}
+
+@test "a root under another root is not named twice" {
+  mkdir -p "$BATS_TEST_TMPDIR/pkgs/Kit"
+  spine_md '- External packages: /../pkgs/*'
+  docs_map '../pkgs/Kit/Docs/'
+  chk_rest
+  [ "$output" = "root $(cd "$PROJ/.." && pwd -P)/pkgs unlisted" ] || { echo "$output"; false; }
+}
+
+@test "a root written before realpath is stale and its realpath is named" {
+  mkdir "$BATS_TEST_TMPDIR/real-pkgs"
+  ln -s "$BATS_TEST_TMPDIR/real-pkgs" "$BATS_TEST_TMPDIR/pkgs"
+  spine_md '- External packages: /../pkgs/*'
+  old="$BATS_TEST_TMPDIR/pkgs"
+  real="$(cd "$BATS_TEST_TMPDIR/real-pkgs" && pwd -P)"
+  mkdir -p "$PROJ/.codex"
+  printf '[sandbox_workspace_write]\nwritable_roots = [\n  "%s", # spine\n]\n' "$old" >"$PROJ/.codex/config.toml"
+  chk_rest
+  [ "$status" -eq 1 ]
+  [ "$output" = "root $real unlisted"$'\n'"root $old stale" ] || { echo "$output"; false; }
+  app "root $real unlisted" "root $old stale"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(cat "$PROJ/.codex/config.toml")" = $'[sandbox_workspace_write]\nwritable_roots = [\n  "'"$real"$'", # spine\n]' ] \
+    || { cat "$PROJ/.codex/config.toml"; false; }
   chk_rest; [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
@@ -353,7 +463,7 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
   printf 'model = "\xff"\n' >"$CH/config.toml"
   chk
   [ "$status" -eq 2 ] || { echo "status $status: $output"; false; }
-  [[ "$output" == codex-permissions:* ]] || { echo "$output"; false; }
+  [[ "$output" == spine-permissions:* ]] || { echo "$output"; false; }
   [[ "$output" != *Traceback* ]] || { echo "$output"; false; }
 }
 
@@ -369,7 +479,7 @@ spine_md() { printf '# SPINE.md\n\n## Paths\n\n%s\n' "$1" >"$PROJ/${2:-SPINE.md}
   rules_in_place
   mkdir -p "$BATS_TEST_TMPDIR/home/.codex"
   printf '[features]\ndefault_mode_request_user_input = true\n' >"$BATS_TEST_TMPDIR/home/.codex/config.toml"
-  HOME="$BATS_TEST_TMPDIR/home" run "$CP" check --project "$PROJ" --platform-root "$PLAT" --config-home '~/.codex'
+  HOME="$BATS_TEST_TMPDIR/home" run "$CP" check --runtime codex-cli --project "$PROJ" --platform-root "$PLAT" --config-home '~/.codex'
   [ "$status" -eq 0 ] || { echo "status $status: $output"; false; }
 }
 

@@ -97,7 +97,7 @@ platform, whatever the sandbox refuses the same way — goes the same way.
 
 ## Spine's Codex settings
 
-When a task starts, the orchestrator runs `codex-permissions.sh check` (see its **Runtime**
+When a task starts, the orchestrator runs `spine-permissions.sh check --runtime codex-cli` (see its **Runtime**
 paragraph); each line on its output is a fact about Spine's own settings — the rules file is not
 there, the question menu flag or the MCP server's approval mode is not set, a writable root is not
 listed — not proof that a step will ask: the check does not see the session's approvals or the

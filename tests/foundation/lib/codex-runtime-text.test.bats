@@ -67,7 +67,7 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
 
 @test "the orchestrator checks Spine's Codex settings at the start of a task in Codex only" {
   ORCH="$ROOT/skills/orchestrator/SKILL.md"
-  para="$(grep -F 'codex-permissions.sh check' "$ORCH")"
+  para="$(grep -F 'spine-permissions.sh check' "$ORCH")"
   [ -n "$para" ] || { echo "no check in the orchestrator"; false; }
   for s in 'codex-cli' 'codex_permissions_outdated' 'carries on'; do
     grep -qF -- "$s" <<<"$para" || { echo "missing: $s"; false; }
@@ -75,7 +75,7 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
   for l in en ru; do
     grep -qx '## codex_permissions_outdated' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "no key in $l"; false; }
   done
-  grep -qF 'codex-permissions.sh check' "$ROOT/runtimes/codex-cli.md" || { echo "the map does not name the check"; false; }
+  grep -qF 'spine-permissions.sh check' "$ROOT/runtimes/codex-cli.md" || { echo "the map does not name the check"; false; }
 }
 
 # A field project: one line "settings are missing or out of date" for five items, one of them a root the
@@ -83,7 +83,7 @@ codex_section() { awk -v h="$1" '$0==h{on=1; next} on && /^## /{exit} on' "$ROOT
 # and the report says the check reads only Spine's own settings.
 @test "the orchestrator names each item of the check with its own line" {
   ORCH="$ROOT/skills/orchestrator/SKILL.md"
-  para="$(grep -F 'codex-permissions.sh check' "$ORCH")"
+  para="$(grep -F 'spine-permissions.sh check' "$ORCH")"
   for k in codex_perm_rules codex_perm_rules_outdated codex_perm_menu codex_perm_mcp codex_perm_root_missing codex_perm_root_unlisted codex_perm_root_stale; do
     grep -qF -- "$k" <<<"$para" || { echo "SKILL.md does not map $k"; false; }
     for l in en ru; do
