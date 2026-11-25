@@ -160,22 +160,22 @@ DocsMap.md: {docs_map_status}
 ## report_agents_md_updated
 `AGENTS.md` теперь называет переименованный конфиг проекта (бэкап: `{backup_path}`).
 
-## auq_codex_permissions
-В Codex Spine будет спрашивать подтверждение перед многими своими шагами. Он может настроить Codex так, чтобы они шли без вопросов:
+## auq_permissions
+В {host} Spine будет спрашивать подтверждение перед многими своими шагами. Он может настроить {host} так, чтобы они шли без вопросов:
 
 {items}
 
-Применить? Codex один раз попросит подтвердить запись этих файлов. Всё заработает после перезапуска: выйди из Codex, выполни `codex app-server daemon restart` и запусти Codex снова. Чтобы отменить настройку, удали названный файл или строку.
+Применить? {how}
 
-## auq_codex_permissions_options
+## auq_permissions_options
 Применить всё | Выбрать по одному | Ничего не менять — подтверждать каждый шаг
 
-## auq_codex_permission_item
+## auq_permission_item
 {item}
 
 Записать эту настройку?
 
-## auq_codex_permission_item_options
+## auq_permission_item_options
 Записать | Пропустить
 
 ## codex_item_rules_core
@@ -190,20 +190,32 @@ DocsMap.md: {docs_map_status}
 ## codex_item_mcp
 - У MCP-сервера `{server}` нет режима одобрения, поэтому Codex может спрашивать перед каждым его вызовом — валидация делает их десятки. С ним Codex спрашивать не будет. В его раздел в `{config_path}` добавится `default_tools_approval_mode = "approve"`.
 
-## codex_item_root_missing
-- `{path}`: внешние пакеты из конфига проекта; `writable_roots` его не покрывает, и эта сессия не может туда писать. С ним стадии Spine смогут писать туда без вопроса. Путь добавится в `writable_roots` файла `.codex/config.toml` проекта.
+## perm_item_root_missing
+- `{path}`: папка, куда пишет Spine, — задачи, внешние пакеты или документация. Её не покрывает {setting}, поэтому без вопроса эта сессия писать туда не может. Когда путь окажется там, стадии Spine станут писать в эту папку без вопросов.
 
 ## codex_item_root_unlisted
-- `{path}`: внешние пакеты из конфига проекта; эта сессия уже может туда писать, но `writable_roots` его не покрывает, поэтому в сессии, запущенной из другой папки, Codex может спросить. Путь добавится в `writable_roots` файла `.codex/config.toml` проекта.
+- `{path}`: папка, куда пишет Spine, — задачи, внешние пакеты или документация; эта сессия уже может туда писать, но `writable_roots` её не покрывает, поэтому в сессии, запущенной из другой папки, Codex может спросить. Путь добавится в `writable_roots` файла `.codex/config.toml` проекта.
 
 ## codex_item_root_stale
-- `{path}`: больше нет в конфиге проекта; путь уберётся из `writable_roots` файла `.codex/config.toml` проекта.
+- `{path}`: Spine больше не пишет в эту папку — ни задачи, ни внешние пакеты, ни документацию; путь уберётся из `writable_roots` файла `.codex/config.toml` проекта.
 
-## report_codex_permissions_written
-Настройки Codex записаны. Заработают после перезапуска: выйди из Codex, выполни `codex app-server daemon restart` и запусти Codex снова.
+## report_permissions_written
+Настройки {host} записаны. {when}
 
-## report_codex_permissions_declined
-Настройки Codex не изменены: Codex продолжит спрашивать перед этими шагами.
+## perm_how_codex
+Codex один раз попросит подтвердить запись этих файлов. Всё заработает после перезапуска: выйди из Codex, выполни `codex app-server daemon restart` и запусти Codex снова. Чтобы отменить настройку, удали названный файл или строку.
+
+## perm_how_claude_code
+Spine запишет их в `.claude/settings.local.json`; чтобы отменить, удали строку.
+
+## perm_when_codex
+Заработают после перезапуска: выйди из Codex, выполни `codex app-server daemon restart` и запусти Codex снова.
+
+## perm_when_claude_code
+Заработают со следующей сессии Claude Code; чтобы папка стала доступна уже в этой, выполни `/add-dir <path>`.
+
+## report_permissions_declined
+Настройки {host} не изменены: {host} продолжит спрашивать перед этими шагами.
 
 ## auq_models_migrate
 В `[MODELS]` конфига проекта для {keys} указан `sonnet`. Этим ролям можно дать уровень `fast`: в Claude Code это `sonnet`, а в Codex — модель, которую выберешь ты, так что один конфиг подходит обоим. Заменить их на `fast` и добавить `fast@claude-code: sonnet` в `[MODEL_TIERS]`?
@@ -232,5 +244,5 @@ DocsMap.md: {docs_map_status}
 ## warn_config_platform_not_installed
 В конфиге проекта указана платформа `{platform}`, но она здесь не установлена. Её агенты, правила и проверки в этот запуск не входят: установи её и запусти `/setup` снова или выбери Overwrite, чтобы выбрать другую.
 
-## report_codex_permissions_error
-Не удалось проверить настройки Spine для Codex: {error}
+## report_permissions_error
+Не удалось проверить настройки прав Spine: {error}

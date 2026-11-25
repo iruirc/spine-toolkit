@@ -13,7 +13,8 @@ Bootstraps spine-toolkit in an **already existing** project. Two-file layout:
 - `SPINE.md` — toolkit-owned configuration, the *project config* (`conventions/task-settings.md` → Project config); its sections are the ones `templates/spine-md/en.md` carries. Created and updated by this skill. A project set up before the toolkit ran in more than one runtime carries the same file as `CLAUDE-spine-toolkit.md`; every reader accepts that name, and state G below renames it on request.
 - `CLAUDE.md` — user-owned project instructions. Touched once to insert the `@./SPINE.md` line; otherwise unchanged.
 - `AGENTS.md` — touched only when this skill runs in Codex CLI, which reads `AGENTS.md` and no `@`-import: one marked block pointing at the project config (see **AGENTS.md (Codex CLI)**).
-- `.codex/rules/spine*.rules`, the project's `.codex/config.toml` and the user's Codex `config.toml` — touched only in Codex CLI, after the user agrees to it (see **Codex permissions (Codex CLI)**).
+- `.codex/rules/spine*.rules`, the project's `.codex/config.toml` and the user's Codex `config.toml` — touched only in Codex CLI, after the user agrees to it (see **Permissions**).
+- `.claude/settings.local.json` — touched only in Claude Code, after the user agrees to it: the folders Spine writes outside the project (see **Permissions**).
 
 This skill owns the config **format** and every block or field that is core's: `[LANG]`, `[WORKFLOW_MODE]`, `[PROGRESS]`, `[MANUAL_CHECKS_STYLE]`, `## Platform`, `## Agents`, and the file-level scaffolding. It owns none of the stack: `## Stack` and `## Modules` are filled by the platform half (step 5), because which axes exist and which values they take is the platform manifest's `## Axes`, not core's.
 
@@ -179,7 +180,7 @@ anything — which is what lets F, G and C take the language and the platform fr
      a. AUQ using key `auq_reconfigure_toolkit` with options `auq_reconfigure_toolkit_options`
         (Cancel / Backup-and-overwrite / Overwrite). Cancel comes first: the first option is
         the menu's default, so Enter alone never rewrites the config, and a rerun for the
-        Codex settings below needs nothing else.
+        permission settings below needs nothing else.
         - Cancel → no change to the config or CLAUDE.md; run step 6c and step 6d, then step 6e, with the
           language and platform from the config; print the line step 6e names, then stop.
         - Backup-and-overwrite or Overwrite → continue.
@@ -310,7 +311,7 @@ anything — which is what lets F, G and C take the language and the platform fr
         carries `@./SPINE.md`, in which case leave it alone. A CLAUDE.md that does not exist is
         created from the stub as in the edge sub-state above, whichever answer was given: with
         Keep the old name the stub imports `@./CLAUDE-spine-toolkit.md`, the file the project has.
-     e. Run step 6c (**AGENTS.md (Codex CLI)**), step 6d (**Codex permissions (Codex CLI)**) and step 6e (**Model tiers**). Report `report_spine_name_migrated`, whose rollback hint is
+     e. Run step 6c (**AGENTS.md (Codex CLI)**), step 6d (**Permissions**) and step 6e (**Model tiers**). Report `report_spine_name_migrated`, whose rollback hint is
         `mv SPINE.md CLAUDE-spine-toolkit.md` plus restoring the import line. Stop. Every value
         is already in the file, so steps 5, 6 and 6b have nothing to ask (step 6e may still ask about models and tiers); run `/setup` again
         (state C) to reconfigure.
@@ -356,7 +357,7 @@ anything — which is what lets F, G and C take the language and the platform fr
 6c. AGENTS.md, in Codex CLI only — see **AGENTS.md (Codex CLI)** below. Runs in every state,
    state F included: it asks nothing.
 
-6d. Codex permissions, in Codex CLI only — see **Codex permissions (Codex CLI)** below. Runs after
+6d. Permissions, in both runtimes — see **Permissions** below. Runs after
    6c in every state but state F, which asks nothing: there it is left for the next run of `/setup`.
    It asks only when a setting is missing or stale.
 
@@ -423,51 +424,70 @@ reaches it through a sentence. Which runtime you are in is this skill's Runtime 
   `SPINE.md` in the block.
 
 The template resolves like every other (`conventions/agent-tooling.md` → Plugin Roots). Nothing else
-of `CLAUDE.md` is copied into `AGENTS.md`; `.codex/` belongs to **Codex permissions (Codex CLI)**.
+of `CLAUDE.md` is copied into `AGENTS.md`; `.codex/` belongs to **Permissions**.
 
-## Codex permissions (Codex CLI)
+## Permissions
 
-In Codex CLI's `workspace-write` sandbox the project's `.git` is read-only, the simulator, devices
-and `ps` are refused, writes outside the project ask, and Spine's questions come as numbered text.
-So every commit, build, test run, leftovers check, call of the platform's MCP server and write to an
-external package would stop to ask. Spine's Codex settings take that away; they widen what runs
-without the user, so they are the user's to give. Which runtime you are in is this skill's Runtime
-paragraph (**Agent Tooling**).
+Spine's stages commit, build, run tests and write to folders outside the project, and a runtime that
+has not been told they may stops to ask before each of them. Spine's settings take that away; they
+widen what runs without the user, so they are the user's to give, and this step writes nothing the
+user has not agreed to. Codex CLI keeps them in `.codex/rules/`, the project's `.codex/config.toml` and
+the user's Codex `config.toml`; Claude Code in `permissions.additionalDirectories` of the project's
+`.claude/settings.local.json`. Which runtime you are in is this skill's Runtime paragraph
+(**Agent Tooling**): `<runtime>` is `claude-code` or `codex-cli`.
 
-- In Claude Code: nothing — no file is read or written.
-- In Codex CLI, run `<core root>/scripts/spine-permissions.sh check --runtime codex-cli --project <project root>
-  --platform-root <platform root> --config-home <config home>` inside the sandbox. `<platform root>`
-  is the root of the platform the project config names, found by content (`conventions/agent-tooling.md`
-  → Plugin Roots); with no platform, leave the flag out. `<config home>` is `${CODEX_HOME:-~/.codex}`,
-  written out as the real path; `{config_path}` below is its `config.toml`.
-  - Exit 0 → every setting is in place: no question, no report line.
-  - Exit 2 → report `report_codex_permissions_error` with {error} = what it printed, and carry on.
-  - Exit 1 → it printed one item per line. AUQ `auq_codex_permissions` with options
-    `auq_codex_permissions_options`; {items} is one line per item, each in the key its kind maps to:
+Run `<core root>/scripts/spine-permissions.sh check --runtime <runtime> --project <project root>
+--platform-root <platform root> --config-home <config home>`. `<platform root>` is the root of the
+platform the project config names, found by content (`conventions/agent-tooling.md` → Plugin Roots);
+with no platform, leave the flag out. `<config home>` is `${CODEX_HOME:-~/.codex}` in `codex-cli` and
+`~/.claude` in `claude-code`, written out as the real path.
 
-    | item | key | placeholders |
-    |---|---|---|
-    | `rules spine.rules missing` / `outdated` | `codex_item_rules_core` | — |
-    | `rules spine-<name>.rules missing` / `outdated` | `codex_item_rules_platform` | {file} = `spine-<name>.rules` |
-    | `menu off` | `codex_item_menu` | {config_path} |
-    | `mcp <server> prompts` | `codex_item_mcp` | {server}, {config_path} |
-    | `root <path> missing` | `codex_item_root_missing` | {path} |
-    | `root <path> unlisted` | `codex_item_root_unlisted` | {path} |
-    | `root <path> stale` | `codex_item_root_stale` | {path} |
+- In Codex CLI, `check` runs inside the sandbox, not escalated: it reads the session's own write
+  access. `{config_path}` below is the `config.toml` of `<config home>`. {host} = `Codex`,
+  {how} = `perm_how_codex`, {when} = `perm_when_codex`, {setting} = `` `writable_roots` of the
+  project's `.codex/config.toml` ``. `apply` runs with `sandbox_permissions: "require_escalated"`:
+  `.codex/` is protected like `.git`, and `{config_path}` lies outside the project, so Codex asks the
+  user once — one approval for every file. Codex reads rules and its config when a session starts,
+  so what was written applies after a restart with `codex app-server daemon restart`, which
+  `perm_when_codex` names. This skill does not commit `.codex/`: whether it goes into the repository
+  is the user's call.
+- In Claude Code, `check` and `apply` are ordinary Bash calls, nothing escalated: `apply` writes only
+  `.claude/settings.local.json`, the project's local settings, and warns when git does not ignore it.
+  {host} = `Claude Code`, {how} = `perm_how_claude_code`, {when} = `perm_when_claude_code`,
+  {setting} = `` `permissions.additionalDirectories` of `.claude/settings.local.json` ``. Claude Code
+  reads its settings when a session starts, so a folder written there applies from the next
+  session; `/add-dir <path>` adds it to this one, which `perm_when_claude_code` says.
 
-    - First option (apply all) → `spine-permissions.sh apply` with the same flags and every item
-      `check` printed, each as one quoted argument, run with `sandbox_permissions: "require_escalated"`:
-      `.codex/` is protected like `.git`, and `{config_path}` lies outside the project, so Codex asks
-      the user once — one approval for every file. Report `report_codex_permissions_written`.
-    - Second option (one by one) → for each item, AUQ `auq_codex_permission_item` with {item} = its
-      line from the table and options `auq_codex_permission_item_options`; then one `apply`, escalated
-      as above, with the items the user chose to write. None chosen → as the third option.
-    - Third option → write nothing; report `report_codex_permissions_declined`.
+What `check` exits with:
 
-Codex reads rules and its config when a session starts, so what was written applies after a
-restart — the report says how. This skill does not commit `.codex/`: whether it goes into the
-repository is the user's call. The orchestrator runs the same `check` when a task starts and points
-the user back here when it prints anything.
+- Exit 0 → every setting is in place: no question, no report line.
+- Exit 2 → report `report_permissions_error` with {error} = what it printed, and carry on.
+- Exit 1 → it printed one item per line. AUQ `auq_permissions` with options
+  `auq_permissions_options`; {items} is one line per item, each in the key its kind maps to. The
+  runtime column says which runtime's `check` prints the item:
+
+  | item | runtime | key | placeholders |
+  |---|---|---|---|
+  | `rules spine.rules missing` / `outdated` | `codex-cli` | `codex_item_rules_core` | — |
+  | `rules spine-<name>.rules missing` / `outdated` | `codex-cli` | `codex_item_rules_platform` | {file} = `spine-<name>.rules` |
+  | `menu off` | `codex-cli` | `codex_item_menu` | {config_path} |
+  | `mcp <server> prompts` | `codex-cli` | `codex_item_mcp` | {server}, {config_path} |
+  | `root <path> missing` | `claude-code`, `codex-cli` | `perm_item_root_missing` | {path}, {setting} |
+  | `root <path> unlisted` | `codex-cli` | `codex_item_root_unlisted` | {path} |
+  | `root <path> stale` | `codex-cli` | `codex_item_root_stale` | {path} |
+
+  When `check` printed one item, the second option is not offered: the question carries the first
+  and the third of `auq_permissions_options` only.
+  - First option (apply all) → `spine-permissions.sh apply` with the same flags and every item
+    `check` printed, each as one quoted argument, run as the runtime's note above says. Report
+    `report_permissions_written`.
+  - Second option (one by one) → for each item, AUQ `auq_permission_item` with {item} = its line
+    from the table and options `auq_permission_item_options`; then one `apply`, run as the runtime's
+    note above says, with the items the user chose to write. None chosen → as the third option.
+  - Third option → write nothing; report `report_permissions_declined`.
+
+The orchestrator runs the same `check` when a task starts and points the user back here when it
+prints anything.
 
 ## Model tiers
 
@@ -716,7 +736,7 @@ In `templates/claude-md-stub/<lang>.md`:
 - **AUQ unavailable** → text fallback with numbered options.
 - **User cancels** (Cancel on the AUQ in state D or E) → exit, no disk changes.
   Cancel on the AUQ in state C runs step 6c and step 6d, then step 6e, and changes nothing else: in Claude Code
-  that is no change at all unless step 6e is answered Yes (it asks before it changes anything). Keep the old name in
+  that is no change at all unless step 6d or step 6e is answered yes (each asks before it changes anything). Keep the old name in
   state G is not a cancel: the config and CLAUDE.md stay as they are, and steps 6c, 6d and 6e still run.
 - **Tasks/ already exists** → no overwrite; report `tasks_status_already_existed`.
 - **The registry already exists** → no overwrite; report `docs_map_status_already_existed`.

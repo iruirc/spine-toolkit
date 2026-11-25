@@ -160,22 +160,22 @@ Added the project config block to the end of `AGENTS.md` (backup: `{backup_path}
 ## report_agents_md_updated
 `AGENTS.md` now names the renamed project config (backup: `{backup_path}`).
 
-## auq_codex_permissions
-In Codex, Spine would stop to ask you before many of its own steps. It can set Codex up so they run without asking:
+## auq_permissions
+In {host}, Spine would stop to ask you before many of its own steps. It can set {host} up so they run without asking:
 
 {items}
 
-Apply? Codex asks you once to approve writing these files. It all takes effect after a restart: exit Codex, run `codex app-server daemon restart`, and start Codex again. To undo a setting, delete the file or the line it names.
+Apply? {how}
 
-## auq_codex_permissions_options
+## auq_permissions_options
 Apply all | Choose one by one | Change nothing — keep confirming each step
 
-## auq_codex_permission_item
+## auq_permission_item
 {item}
 
 Write this setting?
 
-## auq_codex_permission_item_options
+## auq_permission_item_options
 Write | Skip
 
 ## codex_item_rules_core
@@ -190,20 +190,32 @@ Write | Skip
 ## codex_item_mcp
 - The MCP server `{server}` has no approval mode, so Codex may ask before each of its calls — a validation makes dozens. With it set, Codex does not ask. Adds `default_tools_approval_mode = "approve"` to its section in `{config_path}`.
 
-## codex_item_root_missing
-- `{path}`: the external packages the project config lists; `writable_roots` does not cover it and this session cannot write there. With it, Spine's stages may write there without a question. Goes into `writable_roots` of the project's `.codex/config.toml`.
+## perm_item_root_missing
+- `{path}`: a folder Spine writes to — tasks, external packages or documentation. {setting} does not cover it, so this session cannot write there without a question. With it there, Spine's stages write to it without one.
 
 ## codex_item_root_unlisted
-- `{path}`: the external packages the project config lists; this session can already write there, but `writable_roots` does not cover it, so in a session started from another folder Codex may ask. Goes into `writable_roots` of the project's `.codex/config.toml`.
+- `{path}`: a folder Spine writes to — tasks, external packages or documentation; this session can already write there, but `writable_roots` does not cover it, so in a session started from another folder Codex may ask. Goes into `writable_roots` of the project's `.codex/config.toml`.
 
 ## codex_item_root_stale
-- `{path}`: no longer in the project config; removed from `writable_roots` of the project's `.codex/config.toml`.
+- `{path}`: no longer a folder Spine writes to — tasks, external packages or documentation; removed from `writable_roots` of the project's `.codex/config.toml`.
 
-## report_codex_permissions_written
-Codex settings written. They take effect after a restart: exit Codex, run `codex app-server daemon restart`, and start Codex again.
+## report_permissions_written
+{host} settings written. {when}
 
-## report_codex_permissions_declined
-Codex settings left as they were: Codex will keep asking before those steps.
+## perm_how_codex
+Codex asks you once to approve writing these files. It all takes effect after a restart: exit Codex, run `codex app-server daemon restart`, and start Codex again. To undo a setting, delete the file or the line it names.
+
+## perm_how_claude_code
+Spine writes `.claude/settings.local.json`; to undo, delete the line.
+
+## perm_when_codex
+They take effect after a restart: exit Codex, run `codex app-server daemon restart`, and start Codex again.
+
+## perm_when_claude_code
+They take effect in the next Claude Code session; for this one, `/add-dir <path>` adds a folder now.
+
+## report_permissions_declined
+{host} settings left as they were: {host} will keep asking before those steps.
 
 ## auq_models_migrate
 `[MODELS]` in the project config names `sonnet` for {keys}. Those roles can use the `fast` tier instead: it is `sonnet` in Claude Code and a model you choose in Codex, so one config serves both. Replace them with `fast` and add `fast@claude-code: sonnet` to `[MODEL_TIERS]`?
@@ -232,5 +244,5 @@ Model tiers: could not write {config} ({reason}), so that answer is not in the f
 ## warn_config_platform_not_installed
 The project config names the platform `{platform}`, which is not installed here. Its agents, rules and checks are left out of this run; install it and run `/setup` again, or choose Overwrite to pick another.
 
-## report_codex_permissions_error
-Could not check Spine's Codex settings: {error}
+## report_permissions_error
+Could not check Spine's permission settings: {error}
