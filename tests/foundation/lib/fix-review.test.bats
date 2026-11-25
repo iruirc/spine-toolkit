@@ -129,3 +129,37 @@ prompt_of() { pick "(o.calls.find((c) => c.label === '$1') || {}).prompt || ''";
     grep -qF '"Catch-up: commits after Done" — a row in the top-level progress table and a detail section' <<<"$d" || { echo "profile-$p: catch-up Done appends no table row"; return 1; }
   done
 }
+
+# The R2 reply carries $2 as its unfixed list (a JSON array).
+replies_unfixed() { replies "$1" true | node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8")); o[process.argv[1] + ":R2"].unfixed = JSON.parse(process.argv[2]); console.log(JSON.stringify(o))' "$1" "$2"; }
+
+@test "the fix phase brief fixes the row id and the English title" {
+  for pair in $PAIRS; do
+    p="${pair%%:*}"; s="${pair#*:}"; l="$(tr '[:upper:]' '[:lower:]' <<<"$s")"
+    ph="$(run_profile "$p" "$(contract "$s" ", \"action\": \"fix-review\", \"fix_findings\": $FINDINGS, \"fix_round\": 2, \"after_done\": false")" "$(replies "$l" true)" | prompt_of "$l:R2")"
+    for f in 'id R2' 'titled exactly "Review fixes 2"' 'in English whatever the prose language' \
+             'leave its checkbox unticked' 'mark the row ⏸' 'unfixed'; do
+      grep -qF "$f" <<<"$ph" || { echo "profile-$p: fix brief lost: $f"; return 1; }
+    done
+  done
+}
+
+@test "a fix phase that leaves findings unfixed ends the range before Validation" {
+  for pair in $PAIRS; do
+    p="${pair%%:*}"; s="${pair#*:}"; l="$(tr '[:upper:]' '[:lower:]' <<<"$s")"
+    out="$(run_profile "$p" "$(contract "$s" ", \"action\": \"fix-review\", \"fix_findings\": $FINDINGS, \"fix_round\": 2, \"after_done\": false")" "$(replies_unfixed "$l" '["the retry never stops — no decision from the owner"]')")"
+    [ -z "$(prompt_of validation <<<"$out")" ] || { echo "profile-$p: Validation ran with findings left"; return 1; }
+    [ "$(pick 'o.result.next_recommended_action' <<<"$out")" = ask_user ] || { echo "profile-$p: $(pick 'o.result' <<<"$out")"; return 1; }
+    [ "$(pick 'o.result.status' <<<"$out")" = ok ] || { echo "profile-$p: status $(pick 'o.result.status' <<<"$out")"; return 1; }
+    [ "$(pick 'o.result.unfixed_findings[0]' <<<"$out")" = 'the retry never stops — no decision from the owner' ] || { echo "profile-$p: $(pick 'o.result' <<<"$out")"; return 1; }
+  done
+}
+
+@test "an empty unfixed list changes nothing" {
+  for pair in $PAIRS; do
+    p="${pair%%:*}"; s="${pair#*:}"; l="$(tr '[:upper:]' '[:lower:]' <<<"$s")"
+    out="$(run_profile "$p" "$(contract "$s" ", \"action\": \"fix-review\", \"fix_findings\": $FINDINGS, \"fix_round\": 2, \"after_done\": false")" "$(replies_unfixed "$l" '[]')")"
+    [ -n "$(prompt_of done <<<"$out")" ] || { echo "profile-$p: Done did not run"; return 1; }
+    [ "$(pick 'o.result.unfixed_findings === undefined' <<<"$out")" = true ] || { echo "profile-$p: unfixed_findings returned"; return 1; }
+  done
+}
