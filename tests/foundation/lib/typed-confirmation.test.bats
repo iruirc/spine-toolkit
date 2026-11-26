@@ -7,6 +7,8 @@ setup() {
   S="$ROOT/skills/orchestrator/SKILL.md"
 }
 
+# A Russian string as \uXXXX escapes: no Cyrillic outside *.ru.md.
+unescape() { python3 -c 'import sys; print(sys.argv[1].encode("ascii").decode("unicode_escape"))' "$1"; }
 section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
 @test "a choice made in an AUQ is typed before a Workflow call" {
@@ -48,5 +50,5 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     done
   done
   grep -A1 -x '## typed_confirmation_needed' "$ROOT/skills/orchestrator/locales/en.md" | grep -qF 'the last thing you typed' || { echo "en: needed has no reason"; return 1; }
-  grep -A1 -x '## typed_confirmation_needed' "$ROOT/skills/orchestrator/locales/ru.md" | grep -qF 'последнее, что ты набрал' || { echo "ru: needed has no reason"; return 1; }
+  grep -A1 -x '## typed_confirmation_needed' "$ROOT/skills/orchestrator/locales/ru.md" | grep -qF "$(unescape '\u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0435\u0435, \u0447\u0442\u043e \u0442\u044b \u043d\u0430\u0431\u0440\u0430\u043b')" || { echo "ru: needed has no reason"; return 1; }
 }
