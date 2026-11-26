@@ -47,4 +47,6 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
       grep -qx "## $k" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l: no $k"; return 1; }
     done
   done
+  grep -A1 -x '## typed_confirmation_needed' "$ROOT/skills/orchestrator/locales/en.md" | grep -qF 'the last thing you typed' || { echo "en: needed has no reason"; return 1; }
+  grep -A1 -x '## typed_confirmation_needed' "$ROOT/skills/orchestrator/locales/ru.md" | grep -qF 'последнее, что ты набрал' || { echo "ru: needed has no reason"; return 1; }
 }

@@ -352,7 +352,7 @@ Nothing to catch up: no repository of `{task_id}` has commits after its Done.
 Task `{task_id}` has nothing for fix-review to fix: Review.md is missing, its verdict is DISCUSSION, or it lists no finding.
 
 ## typed_confirmation_needed
-The agent hears only what you type: an answer picked in a question does not reach it. Send this line as it is, or say the same in your own words:
+The agent hears only the last thing you typed, and it does not name these choices: an answer picked in a question does not reach it. Send this line as it is, or say the same in your own words:
 {summary}
 
 ## typed_confirmation_bare
