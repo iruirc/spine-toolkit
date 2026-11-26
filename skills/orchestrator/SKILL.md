@@ -118,17 +118,31 @@ directive).
 **A choice that must be typed.** Method A only. Before the brief of every agent of a `Workflow`
 run, Claude Code places the owner's last typed message as the only user voice, and the brief after
 it as script output that cannot override it; an answer picked in an AUQ is not in it
-(`conventions/stage-dispatch.md` → Owner's directive). So before a `Workflow` call, check two things:
+(`conventions/stage-dispatch.md` → Owner's directive).
 
-1. the owner has typed a message since the last launch request.
-   A launch request is the typed command or trigger phrase that names the task and what to run —
-   `/task-continue 001`, "fix review 001 m1 m2". An AUQ pick that starts a range, a `fix-review`
-   among them, is not one: its range counts from the last typed launch request before it;
-2. after the last such message, an AUQ took answers that shape the brief rather than the contract:
-   `auq_fix_review_option_all`, `auq_fix_review_option_pick`, `auq_fix_rounds_option_more`,
-   `auq_fix_incomplete_option_round` and `stage_done_option_fix_minor` — the answers `fix_findings`
-   is made of — and any other AUQ answer that decides what is done with a chosen finding, such as
-   one asked to settle a question the owner typed about it.
+Before a `Workflow` call whose brief carries a choice made in an AUQ — the answers `fix_findings` is
+made of, `auq_fix_review_option_all`, `auq_fix_review_option_pick`, `auq_fix_rounds_option_more`,
+`auq_fix_incomplete_option_round` and `stage_done_option_fix_minor`,
+and any other AUQ answer that decides what is done with a chosen finding, such as one asked to
+settle a question the owner typed about it — read the owner's last typed message, the one the host
+will place before the brief. Nothing is asked when it is:
+
+- a launch request. A launch request is the typed command or trigger phrase that names the task and
+  what to run — `/task-continue 001`, "fix review 001 m1 m2". An AUQ pick that starts a range, a
+  `fix-review` among them, is not one;
+- a message that names every chosen finding by its id and every decision on one. It is appended to
+  `user_directive` by the `Run.json` rule above.
+
+Otherwise — a question, an argument, a message on another subject, or one that
+names only some of the choices — do not dispatch yet.
+The order of the AUQ and the typed message does not matter: the agent hears the message either way.
+
+| After the launch request | Confirmation |
+|---|---|
+| only AUQ answers | not asked: the agent hears the launch request |
+| a typed message, then an AUQ | asked |
+| an AUQ, then a typed message on another subject | asked |
+| an AUQ, then a typed message naming every chosen id and decision | not asked; the message goes to `user_directive` |
 
 Not counted: the contract's fields — `stage_done_prompt` and its "go on", the stage, the mode,
 `confirm_dispatch`, `confirm_step_dispatch`, `auq_run_resume_*` — which no agent decides; and the
@@ -136,7 +150,7 @@ Q-by-Q dialog, whose answers land in `Research.md` and `Questions.md`, the recor
 not in a brief. A run started by `/task-continue` with only an AUQ pick after it asks nothing: the
 host relays the command, and the brief does not contradict it.
 
-When both hold, do not dispatch yet:
+When it is asked:
 
 1. Print `typed_confirmation_needed` as plain text, not an AUQ, with `{summary}`: one line in the
    owner's language that states every choice and can be sent as it is — the findings to fix by
@@ -1009,7 +1023,7 @@ A `fix-review` carries `fix_findings` — the findings chosen, verbatim; `fix_ro
 
 **After Review: `APPROVED` with findings.** FEATURE, BUG, REFACTOR, TEST and QUICK. An approving review may still list findings below Major. The owner may have some of them fixed:
 
-- A typed request — "fix review 001 m1 m2", or the same in the owner's words — after `APPROVED` takes the findings it names verbatim from `Review.md`, of any severity, as `fix_findings`. A request that names none gets a multi-select over every finding of `Review.md`. The request is itself typed, so **A choice that must be typed.** applies only to what the owner typed after it.
+- A typed request — "fix review 001 m1 m2", or the same in the owner's words — after `APPROVED` takes the findings it names verbatim from `Review.md`, of any severity, as `fix_findings`. A request that names none gets a multi-select over every finding of `Review.md`. The request is itself a launch request: while it is the last thing the owner typed, **A choice that must be typed.** asks nothing.
 - `manual`: when `Review.md` lists Minor findings or Suggestions, `stage_done_prompt` gets the option `stage_done_option_fix_minor`: the same multi-select, then `fix-review` with the findings picked, under **A choice that must be typed.**
 - In `auto` nothing changes: after `APPROVED` the range goes on to Done.
 

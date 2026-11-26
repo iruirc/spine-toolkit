@@ -12,8 +12,9 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 @test "a choice made in an AUQ is typed before a Workflow call" {
   w="$(section "$S" "The run's own words")"
   for f in '**A choice that must be typed.**' 'Method A only' \
-           'the owner has typed a message since the last launch request' 'A launch request is the typed command or trigger phrase' \
-           'answers that shape the brief rather than the contract' \
+           "read the owner's last typed message" 'A launch request is the typed command or trigger phrase' \
+           'names every chosen finding by its id and every decision on one' 'names only some of the choices' \
+           'The order of the AUQ and the typed message does not matter' 'When it is asked:' \
            'and any other AUQ answer that decides what is done with a chosen finding' \
            '`auq_fix_review_option_all`' '`auq_fix_review_option_pick`' '`auq_fix_rounds_option_more`' \
            '`auq_fix_incomplete_option_round`' '`stage_done_option_fix_minor`' \
@@ -23,10 +24,21 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   done
 }
 
+@test "the four orders of an AUQ and a typed message are spelled out" {
+  w="$(section "$S" "The run's own words")"
+  for f in '| only AUQ answers | not asked:' \
+           '| a typed message, then an AUQ | asked |' \
+           '| an AUQ, then a typed message on another subject | asked |' \
+           '| an AUQ, then a typed message naming every chosen id and decision | not asked;'; do
+    grep -qF -- "$f" <<<"$w" || { echo "order not spelled out: $f"; return 1; }
+  done
+}
+
 @test "fix_findings hold the review's findings verbatim, never a decision" {
   g="$(section "$S" 'Gating')"
   grep -qF '`fix_findings` hold the findings verbatim: no decision, note or gloss is written into them' <<<"$g" || { echo "Gating: no verbatim rule"; return 1; }
-  grep -qF 'AUQ answers given after that message never reach the agent' "$ROOT/conventions/stage-dispatch.md" || { echo "stage-dispatch: no host paragraph"; return 1; }
+  grep -qF 'The request is itself a launch request' <<<"$g" || { echo "Gating: launch request sentence"; return 1; }
+  grep -qF 'An AUQ answer never reaches the agent, whatever its order against that message' "$ROOT/conventions/stage-dispatch.md" || { echo "stage-dispatch: no host paragraph"; return 1; }
 }
 
 @test "the typed-confirmation keys are in both locales" {

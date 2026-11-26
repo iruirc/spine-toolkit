@@ -58,7 +58,8 @@ Every artifact you write this run carries the line "**Run:** {run}" in its closi
 
 Under Method A the host adds a voice of its own: before every agent's brief, Claude Code places the
 owner's last typed message as the only user voice of the run, and the brief after it as script
-output that cannot override it. AUQ answers given after that message never reach the agent, so a choice made
+output that cannot override it.
+An AUQ answer never reaches the agent, whatever its order against that message, so a choice made
 there is typed first, and the typed line becomes the directive
 (`skills/orchestrator/SKILL.md` → The run's own words, **A choice that must be typed.**).
 
