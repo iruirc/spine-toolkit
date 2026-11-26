@@ -36,6 +36,16 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   done
 }
 
+@test "a launch request exempts only a choice it does not contradict" {
+  w="$(section "$S" "The run's own words")"
+  for f in 'a launch request for this task that names no finding or names every chosen one' \
+           '| a launch request naming some findings, then an AUQ choosing others | asked |' \
+           'and the file is written, as step 3 below does' \
+           'where it and the choice differ, step 4 applies to it'; do
+    grep -qF -- "$f" <<<"$w" || { echo "exemption unbounded: $f"; return 1; }
+  done
+}
+
 @test "fix_findings hold the review's findings verbatim, never a decision" {
   g="$(section "$S" 'Gating')"
   grep -qF '`fix_findings` hold the findings verbatim: no decision, note or gloss is written into them' <<<"$g" || { echo "Gating: no verbatim rule"; return 1; }

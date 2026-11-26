@@ -127,11 +127,14 @@ and any other AUQ answer that decides what is done with a chosen finding, such a
 settle a question the owner typed about it — read the owner's last typed message, the one the host
 will place before the brief. Nothing is asked when it is:
 
-- a launch request. A launch request is the typed command or trigger phrase that names the task and
-  what to run — `/task-continue 001`, "fix review 001 m1 m2". An AUQ pick that starts a range, a
-  `fix-review` among them, is not one;
+- a launch request for this task that names no finding or names every chosen one.
+  A launch request is the typed command or trigger phrase that names the task and what to run —
+  `/task-continue 001`, "fix review 001 m1 m2". An AUQ pick that starts a range, a `fix-review`
+  among them, is not one. "fix review 001 m1" does not cover m5 picked in a later round;
 - a message that names every chosen finding by its id and every decision on one. It is appended to
-  `user_directive` by the `Run.json` rule above.
+  `user_directive` by the `Run.json` rule above,
+  and the file is written, as step 3 below does;
+  where it and the choice differ, step 4 applies to it.
 
 Otherwise — a question, an argument, a message on another subject, or one that
 names only some of the choices — do not dispatch yet.
@@ -141,6 +144,7 @@ The order of the AUQ and the typed message does not matter: the agent hears the 
 |---|---|
 | only AUQ answers | not asked: the agent hears the launch request |
 | a typed message, then an AUQ | asked |
+| a launch request naming some findings, then an AUQ choosing others | asked |
 | an AUQ, then a typed message on another subject | asked |
 | an AUQ, then a typed message naming every chosen id and decision | not asked; the message goes to `user_directive` |
 
