@@ -50,7 +50,7 @@ What now?
 
 {warnings}
 
-If you continue, they reach Plan unresolved. To have them asked here, put them under a heading that begins `Open Questions`, one list item per question.
+If you continue, they reach Plan unresolved. To have them asked here, put them right under a heading that begins `Open Questions`, one list item `- Q1. …` per question, with no subheadings.
 
 What now?
 

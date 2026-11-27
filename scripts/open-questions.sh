@@ -22,6 +22,7 @@ BOLD_ID = re.compile(r"^\*\*\[?[A-Za-z]{1,3}\d+\]?\.")
 LOG = "open questions log"
 OUTSIDE = 'an open question outside a section the gate reads — expected a heading beginning "Open Questions"'
 PARAGRAPH = 'a question written as a paragraph — expected a list item "- <ID>. …"'
+NESTED = "a heading inside a question section — expected its questions as list items right under that section's heading"
 FENCE = re.compile(r"^\s*(```|~~~)")
 
 
@@ -50,6 +51,8 @@ def items(path, lines, warns):
     section, base, cur, fence = None, None, None, None
     # Where the section outside the gate starts, whether it was reported, and whether it is the log.
     head_at, warned, log = None, False, False
+    # The level of the read section a deeper heading sits in: such a heading is reported as nested.
+    read_level, nested = None, False
     for n, line in enumerate(lines, 1):
         line = line.rstrip("\n").expandtabs(4)
         if fence:
@@ -67,6 +70,12 @@ def items(path, lines, warns):
         if h:
             section = read_section(h.group(1))
             base, head_at, warned = None, n, False
+            level = len(line) - len(line.lstrip("#"))
+            nested = section is None and read_level is not None and level > read_level
+            if section is not None:
+                read_level = level
+            elif not nested:
+                read_level = None
             log = h.group(1).lower().startswith(LOG)
             continue
         if f:
@@ -74,7 +83,7 @@ def items(path, lines, warns):
         else:
             bold = BOLD_ID.match(line.strip())
             if section is None and not log and not warned and (bold or MARK.search(line)):
-                warns.append((head_at or n, OUTSIDE))
+                warns.append((head_at or n, NESTED if nested else OUTSIDE))
                 warned = True
             elif section is not None and bold and not m:
                 warns.append((n, PARAGRAPH))

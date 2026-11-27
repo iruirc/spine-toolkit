@@ -185,23 +185,21 @@ MD
 # paragraphs: the script read nothing and said nothing. What it cannot read now goes to stderr.
 W1='an open question outside a section the gate reads — expected a heading beginning "Open Questions"'
 W2='a question written as a paragraph — expected a list item "- <ID>. …"'
+W3="a heading inside a question section — expected its questions as list items right under that section's heading"
+# Translated headings as \uXXXX escapes: no Cyrillic outside *.ru.md.
+unescape() { python3 -c 'import sys; print(sys.argv[1].encode("ascii").decode("unicode_escape"))' "$1"; }
+RU_OPEN="$(unescape '\u041e\u0442\u043a\u0440\u044b\u0442\u044b\u0435 \u0432\u043e\u043f\u0440\u043e\u0441\u044b')"
+RU_DECISIONS="$(unescape '\u0420\u0435\u0448\u0435\u043d\u0438\u044f')"
 
 @test "a translated heading over paragraph questions is reported, not collected" {
-  cat >"$A" <<'MD'
-## Открытые вопросы для Plan
-
-**Q1. Как поступать со словом в паузе.** Решает Plan.
-
-- Брать интервал предыдущего слова (recommended).
-- Брать соседа только при касании.
-MD
+  printf '## %s for Plan\n\n**Q1. A zero-length word in a pause.** Plan decides.\n\n- Take the previous word (recommended).\n- Take a neighbour only on contact.\n' "$RU_OPEN" >"$A"
   run --separate-stderr "$OQ" "$A"
   [ "$status" -eq 0 ] && [ "$output" = '[]' ] || { echo "$status $output"; return 1; }
   [ "$stderr" = "open-questions: $A:1: $W1" ] || { echo "$stderr"; return 1; }
 }
 
 @test "a translated heading over list questions is reported" {
-  printf '## Открытые вопросы\n- Q1. Какой кэш\n  - LRU (recommended)\n' >"$A"
+  printf '## %s\n- Q1. Which cache\n  - LRU (recommended)\n' "$RU_OPEN" >"$A"
   run --separate-stderr "$OQ" "$A"
   [ "$output" = '[]' ] || { echo "$output"; return 1; }
   [ "$stderr" = "open-questions: $A:1: $W1" ] || { echo "$stderr"; return 1; }
@@ -253,7 +251,7 @@ MD
 }
 
 @test "one warning per section, at its heading, and read sections still print" {
-  printf '### Open Questions\n- Q1. a\n## Решения\n- A (recommended)\n- B (recommended)\n**Q2. b**\n' >"$A"
+  printf '### Open Questions\n- Q1. a\n## %s\n- A (recommended)\n- B (recommended)\n**Q2. b**\n' "$RU_DECISIONS" >"$A"
   run --separate-stderr "$OQ" "$A"
   [ "$(field 'i["id"]' <<<"$output")" = 'Q1' ] || { echo "$output"; return 1; }
   [ "$stderr" = "open-questions: $A:3: $W1" ] || { echo "$stderr"; return 1; }
@@ -274,7 +272,7 @@ MD
 @test "a warning names its artifact" {
   R="$BATS_TEST_TMPDIR/Reproduce.md"
   printf 'Intro.\n- A (recommended)\n' >"$A"
-  printf '# R\n## Шаги\n- B (recommended)\n' >"$R"
+  printf '# R\n## %s\n- B (recommended)\n' "$RU_DECISIONS" >"$R"
   run --separate-stderr "$OQ" "$A" "$R"
   [ "$stderr" = "$(printf 'open-questions: %s:2: %s\nopen-questions: %s:2: %s' "$A" "$W1" "$R" "$W1")" ] \
     || { echo "$stderr"; return 1; }
@@ -285,4 +283,13 @@ MD
   for t in 'under a heading that begins `Open Questions`' '`- Q1. …`' 'goes under `## Open Questions`, written as rule 5 says'; do
     grep -qF -- "$t" "$td" || { echo "task-documents does not say: $t"; return 1; }
   done
+}
+
+@test "a subheading inside a question section is reported as one, not as a missing section" {
+  printf '## Open Questions\n### For the owner\n- Q1. Which cache\n  - LRU (recommended)\n' >"$A"
+  run --separate-stderr "$OQ" "$A"
+  [ "$stderr" = "open-questions: $A:2: $W3" ] || { echo "$stderr"; return 1; }
+  printf '## Requirements\n### Known unknowns\n#### Data\n- [u1] x\n  - y (recommended)\n## Risks\n- r (recommended)\n' >"$A"
+  run --separate-stderr "$OQ" "$A"
+  [ "$stderr" = "$(printf 'open-questions: %s:3: %s\nopen-questions: %s:6: %s' "$A" "$W3" "$A" "$W1")" ] || { echo "$stderr"; return 1; }
 }

@@ -55,10 +55,12 @@ section() {
   for token in '<core root>/scripts/open-questions.sh` on those of them that exist' '`{artifact, section, id, text, recommended}`' \
                '`stage_done_dialog_accept`, only when `recommended` is not `null`' 'free-text option' \
                stderr '`stage_done_prompt_unparsed_questions`' '`stage_done_unparsed_note`' '{warnings}' \
-               're-run open-questions inspection from scratch'; do
+               're-run open-questions inspection from scratch' '`<artifact>:<line>: <message>` of each such line' \
+               'render the row of the table above for the new result'; do
     grep -qF -- "$token" <<<"$para" || { echo "the gate paragraph does not name $token"; return 1; }
   done
   ! grep -qF 'first 80 chars' <<<"$para" || { echo "the gate still cuts an item to 80 characters"; return 1; }
+  ! grep -qF 'until either zero open items remain' <<<"$para" || { echo "the dialog loop still stops on zero open items"; return 1; }
   for f in "$SKILL" "$ROOT"/skills/orchestrator/locales/*.md; do
     ! grep -qF stage_done_dialog_answer "$f" || { echo "$f still names stage_done_dialog_answer"; return 1; }
   done
