@@ -672,7 +672,8 @@ section() {
                "status directory is replaced by \`*\`" "'…/Tasks/*/<task folder>'" '--since <now>' \
                'stage-leftovers.sh restore' 'stage-leftovers.sh leave' 'stage-leftovers.sh held' 'again=1' \
                'leftover_tree_again' 'leftovers_option_restore_again' 'leftovers_held' \
-               'the `root` of its line' 'When `restore` exits non-zero'; do
+               'the `root` of its line' 'When `restore` exits non-zero' \
+               'whatever the answer' 'every line of a project root that was not restored'; do
     grep -qF -- "$token" <<<"$para" || { echo "the Stage leftovers paragraph does not name $token"; return 1; }
   done
   grep -qF 'stop it with `TaskStop` on its background task' <<<"$para" \

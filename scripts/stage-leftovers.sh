@@ -379,7 +379,11 @@ def load_memo(snap):
         memo = json.load(open(memo_path(snap), encoding="utf-8"))
     except (OSError, ValueError):
         return {}
-    return memo if isinstance(memo, dict) else {}
+    # A hand-edited memo can be JSON of another shape: what is not root -> path -> entry is dropped.
+    if not isinstance(memo, dict):
+        return {}
+    return {root: {p: e for p, e in entries.items() if isinstance(e, dict)}
+            for root, entries in memo.items() if isinstance(entries, dict)}
 
 
 def save_memo(snap, memo):

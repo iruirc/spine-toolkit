@@ -240,6 +240,34 @@ tree root=$T/repo path=new change=added" ] || { echo "$output"; return 1; }
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }
 
+@test "a memo of the wrong shape reads as no memo" {
+  before; repo; snap --root "$T/repo"
+  printf '{"%s": {"fixture.sqlite": "x"}, "other": []}' "$T/repo" >"$T/snap.memo"
+  printf 'rewritten\n' >fixture.sqlite
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 1 ] && [ "$output" = "tree root=$T/repo path=fixture.sqlite change=modified" ] \
+    || { echo "$output"; return 1; }
+  run "$SL" held "$T/snap"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; return 1; }
+  printf '{"%s": []}' "$T/repo" >"$T/snap.memo"
+  run "$SL" restore "$T/snap" "$T/repo" fixture.sqlite
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  snap --root "$T/repo"; printf 'rewritten\n' >fixture.sqlite
+  run "$SL" diff "$T/snap"
+  [ "$output" = "tree root=$T/repo path=fixture.sqlite change=modified again=1" ] || { echo "$output"; return 1; }
+}
+
+@test "an added file left in a project root is held until it is gone" {
+  before; repo; snap --root "$T/repo"
+  printf 'n\n' >new
+  "$SL" leave "$T/snap" "$T/repo" new
+  run "$SL" held "$T/snap"
+  [ "$status" -eq 1 ] && [ "$output" = "held root=$T/repo path=new" ] || { echo "$output"; return 1; }
+  rm new
+  run "$SL" held "$T/snap"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; return 1; }
+}
+
 @test "the task folder is excluded" {
   before; repo; mkdir -p Tasks/ACTIVE/042; snap --root "$T/repo" --exclude "$T/repo/Tasks/ACTIVE/042"
   printf 'x\n' >Tasks/ACTIVE/042/Validation.md

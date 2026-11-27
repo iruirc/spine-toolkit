@@ -1227,8 +1227,11 @@ line's `<pid>:<start>`; `leftovers_option_restore` runs
 `modified` and `deleted` lines only — an `added` file in a root is shown, never removed;
 `leftovers_option_remove_added`, offered only when some `added` line's `root` is the task folder, runs
 `rm -f -- <root>/<path>` for each `added` line whose `root` is the task folder, and for no other;
-`leftovers_option_leave` runs `stage-leftovers.sh leave "<snap>" <root> <path>…` with the same
-paths, which touches no file. Each path goes with the `root` of its line exactly as `diff`
+`leftovers_option_leave` acts on nothing. Then, whatever the answer, run
+`stage-leftovers.sh leave "<snap>" <root> <path>…`, which touches no file, with every line of a project root that was not restored
+— not passed to `restore` — `modified`, `deleted` and `added` alike, never a line whose `root` is the task
+folder: the next snapshot takes these files in and no later stage asks about them, so this is what
+lets the report at Done name the ones the task never committed. Each path goes with the `root` of its line exactly as `diff`
 printed it, the key the memory is written under. When `restore` exits non-zero, git could not
 restore some path — an untracked file is one: report what it printed; the other paths were restored
 and remembered, and the run carries on. `<snap>` is the file `snap` wrote; the task's memory sits beside it,
@@ -1249,7 +1252,7 @@ is an ordinary line, and the first change of any file is always asked about with
 Once a return's `last_completed_stage` is `Done`, after the task's documents are committed or left
 uncommitted, run `<core root>/scripts/stage-leftovers.sh held "<snap>"`. On exit 1 report each
 `held root=<root> path=<path>` line in the final report with key `leftovers_held` (`{root}`,
-`{path}`) — a file the user left and the task never committed — then delete the memo; on exit 0
+`{path}`) — a file a stage changed that was not restored and the task never committed — then delete the memo; on exit 0
 delete it too. Exit 2 is reported as printed, the memo stays, and the run carries on.
 
 Under Method A, once `Workflow` has accepted the call, start
