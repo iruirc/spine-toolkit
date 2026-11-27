@@ -210,6 +210,36 @@ tree root=$T/repo path=new change=added" ] || { echo "$output"; return 1; }
   [ "$status" -eq 2 ] && [[ "$output" == *clone/* ]] || { echo "$output"; return 1; }
 }
 
+@test "a path git cannot restore does not stop the others in its root" {
+  before; repo; printf 'n\n' >notes.txt; snap --root "$T/repo"
+  printf 'rewritten\n' >fixture.sqlite; printf 'more\n' >>notes.txt
+  run "$SL" restore "$T/snap" "$T/repo" fixture.sqlite notes.txt
+  [ "$status" -ne 0 ] && [ "$status" -ne 2 ] || { echo "$status $output"; return 1; }
+  [ "$(cat fixture.sqlite)" = b ] || { echo "fixture.sqlite was not restored"; return 1; }
+  snap --root "$T/repo"; printf 'rewritten\n' >fixture.sqlite
+  run "$SL" diff "$T/snap"
+  [ "$output" = "tree root=$T/repo path=fixture.sqlite change=modified again=1" ] || { echo "$output"; return 1; }
+}
+
+@test "restore takes a path with glob characters as itself" {
+  before; repo
+  printf 'x\n' >'a[1].txt'; printf 'y\n' >a1.txt
+  git add . && git -c user.email=t@t -c user.name=t commit -qm globs
+  snap --root "$T/repo"
+  printf 'stage\n' >'a[1].txt'; printf 'user\n' >a1.txt
+  run "$SL" restore "$T/snap" "$T/repo" 'a[1].txt'
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(cat 'a[1].txt')" = x ] && [ "$(cat a1.txt)" = user ] || { echo "restored a sibling"; return 1; }
+}
+
+@test "restore and leave with no path do nothing" {
+  before; repo; snap --root "$T/repo"
+  run "$SL" leave "$T/snap" "$T/repo"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  run "$SL" restore "$T/snap" "$T/repo"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
 @test "the task folder is excluded" {
   before; repo; mkdir -p Tasks/ACTIVE/042; snap --root "$T/repo" --exclude "$T/repo/Tasks/ACTIVE/042"
   printf 'x\n' >Tasks/ACTIVE/042/Validation.md

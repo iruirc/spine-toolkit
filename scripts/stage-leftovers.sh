@@ -395,7 +395,7 @@ def checkable(path):
 
 
 def path_args(args, name):
-    if len(args) < 3:
+    if len(args) < 2:
         usage("%s <snap> <root> <path>…" % name)
     snap, root, paths = args[0], os.path.abspath(args[1]), args[2:]
     for p in paths:
@@ -413,21 +413,27 @@ def sha1_of(path):
 
 def restore(args):
     snap, root, paths = path_args(args, "restore")
-    digests = {p: sha1_of(os.path.join(root, p)) for p in paths}
-    code = subprocess.run(["git", "-C", root, "restore", "--"] + paths).returncode
-    if code != 0:
-        sys.exit(code)
-    memo = load_memo(snap)
-    entries = memo.setdefault(root, {})
+    # One git call per path, the path taken literally: a path git cannot restore, an untracked file, fails
+    # alone, and "a[1].txt" never reverts a1.txt. Only what was restored is remembered.
+    memo, code = load_memo(snap), 0
     for p in paths:
-        entry = entries.setdefault(p, {})
-        entry["restored"] = digests[p]
+        digest = sha1_of(os.path.join(root, p))
+        rc = subprocess.run(["git", "-C", root, "restore", "--", ":(literal)" + p]).returncode
+        if rc != 0:
+            code = code or rc
+            continue
+        entry = memo.setdefault(root, {}).setdefault(p, {})
+        entry["restored"] = digest
         entry.pop("left", None)
-    save_memo(snap, memo)
+    if memo:
+        save_memo(snap, memo)
+    sys.exit(code)
 
 
 def leave(args):
     snap, root, paths = path_args(args, "leave")
+    if not paths:
+        return
     memo = load_memo(snap)
     for p in paths:
         memo.setdefault(root, {}).setdefault(p, {})["left"] = True
@@ -443,7 +449,7 @@ def held(args):
         for path, entry in sorted((entries or {}).items()):
             if not (isinstance(entry, dict) and entry.get("left")):
                 continue
-            out = subprocess.run(["git", "-C", root, "status", "--porcelain", "--", path],
+            out = subprocess.run(["git", "-C", root, "status", "--porcelain", "--", ":(literal)" + path],
                                  capture_output=True, text=True).stdout
             if out.strip():
                 lines.append("held root=%s path=%s" % (root, path))

@@ -1228,7 +1228,10 @@ line's `<pid>:<start>`; `leftovers_option_restore` runs
 `leftovers_option_remove_added`, offered only when some `added` line's `root` is the task folder, runs
 `rm -f -- <root>/<path>` for each `added` line whose `root` is the task folder, and for no other;
 `leftovers_option_leave` runs `stage-leftovers.sh leave "<snap>" <root> <path>…` with the same
-paths, which touches no file. `<snap>` is the file `snap` wrote; the task's memory sits beside it,
+paths, which touches no file. Each path goes with the `root` of its line exactly as `diff`
+printed it, the key the memory is written under. When `restore` exits non-zero, git could not
+restore some path — an untracked file is one: report what it printed; the other paths were restored
+and remembered, and the run carries on. `<snap>` is the file `snap` wrote; the task's memory sits beside it,
 the same path ending in `.memo`, and holds what was restored and what was left. A path in double quotes is one whose name holds a control
 character, quoted as git quotes it: show it, and leave it out of every option that acts on a path. A path that ends in `/` is a folder
 holding a repository of its own: show it, and never remove it — it may hold work pushed nowhere. Act on nothing before the user answers: the process may be another session's build
