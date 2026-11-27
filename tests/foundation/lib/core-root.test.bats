@@ -13,8 +13,8 @@ setup() {
              'const core = (p) => `${CORE}/${p}`' \
              'const LONG_RUN = { stall: 5, max: 30, ...(A.long_run || {}) }' \
              'Core root: ${CORE} — every conventions/… or scripts/… path named in this brief or in your agent definition is relative to it.' \
-             "Long-running commands: follow \${core('conventions/agent-tooling.md')} → Long-running commands, with wait --stall \${60 * LONG_RUN.stall} --max \${60 * LONG_RUN.max} (start takes neither); --log never inside the task folder or a project root — a log a document cites is kept with \${core('scripts/evidence.sh')} keep <log> <evidence dir> --name <name> --match <result line> --match <error line>: the raw log goes to raw/, which git never sees, and the document names the scrubbed excerpt beside it." \
-             'A screenshot is saved into raw/ and kept with evidence.sh keep-image only after you looked at it and saw no credentials, tokens, keys or personal data.' \
+             "Long-running commands: follow \${core('conventions/agent-tooling.md')} → Long-running commands, with wait --stall \${60 * LONG_RUN.stall} --max \${60 * LONG_RUN.max} (start takes neither); --log never inside the task folder or a project root — a log a document cites is kept with \${core('scripts/evidence.sh')} keep <log> <evidence dir> --name <name> --match <regex of a result line> --match <regex of an error line>: the raw log goes to raw/, which git never sees, and the document names the scrubbed excerpt beside it." \
+             'A screenshot is saved into raw/ first and kept with evidence.sh keep-image <evidence dir>/raw/<image> <evidence dir> only after you looked at it and saw no credentials, tokens, keys or personal data.' \
              "const ROOTS = Array.isArray(A.roots) ? A.roots.filter((r) => typeof r === 'string' && r.startsWith('/')) : []" \
              "Search roots: \${ROOTS.length ? ROOTS.join(', ') : 'the project root'} and the core root — follow \${core('conventions/agent-tooling.md')} → Finding files: never search from / or ~, and a file in none of them is reported missing, not searched for further."; do
       grep -qF -- "$s" "$f" || { echo "$(basename "$f"): missing: $s"; return 1; }
@@ -118,7 +118,8 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   sec="$(awk '/^## Long-running commands/{f=1; next} f&&/^## /{exit} f' "$ROOT/conventions/agent-tooling.md")"
   for token in 'never inside the task folder' 'a project root' 'mktemp -d' 'sidecars' '`add -A`' \
                'phase-evidence/' 'validation-evidence/' 'exits 2' 'scripts/evidence.sh' '`raw/`' \
-               'scrubbed excerpt' '`evidence.sh keep-image` only after you looked at it'; do
+               'scrubbed excerpt' '`evidence.sh keep-image <evidence dir>/raw/<image> <evidence dir>` only after you looked at it' \
+               'never names the raw copy of a log' 'named by its `raw/` path'; do
     grep -qF -- "$token" <<<"$sec" || { echo "Long-running commands does not say $token"; return 1; }
   done
 }
@@ -136,6 +137,8 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
     || { echo "phase-verification does not say the copy has no sidecars"; return 1; }
   grep -qF 'A log is cited by the excerpt `<core root>/scripts/evidence.sh keep` writes' "$ROOT/skills/task-documents/SKILL.md" \
     || { echo "task-documents does not cite the excerpt"; return 1; }
-  grep -qF 'a document quotes only the excerpt, never `raw/`' "$ROOT/skills/task-documents/SKILL.md" \
+  grep -qF 'A document quotes only the excerpt and never names the raw copy of a log' "$ROOT/skills/task-documents/SKILL.md" \
     || { echo "task-documents lets a document quote raw/"; return 1; }
+  grep -qF 'A screenshot that was not kept stays in `raw/` and is named by its `raw/` path' "$ROOT/skills/task-documents/SKILL.md" \
+    || { echo "task-documents does not say how an unkept screenshot is named"; return 1; }
 }

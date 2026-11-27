@@ -432,3 +432,11 @@ EOF2
   done
   grep -qF '`## Redact`' "$ROOT/templates/spine-md/en.md" || { echo "the template does not list ## Redact"; return 1; }
 }
+
+# The Done commit holds an evidence folder only as evidence.sh allows; the orchestrator says so where it
+# describes foreign, so nobody reads the folders as allowed whole.
+@test "the orchestrator says foreign asks evidence.sh check for the evidence folders" {
+  s="$(tr '\n' ' ' <"$ROOT/skills/orchestrator/SKILL.md")"
+  grep -qF 'In `phase-evidence/` and `validation-evidence/` it asks `<core root>/scripts/evidence.sh check`, and a file that `check` names is foreign' <<<"$s" \
+    || { echo "orchestrator does not say foreign asks evidence.sh check"; return 1; }
+}
