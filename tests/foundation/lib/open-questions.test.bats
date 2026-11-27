@@ -3,6 +3,8 @@
 # recommendation written under it never reached the person answering, and a numbered list was
 # not seen at all.
 
+bats_require_minimum_version 1.5.0
+
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   OQ="$ROOT/scripts/open-questions.sh"
@@ -177,4 +179,103 @@ MD
   run "$OQ" "$A"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ "$(field 'i["id"]' <<<"$output")" = 'Q3' ] || { echo "$output"; return 1; }
+}
+
+# The gate showed an empty prompt when Diagnose wrote its questions under a translated heading, as
+# paragraphs: the script read nothing and said nothing. What it cannot read now goes to stderr.
+W1='an open question outside a section the gate reads — expected a heading beginning "Open Questions"'
+W2='a question written as a paragraph — expected a list item "- <ID>. …"'
+
+@test "a translated heading over paragraph questions is reported, not collected" {
+  cat >"$A" <<'MD'
+## Открытые вопросы для Plan
+
+**Q1. Как поступать со словом в паузе.** Решает Plan.
+
+- Брать интервал предыдущего слова (recommended).
+- Брать соседа только при касании.
+MD
+  run --separate-stderr "$OQ" "$A"
+  [ "$status" -eq 0 ] && [ "$output" = '[]' ] || { echo "$status $output"; return 1; }
+  [ "$stderr" = "open-questions: $A:1: $W1" ] || { echo "$stderr"; return 1; }
+}
+
+@test "a translated heading over list questions is reported" {
+  printf '## Открытые вопросы\n- Q1. Какой кэш\n  - LRU (recommended)\n' >"$A"
+  run --separate-stderr "$OQ" "$A"
+  [ "$output" = '[]' ] || { echo "$output"; return 1; }
+  [ "$stderr" = "open-questions: $A:1: $W1" ] || { echo "$stderr"; return 1; }
+}
+
+@test "a heading that begins with a section name is that section" {
+  for h in '## Open questions for Plan' '### Open Questions: Diagnose'; do
+    printf '%s\n- Q1. Which cache\n  - LRU (recommended)\n' "$h" >"$A"
+    run --separate-stderr "$OQ" "$A"
+    [ "$(field 'i["section"] + "|" + i["id"] + "|" + str(i["recommended"])' <<<"$output")" = "${h#* }|Q1|LRU" ] \
+      || { echo "$output"; return 1; }
+    [ -z "$stderr" ] || { echo "$stderr"; return 1; }
+  done
+}
+
+@test "a section name followed by a letter is not that section" {
+  printf '## Open questionsXYZ\n- Q1. x\n' >"$A"
+  run --separate-stderr "$OQ" "$A"
+  [ "$output" = '[]' ] && [ -z "$stderr" ] || { echo "$output $stderr"; return 1; }
+}
+
+@test "the decision log is neither a section nor a warning" {
+  cat >"$A" <<'MD'
+## Open Questions Log
+- [Research] Q1 — **Question:** which cache?
+  **Decision:** LRU (recommended)
+MD
+  run --separate-stderr "$OQ" "$A"
+  [ "$output" = '[]' ] && [ -z "$stderr" ] || { echo "$output $stderr"; return 1; }
+}
+
+@test "a bold id is the item's id" {
+  printf '### Open Questions\n- **Q1.** Which cache\n' >"$A"
+  run --separate-stderr "$OQ" "$A"
+  [ "$(field 'i["id"] + "|" + i["text"]' <<<"$output")" = 'Q1|- **Q1.** Which cache' ] || { echo "$output"; return 1; }
+}
+
+@test "a question written as a paragraph under a read heading is reported on its line" {
+  printf '## Open Questions\n\n**Q1. Which cache.** text\n\n- LRU (recommended)\n' >"$A"
+  run --separate-stderr "$OQ" "$A"
+  [ "$stderr" = "open-questions: $A:3: $W2" ] || { echo "$stderr"; return 1; }
+  [ "$(field 'i["text"]' <<<"$output")" = '- LRU (recommended)' ] || { echo "$output"; return 1; }
+}
+
+@test "a mark inside a code block is not reported" {
+  printf '## Notes\n```\n- x (recommended)\n```\n' >"$A"
+  run --separate-stderr "$OQ" "$A"
+  [ "$output" = '[]' ] && [ -z "$stderr" ] || { echo "$output $stderr"; return 1; }
+}
+
+@test "one warning per section, at its heading, and read sections still print" {
+  printf '### Open Questions\n- Q1. a\n## Решения\n- A (recommended)\n- B (recommended)\n**Q2. b**\n' >"$A"
+  run --separate-stderr "$OQ" "$A"
+  [ "$(field 'i["id"]' <<<"$output")" = 'Q1' ] || { echo "$output"; return 1; }
+  [ "$stderr" = "open-questions: $A:3: $W1" ] || { echo "$stderr"; return 1; }
+}
+
+@test "a mark with no heading above is reported at its own line" {
+  printf 'Intro.\n- A (recommended)\n' >"$A"
+  run --separate-stderr "$OQ" "$A"
+  [ "$stderr" = "open-questions: $A:2: $W1" ] || { echo "$stderr"; return 1; }
+}
+
+@test "a warning counts CRLF lines" {
+  printf 'Intro.\r\n- A (recommended)\r\n' >"$A"
+  run --separate-stderr "$OQ" "$A"
+  [ "$stderr" = "open-questions: $A:2: $W1" ] || { echo "$stderr"; return 1; }
+}
+
+@test "a warning names its artifact" {
+  R="$BATS_TEST_TMPDIR/Reproduce.md"
+  printf 'Intro.\n- A (recommended)\n' >"$A"
+  printf '# R\n## Шаги\n- B (recommended)\n' >"$R"
+  run --separate-stderr "$OQ" "$A" "$R"
+  [ "$stderr" = "$(printf 'open-questions: %s:2: %s\nopen-questions: %s:2: %s' "$A" "$W1" "$R" "$W1")" ] \
+    || { echo "$stderr"; return 1; }
 }
