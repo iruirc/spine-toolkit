@@ -28,7 +28,7 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 
 @test "the four orders of an AUQ and a typed message are spelled out" {
   w="$(section "$S" "The run's own words")"
-  for f in '| only AUQ answers | not asked:' \
+  for f in '| only AUQ choices of findings | not asked:' \
            '| a typed message, then an AUQ | asked |' \
            '| an AUQ, then a typed message on another subject | asked |' \
            '| an AUQ, then a typed message naming every chosen id and decision | not asked;'; do
@@ -61,4 +61,33 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   done
   grep -A1 -x '## typed_confirmation_needed' "$ROOT/skills/orchestrator/locales/en.md" | grep -qF 'the last thing you typed' || { echo "en: needed has no reason"; return 1; }
   grep -A1 -x '## typed_confirmation_needed' "$ROOT/skills/orchestrator/locales/ru.md" | grep -qF "$(unescape '\u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0435\u0435, \u0447\u0442\u043e \u0442\u044b \u043d\u0430\u0431\u0440\u0430\u043b')" || { echo "ru: needed has no reason"; return 1; }
+}
+
+@test "a launch request exempts a choice of findings, never a decision on one" {
+  w="$(section "$S" "The run's own words")"
+  for f in 'A choice of findings is one of the five answers named above' \
+           'chosen finding is a decision on it' \
+           'after it decides on a finding' \
+           '| only AUQ choices of findings | not asked:' \
+           '| a launch request, then an AUQ deciding on a finding | asked |' \
+           'with only an AUQ choice of findings after it asks'; do
+    grep -qF -- "$f" <<<"$w" || { echo "decision exempted: $f"; return 1; }
+  done
+  ! grep -qF '| only AUQ answers |' <<<"$w" || { echo "old row still exempts every AUQ answer"; return 1; }
+}
+
+@test "a multi-select of findings carries no decision" {
+  g="$(section "$S" 'Gating')"
+  grep -qF "each option of a multi-select of findings is the finding's id and title from \`Review.md\`, nothing more" <<<"$g" \
+    || { echo "Gating: multi-select options unbounded"; return 1; }
+  grep -qF 'a decision on a finding is a question of its own' <<<"$g" || { echo "Gating: decision not separated"; return 1; }
+  grep -qF 'and no AUQ answer since decides on a finding' <<<"$g" || { echo "Gating: launch request still exempts a decision"; return 1; }
+}
+
+@test "a review-fix round records the way it took for a finding with more than one" {
+  for p in bug feature refactor quick test; do
+    f="$ROOT/skills/workflow-$p/SKILL.md"
+    grep -qF 'a finding whose recommendation offers more than one way gets a line under it naming the way taken, `by the owner'"'"'s directive` when the directive chose it, and the Review of those commits checks the fix against that line' "$f" \
+      || { echo "workflow-$p: way taken not recorded"; return 1; }
+  done
 }

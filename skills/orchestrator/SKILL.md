@@ -125,9 +125,13 @@ made of, `auq_fix_review_option_all`, `auq_fix_review_option_pick`, `auq_fix_rou
 `auq_fix_incomplete_option_round` and `stage_done_option_fix_minor`,
 and any other AUQ answer that decides what is done with a chosen finding, such as one asked to
 settle a question the owner typed about it — read the owner's last typed message, the one the host
-will place before the brief. Nothing is asked when it is:
+will place before the brief. A choice of findings is one of the five answers named above: it says
+which findings are fixed, and a launch request does not contradict it. Any other AUQ answer about a
+chosen finding is a decision on it — a way to fix it, its reach, one option of its recommendation —
+and only typed text carries a decision to the agent. Nothing is asked when it is:
 
-- a launch request for this task that names no finding or names every chosen one.
+- a launch request for this task that names no finding or names every chosen one, and no AUQ answer
+  after it decides on a finding.
   A launch request is the typed command or trigger phrase that names the task and what to run —
   `/task-continue 001`, "fix review 001 m1 m2". An AUQ pick that starts a range, a `fix-review`
   among them, is not one. "fix review 001 m1" does not cover m5 picked in a later round;
@@ -142,7 +146,8 @@ The order of the AUQ and the typed message does not matter: the agent hears the 
 
 | After the launch request | Confirmation |
 |---|---|
-| only AUQ answers | not asked: the agent hears the launch request |
+| only AUQ choices of findings | not asked: the agent hears the launch request |
+| a launch request, then an AUQ deciding on a finding | asked |
 | a typed message, then an AUQ | asked |
 | a launch request naming some findings, then an AUQ choosing others | asked |
 | an AUQ, then a typed message on another subject | asked |
@@ -151,8 +156,8 @@ The order of the AUQ and the typed message does not matter: the agent hears the 
 Not counted: the contract's fields — `stage_done_prompt` and its "go on", the stage, the mode,
 `confirm_dispatch`, `confirm_step_dispatch`, `auq_run_resume_*` — which no agent decides; and the
 Q-by-Q dialog, whose answers land in `Research.md` and `Questions.md`, the record every stage reads,
-not in a brief. A run started by `/task-continue` with only an AUQ pick after it asks nothing: the
-host relays the command, and the brief does not contradict it.
+not in a brief. A run started by `/task-continue` with only an AUQ choice of findings after it asks
+nothing: the host relays the command, and the brief does not contradict it.
 
 When it is asked:
 
@@ -1023,11 +1028,11 @@ durations inside an `auto` run do not exist; do not invent them.
 - `auto`: count the rows of the `Plan.md` progress table whose id is `R<n>` — a row titled `Review fixes <n>` with no such id counts too, as a `Plan.md` written before the id was fixed has them — whose `<n>` is above the `[REVIEW_FIXES]` line of `Done.md`, read wherever it stands in the file — every Done writes it, so a catch-up never inherits the rounds of the run before; with no `Done.md` count them all, and with a `Done.md` that predates the line count those below the last `Catch-up: commits after Done` row (all of them when there is none) — and count the `fix-review` rounds this session has dispatched for the task since its last Done; the larger is the rounds spent, so the loop never goes past `fix_rounds` of them whatever `Plan.md` shows. After a round, a `Plan.md` without the new `R<n>` row, `<n>` being the `fix_round` it was dispatched with, means the fix phase went unrecorded: announce `warn_fix_round_unrecorded` with that `{n}` and stop the loop with `auq_fix_rounds_spent`. With fewer than `fix_rounds` spent, announce `info_fix_round` with `{n}` — the rounds spent plus one, not `fix_round` — `{max}` — `fix_rounds` — and `{count}`, then dispatch `action=fix-review` with every finding. Otherwise AUQ using key `auq_fix_rounds_spent` with `{findings}`: `auq_fix_rounds_option_more` (one more `fix-review`), `auq_fix_rounds_option_self` (stop; the user fixes the code and runs `redo Review`), or exit.
 - `manual`: AUQ using key `auq_fix_review_question` with `{findings}`: `auq_fix_review_option_all` (first; `fix-review` with every finding), `auq_fix_review_option_pick` (a multi-select of the findings, then `fix-review` with those picked), `auq_fix_review_option_leave` (stop). `fix_rounds` does not apply: the user confirms each round. Before the dispatch, **A choice that must be typed.** applies (The run's own words).
 
-A `fix-review` carries `fix_findings` — the findings chosen, verbatim; `fix_round` — every `R<n>` row of `Plan.md` plus one, the rows counted as `auto` counts them, so no phase id repeats; and `after_done` — whether `Done.md` exists. With `after_done` the task moves out of and back into `Tasks/DONE/` as for a `catch-up`. `fix_findings` hold the findings verbatim: no decision, note or gloss is written into them; the owner's decision on a finding reaches the agent only through `user_directive`, from typed text.
+A `fix-review` carries `fix_findings` — the findings chosen, verbatim; `fix_round` — every `R<n>` row of `Plan.md` plus one, the rows counted as `auto` counts them, so no phase id repeats; and `after_done` — whether `Done.md` exists. With `after_done` the task moves out of and back into `Tasks/DONE/` as for a `catch-up`. `fix_findings` hold the findings verbatim: no decision, note or gloss is written into them; the owner's decision on a finding reaches the agent only through `user_directive`, from typed text. The same holds before them: each option of a multi-select of findings is the finding's id and title from `Review.md`, nothing more — no way to fix it, no reach, no gloss. When the owner raises how a finding is fixed, a decision on a finding is a question of its own, and **A choice that must be typed.** asks for it typed.
 
 **After Review: `APPROVED` with findings.** FEATURE, BUG, REFACTOR, TEST and QUICK. An approving review may still list findings below Major. The owner may have some of them fixed:
 
-- A typed request — "fix review 001 m1 m2", or the same in the owner's words — after `APPROVED` takes the findings it names verbatim from `Review.md`, of any severity, as `fix_findings`. A request that names none gets a multi-select over every finding of `Review.md`. The request is itself a launch request: while it is the last thing the owner typed, **A choice that must be typed.** asks nothing.
+- A typed request — "fix review 001 m1 m2", or the same in the owner's words — after `APPROVED` takes the findings it names verbatim from `Review.md`, of any severity, as `fix_findings`. A request that names none gets a multi-select over every finding of `Review.md`. The request is itself a launch request: while it is the last thing the owner typed, and no AUQ answer since decides on a finding, **A choice that must be typed.** asks nothing.
 - `manual`: when `Review.md` lists Minor findings or Suggestions, `stage_done_prompt` gets the option `stage_done_option_fix_minor`: the same multi-select, then `fix-review` with the findings picked, under **A choice that must be typed.**
 - In `auto` nothing changes: after `APPROVED` the range goes on to Done.
 
