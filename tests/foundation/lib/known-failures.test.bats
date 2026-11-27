@@ -76,6 +76,7 @@ outside_gate() {
     for t in '`known_failures`' '### Failures outside the task' '## Outside the task' '`outside_failures`' \
       '`known_failures_cleared`' '`carried <sha> (phase <N>)`' '`carried <sha> (validation)`' \
       'ran: <repository> <module> HEAD <sha> tests <N> result "<result line>" log phase-evidence/phase-<id>/<module>.log' \
+      'the log the excerpt `evidence.sh keep` writes in the task folder' \
       'On PASSED or PASSED_WITH_FLAKES' 'Validation passed with <n> flake(s) outside the task.' 'class `reach`'; do
       grep -qF -- "$t" "$f" || { echo "workflow-$p does not say: $t"; return 1; }
     done

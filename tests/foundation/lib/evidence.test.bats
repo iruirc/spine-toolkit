@@ -412,3 +412,23 @@ EOF2
   [ "$status" -eq 2 ] || { echo "$output $stderr"; return 1; }
   [[ "$stderr" == evidence:*locked.log* ]] || { echo "$stderr"; return 1; }
 }
+
+# The instructions told every agent to copy a log a document cites into the task folder whole; a copy
+# carries whatever the run printed. Each text that cites a log names the excerpt keep writes instead.
+@test "every brief and skill that cites a log keeps it through evidence.sh" {
+  for f in conventions/agent-tooling.md conventions/stage-dispatch.md workflow-src/prelude.js \
+           skills/phase-verification/SKILL.md skills/task-documents/SKILL.md workflows/profile-*.js; do
+    for p in "$ROOT"/$f; do
+      grep -qF 'evidence.sh keep' "$p" || { echo "$p does not keep its log through evidence.sh keep"; return 1; }
+      ! grep -qF 'is copied, alone' "$p" || { echo "$p still copies a log whole"; return 1; }
+    done
+  done
+}
+
+@test "the configuration doc says what a ## Redact line is and what stops evidence.sh" {
+  sec="$(awk '$0=="## Redact"{f=1; next} f&&/^## /{exit} f' "$ROOT/docs/configuration.md")"
+  for t in '- `acme_live_\w+`' '`***`' 'exit 2' 'list line'; do
+    grep -qF -- "$t" <<<"$sec" || { echo "## Redact does not say: $t"; return 1; }
+  done
+  grep -qF '`## Redact`' "$ROOT/templates/spine-md/en.md" || { echo "the template does not list ## Redact"; return 1; }
+}

@@ -23,7 +23,8 @@ plan_brief() {
     n=$((n + 1))
     for s in 'add one line '"'"'ran: <repository> <module> HEAD <the phase commit'"'"'s short sha> tests <N> result "<result line>" log phase-evidence/phase-${ph.id}/<module>.log'"'"'' \
              'N being the sum of their counts' 'a line of the log that counts no tests is not quoted' 'a log with no result line gets no line' \
-             'a run of named test classes gets none' 'after the commit, take its short sha in the module'"'"'s repository'; do
+             'a run of named test classes gets none' 'after the commit, take its short sha in the module'"'"'s repository' \
+             'keep <the log> ${DIR}/phase-evidence/phase-${ph.id}/ --name <module>, with --match for each result-line form test-frameworks names (topic testing)'; do
       grep -qF -- "$s" "$f" || { echo "$(basename "$f"): the phase brief lacks: $s"; return 1; }
     done
     ! grep -qF 'Executed <N>' "$f" || { echo "$(basename "$f"): the phase brief still writes Executed <N>"; return 1; }
@@ -36,7 +37,8 @@ plan_brief() {
   for t in 'ran: <repository> <module> HEAD <sha> tests <N> result "<result line>" log phase-evidence/phase-<id>/<module>.log' \
            'is quoted exactly as the log has it' "the platform's \`test-frameworks\`" \
            'a result line that counts no tests is not quoted' '`<N>` is the sum of the counts of the quoted lines' \
-           'has `Executed <N>` where `tests <N>` stands' 'A log with no result line gets none'; do
+           'has `Executed <N>` where `tests <N>` stands' 'A log with no result line gets none' \
+           'the log is the excerpt `evidence.sh keep` writes, with `--match` for each result-line form `test-frameworks` names (topic **testing**)'; do
     grep -qF -- "$t" <<<"$line" || { echo "The line does not say: $t"; return 1; }
   done
   grep -qF 'every test of the modules it edits' <<<"$(section "$SKILL" 'The rungs')" \

@@ -40,7 +40,7 @@ the config's line, or the default, is the answer.
 The config's line is the project's default for these fields, and the task's own line beats it.
 
 Every other block of the file — `## Persona`, `## Rules`, `## Platform`, `## Agents`, `## Stack`,
-`## Modules`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`,
+`## Modules`, `## EstimationDeltas`, `## DeliveryMode`, `## AILeverage`, `## Paths`, `## Redact`,
 `## Orchestration` — is read by a skill for its own purposes and holds no resolved field. One exception
 feeds every task: the folders `## Paths` names under `External packages` and `Roots`,
 with the project root, are the only places a stage agent may search for a file. A second one:
@@ -70,8 +70,8 @@ written anew from the template, and `## Stack` and `## Modules` by the platform,
 `## Modules` by hand does not outlive a reconfigure. `## Persona` and `## Rules` come from the
 template: when the project has edited them, `/setup` asks whether to keep the edit or take the new
 template. The project's own blocks — `## Agents`, `## EstimationDeltas`, `## DeliveryMode`,
-`## AILeverage`, `## Paths`, and any block the project adds — are filled by hand and
-survive `/setup` verbatim. Only the template's note in parentheses inside one of the five is renewed
+`## AILeverage`, `## Paths`, `## Redact`, and any block the project adds — are filled by hand and
+survive `/setup` verbatim. Only the template's note in parentheses inside one of the five the template writes is renewed
 from the new template; a block the project adds is kept whole.
 
 ## Project settings
@@ -619,6 +619,28 @@ default and leaves the others alone; a malformed row, an unknown key or a placeh
 coefficient it used is a default. `scripts/run-calibration.sh` proposes rows from
 `Tasks/_calibration/agent-run-log.md` once it holds three usable rows; the architect shows the proposal to the
 owner at Plan, and nothing is written to the config without the owner.
+
+## Redact
+
+A block of the project config, not a field: the project's own patterns for `scripts/evidence.sh`, the
+script that keeps a log a document cites as a scrubbed excerpt in the task folder and leaves the raw
+log in a `raw/` folder git never sees. The script's rules already catch the common forms of a
+secret — key and value pairs, `Authorization` and cookie headers, credentials in a URL, a JWT, a
+private key block, the known token prefixes; its header and its rules are the reference. This block
+adds what only the project knows, such as the shape of its own keys.
+
+```markdown
+## Redact
+- `acme_live_\w+`
+- `internal-[0-9a-f]{32}`
+```
+
+Every line of the block is a list line, a regex in single backticks: ``- `<regex>` ``. The whole match
+is replaced with `***`, on every line of the log before the excerpt is chosen. The block holds list
+lines only: a line that does not parse — prose, a note in parentheses, a regex that does not compile,
+or one that matches the empty string — stops `evidence.sh` with exit 2 and names the config line, so
+no pattern is skipped in silence. Leave the block out, or empty, when the script's rules are enough.
+`evidence.sh` reads it through `scripts/resolve-settings.sh raw <task dir> Redact`.
 
 ## Older spellings
 

@@ -13,7 +13,8 @@ setup() {
              'const core = (p) => `${CORE}/${p}`' \
              'const LONG_RUN = { stall: 5, max: 30, ...(A.long_run || {}) }' \
              'Core root: ${CORE} — every conventions/… or scripts/… path named in this brief or in your agent definition is relative to it.' \
-             "Long-running commands: follow \${core('conventions/agent-tooling.md')} → Long-running commands, with wait --stall \${60 * LONG_RUN.stall} --max \${60 * LONG_RUN.max} (start takes neither); --log never inside the task folder or a project root — a log a document cites is copied, alone, into phase-evidence/ or validation-evidence/." \
+             "Long-running commands: follow \${core('conventions/agent-tooling.md')} → Long-running commands, with wait --stall \${60 * LONG_RUN.stall} --max \${60 * LONG_RUN.max} (start takes neither); --log never inside the task folder or a project root — a log a document cites is kept with \${core('scripts/evidence.sh')} keep <log> <evidence dir> --name <name> --match <result line> --match <error line>: the raw log goes to raw/, which git never sees, and the document names the scrubbed excerpt beside it." \
+             'A screenshot is saved into raw/ and kept with evidence.sh keep-image only after you looked at it and saw no credentials, tokens, keys or personal data.' \
              "const ROOTS = Array.isArray(A.roots) ? A.roots.filter((r) => typeof r === 'string' && r.startsWith('/')) : []" \
              "Search roots: \${ROOTS.length ? ROOTS.join(', ') : 'the project root'} and the core root — follow \${core('conventions/agent-tooling.md')} → Finding files: never search from / or ~, and a file in none of them is reported missing, not searched for further."; do
       grep -qF -- "$s" "$f" || { echo "$(basename "$f"): missing: $s"; return 1; }
@@ -83,7 +84,7 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
 # Method B copies this line from the convention, so it must be the one Method A sends.
 @test "Method B's long-run line is the one every Method A prompt carries" {
   want="$(section "$ROOT/conventions/stage-dispatch.md" 'Standing authorization' | awk '/^```/{i++;next} i==1' \
-          | sed -e 's|{core}|/core|' -e 's|{stall}|120|' -e 's|{max}|420|')"
+          | sed -e 's|{core}|/core|g' -e 's|{stall}|120|' -e 's|{max}|420|')"
   [[ "$want" == 'Long-running commands: '* ]] || { echo "stage-dispatch gives no long-run line: $want"; return 1; }
   agents='{"architect":"a","developer":"d","tester":"t","reviewer":"r","refactorer":"f","validator":"v","security":"—","diagnostics":"g","init":"—"}'
   c="{\"task_id\": \"001\", \"task_dir\": \"/p/Tasks/ACTIVE/001-x\", \"plugin_root\": \"/core\", \"lang\": \"en\", \"agents\": $agents, \"stage_scope\": \"single\", \"long_run\": {\"stall\": 2, \"max\": 7}}"
@@ -113,10 +114,11 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   grep -qF 'Pass `--stall` and `--max` to `wait`' "$ROOT/conventions/agent-tooling.md"
 }
 
-@test "the convention forbids a log in the task folder and says to copy the log a document cites" {
+@test "the convention forbids a log in the task folder and keeps the log a document cites as an excerpt" {
   sec="$(awk '/^## Long-running commands/{f=1; next} f&&/^## /{exit} f' "$ROOT/conventions/agent-tooling.md")"
   for token in 'never inside the task folder' 'a project root' 'mktemp -d' 'sidecars' '`add -A`' \
-               'phase-evidence/' 'validation-evidence/' 'exits 2'; do
+               'phase-evidence/' 'validation-evidence/' 'exits 2' 'scripts/evidence.sh' '`raw/`' \
+               'scrubbed excerpt' '`evidence.sh keep-image` only after you looked at it'; do
     grep -qF -- "$token" <<<"$sec" || { echo "Long-running commands does not say $token"; return 1; }
   done
 }
@@ -127,9 +129,13 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
   done
 }
 
-@test "the document skills cite a copy taken from TMPDIR, without sidecars" {
+@test "the document skills cite the excerpt evidence.sh keeps, taken from TMPDIR without sidecars" {
   grep -qF 'without its sidecars' "$ROOT/skills/task-documents/SKILL.md" \
     || { echo "task-documents does not say the copy has no sidecars"; return 1; }
   grep -qF 'without its sidecars' "$ROOT/skills/phase-verification/SKILL.md" \
     || { echo "phase-verification does not say the copy has no sidecars"; return 1; }
+  grep -qF 'A log is cited by the excerpt `<core root>/scripts/evidence.sh keep` writes' "$ROOT/skills/task-documents/SKILL.md" \
+    || { echo "task-documents does not cite the excerpt"; return 1; }
+  grep -qF 'a document quotes only the excerpt, never `raw/`' "$ROOT/skills/task-documents/SKILL.md" \
+    || { echo "task-documents lets a document quote raw/"; return 1; }
 }

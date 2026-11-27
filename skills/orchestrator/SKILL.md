@@ -188,7 +188,9 @@ say so, and this commit runs whatever it says.
 A folder that is committed is checked first. With `X` for `-- . ':(exclude,glob)**/Run.json'`, run
 `<core root>/scripts/stage-leftovers.sh foreign <task dir>`: it prints `foreign path=<path>` for each
 file the commit would add that the task folder may not hold — a log, a long-run sidecar, anything
-outside the allowlist the script names. On exit 1 report each line with key `task_docs_foreign_file`
+outside the allowlist the script names. In `phase-evidence/` and `validation-evidence/` it asks
+`<core root>/scripts/evidence.sh check`, and a file that names is foreign: a log that is no scrubbed excerpt, a
+screenshot not kept with `keep-image`. On exit 1 report each line with key `task_docs_foreign_file`
 (`{path}`), then AUQ with key `task_docs_foreign_prompt`: `task_docs_foreign_option_exclude`, first
 and with the suffix `auq_stage_recovery_recommended_suffix`, appends `':(exclude,literal)<path>'` to
 `X` for each path and leaves the files on disk; `task_docs_foreign_option_remove` runs `rm -f` on
