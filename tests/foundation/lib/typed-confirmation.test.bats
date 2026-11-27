@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep skills
 # A Method A agent hears the owner's last typed message as the only user voice; a choice picked in
 # an AUQ reaches it only once typed. These hold the orchestrator to that rule.
 
