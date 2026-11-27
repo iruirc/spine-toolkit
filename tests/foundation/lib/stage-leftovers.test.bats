@@ -125,6 +125,54 @@ tree root=$T/repo path=new change=added" ] || { echo "$output"; return 1; }
   [ "$output" = "tree root=$T/repo path=kept change=modified" ] || { echo "$output"; return 1; }
 }
 
+# A build can rewrite a tracked file on every run, a lockfile under local dependencies: restoring it
+# only starts the same question again after the next stage, so a file that comes back the same is marked.
+@test "a file restored and rewritten with the same content comes back marked again" {
+  before; repo; snap --root "$T/repo"
+  printf 'rewritten\n' >fixture.sqlite
+  run "$SL" restore "$T/snap" "$T/repo" fixture.sqlite
+  [ "$status" -eq 0 ] && [ "$(cat fixture.sqlite)" = b ] || { echo "$output"; return 1; }
+  snap --root "$T/repo"; printf 'rewritten\n' >fixture.sqlite
+  run "$SL" diff "$T/snap"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+  [ "$output" = "tree root=$T/repo path=fixture.sqlite change=modified again=1" ] || { echo "$output"; return 1; }
+}
+
+@test "a restored file rewritten with other content is an ordinary line" {
+  before; repo; snap --root "$T/repo"
+  printf 'rewritten\n' >fixture.sqlite
+  "$SL" restore "$T/snap" "$T/repo" fixture.sqlite
+  snap --root "$T/repo"; printf 'other\n' >fixture.sqlite
+  run "$SL" diff "$T/snap"
+  [ "$output" = "tree root=$T/repo path=fixture.sqlite change=modified" ] || { echo "$output"; return 1; }
+}
+
+@test "restore of a path git does not know leaves the memo alone and passes git's exit" {
+  before; repo; snap --root "$T/repo"
+  run "$SL" restore "$T/snap" "$T/repo" nosuch
+  [ "$status" -ne 0 ] && [ "$status" -ne 2 ] || { echo "$status $output"; return 1; }
+  [ ! -e "$T/snap.memo" ] || { cat "$T/snap.memo"; return 1; }
+}
+
+@test "a broken memo reads as no memo, and restore writes it anew" {
+  before; repo; snap --root "$T/repo"
+  printf 'not json' >"$T/snap.memo"
+  printf 'rewritten\n' >fixture.sqlite
+  run "$SL" diff "$T/snap"
+  [ "$output" = "tree root=$T/repo path=fixture.sqlite change=modified" ] || { echo "$output"; return 1; }
+  run "$SL" restore "$T/snap" "$T/repo" fixture.sqlite
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$T/snap.memo"
+}
+
+@test "restore refuses a quoted path and a nested repository" {
+  before; repo; snap --root "$T/repo"
+  run "$SL" restore "$T/snap" "$T/repo" '"a\nb"'
+  [ "$status" -eq 2 ] && [[ "$output" == *'"a\nb"'* ]] || { echo "$output"; return 1; }
+  run "$SL" restore "$T/snap" "$T/repo" clone/
+  [ "$status" -eq 2 ] && [[ "$output" == *clone/* ]] || { echo "$output"; return 1; }
+}
+
 @test "the task folder is excluded" {
   before; repo; mkdir -p Tasks/ACTIVE/042; snap --root "$T/repo" --exclude "$T/repo/Tasks/ACTIVE/042"
   printf 'x\n' >Tasks/ACTIVE/042/Validation.md

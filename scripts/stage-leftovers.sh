@@ -8,10 +8,14 @@
 #        scripts/stage-leftovers.sh kill <pid>:<start>…
 #        scripts/stage-leftovers.sh watch --dir <transcript dir> --stall <s> --idle <s> [--since <epoch>]
 #        scripts/stage-leftovers.sh origin <pid>…
-# Exit: diff and foreign 0 nothing, 1 findings; kill 0; watch 4 stalled call, 5 idle, 6 session gone. 2: usage, any subcommand.
+#        scripts/stage-leftovers.sh restore <snap> <root> <path>…
+#        scripts/stage-leftovers.sh leave <snap> <root> <path>…
+#        scripts/stage-leftovers.sh held <snap>
+# Exit: diff, foreign and held 0 nothing, 1 findings; kill and leave 0; restore 0 or git restore's code;
+#       watch 4 stalled call, 5 idle, 6 session gone. 2: usage, any subcommand.
 set -uo pipefail
 
-[ $# -ge 1 ] || { sed -n '5,11p' "$0" >&2; exit 2; }
+[ $# -ge 1 ] || { sed -n '5,15p' "$0" >&2; exit 2; }
 exec python3 - "$@" <<'PY'
 import fnmatch, glob, hashlib, json, os, re, signal, subprocess, sys, time
 from datetime import datetime
@@ -362,12 +366,73 @@ def registry_orphans(doc, table, seen):
     return found
 
 
+# The task's memory beside its snapshot: what restore put back, with the content it removed, and what
+# the user chose to leave. A file restored that comes back with that same content is rewritten by the
+# build or the environment, not by the stage's work: diff marks it, so the restore is not offered again
+# as the way out. Lost or unreadable, it is an empty memory, and the worst case is one plain question.
+def memo_path(snap):
+    return os.path.splitext(snap)[0] + ".memo"
+
+
+def load_memo(snap):
+    try:
+        memo = json.load(open(memo_path(snap), encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return memo if isinstance(memo, dict) else {}
+
+
+def save_memo(snap, memo):
+    path = memo_path(snap)
+    tmp = path + ".tmp"
+    json.dump(memo, open(tmp, "w", encoding="utf-8"))
+    os.replace(tmp, path)
+
+
+def checkable(path):
+    # A quoted name holds a control character and a trailing / is a nested repository: shown, never acted on.
+    return not (path.startswith('"') and path.endswith('"')) and not path.endswith("/")
+
+
+def path_args(args, name):
+    if len(args) < 3:
+        usage("%s <snap> <root> <path>…" % name)
+    snap, root, paths = args[0], os.path.abspath(args[1]), args[2:]
+    for p in paths:
+        if not checkable(p):
+            usage("%s does not act on %s" % (name, p))
+    return snap, root, paths
+
+
+def sha1_of(path):
+    try:
+        return hashlib.sha1(open(path, "rb").read()).hexdigest()
+    except OSError:
+        return None
+
+
+def restore(args):
+    snap, root, paths = path_args(args, "restore")
+    digests = {p: sha1_of(os.path.join(root, p)) for p in paths}
+    code = subprocess.run(["git", "-C", root, "restore", "--"] + paths).returncode
+    if code != 0:
+        sys.exit(code)
+    memo = load_memo(snap)
+    entries = memo.setdefault(root, {})
+    for p in paths:
+        entry = entries.setdefault(p, {})
+        entry["restored"] = digests[p]
+        entry.pop("left", None)
+    save_memo(snap, memo)
+
+
 def diff(args):
     if len(args) == 2 and args[0] == "--out":  # the flag snap was given the file with
         args = args[1:]
     if len(args) != 1:
         usage("diff <file>")
     doc = json.load(open(args[0], encoding="utf-8"))
+    memo = load_memo(args[0])
     table = procs()
     hits = new_roots(doc, table)
     hits += shell_orphans(doc, table)
@@ -384,7 +449,10 @@ def diff(args):
                 continue
             change = ("added" if xy in ("??", "A ") and path not in before
                       else "deleted" if digest is None else "modified")
-            lines.append("tree root=%s path=%s change=%s" % (root, quoted(path), change))
+            again = (change == "modified" and digest is not None
+                     and (memo.get(root) or {}).get(path, {}).get("restored") == digest)
+            lines.append("tree root=%s path=%s change=%s%s"
+                         % (root, quoted(path), change, " again=1" if again else ""))
     # The task folder is excluded above; what it may not hold is checked here, against the files it
     # had at the snapshot, under whichever status directory it is in now.
     known = set(doc.get("task_files", []))
@@ -513,6 +581,7 @@ def show_origin(args):
 
 
 cmd, rest = sys.argv[1], sys.argv[2:]
-{"snap": snap, "diff": diff, "foreign": foreign, "kill": kill, "watch": watch, "origin": show_origin}.get(
+{"snap": snap, "diff": diff, "foreign": foreign, "kill": kill, "watch": watch, "origin": show_origin,
+ "restore": restore}.get(
     cmd, lambda _a: usage("unknown subcommand %s" % cmd))(rest)
 PY
