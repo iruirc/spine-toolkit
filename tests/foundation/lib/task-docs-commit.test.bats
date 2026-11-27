@@ -38,3 +38,30 @@ S_OF() { awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$SKILL"; }
     grep -qF -- "$f" <<<"$w" || { echo "the rule lost: $f"; return 1; }
   done
 }
+
+# The orchestrator's commit of a task folder: foreign names what the folder may not hold, add -A takes
+# the rest. An evidence folder holds only scrubbed excerpts, so no secret and no raw log reaches history.
+@test "a task's commit holds no secret and no raw file" {
+  FIX="$ROOT/tests/foundation/fixtures/evidence"
+  P="$BATS_TEST_TMPDIR/Proj"; TASK="$P/Tasks/ACTIVE/042"
+  mkdir -p "$TASK"; cp "$FIX/SPINE.md" "$P/SPINE.md"; printf '# Task\n' >"$TASK/Task.md"
+  git -C "$P" init -q -b main
+  "$ROOT/scripts/evidence.sh" keep "$FIX/secrets.log" "$TASK/validation-evidence/t" --name app
+  "$ROOT/scripts/evidence.sh" keep "$FIX/secrets.log" "$TASK/phase-evidence/phase-1" --name build
+  mkdir -p "$TASK/validation-evidence/t/raw"; printf 'png' >"$TASK/validation-evidence/t/raw/shot.png"
+  [ -f "$TASK/validation-evidence/t/raw/app.log" ]
+  run "$ROOT/scripts/stage-leftovers.sh" foreign "$TASK"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$status $output"; return 1; }
+  # A raw copy made by hand is found, and excluded the way the orchestrator excludes it.
+  cp "$FIX/secrets.log" "$TASK/validation-evidence/t/by-hand.log"
+  run "$ROOT/scripts/stage-leftovers.sh" foreign "$TASK"
+  [ "$status" -eq 1 ] && [ "$output" = "foreign path=validation-evidence/t/by-hand.log" ] || { echo "$status $output"; return 1; }
+  X=(-- . ':(exclude,glob)**/Run.json')
+  while IFS= read -r line; do X+=(":(exclude,literal)${line#foreign path=}"); done <<<"$output"
+  git -C "$TASK" add -A "${X[@]}"
+  git -C "$TASK" -c user.email=t@t -c user.name=t commit -qm docs "${X[@]}"
+  run git -C "$P" grep FAKE HEAD
+  [ "$status" -eq 1 ] && [ -z "$output" ] || { echo "$status $output"; return 1; }
+  ! git -C "$P" ls-tree -r HEAD --name-only | grep -q '/raw/' || { git -C "$P" ls-tree -r HEAD --name-only; return 1; }
+  git -C "$P" ls-tree -r HEAD --name-only | grep -qx 'Tasks/ACTIVE/042/validation-evidence/t/app.log'
+}

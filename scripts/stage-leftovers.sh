@@ -16,7 +16,7 @@
 set -uo pipefail
 
 [ $# -ge 1 ] || { sed -n '5,15p' "$0" >&2; exit 2; }
-exec python3 - "$@" <<'PY'
+exec python3 - "$0" "$@" <<'PY'
 import fnmatch, glob, hashlib, json, os, re, signal, subprocess, sys, time
 from datetime import datetime
 
@@ -194,19 +194,57 @@ def dirty(root, excludes):
 
 
 # What a task folder may hold (skills/orchestrator/SKILL.md → Stage leftovers): its documents at any
-# depth, Run.json, _archive/, and the evidence folders whole except long-run.sh's sidecars. A step
-# folder holds the same.
+# depth, Run.json, _archive/, and the evidence folders; a step folder holds the same. experiment/ is held
+# whole. phase-evidence/ and validation-evidence/ are held only as scripts/evidence.sh allows: a raw/
+# folder (git never sees it), and any other file that `evidence.sh check` does not name — an excerpt, a
+# kept screenshot, a document. A raw log copied there by hand, an excerpt a secret is left in and a
+# screenshot nobody approved are foreign. long-run.sh's sidecars are foreign in all three folders.
 EVIDENCE = ("phase-evidence", "validation-evidence", "experiment")
+CHECKED = ("phase-evidence", "validation-evidence")
 SIDECARS = (".pid", ".start", ".cwd", ".exit", ".exit.tmp")
+FINDING = re.compile(r"^evidence path=(.*?) reason=(?:unmarked|secret|unlisted|changed|other)$", re.M | re.S)
 
 
-def lawful(rel):
+def evidence_parts(rel):
+    # The path inside its evidence folder's name, *.step/ prefixes dropped; None when it is in none.
     parts = rel.split("/")
     while len(parts) > 1 and parts[0].endswith(".step"):
         parts = parts[1:]
-    if len(parts) > 1 and parts[0] in EVIDENCE:
-        return not rel.endswith(SIDECARS)
+    return parts if len(parts) > 1 and parts[0] in EVIDENCE else None
+
+
+def lawful(rel, flagged=None):
+    # flagged: the paths evidence.sh check named, or None where the evidence folders are not checked.
+    parts = evidence_parts(rel)
+    if parts:
+        if rel.endswith(SIDECARS):
+            return False
+        if parts[0] in CHECKED and flagged is not None:
+            return "raw" in parts[1:-1] or rel not in flagged
+        return True
+    parts = rel.split("/")
+    while len(parts) > 1 and parts[0].endswith(".step"):
+        parts = parts[1:]
     return rel.endswith(".md") or parts == ["Run.json"] or (len(parts) > 1 and parts[0] == "_archive")
+
+
+def evidence_findings(task_dir, candidates):
+    # What evidence.sh check names in task_dir, asked once and only when a file the commit would add sits
+    # in an evidence folder outside raw/. Exit 2 of check — no config, an unreadable ## Redact — is ours.
+    needed = False
+    for rel in candidates:
+        parts = evidence_parts(rel)
+        if parts and parts[0] in CHECKED and "raw" not in parts[1:-1]:
+            needed = True
+            break
+    if not needed:
+        return set()
+    run = subprocess.run([os.path.join(os.path.dirname(os.path.abspath(SCRIPT)), "evidence.sh"), "check",
+                          task_dir], capture_output=True)
+    if run.returncode not in (0, 1):
+        sys.stderr.write(run.stderr.decode("utf-8", errors="replace"))
+        usage("evidence.sh check exited %d for %s" % (run.returncode, task_dir))
+    return {m.group(1) for m in FINDING.finditer(run.stdout.decode("utf-8", errors="surrogateescape"))}
 
 
 def task_candidates(task_dir):
@@ -238,7 +276,9 @@ def resolve_task_dirs(pattern):
 def foreign(args):
     if len(args) != 1 or not os.path.isdir(args[0]):
         usage("foreign <task dir>")
-    hits = [p for p in task_candidates(args[0]) if not lawful(p)]
+    found = task_candidates(args[0])
+    flagged = evidence_findings(args[0], found)
+    hits = [p for p in found if not lawful(p, flagged)]
     if hits:
         print("\n".join("foreign path=%s" % quoted(p) for p in hits))
     sys.exit(1 if hits else 0)
@@ -616,7 +656,7 @@ def show_origin(args):
     print("\n".join(origin(int(a)) or "" for a in args))
 
 
-cmd, rest = sys.argv[1], sys.argv[2:]
+SCRIPT, cmd, rest = sys.argv[1], sys.argv[2], sys.argv[3:]
 {"snap": snap, "diff": diff, "foreign": foreign, "kill": kill, "watch": watch, "origin": show_origin,
  "restore": restore, "leave": leave, "held": held}.get(
     cmd, lambda _a: usage("unknown subcommand %s" % cmd))(rest)

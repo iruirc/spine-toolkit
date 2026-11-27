@@ -2,6 +2,8 @@
 # A stage left a test build running for 1h47m and a WebDriverAgent for 45m, changed a committed
 # fixture, and sat 15 minutes on a silent MCP call; each was found by a person, not the toolkit.
 
+bats_require_minimum_version 1.5.0
+
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   SL="$ROOT/scripts/stage-leftovers.sh"
@@ -624,6 +626,70 @@ foreign path=x.log" ] || { echo "$output"; return 1; }
   : >"$T/plain/x.log"
   run "$SL" foreign "$T/plain"
   [ "$status" -eq 1 ] && [ "$output" = "foreign path=x.log" ] || { echo "$output"; return 1; }
+}
+
+# The evidence folders are held as scripts/evidence.sh allows: an excerpt and a kept screenshot, never a
+# raw log copied there by hand or a screenshot nobody approved.
+evtask() {
+  task; cp "$ROOT/tests/foundation/fixtures/evidence/SPINE.md" "$T/repo/SPINE.md"
+  EVT="$T/repo/Tasks/ACTIVE/042"; EV="$ROOT/scripts/evidence.sh"
+}
+
+@test "foreign reports a raw copy in an evidence folder and passes an excerpt" {
+  evtask
+  mkdir -p "$EVT/validation-evidence/t"
+  printf 'no header\n' >"$EVT/validation-evidence/t/full.log"
+  run "$EV" keep "$ROOT/tests/foundation/fixtures/evidence/secrets.log" "$EVT/validation-evidence/t" --name app
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  run "$SL" foreign "$EVT"
+  [ "$status" -eq 1 ] && [ "$output" = "foreign path=validation-evidence/t/full.log" ] || { echo "$status $output"; return 1; }
+}
+
+@test "foreign reports a raw copy in a step folder's phase evidence" {
+  evtask
+  mkdir -p "$EVT/01.step/phase-evidence/phase-1"; printf 'x\n' >"$EVT/01.step/phase-evidence/phase-1/a.log"
+  run "$SL" foreign "$EVT"
+  [ "$status" -eq 1 ] && [ "$output" = "foreign path=01.step/phase-evidence/phase-1/a.log" ] || { echo "$status $output"; return 1; }
+}
+
+@test "foreign passes a kept screenshot and reports one that is not kept" {
+  evtask
+  local d="$EVT/validation-evidence/t"; mkdir -p "$d/raw"
+  printf 'png1' >"$d/raw/home screen.png"
+  run "$EV" keep-image "$d/raw/home screen.png" "$d"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  run "$SL" foreign "$EVT"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$status $output"; return 1; }
+  printf 'png2' >"$d/other shot.png"
+  run "$SL" foreign "$EVT"
+  [ "$status" -eq 1 ] && [ "$output" = "foreign path=validation-evidence/t/other shot.png" ] || { echo "$status $output"; return 1; }
+}
+
+@test "foreign outside git does not list raw" {
+  mkdir -p "$T/plain/validation-evidence/t/raw"; : >"$T/plain/Task.md"
+  : >"$T/plain/validation-evidence/t/raw/app.log"; printf '*\n' >"$T/plain/validation-evidence/t/raw/.gitignore"
+  run "$SL" foreign "$T/plain"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$status $output"; return 1; }
+}
+
+@test "foreign asks check only where an evidence folder holds a file, and passes its failure on" {
+  mkdir -p "$T/plain/validation-evidence/t"; : >"$T/plain/Task.md"; : >"$T/plain/validation-evidence/t/a.log"
+  run --separate-stderr "$SL" foreign "$T/plain"
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+  [[ "$stderr" == *"no project config"* ]] || { echo "$stderr"; return 1; }
+}
+
+@test "experiment stays lawful whole" {
+  mkdir -p "$T/plain/experiment"; : >"$T/plain/Task.md"; : >"$T/plain/experiment/data.csv"
+  run "$SL" foreign "$T/plain"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$status $output"; return 1; }
+}
+
+@test "a long-run sidecar in an evidence folder is still foreign" {
+  evtask
+  mkdir -p "$EVT/validation-evidence/t"; : >"$EVT/validation-evidence/t/run.log.pid"
+  run "$SL" foreign "$EVT"
+  [ "$status" -eq 1 ] && [ "$output" = "foreign path=validation-evidence/t/run.log.pid" ] || { echo "$status $output"; return 1; }
 }
 
 @test "foreign without a directory is a usage error" {
