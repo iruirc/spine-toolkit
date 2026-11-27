@@ -10,18 +10,30 @@
 #          and the last 20 lines, all after redaction. <name> defaults to <log>'s base name without .log.
 #          Prints `kept <excerpt path relative to the task folder> redacted=<n>`.
 #          Project patterns: the `## Redact` block of the project config, one ``- `<regex>` `` per line.
-# Exit: 0, a line matched or not (none matched: one stderr line says so). 2: usage, no task folder above
-#       <evidence dir>, no project config above it, or a `## Redact` line that does not parse.
+#        scripts/evidence.sh keep-image <image> <evidence dir>
+#          <image> is a .png, .jpg, .jpeg, .gif or .webp file in <evidence dir>/raw/ that was viewed and holds
+#          no secret. Moves it to <evidence dir>/ and lists it in <evidence dir>/kept.txt as
+#          `<sha1>  <file name>`, in place of an older line for the same name. Prints
+#          `kept <image path relative to the task folder> sha1=<sha1>`.
+#        scripts/evidence.sh check <task dir>
+#          Walks phase-evidence/ and validation-evidence/ of <task dir> and of its *.step/ folders at any
+#          depth, raw/ folders skipped, and prints `evidence path=<path relative to task dir> reason=<reason>`
+#          for each file that must not be committed, in path order. unmarked: a .log without the excerpt
+#          header. secret: an excerpt the rules still find a value in. unlisted: an image not in its folder's
+#          kept.txt. changed: an image whose sha1 is not the listed one. other: any file but kept.txt and .md.
+# Exit: 0: done; for check, nothing found. 1: check found a file. 2: usage, no task folder above
+#       <evidence dir>, an image not in its raw/, no project config, or a `## Redact` line that does not parse.
 set -uo pipefail
 
-[ $# -ge 1 ] || { sed -n '5,14p' "$0" >&2; exit 2; }
-exec python3 - "$(cd -- "$(dirname -- "$0")" && pwd)" "$@" <<'PY'
-import json, os, re, subprocess, sys
+exec python3 - "$(cd -- "$(dirname -- "$0")" && pwd)/$(basename -- "$0")" "$@" <<'PY'
+import hashlib, json, os, re, subprocess, sys
 
-HERE = sys.argv[1]
+SCRIPT = sys.argv[1]
+HERE = os.path.dirname(SCRIPT)
 ARGS = sys.argv[2:]
 HEADER = "# evidence excerpt v1 — raw: raw/%s.log"
 TAIL = 20
+TAIL_LINE = "# tail"
 MASK = "***"
 
 # The key names a key=value, key: value or JSON pair is redacted under; the key may be part of a
@@ -30,13 +42,16 @@ MASK = "***"
 KEYS = r"(?:token|secret|passw(?:or)?d|api[_-]?key|auth|credential|private[_-]?key|session|cookie)"
 PEM = re.compile(r"(-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----)(.*?)(-----END [A-Z0-9 ]*PRIVATE KEY-----|\Z)", re.S)
 # (pattern, the group that holds the value): the value alone becomes ***, the rest of the match stays.
+# An Authorization header keeps its scheme word, whatever it is, and loses the rest of its value up to the
+# end of the line or a quote that closes a string around it; a ="…" parameter (Digest) is taken whole.
+# A lone value with no scheme word is the credential itself.
 RULES = [
-    (re.compile(r"(?i)\bAuthorization:[ \t]*(?:(?:Bearer|Basic)[ \t]+)?([^\s\"',]+)"), 1),
+    (re.compile(r"(?i)\bAuthorization:[ \t]*(?:[A-Za-z][\w.+-]*[ \t]+)?((?:=\"[^\"\r\n]*\"|[^\s\"'])(?:=\"[^\"\r\n]*\"|[^\"'\r\n])*)"), 1),
     (re.compile(r"(?i)\bX-Api-Key:[ \t]*([^\s\"',]+)"), 1),
     (re.compile(r"(?i)\b(?:Set-)?Cookie:[ \t]*([^\"'\r\n]+)"), 1),
     (re.compile(r"://[^\s/:@]+:([^\s/@]+)@"), 1),
     (re.compile(r"(?i)\"?[\w.-]{0,64}?" + KEYS + r"[\w.-]{0,64}\"?[ \t]*[:=][ \t]*"
-                r"(?:\"([^\"\r\n]*)\"|'([^'\r\n]*)'|([^\s\"'&;,]+))"), (1, 2, 3)),
+                r"(?:\"((?:[^\"\\\r\n]|\\.)*)\"|'((?:[^'\\\r\n]|\\.)*)'|([^\s\"'&;,]+))"), (1, 2, 3)),
 ]
 # Whole tokens: the match itself becomes ***.
 TOKENS = [
@@ -47,12 +62,40 @@ TOKENS = [
     re.compile(r"(?<![A-Za-z0-9_-])xox[bpas]-[A-Za-z0-9-]+"),
     re.compile(r"(?<![A-Za-z0-9_-])AIza[0-9A-Za-z_-]{8,}"),
 ]
-# An unquoted value that is only the scheme word of an Authorization header the rule above already redacted.
-SCHEMES = ("bearer", "basic")
+# The scheme word of an Authorization header whose credential the first rule already made ***: a key=value
+# read of the same header must leave it.
+SCHEME = re.compile(r"[A-Za-z][\w.+-]*")
+AFTER_SCHEME = re.compile(r"[ \t]+\*\*\*")
+# Every rule and token above needs one of these, lowercased, on its line: a line with none skips them all.
+# A superset is fine; a cue missing here is a secret form that is never redacted.
+CUES = ("token", "secret", "passw", "api", "auth", "credential", "private", "session", "cookie", "://",
+        "eyj", "akia", "gh", "github_pat_", "sk-", "xox", "aiza")
+IMAGES = (".png", ".jpg", ".jpeg", ".gif", ".webp")
+EVIDENCE = ("phase-evidence", "validation-evidence")
+MARK = re.compile(r"# evidence excerpt v1 — raw: raw/.+\.log")
+KEPT = "kept.txt"
+KEPT_LINE = re.compile(r"([0-9a-f]{40})  (.+)")
 
 
-def usage(msg):
+def usage_text():
+    """The header's usage: from the `# Usage:` line to the end of the `# Exit:` block, without the `#`."""
+    out, exit_seen = [], False
+    with open(SCRIPT, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.rstrip("\n")
+            if not out and not line.startswith("# Usage:"):
+                continue
+            if exit_seen and not line.startswith("#  "):
+                break
+            exit_seen = exit_seen or line.startswith("# Exit:")
+            out.append(line[2:])
+    return "\n".join(out)
+
+
+def usage(msg, full=False):
     print("evidence: " + msg, file=sys.stderr)
+    if full:
+        print(usage_text(), file=sys.stderr)
     sys.exit(2)
 
 
@@ -63,8 +106,11 @@ def redact(text, extra):
 
     def pem(m):
         nonlocal count
-        count += 1
-        body = re.sub(r"[^\r\n]+", MASK, m.group(2))
+        # The excerpt's own `# tail` line can fall inside a block the tail cut: it is no body line.
+        body = re.sub(r"[^\r\n]+", lambda l: l.group(0) if l.group(0) in (MASK, TAIL_LINE) else MASK,
+                      m.group(2))
+        if body != m.group(2):
+            count += 1
         return m.group(1) + body + m.group(3)
     text = PEM.sub(pem, text)
 
@@ -82,17 +128,29 @@ def redact(text, extra):
             nonlocal count
             g = next((g for g in groups if m.group(g) is not None), None)
             v = m.group(g) if g is not None else ""
-            if not v or v == MASK or v.lower() in SCHEMES:
+            s, e = m.start(g) - m.start(0), m.end(g) - m.start(0)
+            if not v or v == MASK:
+                return m.group(0)
+            if (SCHEME.fullmatch(v) and AFTER_SCHEME.match(m.string, m.end())
+                    and "authorization" in m.group(0)[:s].lower()):
                 return m.group(0)
             count += 1
-            s, e = m.start(g) - m.start(0), m.end(g) - m.start(0)
             return m.group(0)[:s] + MASK + m.group(0)[e:]
         return sub
-    for p, g in RULES:
-        text = p.sub(value(g if isinstance(g, tuple) else (g,)), text)
-    for p in TOKENS:
-        text = p.sub(whole, text)
-    return text, count
+    rules = [(p, value(g if isinstance(g, tuple) else (g,))) for p, g in RULES]
+    # Every rule and token stops at the end of a line, so they run line by line, and only on a line
+    # holding a cue: in a long build log most lines hold none, and the cue test is far cheaper.
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        low = line.lower()
+        if not any(c in low for c in CUES):
+            continue
+        for p, sub in rules:
+            line = p.sub(sub, line)
+        for p in TOKENS:
+            line = p.sub(whole, line)
+        lines[i] = line
+    return "\n".join(lines), count
 
 
 def task_dir_of(path):
@@ -133,7 +191,9 @@ def project_patterns(task_dir):
                          capture_output=True, text=True)
     sys.stderr.write(run.stderr)
     if run.returncode != 0:
-        sys.exit(2)
+        cause = ("no project config (SPINE.md) at or above it" if "no project config" in run.stderr
+                 else "resolve-settings.sh raw exited %d" % run.returncode)
+        usage("cannot read ## Redact for %s: %s" % (task_dir, cause))
     out = []
     for entry in run.stdout.splitlines():
         m = re.fullmatch(r"- `(.+)`", entry.strip())
@@ -171,7 +231,7 @@ def keep(args):
         else:
             pos.append(a)
     if len(pos) != 2:
-        usage("keep <log> <evidence dir> [--name <name>] [--match <regex>]...")
+        usage("keep takes <log> and <evidence dir>", full=True)
     log, evidence = pos
     if not os.path.isfile(log):
         usage("no log at " + log)
@@ -180,10 +240,7 @@ def keep(args):
         name = name[:-4] if name.endswith(".log") else name
     if not name or name in (".", "..") or "/" in name:
         usage("not a name: " + name)
-    evidence = os.path.abspath(evidence)
-    task = task_dir_of(evidence)
-    if task is None or task == evidence:
-        usage("%s is not inside a task folder (no Task.md above it)" % pos[1])
+    evidence, task = evidence_dir(evidence)
     extra = project_patterns(task)
 
     with open(log, "rb") as fh:
@@ -205,20 +262,151 @@ def keep(args):
         lines.pop()
     cut = max(len(lines) - TAIL, 0)
     matched = [i for i, l in enumerate(lines) if any(p.search(l) for p in matches)]
-    if not matched:
+    if matches and not matched:
         print("evidence: no line matched --match in " + log, file=sys.stderr)
-    body = [HEADER % name] + [lines[i] for i in matched if i < cut] + ["# tail"] + lines[cut:]
+    body = [HEADER % name] + [lines[i] for i in matched if i < cut] + [TAIL_LINE] + lines[cut:]
     excerpt = os.path.join(evidence, name + ".log")
     with open(excerpt, "w", encoding="utf-8", errors="surrogateescape", newline="") as fh:
         fh.write("\n".join(body) + "\n")
     print("kept %s redacted=%d" % (os.path.relpath(excerpt, task), count))
 
 
+def evidence_dir(path):
+    """(absolute evidence dir, its task folder); the evidence dir lies strictly below the task folder."""
+    evidence = os.path.abspath(path)
+    task = task_dir_of(evidence)
+    if task is None or task == evidence:
+        usage("%s is not inside a task folder (no Task.md above it)" % path)
+    return evidence, task
+
+
+def sha1(path):
+    h = hashlib.sha1()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def is_image(name):
+    return name.lower().endswith(IMAGES)
+
+
+def kept_list(folder):
+    """{file name: sha1} from the folder's kept.txt; a line of another shape lists nothing."""
+    out = {}
+    try:
+        with open(os.path.join(folder, KEPT), encoding="utf-8", errors="surrogateescape") as fh:
+            for line in fh:
+                m = KEPT_LINE.fullmatch(line.rstrip("\r\n"))
+                if m:
+                    out[m.group(2)] = m.group(1)
+    except FileNotFoundError:
+        pass
+    return out
+
+
+def keep_image(args):
+    if len(args) != 2 or any(a.startswith("--") for a in args):
+        usage("keep-image takes <image> and <evidence dir>", full=True)
+    image, evidence = args
+    if not os.path.isfile(image):
+        usage("no image at " + image)
+    name = os.path.basename(image)
+    if not is_image(name):
+        usage("not an image (%s): %s" % (", ".join(IMAGES), image))
+    if "\n" in name or "\r" in name:
+        usage("an image name with a line break cannot be listed: %r" % name)
+    evidence, task = evidence_dir(evidence)
+    raw_dir = os.path.join(evidence, "raw")
+    if not (os.path.isdir(raw_dir) and os.path.samefile(os.path.dirname(os.path.abspath(image)), raw_dir)):
+        usage("%s is not in %s: a screenshot is saved to raw/ first" % (image, raw_dir))
+    digest = sha1(image)
+    dest = os.path.join(evidence, name)
+    os.replace(image, dest)
+    kept = os.path.join(evidence, KEPT)
+    lines = []
+    if os.path.exists(kept):
+        with open(kept, encoding="utf-8", errors="surrogateescape") as fh:
+            for line in fh:
+                line = line.rstrip("\r\n")
+                m = KEPT_LINE.fullmatch(line)
+                if line and not (m and m.group(2) == name):
+                    lines.append(line)
+    lines.append("%s  %s" % (digest, name))
+    with open(kept, "w", encoding="utf-8", errors="surrogateescape") as fh:
+        fh.write("\n".join(lines) + "\n")
+    print("kept %s sha1=%s" % (os.path.relpath(dest, task), digest))
+
+
+def evidence_roots(folder):
+    """The phase-evidence/ and validation-evidence/ folders of folder and of its *.step/ folders, any depth."""
+    for entry in sorted(os.scandir(folder), key=lambda e: e.name):
+        if not entry.is_dir(follow_symlinks=False):
+            continue
+        if entry.name in EVIDENCE:
+            yield entry.path
+        elif entry.name.endswith(".step"):
+            yield from evidence_roots(entry.path)
+
+
+def reason_of(path, extra):
+    """Why the file at path must not be committed, or None."""
+    name = os.path.basename(path)
+    if name == KEPT or name.endswith(".md"):
+        return None
+    if is_image(name):
+        listed = kept_list(os.path.dirname(path)).get(name)
+        if listed is None:
+            return "unlisted"
+        return "changed" if sha1(path) != listed else None
+    if name.endswith(".log"):
+        with open(path, "rb") as fh:
+            text = fh.read().decode("utf-8", errors="surrogateescape")
+        first = text.split("\n", 1)[0].rstrip("\r")
+        if not MARK.fullmatch(first):
+            return "unmarked"
+        return "secret" if redact(text, extra)[1] else None
+    return "other"
+
+
+def check_findings(task_dir):
+    """[(path relative to task_dir, reason)] for each evidence file that must not be committed, in path
+    order. raw/ folders are never read: git ignores them."""
+    extra = project_patterns(task_dir)
+    found = []
+    for root in evidence_roots(task_dir):
+        for folder, dirs, files in os.walk(root):
+            dirs[:] = [d for d in dirs if d != "raw"]
+            for f in files:
+                path = os.path.join(folder, f)
+                why = reason_of(path, extra)
+                if why:
+                    found.append((os.path.relpath(path, task_dir), why))
+    return sorted(found)
+
+
+def check(args):
+    if len(args) != 1 or args[0].startswith("--"):
+        usage("check takes <task dir>", full=True)
+    task = os.path.abspath(args[0])
+    if not os.path.isfile(os.path.join(task, "Task.md")):
+        usage("%s is not a task folder (no Task.md in it)" % args[0])
+    found = check_findings(task)
+    for path, why in found:
+        print("evidence path=%s reason=%s" % (path, why))
+    sys.exit(1 if found else 0)
+
+
 if not ARGS:
-    usage("keep <log> <evidence dir> [--name <name>] [--match <regex>]...")
+    usage("a subcommand is needed", full=True)
 cmd = ARGS.pop(0)
 if cmd == "keep":
     keep(ARGS)
+elif cmd == "keep-image":
+    keep_image(ARGS)
+elif cmd == "check":
+    check(ARGS)
 else:
-    usage("unknown subcommand " + cmd)
+    usage("unknown subcommand " + cmd, full=True)
 PY

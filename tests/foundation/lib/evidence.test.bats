@@ -179,3 +179,181 @@ EOF
   [[ "$stderr" == *"SPINE.md line 6:"*'([`'* ]] || { echo "$stderr"; return 1; }
   [ ! -e "$OUT/app.log" ]
 }
+
+sha1_of() {
+  { shasum "$1" 2>/dev/null || sha1sum "$1"; } | cut -d' ' -f1
+}
+
+@test "keep-image moves a viewed screenshot out of raw and lists its sha1" {
+  mkdir -p "$OUT/raw"
+  printf 'png home screen' >"$OUT/raw/home screen.png"
+  local sum
+  sum="$(sha1_of "$OUT/raw/home screen.png")"
+  run "$EV" keep-image "$OUT/raw/home screen.png" "$OUT"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = "kept validation-evidence/t/home screen.png sha1=$sum" ] || { echo "$output"; return 1; }
+  [ ! -e "$OUT/raw/home screen.png" ]
+  [ "$(cat "$OUT/home screen.png")" = 'png home screen' ]
+  [ "$(cat "$OUT/kept.txt")" = "$sum  home screen.png" ] || { cat "$OUT/kept.txt"; return 1; }
+  run "$EV" check "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ]
+}
+
+@test "keep-image of a screenshot kept before replaces its kept.txt line" {
+  mkdir -p "$OUT/raw"
+  printf 'first' >"$OUT/raw/a b.PNG"
+  run "$EV" keep-image "$OUT/raw/a b.PNG" "$OUT"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  printf 'second' >"$OUT/raw/a b.PNG"
+  run "$EV" keep-image "$OUT/raw/a b.PNG" "$OUT"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(cat "$OUT/kept.txt")" = "$(sha1_of "$OUT/a b.PNG")  a b.PNG" ] || { cat "$OUT/kept.txt"; return 1; }
+}
+
+@test "keep-image refuses an image that is not in raw" {
+  mkdir -p "$OUT/raw" "$TASK/other/raw"
+  printf 'png' >"$OUT/shot.png"
+  run "$EV" keep-image "$OUT/shot.png" "$OUT"
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  [ -e "$OUT/shot.png" ]
+  printf 'png' >"$TASK/other/raw/shot.png"
+  run "$EV" keep-image "$TASK/other/raw/shot.png" "$OUT"
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  [ -e "$TASK/other/raw/shot.png" ]
+  printf 'text' >"$OUT/raw/notes.txt"
+  run "$EV" keep-image "$OUT/raw/notes.txt" "$OUT"
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  [ -e "$OUT/raw/notes.txt" ]
+  [ ! -e "$OUT/kept.txt" ]
+}
+
+@test "check finds each kind of foreign evidence" {
+  keep_fixture
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  printf 'password=FAKEhand0018\n' >>"$OUT/app.log"
+  cp "$FIX/secrets.log" "$OUT/copy.log"
+  printf 'png x' >"$OUT/x.png"
+  printf 'png home' >"$OUT/raw/home screen.png"
+  run "$EV" keep-image "$OUT/raw/home screen.png" "$OUT"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  printf 'png home, edited' >"$OUT/home screen.png"
+  printf 'notes\n' >"$OUT/notes.txt"
+  run --separate-stderr "$EV" check "$TASK"
+  [ "$status" -eq 1 ] || { echo "$output $stderr"; return 1; }
+  diff <(printf '%s\n' "$output") - <<'EOF2'
+evidence path=validation-evidence/t/app.log reason=secret
+evidence path=validation-evidence/t/copy.log reason=unmarked
+evidence path=validation-evidence/t/home screen.png reason=changed
+evidence path=validation-evidence/t/notes.txt reason=other
+evidence path=validation-evidence/t/x.png reason=unlisted
+EOF2
+}
+
+@test "check passes a clean task and its step folders" {
+  local step="$TASK/a.step/validation-evidence/t"
+  run "$EV" keep "$FIX/secrets.log" "$OUT" --name app --match .
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  run "$EV" keep "$FIX/secrets.log" "$step" --name app --match 'error:'
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  mkdir -p "$OUT/raw" "$step/raw" "$TASK/phase-evidence/phase-1"
+  printf 'png one' >"$OUT/raw/home screen.png"
+  printf 'png two' >"$step/raw/list.jpeg"
+  "$EV" keep-image "$OUT/raw/home screen.png" "$OUT" >/dev/null
+  "$EV" keep-image "$step/raw/list.jpeg" "$step" >/dev/null
+  printf '# Notes\n' >"$TASK/phase-evidence/phase-1/notes.md"
+  printf '# Summary\n' >"$step/summary.md"
+  run "$EV" check "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ]
+}
+
+@test "check walks step folders at any depth and no other folder" {
+  mkdir -p "$TASK/a.step/b.step/phase-evidence/p" "$TASK/other" "$TASK/experiment" "$TASK/a.step/scratch"
+  printf 'x\n' >"$TASK/a.step/b.step/phase-evidence/p/x.txt"
+  printf 'x\n' >"$TASK/notes.txt"
+  printf 'x\n' >"$TASK/other/x.txt"
+  printf 'x\n' >"$TASK/experiment/x.txt"
+  printf 'x\n' >"$TASK/a.step/scratch/y.txt"
+  run "$EV" check "$TASK"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+  [ "$output" = 'evidence path=a.step/b.step/phase-evidence/p/x.txt reason=other' ] || { echo "$output"; return 1; }
+}
+
+@test "check never reads raw" {
+  mkdir -p "$OUT/raw" "$TASK/a.step/phase-evidence/p/raw"
+  cp "$FIX/secrets.log" "$OUT/raw/app.log"
+  printf '*\n' >"$OUT/raw/.gitignore"
+  printf 'png' >"$OUT/raw/x.png"
+  cp "$FIX/secrets.log" "$TASK/a.step/phase-evidence/p/raw/x.log"
+  run "$EV" check "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ]
+}
+
+@test "check stops on a folder that is no task, and on a Redact line that does not parse" {
+  mkdir -p "$BATS_TEST_TMPDIR/loose"
+  run "$EV" check "$BATS_TEST_TMPDIR/loose"
+  [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  printf '# Project\n\n## Redact\n\n- `([`\n' >"$PROJ/SPINE.md"
+  run --separate-stderr "$EV" check "$TASK"
+  [ "$status" -eq 2 ] || { echo "$output $stderr"; return 1; }
+  [[ "$stderr" == *"SPINE.md line 5:"* ]] || { echo "$stderr"; return 1; }
+}
+
+@test "Authorization with any scheme, or none, loses its credential" {
+  printf '%s\n' 'Authorization: Token FAKEtok0019' 'Authorization: Digest FAKEdig0020' \
+    'authorization: Negotiate FAKEneg0021' 'Authorization: FAKEbare0022' \
+    'Authorization: Digest username="u", response="FAKEdigresp0024"' >"$BATS_TEST_TMPDIR/auth.log"
+  run "$EV" keep "$BATS_TEST_TMPDIR/auth.log" "$OUT"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = 'kept validation-evidence/t/auth.log redacted=5' ] || { echo "$output"; return 1; }
+  diff "$OUT/auth.log" - <<'EOF2'
+# evidence excerpt v1 — raw: raw/auth.log
+# tail
+Authorization: Token ***
+Authorization: Digest ***
+authorization: Negotiate ***
+Authorization: ***
+Authorization: Digest ***
+EOF2
+  run "$EV" check "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "a quoted value with an escaped quote is masked whole" {
+  printf '%s\n' '{"token": "a\"FAKEesc0023", "user": "tester"}' >"$BATS_TEST_TMPDIR/esc.log"
+  run "$EV" keep "$BATS_TEST_TMPDIR/esc.log" "$OUT"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(sed -n 3p "$OUT/esc.log")" = '{"token": "***", "user": "tester"}' ] || { cat "$OUT/esc.log"; return 1; }
+}
+
+@test "keep with no --match says nothing about matches" {
+  printf 'one\n' >"$BATS_TEST_TMPDIR/one.log"
+  run --separate-stderr "$EV" keep "$BATS_TEST_TMPDIR/one.log" "$OUT"
+  [ "$status" -eq 0 ] || { echo "$output $stderr"; return 1; }
+  [ -z "$stderr" ] || { echo "$stderr"; return 1; }
+}
+
+@test "a usage error prints the header's usage, every subcommand in it" {
+  local cmd
+  for cmd in "" bogus; do
+    run --separate-stderr "$EV" $cmd
+    [ "$status" -eq 2 ] || { echo "$cmd: $stderr"; return 1; }
+    [[ "$stderr" == *"Usage: scripts/evidence.sh keep <log> <evidence dir>"* ]] || { echo "$stderr"; return 1; }
+    [[ "$stderr" == *"scripts/evidence.sh keep-image <image> <evidence dir>"* ]] || { echo "$stderr"; return 1; }
+    [[ "$stderr" == *"scripts/evidence.sh check <task dir>"* ]] || { echo "$stderr"; return 1; }
+    [[ "$stderr" == *"Exit:"* ]] || { echo "$stderr"; return 1; }
+  done
+}
+
+@test "no project config stops keep and check with a line of their own" {
+  rm "$PROJ/SPINE.md"
+  run --separate-stderr "$EV" keep "$FIX/secrets.log" "$OUT" --name app
+  [ "$status" -eq 2 ] || { echo "$output $stderr"; return 1; }
+  [[ "$stderr" == *"evidence: "*"no project config"* ]] || { echo "$stderr"; return 1; }
+  [ ! -e "$OUT/app.log" ]
+  run --separate-stderr "$EV" check "$TASK"
+  [ "$status" -eq 2 ] || { echo "$output $stderr"; return 1; }
+  [[ "$stderr" == *"evidence: "*"no project config"* ]] || { echo "$stderr"; return 1; }
+}
