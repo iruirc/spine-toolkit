@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep conventions workflows
 # Validators and phases copied whole tool logs into the task folder, and the task folder went into
 # git as it was: tokens, cookies and keys a test run printed were committed with it. keep leaves the
 # raw log in a raw/ folder git never sees and commits a scrubbed excerpt in its place.
@@ -184,6 +185,35 @@ sha1_of() {
   { shasum "$1" 2>/dev/null || sha1sum "$1"; } | cut -d' ' -f1
 }
 
+# A screenshot taken before any keep ran in its folder found no raw/.gitignore: git saw it, and the
+# Done commit took it. raw makes the folder and its .gitignore before the screenshot is saved.
+@test "raw creates the folder and its gitignore and prints the path" {
+  run --separate-stderr "$EV" raw "$OUT"
+  [ "$status" -eq 0 ] || { echo "$output $stderr"; return 1; }
+  [ "$output" = "$OUT/raw" ] || { echo "$output"; return 1; }
+  [ -d "$OUT/raw" ] && [ "$(cat "$OUT/raw/.gitignore")" = '*' ]
+  printf 'png' >"$OUT/raw/shot.png"
+  git -C "$PROJ" check-ignore -q "$OUT/raw/shot.png" || { echo "raw/shot.png is not ignored"; return 1; }
+  printf 'x\n' >"$OUT/raw/.gitignore"
+  run "$EV" raw "$OUT"
+  [ "$status" -eq 0 ] && [ "$output" = "$OUT/raw" ] || { echo "$output"; return 1; }
+  [ "$(cat "$OUT/raw/.gitignore")" = 'x' ] || { echo "raw rewrote an existing .gitignore"; return 1; }
+}
+
+@test "raw outside a task folder is a usage error" {
+  mkdir -p "$BATS_TEST_TMPDIR/loose"
+  run --separate-stderr "$EV" raw "$BATS_TEST_TMPDIR/loose"
+  [ "$status" -eq 2 ] || { echo "$status $output $stderr"; return 1; }
+  [[ "$stderr" == *"not inside a task folder"* ]] || { echo "$stderr"; return 1; }
+  [ ! -e "$BATS_TEST_TMPDIR/loose/raw" ]
+  run "$EV" raw "$TASK"
+  [ "$status" -eq 2 ] && [ ! -e "$TASK/raw" ] || { echo "$status $output"; return 1; }
+  run "$EV" raw
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+  run "$EV" raw "$OUT" extra
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+}
+
 @test "keep-image moves a viewed screenshot out of raw and lists its sha1" {
   mkdir -p "$OUT/raw"
   printf 'png home screen' >"$OUT/raw/home screen.png"
@@ -342,6 +372,7 @@ EOF2
     [ "$status" -eq 2 ] || { echo "$cmd: $stderr"; return 1; }
     [[ "$stderr" == *"Usage: scripts/evidence.sh keep <log> <evidence dir>"* ]] || { echo "$stderr"; return 1; }
     [[ "$stderr" == *"scripts/evidence.sh keep-image <image> <evidence dir>"* ]] || { echo "$stderr"; return 1; }
+    [[ "$stderr" == *"scripts/evidence.sh raw <evidence dir>"* ]] || { echo "$stderr"; return 1; }
     [[ "$stderr" == *"scripts/evidence.sh check <task dir>"* ]] || { echo "$stderr"; return 1; }
     [[ "$stderr" == *"Exit:"* ]] || { echo "$stderr"; return 1; }
   done

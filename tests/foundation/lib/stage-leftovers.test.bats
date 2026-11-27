@@ -665,6 +665,24 @@ evtask() {
   [ "$status" -eq 1 ] && [ "$output" = "foreign path=validation-evidence/t/other shot.png" ] || { echo "$status $output"; return 1; }
 }
 
+# A screenshot saved into raw/ before any keep made raw/.gitignore is no ignored file: inside git, the
+# Done commit's add -A would take it, so foreign names it.
+@test "foreign in git reports a screenshot in raw/ that has no gitignore" {
+  evtask
+  mkdir -p "$EVT/validation-evidence/t/raw"; printf 'png' >"$EVT/validation-evidence/t/raw/shot.png"
+  run "$SL" foreign "$EVT"
+  [ "$status" -eq 1 ] && [ "$output" = "foreign path=validation-evidence/t/raw/shot.png" ] || { echo "$status $output"; return 1; }
+}
+
+@test "foreign in git lists nothing under raw/ that its gitignore covers" {
+  evtask
+  run "$EV" raw "$EVT/01.step/validation-evidence/t"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  printf 'png' >"$EVT/01.step/validation-evidence/t/raw/shot.png"
+  run "$SL" foreign "$EVT"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$status $output"; return 1; }
+}
+
 @test "foreign outside git does not list raw" {
   mkdir -p "$T/plain/validation-evidence/t/raw"; : >"$T/plain/Task.md"
   : >"$T/plain/validation-evidence/t/raw/app.log"; printf '*\n' >"$T/plain/validation-evidence/t/raw/.gitignore"

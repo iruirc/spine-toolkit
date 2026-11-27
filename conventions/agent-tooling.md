@@ -88,7 +88,9 @@ the raw log goes to `raw/`, which git never sees, and the document names the scr
 dir is `phase-evidence/phase-<id>/` or `validation-evidence/<timestamp>/`, and the log is the one in `$TMPDIR`,
 without its sidecars; each `--match` is a regex searched in every line, not a literal line.
 The document quotes its result line from the excerpt and never names the path in `$TMPDIR`;
-a document never names the raw copy of a log in `raw/`. A screenshot is saved into `raw/` first and kept with
+a document never names the raw copy of a log in `raw/`. A screenshot is saved into the folder
+`evidence.sh raw <evidence dir>` prints, `<evidence dir>/raw/`, which it makes with the `.gitignore` that keeps git
+from seeing it — never into a `raw/` made by hand, which git sees until a `keep` runs there — and kept with
 `evidence.sh keep-image <evidence dir>/raw/<image> <evidence dir>` only after you looked at it and saw no
 credentials, tokens, keys or personal data; a screenshot that was not kept is named by its `raw/` path. One job at a time per folder: `start` refuses while a job it started from the same folder still runs, because two builds sharing derived data corrupt each other — wait for the first. Start a job that builds nothing — a log stream, an emulator, a server — with `--parallel`: it neither waits nor blocks a build. Give each `wait` call a tool timeout
 above its `--for`, or pass a `--for` your tool's limit allows. `start` also records the job

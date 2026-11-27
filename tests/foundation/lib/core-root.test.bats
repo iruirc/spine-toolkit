@@ -14,7 +14,7 @@ setup() {
              'const LONG_RUN = { stall: 5, max: 30, ...(A.long_run || {}) }' \
              'Core root: ${CORE} — every conventions/… or scripts/… path named in this brief or in your agent definition is relative to it.' \
              "Long-running commands: follow \${core('conventions/agent-tooling.md')} → Long-running commands, with wait --stall \${60 * LONG_RUN.stall} --max \${60 * LONG_RUN.max} (start takes neither); --log never inside the task folder or a project root — a log a document cites is kept with \${core('scripts/evidence.sh')} keep <log> <evidence dir> --name <name> --match <regex of a result line> --match <regex of an error line>: the raw log goes to raw/, which git never sees, and the document names the scrubbed excerpt beside it." \
-             'A screenshot is saved into raw/ first and kept with evidence.sh keep-image <evidence dir>/raw/<image> <evidence dir> only after you looked at it and saw no credentials, tokens, keys or personal data.' \
+             'A screenshot is saved into the folder evidence.sh raw <evidence dir> prints, which git never sees, and kept with evidence.sh keep-image <evidence dir>/raw/<image> <evidence dir> only after you looked at it and saw no credentials, tokens, keys or personal data.' \
              "const ROOTS = Array.isArray(A.roots) ? A.roots.filter((r) => typeof r === 'string' && r.startsWith('/')) : []" \
              "Search roots: \${ROOTS.length ? ROOTS.join(', ') : 'the project root'} and the core root — follow \${core('conventions/agent-tooling.md')} → Finding files: never search from / or ~, and a file in none of them is reported missing, not searched for further."; do
       grep -qF -- "$s" "$f" || { echo "$(basename "$f"): missing: $s"; return 1; }
@@ -122,6 +122,21 @@ section() { awk -v h="## $2" '$0==h{f=1;next} f&&/^## /{exit} f' "$1"; }
                'never names the raw copy of a log' 'named by its `raw/` path'; do
     grep -qF -- "$token" <<<"$sec" || { echo "Long-running commands does not say $token"; return 1; }
   done
+}
+
+# A screenshot saved into raw/ before raw/.gitignore existed was committed: every text that tells an
+# agent where a screenshot goes names the folder evidence.sh raw makes and prints.
+names_evidence_raw() {   # <file>
+  grep -qF 'evidence.sh raw <evidence dir>' "$1" || { echo "$1 does not name evidence.sh raw"; return 1; }
+  ! grep -qF 'A screenshot is saved into raw/ first' "$1" || { echo "$1 keeps the old wording"; return 1; }
+  ! grep -qF 'A screenshot is saved into `raw/` first' "$1" || { echo "$1 keeps the old wording"; return 1; }
+}
+
+@test "the core texts save a screenshot into the folder evidence.sh raw prints" {
+  names_evidence_raw "$ROOT/conventions/agent-tooling.md"
+  names_evidence_raw "$ROOT/conventions/stage-dispatch.md"
+  names_evidence_raw "$ROOT/workflow-src/prelude.js"
+  names_evidence_raw "$ROOT/skills/task-documents/SKILL.md"
 }
 
 @test "every brief carries the --log rule" {

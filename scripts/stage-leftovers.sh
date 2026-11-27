@@ -196,35 +196,43 @@ def dirty(root, excludes):
 # What a task folder may hold (skills/orchestrator/SKILL.md → Stage leftovers): its documents at any
 # depth, Run.json, _archive/, and the evidence folders; a step folder holds the same. experiment/ is held
 # whole. phase-evidence/ and validation-evidence/ are held only as scripts/evidence.sh allows: a raw/
-# folder (git never sees it), and any other file that `evidence.sh check` does not name — an excerpt, a
-# kept screenshot, a document. A raw log copied there by hand, an excerpt a secret is left in and a
-# screenshot nobody approved are foreign. long-run.sh's sidecars are foreign in all three folders.
+# folder, and any other file that `evidence.sh check` does not name — an excerpt, a kept screenshot, a
+# document. A raw log copied there by hand, an excerpt a secret is left in and a screenshot nobody
+# approved are foreign. long-run.sh's sidecars are foreign in all three folders. Inside git a raw/ folder
+# holds a .gitignore of `*`, so its files are never candidates: one that is lost its .gitignore, or was
+# saved before `evidence.sh raw` made it, and the commit would take it — it is foreign there.
 EVIDENCE = ("phase-evidence", "validation-evidence", "experiment")
 CHECKED = ("phase-evidence", "validation-evidence")
 SIDECARS = (".pid", ".start", ".cwd", ".exit", ".exit.tmp")
 FINDING = re.compile(r"^evidence path=(.*?) reason=(?:unmarked|secret|unlisted|changed|other)$", re.M | re.S)
 
 
-def evidence_parts(rel):
-    # The path inside its evidence folder's name, *.step/ prefixes dropped; None when it is in none.
+def step_parts(rel):
+    # The path's components with its *.step/ prefixes dropped.
     parts = rel.split("/")
     while len(parts) > 1 and parts[0].endswith(".step"):
         parts = parts[1:]
+    return parts
+
+
+def evidence_parts(rel):
+    # The path inside its evidence folder's name, *.step/ prefixes dropped; None when it is in none.
+    parts = step_parts(rel)
     return parts if len(parts) > 1 and parts[0] in EVIDENCE else None
 
 
-def lawful(rel, flagged=None):
+def lawful(rel, flagged=None, committed=False):
     # flagged: the paths evidence.sh check named, or None where the evidence folders are not checked.
-    parts = evidence_parts(rel)
-    if parts:
+    # committed: rel is a file git would commit, not one of every file a walk outside git found.
+    parts = step_parts(rel)
+    if len(parts) > 1 and parts[0] in EVIDENCE:
         if rel.endswith(SIDECARS):
             return False
+        if parts[0] in CHECKED and "raw" in parts[1:-1]:
+            return not committed
         if parts[0] in CHECKED and flagged is not None:
-            return "raw" in parts[1:-1] or rel not in flagged
+            return rel not in flagged
         return True
-    parts = rel.split("/")
-    while len(parts) > 1 and parts[0].endswith(".step"):
-        parts = parts[1:]
     return rel.endswith(".md") or parts == ["Run.json"] or (len(parts) > 1 and parts[0] == "_archive")
 
 
@@ -247,12 +255,17 @@ def evidence_findings(task_dir, candidates):
     return {m.group(1) for m in FINDING.finditer(run.stdout.decode("utf-8", errors="surrogateescape"))}
 
 
+def in_git(task_dir):
+    # Whether a commit takes the folder's files: it is in a repository that does not ignore it whole.
+    git = lambda *a: subprocess.run(["git", "-C", task_dir] + list(a), capture_output=True)
+    return git("rev-parse").returncode == 0 and git("check-ignore", "-q", ".").returncode != 0
+
+
 def task_candidates(task_dir):
     # The files a commit of the folder would add: untracked and not ignored. Outside git, or in a
     # repository that ignores the folder whole, every file: nothing commits them, but they still sit
     # beside the documents that cite them.
-    git = lambda *a: subprocess.run(["git", "-C", task_dir] + list(a), capture_output=True)
-    if git("rev-parse").returncode == 0 and git("check-ignore", "-q", ".").returncode != 0:
+    if in_git(task_dir):
         out = subprocess.run(["git", "-C", task_dir, "ls-files", "--others", "--exclude-standard", "-z"],
                              capture_output=True, text=True, errors="surrogateescape").stdout
         return sorted(p for p in out.split("\0") if p)
@@ -278,7 +291,8 @@ def foreign(args):
         usage("foreign <task dir>")
     found = task_candidates(args[0])
     flagged = evidence_findings(args[0], found)
-    hits = [p for p in found if not lawful(p, flagged)]
+    git = in_git(args[0])
+    hits = [p for p in found if not lawful(p, flagged, git)]
     if hits:
         print("\n".join("foreign path=%s" % quoted(p) for p in hits))
     sys.exit(1 if hits else 0)

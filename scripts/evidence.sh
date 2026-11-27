@@ -10,6 +10,10 @@
 #          and the last 20 lines, all after redaction. <name> defaults to <log>'s base name without .log.
 #          Prints `kept <excerpt path relative to the task folder> redacted=<n>`.
 #          Project patterns: the `## Redact` block of the project config, one ``- `<regex>` `` per line.
+#        scripts/evidence.sh raw <evidence dir>
+#          <evidence dir> lies inside a task folder. Makes <evidence dir>/raw/ and raw/.gitignore holding `*`
+#          when they are missing, and prints the absolute path of raw/: a screenshot is saved there, never
+#          into a raw/ made by hand, which git sees until a .gitignore is in it.
 #        scripts/evidence.sh keep-image <image> <evidence dir>
 #          <image> is a .png, .jpg, .jpeg, .gif or .webp file in <evidence dir>/raw/ that was viewed and holds
 #          no secret. Moves it to <evidence dir>/ and lists it in <evidence dir>/kept.txt as
@@ -252,16 +256,10 @@ def keep(args):
 
     with open(log, "rb") as fh:
         data = fh.read()
-    raw_dir = os.path.join(evidence, "raw")
-    os.makedirs(raw_dir, exist_ok=True)
-    raw = os.path.join(raw_dir, name + ".log")
+    raw = os.path.join(raw_folder(evidence), name + ".log")
     if not (os.path.exists(raw) and os.path.samefile(log, raw)):
         with open(raw, "wb") as fh:
             fh.write(data)
-    ignore = os.path.join(raw_dir, ".gitignore")
-    if not os.path.exists(ignore):
-        with open(ignore, "w", encoding="utf-8") as fh:
-            fh.write("*\n")
 
     text, count = redact(data.decode("utf-8", errors="surrogateescape"), extra)
     lines = [l[:-1] if l.endswith("\r") else l for l in text.split("\n")]
@@ -296,6 +294,25 @@ def evidence_dir(path):
     if task is None or task == evidence:
         usage("%s is not inside a task folder (no Task.md above it)" % path)
     return evidence, task
+
+
+def raw_folder(evidence):
+    """evidence's raw/, made with a .gitignore holding `*` when either is missing: git never sees a file
+    put there. An existing .gitignore is left as it is."""
+    raw_dir = os.path.join(evidence, "raw")
+    os.makedirs(raw_dir, exist_ok=True)
+    ignore = os.path.join(raw_dir, ".gitignore")
+    if not os.path.exists(ignore):
+        with open(ignore, "w", encoding="utf-8") as fh:
+            fh.write("*\n")
+    return raw_dir
+
+
+def raw(args):
+    if len(args) != 1 or args[0].startswith("--"):
+        usage("raw takes <evidence dir>", full=True)
+    evidence, _task = evidence_dir(args[0])
+    print(raw_folder(evidence))
 
 
 def sha1(path):
@@ -419,7 +436,7 @@ def check(args):
 if not ARGS:
     usage("a subcommand is needed", full=True)
 cmd = ARGS.pop(0)
-COMMANDS = {"keep": keep, "keep-image": keep_image, "check": check}
+COMMANDS = {"keep": keep, "raw": raw, "keep-image": keep_image, "check": check}
 if cmd not in COMMANDS:
     usage("unknown subcommand " + cmd, full=True)
 try:
