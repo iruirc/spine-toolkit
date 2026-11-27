@@ -697,6 +697,41 @@ evtask() {
   [[ "$stderr" == *"no project config"* ]] || { echo "$stderr"; return 1; }
 }
 
+# git lists a path precomposed (NFC) while check prints it as the disk holds it, decomposed (NFD) where
+# it was written so: compared as they came, an unlisted screenshot check named passed foreign.
+@test "foreign reports an unlisted screenshot whose name is decomposed on disk" {
+  evtask
+  local d="$EVT/validation-evidence/t" nfd
+  mkdir -p "$d"
+  nfd="$(python3 -c 'import unicodedata; print(unicodedata.normalize("NFD", "экран й.png"))')"
+  printf 'png' >"$d/$nfd"
+  run "$SL" foreign "$EVT"
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+  [[ "$output" == "foreign path=validation-evidence/t/"* ]] || { echo "$output"; return 1; }
+  [ "$(printf '%s\n' "$output" | wc -l)" -eq 1 ] || { echo "$output"; return 1; }
+}
+
+# A check that names nothing it could be read for, or an evidence.sh that cannot run, gives foreign no
+# answer: the files it would have named must not pass for that.
+@test "foreign stops when check exits 1 naming nothing, or evidence.sh cannot run" {
+  local s="$T/scripts"
+  mkdir -p "$s" "$T/plain/validation-evidence/t"; : >"$T/plain/Task.md"; : >"$T/plain/validation-evidence/t/a.log"
+  cp "$SL" "$s/stage-leftovers.sh"
+  printf '#!/usr/bin/env bash\necho "evidence: something else" >&2\nexit 1\n' >"$s/evidence.sh"
+  chmod +x "$s/evidence.sh"
+  run --separate-stderr "$s/stage-leftovers.sh" foreign "$T/plain"
+  [ "$status" -eq 2 ] || { echo "$status $output $stderr"; return 1; }
+  [[ "$stderr" == *"stage-leftovers: evidence.sh check exited 1"* ]] || { echo "$stderr"; return 1; }
+  chmod -x "$s/evidence.sh"
+  run --separate-stderr "$s/stage-leftovers.sh" foreign "$T/plain"
+  [ "$status" -eq 2 ] || { echo "$status $output $stderr"; return 1; }
+  [[ "$stderr" == "stage-leftovers: cannot run evidence.sh check"* ]] || { echo "$stderr"; return 1; }
+  rm "$s/evidence.sh"
+  run --separate-stderr "$s/stage-leftovers.sh" foreign "$T/plain"
+  [ "$status" -eq 2 ] || { echo "$status $output $stderr"; return 1; }
+  [[ "$stderr" == "stage-leftovers: cannot run evidence.sh check"* ]] || { echo "$stderr"; return 1; }
+}
+
 @test "experiment stays lawful whole" {
   mkdir -p "$T/plain/experiment"; : >"$T/plain/Task.md"; : >"$T/plain/experiment/data.csv"
   run "$SL" foreign "$T/plain"

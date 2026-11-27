@@ -17,7 +17,7 @@ set -uo pipefail
 
 [ $# -ge 1 ] || { sed -n '5,15p' "$0" >&2; exit 2; }
 exec python3 - "$0" "$@" <<'PY'
-import fnmatch, glob, hashlib, json, os, re, signal, subprocess, sys, time
+import fnmatch, glob, hashlib, json, os, re, signal, subprocess, sys, time, unicodedata
 from datetime import datetime
 
 # Test seams: a ps listing, the session's claude pid, this process's pid, the clock, the registry path,
@@ -231,14 +231,21 @@ def lawful(rel, flagged=None, committed=False):
         if parts[0] in CHECKED and "raw" in parts[1:-1]:
             return not committed
         if parts[0] in CHECKED and flagged is not None:
-            return rel not in flagged
+            return nfc(rel) not in flagged
         return True
     return rel.endswith(".md") or parts == ["Run.json"] or (len(parts) > 1 and parts[0] == "_archive")
 
 
+def nfc(path):
+    # git lists a path precomposed (core.precomposeunicode), check prints it as the disk holds it, which
+    # may be decomposed: both are compared in NFC.
+    return unicodedata.normalize("NFC", path)
+
+
 def evidence_findings(task_dir, candidates):
     # What evidence.sh check names in task_dir, asked once and only when a file the commit would add sits
-    # in an evidence folder outside raw/. Exit 2 of check — no config, an unreadable ## Redact — is ours.
+    # in an evidence folder outside raw/. Exit 2 of check — no config, an unreadable ## Redact — is ours,
+    # and so is an evidence.sh that cannot run, or an exit 1 that names no file: no answer passes nothing.
     needed = False
     for rel in candidates:
         parts = evidence_parts(rel)
@@ -247,12 +254,17 @@ def evidence_findings(task_dir, candidates):
             break
     if not needed:
         return set()
-    run = subprocess.run([os.path.join(os.path.dirname(os.path.abspath(SCRIPT)), "evidence.sh"), "check",
-                          task_dir], capture_output=True)
-    if run.returncode not in (0, 1):
+    try:
+        run = subprocess.run([os.path.join(os.path.dirname(os.path.abspath(SCRIPT)), "evidence.sh"), "check",
+                              task_dir], capture_output=True)
+    except OSError as e:
+        usage("cannot run evidence.sh check for %s: %s" % (task_dir, e))
+    found = {nfc(m.group(1)) for m in FINDING.finditer(run.stdout.decode("utf-8", errors="surrogateescape"))}
+    if run.returncode not in (0, 1) or (run.returncode == 1 and not found):
         sys.stderr.write(run.stderr.decode("utf-8", errors="replace"))
-        usage("evidence.sh check exited %d for %s" % (run.returncode, task_dir))
-    return {m.group(1) for m in FINDING.finditer(run.stdout.decode("utf-8", errors="surrogateescape"))}
+        usage("evidence.sh check exited %d%s for %s" % (run.returncode, " naming no file" if run.returncode == 1 else "",
+                                                         task_dir))
+    return found
 
 
 def in_git(task_dir):
