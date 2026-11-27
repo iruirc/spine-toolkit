@@ -173,6 +173,43 @@ tree root=$T/repo path=new change=added" ] || { echo "$output"; return 1; }
   [ "$status" -eq 2 ] && [[ "$output" == *clone/* ]] || { echo "$output"; return 1; }
 }
 
+@test "a path left is held until it matches HEAD" {
+  before; repo; snap --root "$T/repo"
+  printf 'x\n' >fixture.sqlite
+  run "$SL" leave "$T/snap" "$T/repo" fixture.sqlite
+  [ "$status" -eq 0 ] && [ "$(cat fixture.sqlite)" = x ] || { echo "$output"; return 1; }
+  run "$SL" held "$T/snap"
+  [ "$status" -eq 1 ] && [ "$output" = "held root=$T/repo path=fixture.sqlite" ] || { echo "$output"; return 1; }
+  git checkout -q -- fixture.sqlite
+  run "$SL" held "$T/snap"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; return 1; }
+}
+
+@test "a path left and then restored is not held" {
+  before; repo; snap --root "$T/repo"
+  printf 'x\n' >fixture.sqlite
+  "$SL" leave "$T/snap" "$T/repo" fixture.sqlite
+  printf 'y\n' >fixture.sqlite
+  "$SL" restore "$T/snap" "$T/repo" fixture.sqlite
+  printf 'z\n' >fixture.sqlite
+  run "$SL" held "$T/snap"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; return 1; }
+}
+
+@test "held without a memo says nothing" {
+  before; repo; snap --root "$T/repo"
+  run "$SL" held "$T/snap"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; return 1; }
+}
+
+@test "leave refuses a quoted path and a nested repository" {
+  before; repo; snap --root "$T/repo"
+  run "$SL" leave "$T/snap" "$T/repo" '"a\nb"'
+  [ "$status" -eq 2 ] && [[ "$output" == *'"a\nb"'* ]] || { echo "$output"; return 1; }
+  run "$SL" leave "$T/snap" "$T/repo" clone/
+  [ "$status" -eq 2 ] && [[ "$output" == *clone/* ]] || { echo "$output"; return 1; }
+}
+
 @test "the task folder is excluded" {
   before; repo; mkdir -p Tasks/ACTIVE/042; snap --root "$T/repo" --exclude "$T/repo/Tasks/ACTIVE/042"
   printf 'x\n' >Tasks/ACTIVE/042/Validation.md

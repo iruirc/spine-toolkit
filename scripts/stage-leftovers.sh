@@ -426,6 +426,32 @@ def restore(args):
     save_memo(snap, memo)
 
 
+def leave(args):
+    snap, root, paths = path_args(args, "leave")
+    memo = load_memo(snap)
+    for p in paths:
+        memo.setdefault(root, {}).setdefault(p, {})["left"] = True
+    save_memo(snap, memo)
+
+
+def held(args):
+    # What the user left that still differs from HEAD: the orchestrator names it at Done.
+    if len(args) != 1:
+        usage("held <snap>")
+    lines = []
+    for root, entries in sorted(load_memo(args[0]).items()):
+        for path, entry in sorted((entries or {}).items()):
+            if not (isinstance(entry, dict) and entry.get("left")):
+                continue
+            out = subprocess.run(["git", "-C", root, "status", "--porcelain", "--", path],
+                                 capture_output=True, text=True).stdout
+            if out.strip():
+                lines.append("held root=%s path=%s" % (root, path))
+    if lines:
+        print("\n".join(lines))
+    sys.exit(1 if lines else 0)
+
+
 def diff(args):
     if len(args) == 2 and args[0] == "--out":  # the flag snap was given the file with
         args = args[1:]
@@ -582,6 +608,6 @@ def show_origin(args):
 
 cmd, rest = sys.argv[1], sys.argv[2:]
 {"snap": snap, "diff": diff, "foreign": foreign, "kill": kill, "watch": watch, "origin": show_origin,
- "restore": restore}.get(
+ "restore": restore, "leave": leave, "held": held}.get(
     cmd, lambda _a: usage("unknown subcommand %s" % cmd))(rest)
 PY
