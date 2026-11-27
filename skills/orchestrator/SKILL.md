@@ -1219,16 +1219,35 @@ returns — at the artifact budget's boundaries, and also after `status: error`,
 file is the only argument. Exit 0 says nothing.
 
 On exit 1, report each `process` line with key `leftover_process` (`{pid}`, `{age}`, `{parent}`,
-`{cmd}`) and each `tree` line with key `leftover_tree` (`{root}`, `{path}`, `{change}`), then AUQ
+`{cmd}`) and each `tree` line with key `leftover_tree` (`{root}`, `{path}`, `{change}`) — a line
+that ends in `again=1` with key `leftover_tree_again` (`{root}`, `{path}`) instead — then AUQ
 with key `leftovers_prompt`: `leftovers_option_kill` runs `stage-leftovers.sh kill` with each
-line's `<pid>:<start>`; `leftovers_option_restore` runs `git -C <root> restore -- <path>` for the
+line's `<pid>:<start>`; `leftovers_option_restore` runs
+`stage-leftovers.sh restore "<snap>" <root> <path>…`, once per root, for the
 `modified` and `deleted` lines only — an `added` file in a root is shown, never removed;
 `leftovers_option_remove_added`, offered only when some `added` line's `root` is the task folder, runs
 `rm -f -- <root>/<path>` for each `added` line whose `root` is the task folder, and for no other;
-`leftovers_option_leave` does nothing. A path in double quotes is one whose name holds a control
+`leftovers_option_leave` runs `stage-leftovers.sh leave "<snap>" <root> <path>…` with the same
+paths, which touches no file. `<snap>` is the file `snap` wrote; the task's memory sits beside it,
+the same path ending in `.memo`, and holds what was restored and what was left. A path in double quotes is one whose name holds a control
 character, quoted as git quotes it: show it, and leave it out of every option that acts on a path. A path that ends in `/` is a folder
 holding a repository of its own: show it, and never remove it — it may hold work pushed nowhere. Act on nothing before the user answers: the process may be another session's build
 that reparented, the file an edit the user made while the stage ran.
+
+Every option of `leftovers_prompt` carries no suffix `auq_stage_recovery_recommended_suffix`, and the
+options keep the order above: the general rule of a recommended first option does not apply here,
+since a restore of a file the build rewrites only asks the same question after the next stage. The
+one exception is `again=1`: the file was restored and came back with the content the restore
+removed, so the build or the environment writes it, not the stage's work. When some line carries it,
+`leftovers_option_leave` goes first, with that suffix, and when `leftovers_option_restore` would take
+such a path, its description gains `leftovers_option_restore_again`. A change with other content
+is an ordinary line, and the first change of any file is always asked about with no suffix.
+
+Once a return's `last_completed_stage` is `Done`, after the task's documents are committed or left
+uncommitted, run `<core root>/scripts/stage-leftovers.sh held "<snap>"`. On exit 1 report each
+`held root=<root> path=<path>` line in the final report with key `leftovers_held` (`{root}`,
+`{path}`) — a file the user left and the task never committed — then delete the memo; on exit 0
+delete it too. Exit 2 is reported as printed, the memo stays, and the run carries on.
 
 Under Method A, once `Workflow` has accepted the call, start
 `stage-leftovers.sh watch --dir <transcript dir> --stall <60 × long_run.stall> --idle <60 × long_run.max>`

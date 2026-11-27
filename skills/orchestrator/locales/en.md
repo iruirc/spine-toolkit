@@ -293,6 +293,15 @@ Leave everything as it is
 ## leftovers_option_remove_added
 Delete the files the stage added to the task folder
 
+## leftover_tree_again
+The stage rewrote `{path}` in `{root}` again, with the content the restore removed: the build or the environment writes it, and restoring it will not help until the task ends.
+
+## leftovers_option_restore_again
+the paths rewritten again will be rewritten by the next stage too
+
+## leftovers_held
+`{path}` in `{root}` changed during the task and is not committed: restore or commit it yourself before you merge.
+
 ## stage_call_hung
 Agent `{agent}` has waited {age} for `{tool}`, and the tool has not answered. The processes under it:
 

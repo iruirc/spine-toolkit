@@ -669,7 +669,9 @@ section() {
                '`run_in_background`' '`mcp__*`' 'long_run.stall' '`added` file in a root is shown, never removed' \
                "--task-dir '…/Tasks/*/<task folder>'" 'leftovers_option_remove_added' 'whose `root` is the task folder' 'A path in double quotes' 'A path that ends in `/`' \
                'Act on nothing before the user answers' 'Method B has no watch' 'stage_watch_failed' \
-               "status directory is replaced by \`*\`" "'…/Tasks/*/<task folder>'" '--since <now>'; do
+               "status directory is replaced by \`*\`" "'…/Tasks/*/<task folder>'" '--since <now>' \
+               'stage-leftovers.sh restore' 'stage-leftovers.sh leave' 'stage-leftovers.sh held' 'again=1' \
+               'leftover_tree_again' 'leftovers_option_restore_again' 'leftovers_held'; do
     grep -qF -- "$token" <<<"$para" || { echo "the Stage leftovers paragraph does not name $token"; return 1; }
   done
   grep -qF 'stop it with `TaskStop` on its background task' <<<"$para" \
@@ -680,10 +682,21 @@ section() {
     || { echo "Error mid-range does not hand the failed stage's leftovers to Stage leftovers"; return 1; }
 }
 
+# A restore the build undoes after every stage is a loop, and the general rule of a recommended first
+# option put restore first: no leftovers option is recommended, unless a file came back the same.
+@test "no leftovers option is recommended unless a file came back the same" {
+  para="$(awk '/^\*\*Stage leftovers\.\*\*/{f=1} f&&/^\*\*Per-phase commits/{exit} f' "$SKILL")"
+  for token in 'carries no suffix `auq_stage_recovery_recommended_suffix`' '`leftovers_option_leave` goes first'; do
+    grep -qF -- "$token" <<<"$para" || { echo "the Stage leftovers paragraph does not say $token"; return 1; }
+  done
+  ! grep -qF 'git -C <root> restore' <<<"$para" || { echo "the orchestrator restores outside stage-leftovers.sh"; return 1; }
+}
+
 @test "every leftovers key exists in both locales" {
   for key in leftover_process leftover_tree leftovers_prompt leftovers_option_kill leftovers_option_restore \
              leftovers_option_leave leftovers_option_remove_added stage_call_hung stage_call_hung_option_kill stage_call_hung_option_wait \
-             stage_call_hung_option_stop stage_watch_failed; do
+             stage_call_hung_option_stop stage_watch_failed leftover_tree_again leftovers_option_restore_again \
+             leftovers_held; do
     for l in en ru; do
       grep -qx "## $key" "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no $key"; return 1; }
     done
