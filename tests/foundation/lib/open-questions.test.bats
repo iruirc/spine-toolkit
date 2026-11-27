@@ -279,3 +279,10 @@ MD
   [ "$stderr" = "$(printf 'open-questions: %s:2: %s\nopen-questions: %s:2: %s' "$A" "$W1" "$R" "$W1")" ] \
     || { echo "$stderr"; return 1; }
 }
+
+@test "rule 5 names the heading and the form the gate reads" {
+  td="$ROOT/skills/task-documents/SKILL.md"
+  for t in 'under a heading that begins `Open Questions`' '`- Q1. …`' 'goes under `## Open Questions`, written as rule 5 says'; do
+    grep -qF -- "$t" "$td" || { echo "task-documents does not say: $t"; return 1; }
+  done
+}

@@ -29,7 +29,7 @@ The others record what happened: `Done.md` reports the task, `Review.md` judges 
 2. **A rule with branches is a table of cases with the expected result**, on numbers or commands. A formula alone hides the case it does not cover.
 3. **Terms come from the project's glossary**; a code identifier's meaning is given once.
 4. **A correction goes into the item it corrects**, never appended as a notice. When it concerns another document it goes there; the trace of the decision goes to `Questions.md`.
-5. **An open question is written as one:** the options, a recommendation, who decides and by which stage. "Decided at this step" with no options is a defect — it reads as a decision and holds none. Each option is a sub-item of the question, and the recommended one carries `(recommended)` — literally, at any `[LANG]`: the open-questions gate offers that sub-item as a one-click answer.
+5. **An open question is written as one:** the options, a recommendation, who decides and by which stage. "Decided at this step" with no options is a defect — it reads as a decision and holds none. Each option is a sub-item of the question, and the recommended one carries `(recommended)` — literally, at any `[LANG]`: the open-questions gate offers that sub-item as a one-click answer. Open questions sit under a heading that begins `Open Questions` — `## Open Questions`, `## Open Questions for Plan` — written in English at any `[LANG]`, since the gate reads it. Each question is a list item opening with its ID, `- Q1. …`. The question sections of `feature-requirements` — `Known unknowns`, `Designer questions`, `Backend questions` — are question sections too.
 6. **A document decides nothing its source did not.** A decision the writer reaches while writing becomes an open question, never a sentence stated as settled.
 7. **Every count agrees with every other place that states it.** State a number once and refer to it rather than restating it.
 
@@ -60,6 +60,7 @@ Written by the epic's planner from the epic's `Task.md`, `Research.md` and `Ques
 - For every quantity a rule uses, say where it comes from: a stored field, or the result of another rule.
 - In a table of properties or risks, the "how it is ensured" cell is words, the identifier in brackets: "the total is computed in one place (`CartTotals`)", never `CartTotals` alone.
 - Do not re-decide what the task already decided. A finding that contradicts a decision is an open question for the owner.
+- A question a finding leaves to the owner or to Plan goes under `## Open Questions`, written as rule 5 says.
 
 ## Plan.md
 
