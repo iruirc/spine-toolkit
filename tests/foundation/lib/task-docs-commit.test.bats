@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# changed: sweep skills conventions templates workflows commands
 # The task's own documents are committed in one place, the orchestrator, after Done — never with Run.json.
 
 setup() {
