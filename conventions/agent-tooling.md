@@ -87,6 +87,8 @@ folder is committed with `add -A`, and `start` exits 2 on such a `--log`. It is 
 the raw log goes to `raw/`, which git never sees, and the document names the scrubbed excerpt beside it. The evidence
 dir is `phase-evidence/phase-<id>/` or `validation-evidence/<timestamp>/`, and the log is the one in `$TMPDIR`,
 without its sidecars; each `--match` is a regex searched in every line, not a literal line.
+An `evidence.sh` exit 2 whose message names `## Redact`, the project config or the task folder is a configuration
+error: the step fails with that message; it is not an older core.
 The document quotes its result line from the excerpt and never names the path in `$TMPDIR`;
 a document never names the raw copy of a log in `raw/`. A screenshot is saved into the folder
 `evidence.sh raw <evidence dir>` prints, `<evidence dir>/raw/`, which it makes with the `.gitignore` that keeps git

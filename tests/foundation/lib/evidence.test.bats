@@ -244,8 +244,9 @@ sha1_of() {
 @test "keep-image refuses an image that is not in raw" {
   mkdir -p "$OUT/raw" "$TASK/other/raw"
   printf 'png' >"$OUT/shot.png"
-  run "$EV" keep-image "$OUT/shot.png" "$OUT"
+  run --separate-stderr "$EV" keep-image "$OUT/shot.png" "$OUT"
   [ "$status" -eq 2 ] || { echo "$output"; return 1; }
+  [[ "$stderr" == *"evidence.sh raw <evidence dir>"* ]] || { echo "$stderr"; return 1; }
   [ -e "$OUT/shot.png" ]
   printf 'png' >"$TASK/other/raw/shot.png"
   run "$EV" keep-image "$TASK/other/raw/shot.png" "$OUT"
@@ -424,6 +425,73 @@ EOF2
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }
 
+# A key=value whose value is a scheme word lost only the word; a single-quoted key and a Ruby hash's =>
+# matched no rule at all.
+@test "a scheme word after a key, a single-quoted key and a Ruby hash lose their value" {
+  printf '%s\n' 'authorization=Bearer FAKEkv0029' 'headers: Authorization=Bearer FAKEab.FAKEcd0030' \
+    "{'password': 'FAKEpy0031'}" "{'Authorization': 'Bearer FAKEpy0032'}" \
+    '"password"=>"FAKErb0033"' ":api_key => 'FAKErb0034'" 'proxy_auth: Basic FAKEkv0035' >"$BATS_TEST_TMPDIR/forms.log"
+  run "$EV" keep "$BATS_TEST_TMPDIR/forms.log" "$OUT"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = 'kept validation-evidence/t/forms.log redacted=7' ] || { echo "$output"; cat "$OUT/forms.log"; return 1; }
+  diff "$OUT/forms.log" - <<'EOF2'
+# evidence excerpt v1 — raw: raw/forms.log
+# tail
+authorization=Bearer ***
+headers: Authorization=Bearer ***
+{'password': '***'}
+{'Authorization': '***'}
+"password"=>"***"
+:api_key => '***'
+proxy_auth: Basic ***
+EOF2
+  run "$EV" check "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  # Each form written into an excerpt by hand is found.
+  local line
+  while IFS= read -r line; do
+    printf '# evidence excerpt v1 — raw: raw/hand.log\n# tail\n%s\n' "$line" >"$OUT/hand.log"
+    run "$EV" check "$TASK"
+    [ "$status" -eq 1 ] && [ "$output" = 'evidence path=validation-evidence/t/hand.log reason=secret' ] \
+      || { echo "not found: $line: $output"; return 1; }
+  done <"$BATS_TEST_TMPDIR/forms.log"
+}
+
+# The marker keep writes under a cut BEGIN line closes a key block in an excerpt only: a raw log line
+# that reads the same ended the block early and left the body lines after it in the excerpt.
+@test "the cut marker in a raw log does not end a key block" {
+  printf '%s\n' '-----BEGIN PRIVATE KEY-----' 'FAKEpemraw0036' \
+    '# private key cut: its body and END line are not in this excerpt' 'FAKEpemraw0037' \
+    '-----END PRIVATE KEY-----' >"$BATS_TEST_TMPDIR/marker.log"
+  run "$EV" keep "$BATS_TEST_TMPDIR/marker.log" "$OUT"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  ! grep -q FAKE "$OUT/marker.log" || { cat "$OUT/marker.log"; return 1; }
+  run "$EV" check "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "a --name that ends in .log names the excerpt without a second .log" {
+  printf 'one\n' >"$BATS_TEST_TMPDIR/one.log"
+  run "$EV" keep "$BATS_TEST_TMPDIR/one.log" "$OUT" --name app.log
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$output" = 'kept validation-evidence/t/app.log redacted=0' ] || { echo "$output"; return 1; }
+  [ -f "$OUT/raw/app.log" ] && [ ! -e "$OUT/app.log.log" ]
+  [ "$(head -1 "$OUT/app.log")" = '# evidence excerpt v1 — raw: raw/app.log' ]
+}
+
+# Exit 1 is check's findings: an error nobody expected must not read as one.
+@test "an unexpected error exits 2 with an evidence line" {
+  local d="$BATS_TEST_TMPDIR/broken"
+  mkdir -p "$d"
+  cp "$ROOT/scripts/evidence.sh" "$ROOT/scripts/resolve-settings.sh" "$d/"
+  sed -i.bak 's/^def check(args):$/&\
+    raise RuntimeError("boom")/' "$d/evidence.sh" && rm "$d/evidence.sh.bak"
+  grep -q 'RuntimeError("boom")' "$d/evidence.sh"
+  run --separate-stderr "$d/evidence.sh" check "$TASK"
+  [ "$status" -eq 2 ] || { echo "$status $stderr"; return 1; }
+  [[ "$stderr" == "evidence: check: "*boom* ]] || { echo "$stderr"; return 1; }
+}
+
 @test "check skips .DS_Store and takes .md in any case" {
   mkdir -p "$OUT"
   printf 'finder' >"$OUT/.DS_Store"
@@ -470,4 +538,12 @@ EOF2
   s="$(tr '\n' ' ' <"$ROOT/skills/orchestrator/SKILL.md")"
   grep -qF 'In `phase-evidence/` and `validation-evidence/` it asks `<core root>/scripts/evidence.sh check`, and a file that `check` names is foreign' <<<"$s" \
     || { echo "orchestrator does not say foreign asks evidence.sh check"; return 1; }
+}
+
+# An exit 2 that names the project's own configuration read as a usage error, and a usage error read as
+# an older core: the agent told the user to restart the session instead of fixing the config.
+@test "agent-tooling says an evidence.sh exit 2 about the config is no older core" {
+  grep -qF 'An `evidence.sh` exit 2 whose message names `## Redact`, the project config or the task folder is a configuration' \
+    "$ROOT/conventions/agent-tooling.md"
+  grep -qF 'error: the step fails with that message; it is not an older core.' "$ROOT/conventions/agent-tooling.md"
 }

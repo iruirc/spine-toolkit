@@ -7,7 +7,8 @@
 #          <evidence dir> lies inside a task folder (one holding Task.md). Writes <evidence dir>/raw/<name>.log,
 #          a byte copy of <log>, raw/.gitignore holding `*` when it is missing, and the excerpt
 #          <evidence dir>/<name>.log: the header line, the lines a --match finds (above the tail), `# tail`
-#          and the last 20 lines, all after redaction. <name> defaults to <log>'s base name without .log.
+#          and the last 20 lines, all after redaction. <name> defaults to <log>'s base name; a trailing .log
+#          is dropped from either.
 #          Prints `kept <excerpt path relative to the task folder> redacted=<n>`.
 #          Project patterns: the `## Redact` block of the project config, one ``- `<regex>` `` per line.
 #        scripts/evidence.sh raw <evidence dir>
@@ -26,7 +27,8 @@
 #          header. secret: an excerpt the rules still find a value in. unlisted: an image not in its folder's
 #          kept.txt. changed: an image whose sha1 is not the listed one. other: any file but kept.txt and .md.
 # Exit: 0: done; for check, nothing found. 1: check found a file. 2: usage, no task folder above
-#       <evidence dir>, an image not in its raw/, no project config, or a `## Redact` line that does not parse.
+#       <evidence dir>, an image not in its raw/, no project config, a `## Redact` line that does not parse,
+#       a file that cannot be read or moved, or any other error.
 set -uo pipefail
 
 exec python3 - "$(cd -- "$(dirname -- "$0")" && pwd)/$(basename -- "$0")" "$@" <<'PY'
@@ -45,15 +47,20 @@ MASK = "***"
 # 100 000 word characters costs a bounded scan per position, not a quadratic one.
 KEYS = r"(?:token|secret|passw(?:or)?d|api[_-]?key|auth|credential|private[_-]?key|session|cookie)"
 # The line keep writes under a key's BEGIN line when the excerpt holds neither its body nor its END line:
-# it closes the block, so the lines after it are read as the excerpt's own, not as key body.
+# in an excerpt it closes the block, so the lines after it are read as the excerpt's own, not as key body.
+# In a raw log it is a line like any other: a log that prints it inside a key block does not end the block.
 CUT = "# private key cut: its body and END line are not in this excerpt"
 BEGIN = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----")
 END = re.compile(r"-----END [A-Z0-9 ]*PRIVATE KEY-----")
-PEM = re.compile(r"(%s)(.*?)(%s|(?<=\n)%s(?=\r?\n|\Z)|\Z)" % (BEGIN.pattern, END.pattern, re.escape(CUT)), re.S)
+PEM_RAW = re.compile(r"(%s)(.*?)(%s|\Z)" % (BEGIN.pattern, END.pattern), re.S)
+PEM_EXCERPT = re.compile(r"(%s)(.*?)(%s|(?<=\n)%s(?=\r?\n|\Z)|\Z)" % (BEGIN.pattern, END.pattern, re.escape(CUT)),
+                         re.S)
 # (pattern, the group that holds the value): the value alone becomes ***, the rest of the match stays.
 # An Authorization header keeps its scheme word when it is a known one and loses the rest of its value up
 # to the end of the line or a quote that closes a string around it; a ="…" parameter (Digest) is taken
 # whole. A first word that is no known scheme may be the credential itself: everything after the colon goes.
+# A key=value, key: value or key => value pair takes its key in double quotes, single quotes or none; an
+# unquoted value that is a known scheme word followed by a token keeps the word and loses the token.
 SCHEMES = (r"(?:Bearer|Basic|Digest|Negotiate|NTLM|Token|AWS4-HMAC-SHA256|HOBA|Mutual|SCRAM-SHA-1|"
            r"SCRAM-SHA-256|DPoP|GNAP)")
 RULES = [
@@ -61,8 +68,9 @@ RULES = [
     (re.compile(r"(?i)\bX-Api-Key:[ \t]*([^\s\"',]+)"), 1),
     (re.compile(r"(?i)\b(?:Set-)?Cookie:[ \t]*([^\"'\r\n]+)"), 1),
     (re.compile(r"://[^\s/:@]+:([^\s/@]+)@"), 1),
-    (re.compile(r"(?i)\"?[\w.-]{0,64}?" + KEYS + r"[\w.-]{0,64}\"?[ \t]*[:=][ \t]*"
-                r"(?:\"((?:[^\"\\\r\n]|\\.)*)\"|'((?:[^'\\\r\n]|\\.)*)'|([^\s\"'&;,]+))"), (1, 2, 3)),
+    (re.compile(r"(?i)[\"']?[\w.-]{0,64}?" + KEYS + r"[\w.-]{0,64}[\"']?[ \t]*(?:=>|[:=])[ \t]*"
+                r"(?:\"((?:[^\"\\\r\n]|\\.)*)\"|'((?:[^'\\\r\n]|\\.)*)'|(?:" + SCHEMES + r"[ \t]+)?([^\s\"'&;,]+))"),
+     (1, 2, 3)),
 ]
 # Whole tokens: the match itself becomes ***.
 TOKENS = [
@@ -110,9 +118,10 @@ def usage(msg, full=False):
     sys.exit(2)
 
 
-def redact(text, extra):
+def redact(text, extra, excerpt=False):
     """The whole text with every secret value replaced by ***, and how many values were replaced.
-    A private key block keeps its BEGIN and END lines and each of its body lines becomes ***."""
+    A private key block keeps its BEGIN and END lines and each of its body lines becomes ***. excerpt:
+    text is an excerpt keep wrote, where the CUT line closes a key block; in a raw log it does not."""
     count = 0
 
     def pem(m):
@@ -123,7 +132,7 @@ def redact(text, extra):
         if body != m.group(2):
             count += 1
         return m.group(1) + body + m.group(3)
-    text = PEM.sub(pem, text)
+    text = (PEM_EXCERPT if excerpt else PEM_RAW).sub(pem, text)
 
     def whole(m):
         nonlocal count
@@ -248,7 +257,7 @@ def keep(args):
         usage("no log at " + log)
     if name is None:
         name = os.path.basename(log)
-        name = name[:-4] if name.endswith(".log") else name
+    name = name[:-4] if name.endswith(".log") else name
     if not name or name in (".", "..") or "/" in name:
         usage("not a name: " + name)
     evidence, task = evidence_dir(evidence)
@@ -355,7 +364,8 @@ def keep_image(args):
     evidence, task = evidence_dir(evidence)
     raw_dir = os.path.join(evidence, "raw")
     if not (os.path.isdir(raw_dir) and os.path.samefile(os.path.dirname(os.path.abspath(image)), raw_dir)):
-        usage("%s is not in %s: a screenshot is saved to raw/ first" % (image, raw_dir))
+        usage("%s is not in %s: a screenshot is saved first into the folder `evidence.sh raw <evidence dir>` prints"
+              % (image, raw_dir))
     digest = sha1(image)
     dest = os.path.join(evidence, name)
     os.replace(image, dest)
@@ -401,7 +411,7 @@ def reason_of(path, extra):
         first = text.split("\n", 1)[0].rstrip("\r")
         if not MARK.fullmatch(first):
             return "unmarked"
-        return "secret" if redact(text, extra)[1] else None
+        return "secret" if redact(text, extra, excerpt=True)[1] else None
     return "other"
 
 
@@ -444,4 +454,7 @@ try:
 except OSError as e:
     # A file that cannot be read or moved is no finding: exit 1 belongs to check's findings.
     usage("%s: %s" % (cmd, e))
+except Exception as e:
+    # Nor is an error nobody expected: Python's own exit 1 would read as a finding.
+    usage("%s: unexpected %s: %s" % (cmd, type(e).__name__, e))
 PY
