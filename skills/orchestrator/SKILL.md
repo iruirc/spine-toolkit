@@ -1059,16 +1059,21 @@ someone reaches for it.
 
 What the failed stage left running or changed is **Stage leftovers**'s, before `stage_error_prompt`.
 
-**Open-questions inline (research-style stages).** In `manual` mode, before rendering `stage_done_prompt`, the orchestrator inspects the just-completed stage's primary artifact (`Research.md` in every profile — the research-style stage writes that name whatever the stage is called — plus `Reproduce.md` for BUG) for open items: run `<core root>/scripts/open-questions.sh` on those of them that exist — a BUG task has no `Research.md` before Diagnose, and none at `lite`. It prints a JSON array of `{artifact, section, id, text, recommended}` — which sections count and what an open item is are the script's; `text` is the item whole, sub-items included, and `recommended` is the sub-item marked `(recommended)` or `null`.
+**Open-questions inline (research-style stages).** In `manual` mode, before rendering `stage_done_prompt`, the orchestrator inspects the just-completed stage's primary artifact (`Research.md` in every profile — the research-style stage writes that name whatever the stage is called — plus `Reproduce.md` for BUG) for open items: run `<core root>/scripts/open-questions.sh` on those of them that exist — a BUG task has no `Research.md` before Diagnose, and none at `lite`. It prints a JSON array of `{artifact, section, id, text, recommended}` — which sections count and what an open item is are the script's; `text` is the item whole, sub-items included, and `recommended` is the sub-item marked `(recommended)` or `null`. It also writes to stderr one line per place that looks like an open question it could not read — `open-questions: <artifact>:<line>: <message>`, a section the gate does not read or a question written as a paragraph — and the orchestrator reads both streams. `{warnings}` below is the `<artifact>:<line>` of each such line, one per line.
 
-If at least one open item is found → render `stage_done_prompt_with_questions` instead of `stage_done_prompt`, with placeholders `{stage}` and `{questions}` (the `id` of each open item, grouped by `section`). AUQ options:
+| open items | warnings | prompt | AUQ options |
+|---|---|---|---|
+| none | none | the unchanged `stage_done_prompt` | as for every stage |
+| some | none | `stage_done_prompt_with_questions` | the four below |
+| none | some | `stage_done_prompt_unparsed_questions`, placeholders `{stage}` and `{warnings}` | `stage_done_option_edit` → as option 3 below, the warnings included in the re-run; `stage_done_option_continue` → proceed, the unread questions reach Plan unresolved; `confirm_dispatch_cancel` → as option 4 below |
+| some | some | `stage_done_prompt_with_questions`, then `stage_done_unparsed_note` with `{warnings}` under it | the four below |
+
+`stage_done_prompt_with_questions` takes placeholders `{stage}` and `{questions}` (the `id` of each open item, grouped by `section`). Its AUQ options:
 
 1. `stage_done_option_continue` → proceed to next stage; open items propagate untouched (will hit Plan-stage estimation-gate later if blocking).
 2. `stage_done_option_resolve` → enter Q-by-Q resolution dialog (see below).
 3. `stage_done_option_edit` → instruct the user to edit the artifact manually; on return, re-run open-questions inspection from scratch.
 4. `confirm_dispatch_cancel` → return `{status: cancelled, reason: status_cancelled_user_no}`.
-
-If no open items found → render the unchanged `stage_done_prompt`.
 
 **Q-by-Q resolution dialog.** For each collected open item, in source order, AUQ using `stage_done_dialog_question` (placeholders `{n}`, `{total}`, `{section}`, `{text}` — the item's `text`) with options:
 1. `stage_done_dialog_accept`, only when `recommended` is not `null`, with `recommended` as the option's description → the answer is `recommended`. The user's own words come through AUQ's free-text option. Either answer is appended as a sub-bullet under the original item, and the original bullet is prefixed with `[RESOLVED]`.

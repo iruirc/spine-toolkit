@@ -45,6 +45,20 @@ Cannot `redo` `{stage}` — its artifact does not exist. Use `run --from {stage}
 
 What now?
 
+## stage_done_prompt_unparsed_questions
+`{stage}` complete, but the artifact holds what looks like open questions the gate could not read:
+
+{warnings}
+
+If you continue, they reach Plan unresolved. To have them asked here, put them under a heading that begins `Open Questions`, one list item per question.
+
+What now?
+
+## stage_done_unparsed_note
+The gate could not read some other questions:
+
+{warnings}
+
 ## stage_done_option_continue
 Continue to next stage
 

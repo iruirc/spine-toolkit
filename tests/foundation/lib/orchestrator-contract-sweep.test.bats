@@ -53,7 +53,9 @@ section() {
   para="$(awk '/^\*\*Open-questions inline/{f=1} f&&/^\*\*Scope:\*\*/{exit} f' "$SKILL")"
   [ -n "$para" ] || { echo "no Open-questions inline paragraph in the orchestrator"; return 1; }
   for token in '<core root>/scripts/open-questions.sh` on those of them that exist' '`{artifact, section, id, text, recommended}`' \
-               '`stage_done_dialog_accept`, only when `recommended` is not `null`' 'free-text option'; do
+               '`stage_done_dialog_accept`, only when `recommended` is not `null`' 'free-text option' \
+               stderr '`stage_done_prompt_unparsed_questions`' '`stage_done_unparsed_note`' '{warnings}' \
+               're-run open-questions inspection from scratch'; do
     grep -qF -- "$token" <<<"$para" || { echo "the gate paragraph does not name $token"; return 1; }
   done
   ! grep -qF 'first 80 chars' <<<"$para" || { echo "the gate still cuts an item to 80 characters"; return 1; }
@@ -62,5 +64,11 @@ section() {
   done
   for l in en ru; do
     grep -qx '## stage_done_dialog_accept' "$ROOT/skills/orchestrator/locales/$l.md" || { echo "$l.md has no stage_done_dialog_accept"; return 1; }
+    for k in stage_done_prompt_unparsed_questions stage_done_unparsed_note; do
+      body="$(awk -v k="## $k" '$0==k{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orchestrator/locales/$l.md")"
+      grep -qF '{warnings}' <<<"$body" || { echo "$l.md: $k does not carry {warnings}"; return 1; }
+    done
+    awk '$0=="## stage_done_prompt_unparsed_questions"{f=1;next} f&&/^## /{exit} f' "$ROOT/skills/orchestrator/locales/$l.md" \
+      | grep -qF '{stage}' || { echo "$l.md: stage_done_prompt_unparsed_questions does not carry {stage}"; return 1; }
   done
 }
