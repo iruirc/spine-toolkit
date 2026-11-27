@@ -40,13 +40,20 @@ MASK = "***"
 # longer name (access_token, clientSecret). The name around the key is bounded, so a line of
 # 100 000 word characters costs a bounded scan per position, not a quadratic one.
 KEYS = r"(?:token|secret|passw(?:or)?d|api[_-]?key|auth|credential|private[_-]?key|session|cookie)"
-PEM = re.compile(r"(-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----)(.*?)(-----END [A-Z0-9 ]*PRIVATE KEY-----|\Z)", re.S)
+# The line keep writes under a key's BEGIN line when the excerpt holds neither its body nor its END line:
+# it closes the block, so the lines after it are read as the excerpt's own, not as key body.
+CUT = "# private key cut: its body and END line are not in this excerpt"
+BEGIN = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----")
+END = re.compile(r"-----END [A-Z0-9 ]*PRIVATE KEY-----")
+PEM = re.compile(r"(%s)(.*?)(%s|(?<=\n)%s(?=\r?\n|\Z)|\Z)" % (BEGIN.pattern, END.pattern, re.escape(CUT)), re.S)
 # (pattern, the group that holds the value): the value alone becomes ***, the rest of the match stays.
-# An Authorization header keeps its scheme word, whatever it is, and loses the rest of its value up to the
-# end of the line or a quote that closes a string around it; a ="…" parameter (Digest) is taken whole.
-# A lone value with no scheme word is the credential itself.
+# An Authorization header keeps its scheme word when it is a known one and loses the rest of its value up
+# to the end of the line or a quote that closes a string around it; a ="…" parameter (Digest) is taken
+# whole. A first word that is no known scheme may be the credential itself: everything after the colon goes.
+SCHEMES = (r"(?:Bearer|Basic|Digest|Negotiate|NTLM|Token|AWS4-HMAC-SHA256|HOBA|Mutual|SCRAM-SHA-1|"
+           r"SCRAM-SHA-256|DPoP|GNAP)")
 RULES = [
-    (re.compile(r"(?i)\bAuthorization:[ \t]*(?:[A-Za-z][\w.+-]*[ \t]+)?((?:=\"[^\"\r\n]*\"|[^\s\"'])(?:=\"[^\"\r\n]*\"|[^\"'\r\n])*)"), 1),
+    (re.compile(r"(?i)\bAuthorization:[ \t]*(?:" + SCHEMES + r"[ \t]+)?((?:=\"[^\"\r\n]*\"|[^\s\"'])(?:=\"[^\"\r\n]*\"|[^\"'\r\n])*)"), 1),
     (re.compile(r"(?i)\bX-Api-Key:[ \t]*([^\s\"',]+)"), 1),
     (re.compile(r"(?i)\b(?:Set-)?Cookie:[ \t]*([^\"'\r\n]+)"), 1),
     (re.compile(r"://[^\s/:@]+:([^\s/@]+)@"), 1),
@@ -64,7 +71,7 @@ TOKENS = [
 ]
 # The scheme word of an Authorization header whose credential the first rule already made ***: a key=value
 # read of the same header must leave it.
-SCHEME = re.compile(r"[A-Za-z][\w.+-]*")
+SCHEME = re.compile(SCHEMES, re.I)
 AFTER_SCHEME = re.compile(r"[ \t]+\*\*\*")
 # Every rule and token above needs one of these, lowercased, on its line: a line with none skips them all.
 # A superset is fine; a cue missing here is a secret form that is never redacted.
@@ -264,7 +271,18 @@ def keep(args):
     matched = [i for i, l in enumerate(lines) if any(p.search(l) for p in matches)]
     if matches and not matched:
         print("evidence: no line matched --match in " + log, file=sys.stderr)
-    body = [HEADER % name] + [lines[i] for i in matched if i < cut] + [TAIL_LINE] + lines[cut:]
+    above = []
+    for i in matched:
+        if i >= cut:
+            continue
+        above.append(lines[i])
+        if BEGIN.search(lines[i]) and not END.search(lines[i]):
+            # The block's END, if the log has one, decides where its body stops. When the excerpt
+            # leaves the END out, the lines after BEGIN would read as body: close the block here.
+            j = next((k for k in range(i + 1, len(lines)) if END.search(lines[k])), None)
+            if j is not None and j < cut and j not in matched:
+                above.append(CUT)
+    body = [HEADER % name] + above + [TAIL_LINE] + lines[cut:]
     excerpt = os.path.join(evidence, name + ".log")
     with open(excerpt, "w", encoding="utf-8", errors="surrogateescape", newline="") as fh:
         fh.write("\n".join(body) + "\n")
@@ -353,7 +371,7 @@ def evidence_roots(folder):
 def reason_of(path, extra):
     """Why the file at path must not be committed, or None."""
     name = os.path.basename(path)
-    if name == KEPT or name.endswith(".md"):
+    if name in (KEPT, ".DS_Store") or name.lower().endswith(".md"):
         return None
     if is_image(name):
         listed = kept_list(os.path.dirname(path)).get(name)
@@ -401,12 +419,12 @@ def check(args):
 if not ARGS:
     usage("a subcommand is needed", full=True)
 cmd = ARGS.pop(0)
-if cmd == "keep":
-    keep(ARGS)
-elif cmd == "keep-image":
-    keep_image(ARGS)
-elif cmd == "check":
-    check(ARGS)
-else:
+COMMANDS = {"keep": keep, "keep-image": keep_image, "check": check}
+if cmd not in COMMANDS:
     usage("unknown subcommand " + cmd, full=True)
+try:
+    COMMANDS[cmd](ARGS)
+except OSError as e:
+    # A file that cannot be read or moved is no finding: exit 1 belongs to check's findings.
+    usage("%s: %s" % (cmd, e))
 PY

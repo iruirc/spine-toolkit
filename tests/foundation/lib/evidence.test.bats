@@ -357,3 +357,58 @@ EOF2
   [ "$status" -eq 2 ] || { echo "$output $stderr"; return 1; }
   [[ "$stderr" == *"evidence: "*"no project config"* ]] || { echo "$stderr"; return 1; }
 }
+
+@test "check passes an excerpt that holds a key's BEGIN line but not its END" {
+  { printf 'start\n-----BEGIN PRIVATE KEY-----\nFAKEpemorph0025\n-----END PRIVATE KEY-----\n'
+    for i in $(seq 1 25); do printf 'step %02d: linking module App\n' "$i"; done; } >"$BATS_TEST_TMPDIR/pem.log"
+  run "$EV" keep "$BATS_TEST_TMPDIR/pem.log" "$OUT" --match BEGIN
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  ! grep -q FAKE "$OUT/pem.log" || { cat "$OUT/pem.log"; return 1; }
+  diff <(sed -n '2,4p' "$OUT/pem.log") - <<'EOF2'
+-----BEGIN PRIVATE KEY-----
+# private key cut: its body and END line are not in this excerpt
+# tail
+EOF2
+  run "$EV" check "$TASK"
+  [ "$status" -eq 0 ] || { cat "$OUT/pem.log"; echo "$output"; return 1; }
+  # A key body written under the BEGIN line by hand is still found.
+  sed -i.bak '2a\
+FAKEpemhand0026' "$OUT/pem.log" && rm "$OUT/pem.log.bak"
+  run "$EV" check "$TASK"
+  [ "$status" -eq 1 ] || { cat "$OUT/pem.log"; echo "$output"; return 1; }
+  [ "$output" = 'evidence path=validation-evidence/t/pem.log reason=secret' ]
+}
+
+@test "an Authorization value whose first word is no known scheme is masked whole" {
+  printf '%s\n' 'Authorization: FAKEsecret0001 (cached)' 'Authorization: AWS4-HMAC-SHA256 Credential=FAKEaws0027' \
+    'Authorization: scram-sha-256 FAKEscram0028' >"$BATS_TEST_TMPDIR/auth2.log"
+  run "$EV" keep "$BATS_TEST_TMPDIR/auth2.log" "$OUT"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  diff <(sed -n '3,$p' "$OUT/auth2.log") - <<'EOF2'
+Authorization: ***
+Authorization: AWS4-HMAC-SHA256 ***
+Authorization: scram-sha-256 ***
+EOF2
+  run "$EV" check "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "check skips .DS_Store and takes .md in any case" {
+  mkdir -p "$OUT"
+  printf 'finder' >"$OUT/.DS_Store"
+  printf '# Notes\n' >"$OUT/NOTES.MD"
+  run "$EV" check "$TASK"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ]
+}
+
+@test "a file check cannot read stops it with exit 2, not the findings code" {
+  [ "$(id -u)" -ne 0 ] || skip "root reads any file"
+  mkdir -p "$OUT"
+  printf 'x\n' >"$OUT/locked.log"
+  chmod 000 "$OUT/locked.log"
+  run --separate-stderr "$EV" check "$TASK"
+  chmod 644 "$OUT/locked.log"
+  [ "$status" -eq 2 ] || { echo "$output $stderr"; return 1; }
+  [[ "$stderr" == evidence:*locked.log* ]] || { echo "$stderr"; return 1; }
+}
